@@ -1,0 +1,2589 @@
+{
+  "platform": "android",
+  "run_id": "cancel_scale_0d119275_focused13",
+  "api": {
+    "started_at_utc": "2026-11-06T13:43:30.009669Z",
+    "process_id": 32212,
+    "mode": "matrix",
+    "platform": "android",
+    "verify_previews": true,
+    "compiled_source_fingerprint": "94ccf4fb61b95e656d2d038763f158dcdb6ebc77c60cacc0bcf3c6b7721f2991",
+    "compiled_source_commit": "0d1192753f63aeb5fc3e88b3e0448d1ae2efcc11",
+    "capabilities": "NativeCapabilitiesDto(platform: android, osVersion: 34, gpuSupported: true, h264Encoder: true, hevcEncoder: true, maxEncodeWidth: 8192, maxEncodeHeight: 8192, cpuCores: 8, recommendedProfile: balanced, supportedProfiles: [quality, balanced, speed], inferenceBackends: [litert_gpu, litert_cpu])",
+    "cases": [
+      {
+        "input": "group-mirror-8956295.mp4",
+        "fill": "solid",
+        "startMs": 16000,
+        "endMs": 17600,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 3840,
+        "height": 2160,
+        "case": "group_4k_body_face_union",
+        "bitrate": 26956800,
+        "expected_frames": 40,
+        "start_ms": 16000,
+        "end_ms": 17600,
+        "face_only": false,
+        "output_width": 3840,
+        "output_height": 2160,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0,
+          1,
+          2
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 16000,
+            "dto_timestamp_ms": 16000,
+            "control_file": "group_4k_body_face_union-16000-source.png",
+            "control_bytes": 112927,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 78141,
+            "file": "group_4k_body_face_union-16000.png"
+          },
+          {
+            "requested_ms": 16780,
+            "dto_timestamp_ms": 16780,
+            "control_file": "group_4k_body_face_union-16780-source.png",
+            "control_bytes": 114902,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 80302,
+            "file": "group_4k_body_face_union-16780.png"
+          },
+          {
+            "requested_ms": 17560,
+            "dto_timestamp_ms": 17560,
+            "control_file": "group_4k_body_face_union-17560-source.png",
+            "control_bytes": 106340,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 82384,
+            "file": "group_4k_body_face_union-17560.png"
+          }
+        ],
+        "job_id": "job_bd8b02ef-2891-4c53-86db-7e0221d18190",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 0.9295408068414204,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/group_4k_body_face_union.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 5086352,
+        "partial_files": [],
+        "elapsed_seconds": 52.867
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 7800,
+        "endMs": 9400,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_body_face_union",
+        "bitrate": 28753920,
+        "expected_frames": 40,
+        "start_ms": 7800,
+        "end_ms": 9400,
+        "face_only": false,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 7800,
+            "dto_timestamp_ms": 7800,
+            "control_file": "solo_4k_body_face_union-7800-source.png",
+            "control_bytes": 57041,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 48941,
+            "file": "solo_4k_body_face_union-7800.png"
+          },
+          {
+            "requested_ms": 8580,
+            "dto_timestamp_ms": 8580,
+            "control_file": "solo_4k_body_face_union-8580-source.png",
+            "control_bytes": 55016,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 42178,
+            "file": "solo_4k_body_face_union-8580.png"
+          },
+          {
+            "requested_ms": 9360,
+            "dto_timestamp_ms": 9360,
+            "control_file": "solo_4k_body_face_union-9360-source.png",
+            "control_bytes": 59490,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 47086,
+            "file": "solo_4k_body_face_union-9360.png"
+          }
+        ],
+        "job_id": "job_2daa81bc-9ccf-4d6f-aa83-4c8431fb9c93",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 2.977519726068185,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/solo_4k_body_face_union.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 752515,
+        "partial_files": [],
+        "elapsed_seconds": 24.008
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 21440,
+        "endMs": 23040,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_sticker",
+        "bitrate": 28753920,
+        "expected_frames": 40,
+        "start_ms": 21440,
+        "end_ms": 23040,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "dto_timestamp_ms": 21440,
+            "control_file": "solo_4k_raised_arm_sticker-21440-source.png",
+            "control_bytes": 53492,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 59487,
+            "file": "solo_4k_raised_arm_sticker-21440.png"
+          },
+          {
+            "requested_ms": 22220,
+            "dto_timestamp_ms": 22220,
+            "control_file": "solo_4k_raised_arm_sticker-22220-source.png",
+            "control_bytes": 59133,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 73079,
+            "file": "solo_4k_raised_arm_sticker-22220.png"
+          },
+          {
+            "requested_ms": 23000,
+            "dto_timestamp_ms": 23000,
+            "control_file": "solo_4k_raised_arm_sticker-23000-source.png",
+            "control_bytes": 64218,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 70511,
+            "file": "solo_4k_raised_arm_sticker-23000.png"
+          }
+        ],
+        "job_id": "job_4c1e26b6-38c5-41ec-83b7-7d1c366716bf",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 1.916902285905976,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/solo_4k_raised_arm_sticker.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 1078883,
+        "partial_files": [],
+        "elapsed_seconds": 29.127
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 21440,
+        "endMs": 23040,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_solid",
+        "bitrate": 28753920,
+        "expected_frames": 40,
+        "start_ms": 21440,
+        "end_ms": 23040,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "dto_timestamp_ms": 21440,
+            "control_file": "solo_4k_raised_arm_solid-21440-source.png",
+            "control_bytes": 53492,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 51542,
+            "file": "solo_4k_raised_arm_solid-21440.png"
+          },
+          {
+            "requested_ms": 22220,
+            "dto_timestamp_ms": 22220,
+            "control_file": "solo_4k_raised_arm_solid-22220-source.png",
+            "control_bytes": 59133,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 56074,
+            "file": "solo_4k_raised_arm_solid-22220.png"
+          },
+          {
+            "requested_ms": 23000,
+            "dto_timestamp_ms": 23000,
+            "control_file": "solo_4k_raised_arm_solid-23000-source.png",
+            "control_bytes": 64218,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 62697,
+            "file": "solo_4k_raised_arm_solid-23000.png"
+          }
+        ],
+        "job_id": "job_11a0bd6c-bbbc-4732-9c62-ee682d186e74",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 1.921321869446179,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/solo_4k_raised_arm_solid.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 849795,
+        "partial_files": [],
+        "elapsed_seconds": 28.14
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 21440,
+        "endMs": 23040,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_body",
+        "bitrate": 28753920,
+        "expected_frames": 40,
+        "start_ms": 21440,
+        "end_ms": 23040,
+        "face_only": false,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "dto_timestamp_ms": 21440,
+            "control_file": "solo_4k_raised_arm_body-21440-source.png",
+            "control_bytes": 53492,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 41610,
+            "file": "solo_4k_raised_arm_body-21440.png"
+          },
+          {
+            "requested_ms": 22220,
+            "dto_timestamp_ms": 22220,
+            "control_file": "solo_4k_raised_arm_body-22220-source.png",
+            "control_bytes": 59133,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 51000,
+            "file": "solo_4k_raised_arm_body-22220.png"
+          },
+          {
+            "requested_ms": 23000,
+            "dto_timestamp_ms": 23000,
+            "control_file": "solo_4k_raised_arm_body-23000-source.png",
+            "control_bytes": 64218,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 51904,
+            "file": "solo_4k_raised_arm_body-23000.png"
+          }
+        ],
+        "job_id": "job_b50c53f3-c81f-4308-bbcf-e210330187f3",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 2.615575753612764,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/solo_4k_raised_arm_body.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 801939,
+        "partial_files": [],
+        "elapsed_seconds": 22.546
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 13720,
+        "endMs": 13760,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 1920,
+        "height": 1080,
+        "case": "group_hd_overlap_face",
+        "expected_frames": 1,
+        "start_ms": 13720,
+        "end_ms": 13760,
+        "face_only": true,
+        "output_width": 1920,
+        "output_height": 1080,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 13720,
+            "dto_timestamp_ms": 13720,
+            "control_file": "group_hd_overlap_face-13720-source.png",
+            "control_bytes": 113011,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 113014,
+            "file": "group_hd_overlap_face-13720.png"
+          }
+        ],
+        "job_id": "job_c0eb28b6-0cca-40bd-9150-04fa0a618f9e",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 0.27510316368638243,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/group_hd_overlap_face.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 43760,
+        "partial_files": [],
+        "elapsed_seconds": 6.747
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 13720,
+        "endMs": 13760,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 1920,
+        "height": 1080,
+        "case": "group_hd_overlap_body",
+        "expected_frames": 1,
+        "start_ms": 13720,
+        "end_ms": 13760,
+        "face_only": false,
+        "output_width": 1920,
+        "output_height": 1080,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 13720,
+            "dto_timestamp_ms": 13720,
+            "control_file": "group_hd_overlap_body-13720-source.png",
+            "control_bytes": 113011,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 81935,
+            "file": "group_hd_overlap_body-13720.png"
+          }
+        ],
+        "job_id": "job_d2903354-74e5-4b27-a639-0042ddb6cc36",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 0.2727024815925825,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/group_hd_overlap_body.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 38560,
+        "partial_files": [],
+        "elapsed_seconds": 5.843
+      },
+      {
+        "input": "group-mirror-8956295.mp4",
+        "fill": "solid",
+        "startMs": 5600,
+        "endMs": 6000,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 3840,
+        "height": 2160,
+        "case": "group_4k_face_solid",
+        "bitrate": 26956800,
+        "expected_frames": 10,
+        "start_ms": 5600,
+        "end_ms": 6000,
+        "face_only": true,
+        "output_width": 3840,
+        "output_height": 2160,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 5600,
+            "dto_timestamp_ms": 5600,
+            "control_file": "group_4k_face_solid-5600-source.png",
+            "control_bytes": 123531,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 118342,
+            "file": "group_4k_face_solid-5600.png"
+          },
+          {
+            "requested_ms": 5780,
+            "dto_timestamp_ms": 5780,
+            "control_file": "group_4k_face_solid-5780-source.png",
+            "control_bytes": 124399,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 122021,
+            "file": "group_4k_face_solid-5780.png"
+          },
+          {
+            "requested_ms": 5960,
+            "dto_timestamp_ms": 5960,
+            "control_file": "group_4k_face_solid-5960-source.png",
+            "control_bytes": 125516,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 122779,
+            "file": "group_4k_face_solid-5960.png"
+          }
+        ],
+        "job_id": "job_ac92fbb3-e261-4d58-91c4-cac50d44566b",
+        "state": "completed",
+        "current_frame": 10,
+        "total_frames": 10,
+        "progress": 1.0,
+        "fps": 0.7215007215007215,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/group_4k_face_solid.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 969280,
+        "partial_files": [],
+        "elapsed_seconds": 25.59
+      },
+      {
+        "input": "group-mirror-8956295.mp4",
+        "fill": "solid",
+        "startMs": 11400,
+        "endMs": 11800,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 3840,
+        "height": 2160,
+        "case": "group_4k_body_solid",
+        "bitrate": 26956800,
+        "expected_frames": 10,
+        "start_ms": 11400,
+        "end_ms": 11800,
+        "face_only": false,
+        "output_width": 3840,
+        "output_height": 2160,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 11400,
+            "dto_timestamp_ms": 11400,
+            "control_file": "group_4k_body_solid-11400-source.png",
+            "control_bytes": 117247,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 82641,
+            "file": "group_4k_body_solid-11400.png"
+          },
+          {
+            "requested_ms": 11580,
+            "dto_timestamp_ms": 11580,
+            "control_file": "group_4k_body_solid-11580-source.png",
+            "control_bytes": 118041,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 85494,
+            "file": "group_4k_body_solid-11580.png"
+          },
+          {
+            "requested_ms": 11760,
+            "dto_timestamp_ms": 11760,
+            "control_file": "group_4k_body_solid-11760-source.png",
+            "control_bytes": 117286,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 84837,
+            "file": "group_4k_body_solid-11760.png"
+          }
+        ],
+        "job_id": "job_30986aa3-2eaf-4fef-bc15-97bb61aeb8cd",
+        "state": "completed",
+        "current_frame": 10,
+        "total_frames": 10,
+        "progress": 1.0,
+        "fps": 0.7072635971426551,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/group_4k_body_solid.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 724064,
+        "partial_files": [],
+        "elapsed_seconds": 25.002
+      },
+      {
+        "input": "group-mirror-8956295.mp4",
+        "fill": "solid",
+        "startMs": 22840,
+        "endMs": 23240,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 3840,
+        "height": 2160,
+        "case": "group_4k_tail_face",
+        "bitrate": 26956800,
+        "expected_frames": 10,
+        "start_ms": 22840,
+        "end_ms": 23240,
+        "face_only": true,
+        "output_width": 3840,
+        "output_height": 2160,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 22840,
+            "dto_timestamp_ms": 22840,
+            "control_file": "group_4k_tail_face-22840-source.png",
+            "control_bytes": 105174,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 101771,
+            "file": "group_4k_tail_face-22840.png"
+          },
+          {
+            "requested_ms": 23020,
+            "dto_timestamp_ms": 23020,
+            "control_file": "group_4k_tail_face-23020-source.png",
+            "control_bytes": 101699,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 101739,
+            "file": "group_4k_tail_face-23020.png"
+          },
+          {
+            "requested_ms": 23200,
+            "dto_timestamp_ms": 23200,
+            "control_file": "group_4k_tail_face-23200-source.png",
+            "control_bytes": 97408,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 96611,
+            "file": "group_4k_tail_face-23200.png"
+          }
+        ],
+        "job_id": "job_a4c88585-cb60-416f-8c7f-de850a0da47e",
+        "state": "completed",
+        "current_frame": 10,
+        "total_frames": 10,
+        "progress": 1.0,
+        "fps": 0.6198859409868583,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/group_4k_tail_face.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 842752,
+        "partial_files": [],
+        "elapsed_seconds": 25.656
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 0,
+        "endMs": 640,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_custom_gallery_probe",
+        "customSticker": true,
+        "saveToGallery": true,
+        "bitrate": 28753920,
+        "expected_frames": 16,
+        "start_ms": 0,
+        "end_ms": 640,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0
+        ],
+        "custom_sticker_bytes": 806,
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 0,
+            "dto_timestamp_ms": 0,
+            "control_file": "solo_4k_custom_gallery_probe-0-source.png",
+            "control_bytes": 67472,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 70301,
+            "file": "solo_4k_custom_gallery_probe-0.png"
+          },
+          {
+            "requested_ms": 300,
+            "dto_timestamp_ms": 300,
+            "control_file": "solo_4k_custom_gallery_probe-300-source.png",
+            "control_bytes": 69424,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 71940,
+            "file": "solo_4k_custom_gallery_probe-300.png"
+          },
+          {
+            "requested_ms": 600,
+            "dto_timestamp_ms": 600,
+            "control_file": "solo_4k_custom_gallery_probe-600-source.png",
+            "control_bytes": 65740,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 68538,
+            "file": "solo_4k_custom_gallery_probe-600.png"
+          }
+        ],
+        "job_id": "job_a28217cf-e551-4871-b73b-d7b0cd2311f3",
+        "state": "completed",
+        "current_frame": 16,
+        "total_frames": 16,
+        "progress": 1.0,
+        "fps": 2.5248540318762824,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/solo_4k_custom_gallery_probe.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 363022,
+        "partial_files": [],
+        "gallery_saved_uri": "content://media/external_primary/video/media/1000003736",
+        "gallery_save_completed": true,
+        "gallery_original": {
+          "path": "/storage/emulated/0/Android/data/art.gaoge.dance.privacyqa/files/qa_gallery/294c3002-67a2-4ee6-8bcb-c304d7da34d3.mp4",
+          "bytes": 363022,
+          "sha256": "f4caa00d744a4013407d740f37a5f2ebd242f6cc4446f9858e0307f8afc43b32"
+        },
+        "elapsed_seconds": 12.894
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 0,
+        "endMs": 26480,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "bitrate": 28753920,
+        "case": "solo_4k_cancel_probe",
+        "cancelAtFrame": 25,
+        "expected_frames": 0,
+        "start_ms": 0,
+        "end_ms": 26480,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "cancelled_cleanly",
+        "pid": 32212,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 0,
+            "dto_timestamp_ms": 0,
+            "control_file": "solo_4k_cancel_probe-0-source.png",
+            "control_bytes": 67472,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 74275,
+            "file": "solo_4k_cancel_probe-0.png"
+          },
+          {
+            "requested_ms": 13220,
+            "dto_timestamp_ms": 13220,
+            "control_file": "solo_4k_cancel_probe-13220-source.png",
+            "control_bytes": 74551,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 82219,
+            "file": "solo_4k_cancel_probe-13220.png"
+          },
+          {
+            "requested_ms": 26440,
+            "dto_timestamp_ms": 26440,
+            "control_file": "solo_4k_cancel_probe-26440-source.png",
+            "control_bytes": 57427,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 64628,
+            "file": "solo_4k_cancel_probe-26440.png"
+          }
+        ],
+        "job_id": "job_e3084626-8ad5-4e13-87dd-7f02886fec2f",
+        "before_cancel": {
+          "state": "processing",
+          "job_id": "job_e3084626-8ad5-4e13-87dd-7f02886fec2f",
+          "current_frame": 25,
+          "total_frames": 662,
+          "progress": 0.03625377643504532,
+          "fps": 2.7056277056277054,
+          "output_uri": null,
+          "error_code": null,
+          "error_message": null
+        },
+        "state": "cancelled",
+        "current_frame": 26,
+        "total_frames": 662,
+        "progress": 0.0377643504531722,
+        "fps": 2.71597200459626,
+        "output_uri": null,
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 0,
+        "partial_files": [],
+        "elapsed_seconds": 15.745
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 1000,
+        "endMs": 2600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "bitrate": 28753920,
+        "case": "solo_4k_immediate_retry_probe",
+        "expected_frames": 40,
+        "start_ms": 1000,
+        "end_ms": 2600,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 32212,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 1000,
+            "dto_timestamp_ms": 1000,
+            "control_file": "solo_4k_immediate_retry_probe-1000-source.png",
+            "control_bytes": 66180,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 72409,
+            "file": "solo_4k_immediate_retry_probe-1000.png"
+          },
+          {
+            "requested_ms": 1780,
+            "dto_timestamp_ms": 1780,
+            "control_file": "solo_4k_immediate_retry_probe-1780-source.png",
+            "control_bytes": 67993,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 74349,
+            "file": "solo_4k_immediate_retry_probe-1780.png"
+          },
+          {
+            "requested_ms": 2560,
+            "dto_timestamp_ms": 2560,
+            "control_file": "solo_4k_immediate_retry_probe-2560-source.png",
+            "control_bytes": 73645,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 80391,
+            "file": "solo_4k_immediate_retry_probe-2560.png"
+          }
+        ],
+        "job_id": "job_4bf83577-29b5-4757-b9f9-0c1c315d858d",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 2.475707123847249,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_focused13/outputs/solo_4k_immediate_retry_probe.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 915315,
+        "partial_files": [],
+        "elapsed_seconds": 25.526
+      }
+    ],
+    "status": "finished",
+    "finished_at_utc": "2026-11-06T13:48:30.095343Z"
+  },
+  "metadata": {
+    "started_utc": "2026-11-06T13:43:30.170074+00:00",
+    "platform": "android",
+    "serial": "334da6a3",
+    "config": {
+      "run_id": "cancel_scale_0d119275_focused13",
+      "cases": [
+        {
+          "input": "group-mirror-8956295.mp4",
+          "fill": "solid",
+          "startMs": 16000,
+          "endMs": 17600,
+          "faceOnly": false,
+          "profile": "quality",
+          "width": 3840,
+          "height": 2160,
+          "case": "group_4k_body_face_union",
+          "bitrate": 26956800,
+          "expected_frames": 40
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 7800,
+          "endMs": 9400,
+          "faceOnly": false,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_body_face_union",
+          "bitrate": 28753920,
+          "expected_frames": 40
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "sticker",
+          "startMs": 21440,
+          "endMs": 23040,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_sticker",
+          "bitrate": 28753920,
+          "expected_frames": 40
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 21440,
+          "endMs": 23040,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_solid",
+          "bitrate": 28753920,
+          "expected_frames": 40
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 21440,
+          "endMs": 23040,
+          "faceOnly": false,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_body",
+          "bitrate": 28753920,
+          "expected_frames": 40
+        },
+        {
+          "input": "group-hd-8956295.mp4",
+          "fill": "solid",
+          "startMs": 13720,
+          "endMs": 13760,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 1920,
+          "height": 1080,
+          "case": "group_hd_overlap_face",
+          "expected_frames": 1
+        },
+        {
+          "input": "group-hd-8956295.mp4",
+          "fill": "solid",
+          "startMs": 13720,
+          "endMs": 13760,
+          "faceOnly": false,
+          "profile": "quality",
+          "width": 1920,
+          "height": 1080,
+          "case": "group_hd_overlap_body",
+          "expected_frames": 1
+        },
+        {
+          "input": "group-mirror-8956295.mp4",
+          "fill": "solid",
+          "startMs": 5600,
+          "endMs": 6000,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 3840,
+          "height": 2160,
+          "case": "group_4k_face_solid",
+          "bitrate": 26956800,
+          "expected_frames": 10
+        },
+        {
+          "input": "group-mirror-8956295.mp4",
+          "fill": "solid",
+          "startMs": 11400,
+          "endMs": 11800,
+          "faceOnly": false,
+          "profile": "quality",
+          "width": 3840,
+          "height": 2160,
+          "case": "group_4k_body_solid",
+          "bitrate": 26956800,
+          "expected_frames": 10
+        },
+        {
+          "input": "group-mirror-8956295.mp4",
+          "fill": "solid",
+          "startMs": 22840,
+          "endMs": 23240,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 3840,
+          "height": 2160,
+          "case": "group_4k_tail_face",
+          "bitrate": 26956800,
+          "expected_frames": 10
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "sticker",
+          "startMs": 0,
+          "endMs": 640,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_custom_gallery_probe",
+          "customSticker": true,
+          "saveToGallery": true,
+          "bitrate": 28753920,
+          "expected_frames": 16
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "sticker",
+          "startMs": 0,
+          "endMs": 26480,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "bitrate": 28753920,
+          "case": "solo_4k_cancel_probe",
+          "cancelAtFrame": 25,
+          "expected_frames": 0
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "sticker",
+          "startMs": 1000,
+          "endMs": 2600,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "bitrate": 28753920,
+          "case": "solo_4k_immediate_retry_probe",
+          "expected_frames": 40
+        }
+      ],
+      "core_smokes": true,
+      "build_source_fingerprint": "94ccf4fb61b95e656d2d038763f158dcdb6ebc77c60cacc0bcf3c6b7721f2991",
+      "partial_stage_check": false,
+      "verify_previews": true,
+      "stage_export_only": false,
+      "lifecycle": false
+    },
+    "sources": {
+      "corrupt-video-1024bytes.mp4": {
+        "bytes": 1024,
+        "sha256": "630b36e85f6e26cd9371088fd201979ca82f1300b04aee24210c9e67df6e7e80"
+      },
+      "custom-sticker.png": {
+        "bytes": 806,
+        "sha256": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6"
+      },
+      "duo-dance-6940536.mp4": {
+        "bytes": 3748966,
+        "sha256": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76"
+      },
+      "group-hd-8956295.mp4": {
+        "bytes": 15726991,
+        "sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5"
+      },
+      "group-mirror-8956295.mp4": {
+        "bytes": 69505821,
+        "sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73"
+      },
+      "no-person-flower.mp4": {
+        "bytes": 1128375,
+        "sha256": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451"
+      },
+      "solo-hd-7570258.mp4": {
+        "bytes": 7454617,
+        "sha256": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0"
+      },
+      "solo-portrait-7570258.mp4": {
+        "bytes": 21156880,
+        "sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1"
+      }
+    },
+    "git_head": "ab85241d83a21f0d2dce2efdcad434b9d03862c4",
+    "binary_sha256": "e769746a40768366dc0a1e49c44aa352d86a8242311207d480872d460e57d16f",
+    "binary_path": "D:\\dance-anonymizer\\.qa-runtime\\rust-migration\\builds\\cancel-scale-0d119275\\app-debug.apk",
+    "harness_sha256": "dc8dce197955d45d0b064fb25dd95bd31ca360db06a038dcc467a5aa7925a928",
+    "matrix_sha256": "cd4ced2482b53f8c439c4dcd3445d754f57312f2fc51c3fd0a2789751c3bf1f8",
+    "application_id": "art.gaoge.dance.privacyqa",
+    "device": {
+      "ro.product.model": "KB2000",
+      "ro.build.version.release": "14",
+      "ro.product.cpu.abi": "arm64-v8a"
+    },
+    "additional_crop_traces": {},
+    "crop_traces": [
+      "qa_pixel_crops_cfff6927-a3ab-48db-8d19-86d26197d184.jsonl",
+      "qa_pixel_crops_48496de2-ad94-4cf8-843a-16511519d957.jsonl",
+      "qa_pixel_crops_31ac6350-3038-4ad6-9629-75ffc1c36fd1.jsonl",
+      "qa_pixel_crops_f955e210-6de8-405c-ba9c-c6daa33ea5fc.jsonl",
+      "qa_pixel_crops_f006399c-2afa-4394-9fa3-52cc38f30e70.jsonl",
+      "qa_pixel_crops_f08c1550-b136-4778-98b3-dd71e97f08ca.jsonl",
+      "qa_pixel_crops_35956707-aec2-41f9-b241-5e867e10c5cd.jsonl",
+      "qa_pixel_crops_e548b883-be32-49d0-a88b-fa27953fd560.jsonl",
+      "qa_pixel_crops_afdb184d-d101-47e0-8e7d-c3354b6255c1.jsonl",
+      "qa_pixel_crops_c89e40c0-246b-4624-9e7a-6f51f695b79b.jsonl",
+      "qa_pixel_crops_8c05b40d-b4df-4542-9b25-ec70cb8f19f7.jsonl",
+      "qa_pixel_crops_e096a228-61ad-4f4b-95c2-c59f2d35bbac.jsonl",
+      "qa_pixel_crops_e5088cc9-a59f-414e-a7d2-88af80af7824.jsonl"
+    ],
+    "crop_traces_by_output": {
+      "solo_4k_raised_arm_sticker.mp4": "qa_pixel_crops_31ac6350-3038-4ad6-9629-75ffc1c36fd1.jsonl",
+      "group_hd_overlap_body.mp4": "qa_pixel_crops_35956707-aec2-41f9-b241-5e867e10c5cd.jsonl",
+      "solo_4k_body_face_union.mp4": "qa_pixel_crops_48496de2-ad94-4cf8-843a-16511519d957.jsonl",
+      "solo_4k_custom_gallery_probe.mp4": "qa_pixel_crops_8c05b40d-b4df-4542-9b25-ec70cb8f19f7.jsonl",
+      "group_4k_body_solid.mp4": "qa_pixel_crops_afdb184d-d101-47e0-8e7d-c3354b6255c1.jsonl",
+      "group_4k_tail_face.mp4": "qa_pixel_crops_c89e40c0-246b-4624-9e7a-6f51f695b79b.jsonl",
+      "group_4k_body_face_union.mp4": "qa_pixel_crops_cfff6927-a3ab-48db-8d19-86d26197d184.jsonl",
+      "solo_4k_cancel_probe.mp4": "qa_pixel_crops_e096a228-61ad-4f4b-95c2-c59f2d35bbac.jsonl",
+      "solo_4k_immediate_retry_probe.mp4": "qa_pixel_crops_e5088cc9-a59f-414e-a7d2-88af80af7824.jsonl",
+      "group_4k_face_solid.mp4": "qa_pixel_crops_e548b883-be32-49d0-a88b-fa27953fd560.jsonl",
+      "solo_4k_raised_arm_body.mp4": "qa_pixel_crops_f006399c-2afa-4394-9fa3-52cc38f30e70.jsonl",
+      "group_hd_overlap_face.mp4": "qa_pixel_crops_f08c1550-b136-4778-98b3-dd71e97f08ca.jsonl",
+      "solo_4k_raised_arm_solid.mp4": "qa_pixel_crops_f955e210-6de8-405c-ba9c-c6daa33ea5fc.jsonl"
+    },
+    "finished_utc": "2026-11-06T13:48:38.258265+00:00"
+  },
+  "build": {
+    "source_commit": "0d1192753f63aeb5fc3e88b3e0448d1ae2efcc11",
+    "source_fingerprint": "94ccf4fb61b95e656d2d038763f158dcdb6ebc77c60cacc0bcf3c6b7721f2991",
+    "binary_name": "app-debug.apk",
+    "binary_sha256": "e769746a40768366dc0a1e49c44aa352d86a8242311207d480872d460e57d16f"
+  },
+  "audit_file_sha256": {
+    "media": "a79f330437c2f000929189e88efd19a0c25a4b6a37bbfe3510d50fbcbf195f8b",
+    "faces": "791de1a7064d75b3594e546a9412887566973d1b4eae563b0a963b0df5635d01",
+    "previews": "74aa582d37245f23ffacd878987c2bd46502b0e100c5f7f16640fe8a18d1d007",
+    "gallery": "5f7d325e4acd18d3132dd13921ad451234a1f2fcc332ab6a67f528d951d6230d"
+  },
+  "media": {
+    "run_id": "cancel_scale_0d119275_focused13",
+    "cases": [
+      {
+        "case": "group_4k_body_face_union",
+        "status": "passed_media",
+        "sha256": "e375b96261f6df65a22a1c3b16acfa862a55ef7f6491a4709e90730e09e86425",
+        "bytes": 5086352,
+        "dimensions": [
+          3840,
+          2160
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 1.7763568394002505e-15,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 411,
+            "label": "body_omitted_face_411",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "8caac34fd09635b3cd23699e81557d75e078806ad4576fe4114c42253144d0e6"
+      },
+      {
+        "case": "solo_4k_body_face_union",
+        "status": "passed_media",
+        "sha256": "c507a6b99ba7312452c86c5e25ea5ecce09c2a4bc01b8f52b90ec0cd315f1f92",
+        "bytes": 752515,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 1.1102230246251565e-15,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 217,
+            "label": "body_omitted_face_217",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "f6ef7140b2806da7b8f8357dd593e530d53960bf92f69120b4608936790d036e"
+      },
+      {
+        "case": "solo_4k_raised_arm_sticker",
+        "status": "passed_media",
+        "sha256": "583aefd42ba6fbbc9f550cc9e2d202cd485143ca5be7598ec14792765af08cde",
+        "bytes": 1078883,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 2.9976021664879227e-15,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "9cb8b21e3259894275cc5883fe4de60478cae23c3edebc75f10f2254022de64e"
+      },
+      {
+        "case": "solo_4k_raised_arm_solid",
+        "status": "passed_media",
+        "sha256": "2fe1f85962dbf9677180c6a8fa444a5b2d9a33e0bcef1e28fd13e4549e5fbaa3",
+        "bytes": 849795,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 2.9976021664879227e-15,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 556,
+            "label": "occluded_face_556",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 557,
+            "label": "occluded_face_557",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 558,
+            "label": "occluded_face_558",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 559,
+            "label": "occluded_face_559",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 560,
+            "label": "raised_arm_face_560",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 561,
+            "label": "raised_arm_face_561",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 562,
+            "label": "raised_arm_face_562",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 563,
+            "label": "raised_arm_face_563",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "ab70f49ec80ef57e7bd2d1988be36381bd73558fdcc55e1b1147efe86b76cc39"
+      },
+      {
+        "case": "solo_4k_raised_arm_body",
+        "status": "passed_media",
+        "sha256": "6a86956ee23be7a29da2c6fbc296923e041421e601fae311ad36c442deaa8dd6",
+        "bytes": 801939,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 2.9976021664879227e-15,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 556,
+            "label": "occluded_face_556",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 557,
+            "label": "occluded_face_557",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 558,
+            "label": "occluded_face_558",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 559,
+            "label": "occluded_face_559",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 560,
+            "label": "raised_arm_face_560",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 561,
+            "label": "raised_arm_face_561",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 562,
+            "label": "raised_arm_face_562",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 563,
+            "label": "raised_arm_face_563",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "36e3de37bd001462390e874aaa9c061efb09578e6417b17cfe91b6a733cb969f"
+      },
+      {
+        "case": "group_hd_overlap_face",
+        "status": "passed_media",
+        "sha256": "940719f49ab919f1003c4129c833a1c3fcb0344f65efa633a169246fb58fbec8",
+        "bytes": 43760,
+        "dimensions": [
+          1920,
+          1080
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "e20cb7eb139f5e7178b4c6e49cad87befbe4c39aeec5c590da07ce64f765102c"
+      },
+      {
+        "case": "group_hd_overlap_body",
+        "status": "passed_media",
+        "sha256": "1bad2dda4a6842c99635b45068c1b0740b2c0ab81e11c2ae2d55db2b3d346cff",
+        "bytes": 38560,
+        "dimensions": [
+          1920,
+          1080
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "b05cd77dc7b64714f5cb09f828d1485c8a5a980e7f36642fe791e742b0a0c0fa"
+      },
+      {
+        "case": "group_4k_face_solid",
+        "status": "passed_media",
+        "sha256": "5aa4032bb8bda3ccd9c8c3bead46404caf2bfc13c198efc5ad27320cf59054e6",
+        "bytes": 969280,
+        "dimensions": [
+          3840,
+          2160
+        ],
+        "decoded_frames": 10,
+        "expected_frames": 10,
+        "max_pts_delta_seconds": 3.3306690738754696e-16,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 145,
+            "label": "side_face",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "70dcaa42176077c8e4dbb72427d1cfb1c1a050329e0b7970aafb3f668ad51dfe"
+      },
+      {
+        "case": "group_4k_body_solid",
+        "status": "passed_media",
+        "sha256": "9f7286bbac452ec1e988aebcba7b72c06e99c644bd9c15462f9eff229bd4ebbf",
+        "bytes": 724064,
+        "dimensions": [
+          3840,
+          2160
+        ],
+        "decoded_frames": 10,
+        "expected_frames": 10,
+        "max_pts_delta_seconds": 8.534839501805891e-16,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 290,
+            "label": "mirror_face",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "785ec01e8cc42f659188733781f755e760750c1217298324f1a3d1a79e583039"
+      },
+      {
+        "case": "group_4k_tail_face",
+        "status": "passed_media",
+        "sha256": "3669f35cc4a3c1f9a2b0b2ed491e7e98d9f40e9a562605e92825efb13c6c2949",
+        "bytes": 842752,
+        "dimensions": [
+          3840,
+          2160
+        ],
+        "decoded_frames": 10,
+        "expected_frames": 10,
+        "max_pts_delta_seconds": 1.8457457784393227e-15,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 580,
+            "label": "foreground_leg",
+            "red_pixels": 0,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "03a2665466dbe8d07ba205f54e1f683e430252722616332f2ae793e57d34944f"
+      },
+      {
+        "case": "solo_4k_custom_gallery_probe",
+        "status": "passed_media",
+        "sha256": "f4caa00d744a4013407d740f37a5f2ebd242f6cc4446f9858e0307f8afc43b32",
+        "bytes": 363022,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 16,
+        "expected_frames": 16,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "gallery_original_sha_matches": [
+          "gallery\\294c3002-67a2-4ee6-8bcb-c304d7da34d3.mp4"
+        ],
+        "input_binding_sha256": "6b52518fc953dc8f02ec200d1147e7d1cce5526290536c9c3c3a867f42628111"
+      },
+      {
+        "case": "solo_4k_cancel_probe",
+        "status": "passed_cancellation",
+        "cancelled_at_frame": 25,
+        "input_binding_sha256": "588330b6be3e413d5b25f3c81f356c9b9756409966f4619d19821901abeadf64"
+      },
+      {
+        "case": "solo_4k_immediate_retry_probe",
+        "status": "passed_media",
+        "sha256": "914d3d8e909bfea46b9afaad3268e743154c0f291257ab02765899048a1043eb",
+        "bytes": 915315,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 2.220446049250313e-16,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "a4e1470371032a83cdf85bbb88e8c4154afcf5545513c38e6f82c7a3a99849f7"
+      }
+    ]
+  },
+  "faces": {
+    "run_id": "cancel_scale_0d119275_focused13",
+    "cases": [
+      {
+        "case": "group_4k_body_face_union",
+        "input_binding_sha256": "99fbb05b1d9a30c10a04029ae8993b3ac34ff4cc075fee7481957de5d9fc6dea",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 29,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_body_face_union",
+        "input_binding_sha256": "d05c11ac910ea517c88914fe7d07279054fac8362264d69fee8466fe913bbae8",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 40,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_sticker",
+        "input_binding_sha256": "03654bfe978102ad241c7a87b0c6bfda321106bb9b2f1245aa1824ca262ec508",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 30,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "recorded_source_ellipses",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_solid",
+        "input_binding_sha256": "17e08af93650f284821d59d5a715012bccc6dfd3def3f680ba5ef30ebe82a398",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 30,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_body",
+        "input_binding_sha256": "662f385bb9971e074d4aa9e1f5299d931a223f9f8853115fea01859a20c9e564",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 30,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "group_hd_overlap_face",
+        "input_binding_sha256": "498b6f4d2a5aff41c31bb8e9fa61f129fb3c0dad2b17b0bea4370f49b67a14cb",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 4,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [
+          {
+            "output_frame": 0,
+            "source_frame": 343,
+            "source_pts_us": 13720000,
+            "source_bbox": [
+              1269.9224853515625,
+              359.35417234897614,
+              1337.5244092941284,
+              426.956090927124
+            ],
+            "output_core": [
+              1281,
+              370,
+              1327,
+              416
+            ],
+            "coverage_fraction": 0.8478260869565217
+          }
+        ],
+        "follow_hero_id": null,
+        "status": "failed_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "group_hd_overlap_body",
+        "input_binding_sha256": "d5035ef2f42b1571cd80bde13f1fa358a9570f383db98f291f77f4cc4b0b727c",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 4,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "group_4k_face_solid",
+        "input_binding_sha256": "c98099a6ecfb29fae69106bf279345accb658d8c307a0af67a78818fcde20056",
+        "decoded_frames": 10,
+        "tested_visible_face_cores": 31,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "group_4k_body_solid",
+        "input_binding_sha256": "be3cec80a3ab1f808b3c2aa3ff54a265edb061611cdf2b26690729533dceac5c",
+        "decoded_frames": 10,
+        "tested_visible_face_cores": 23,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "group_4k_tail_face",
+        "input_binding_sha256": "e83e674fc12a5b0b3e62e79bfa4f613d280c9e4c3347fe80577de8b70d8c5643",
+        "decoded_frames": 10,
+        "tested_visible_face_cores": 4,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_custom_gallery_probe",
+        "input_binding_sha256": "3a1c310636c10e783b83909abc18a2d32c0cc8768b4f263814ea96c5c3e7d6ed",
+        "decoded_frames": 16,
+        "tested_visible_face_cores": 16,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "recorded_source_ellipses",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_immediate_retry_probe",
+        "input_binding_sha256": "c0b44ac6d3546deff9479aebbd40202d5b716ceeb156a9519beb2283caf48265",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 40,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "recorded_source_ellipses",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      }
+    ]
+  },
+  "previews": {
+    "run_id": "cancel_scale_0d119275_focused13",
+    "auditor_sha256": "33e84a7891297fc56fd1517733236da2dcfffeacce86aa95a0a964dd830ae111",
+    "cases": [
+      {
+        "case": "group_4k_body_face_union",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 16000,
+            "status": "passed",
+            "best_expected_frame": 400,
+            "expected_pts_seconds": 16.0,
+            "correlation": 0.9996040018426549,
+            "control_sha256": "e639f73bbefe6b93c749431db60c4d35d58dfc99332bf8345898ed913ec73630",
+            "protected_sha256": "fe2b772eaeeba4ef9814f775d868a831968b130191d34fb2e0a05b233082d4ff",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 16780,
+            "status": "passed",
+            "best_expected_frame": 420,
+            "expected_pts_seconds": 16.8,
+            "correlation": 0.9996311667234393,
+            "control_sha256": "5d42161d51ff996cf3fcd87b9d3be204a4fece49c5bbe7b778adad23e2794a93",
+            "protected_sha256": "3a897c1c6e0dd66ae08483d1b7e804642c589cb22ba0dfbf40288e3567bd8c8c",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 17560,
+            "status": "passed",
+            "best_expected_frame": 439,
+            "expected_pts_seconds": 17.56,
+            "correlation": 0.9997853975674273,
+            "control_sha256": "9614201ca263bc56b835243fbcaa577e1cd5561de775cd7f389a0c53b86c40f6",
+            "protected_sha256": "d26ca282df6284ae6acb5e0b67a9f6f2e404e842974b17fbd9c4b47f555fa134",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_body_face_union",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 7800,
+            "status": "passed",
+            "best_expected_frame": 195,
+            "expected_pts_seconds": 7.8,
+            "correlation": 0.9983847155019738,
+            "control_sha256": "52619787bf3dba297884782fbdf8e3c201b2c0a9cff90eb0245b378ba6675c86",
+            "protected_sha256": "3ef72a07fb8482eb8914cf46905c201f7e6f1301b4f08e0ac602b3487e34ab30",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 8580,
+            "status": "passed",
+            "best_expected_frame": 215,
+            "expected_pts_seconds": 8.6,
+            "correlation": 0.9984718101263206,
+            "control_sha256": "717d3be49c94fbe027e82c8c09607830fbd726a6584af1efb06a78b2148192e5",
+            "protected_sha256": "439143338f95aa7693c7f88f869c4c0a3fbce8b3e9769c4e7f510e34e5806dd9",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 9360,
+            "status": "passed",
+            "best_expected_frame": 234,
+            "expected_pts_seconds": 9.36,
+            "correlation": 0.9984569091632093,
+            "control_sha256": "4bcf8d8a6dd418d1af7ac30b12d828d2df5595a762b442626e26b4ce03bf6553",
+            "protected_sha256": "8eb02a3922c4e12d1d8bb02b8a354c829f2d84527761ee919eb1d2088693fd00",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_sticker",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "status": "passed",
+            "best_expected_frame": 536,
+            "expected_pts_seconds": 21.44,
+            "correlation": 0.9978468107918429,
+            "control_sha256": "3084ca3c4a1c67f8bb28d74ca129b3f938e2f79c758e43604314e92c0c40c8b9",
+            "protected_sha256": "d6385995be58a609a184e8a321ed6508070982a844534e8b2d2e21889da5c77a"
+          },
+          {
+            "requested_ms": 22220,
+            "status": "passed",
+            "best_expected_frame": 556,
+            "expected_pts_seconds": 22.24,
+            "correlation": 0.9980560952447926,
+            "control_sha256": "422327ce9a04f59af424c7cb7634411c474cf9afec2bde739c87bc6baf6f4312",
+            "protected_sha256": "a2ce1a39e7657a0c576ad9a9c1e36386d152ff72d9a4d8e75ae1c9c14fcc2653"
+          },
+          {
+            "requested_ms": 23000,
+            "status": "passed",
+            "best_expected_frame": 575,
+            "expected_pts_seconds": 23.0,
+            "correlation": 0.998094562028625,
+            "control_sha256": "4b5215eef76e0de163cc16ba3c772f1a01c01379c5f88af6a2f65c574ff4542d",
+            "protected_sha256": "59c30cafe4ff00743f2d0ba435480767211de7e1050c4361284f9e9d9a321b8e"
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_solid",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "status": "passed",
+            "best_expected_frame": 536,
+            "expected_pts_seconds": 21.44,
+            "correlation": 0.9978468107918429,
+            "control_sha256": "3084ca3c4a1c67f8bb28d74ca129b3f938e2f79c758e43604314e92c0c40c8b9",
+            "protected_sha256": "c8f87585cd526b1af9a9aa3221cc48f05a9ad0770249183ade888f42e9215bb1",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 22220,
+            "status": "passed",
+            "best_expected_frame": 556,
+            "expected_pts_seconds": 22.24,
+            "correlation": 0.9980560952447926,
+            "control_sha256": "422327ce9a04f59af424c7cb7634411c474cf9afec2bde739c87bc6baf6f4312",
+            "protected_sha256": "16a0e68caeda0ea6e37a82c335cbcabe2dab560d8865668afbf181c351ea2a9d",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 23000,
+            "status": "passed",
+            "best_expected_frame": 575,
+            "expected_pts_seconds": 23.0,
+            "correlation": 0.998094562028625,
+            "control_sha256": "4b5215eef76e0de163cc16ba3c772f1a01c01379c5f88af6a2f65c574ff4542d",
+            "protected_sha256": "394d0b230e3cbe899b27e45a66fae37299086d5cf99d797571d09d8791089905",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_body",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "status": "passed",
+            "best_expected_frame": 536,
+            "expected_pts_seconds": 21.44,
+            "correlation": 0.9978468107918429,
+            "control_sha256": "3084ca3c4a1c67f8bb28d74ca129b3f938e2f79c758e43604314e92c0c40c8b9",
+            "protected_sha256": "c9e23e30b9f660309cb14a61e1fd3ec6cc224d22f269a424731cae18dff5dd74",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 22220,
+            "status": "passed",
+            "best_expected_frame": 556,
+            "expected_pts_seconds": 22.24,
+            "correlation": 0.9980560952447926,
+            "control_sha256": "422327ce9a04f59af424c7cb7634411c474cf9afec2bde739c87bc6baf6f4312",
+            "protected_sha256": "28fddb2fb370fb0c9e9318974a8ca3d3a7b78513baf049479dabb88e7f6abc95",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 23000,
+            "status": "passed",
+            "best_expected_frame": 575,
+            "expected_pts_seconds": 23.0,
+            "correlation": 0.998094562028625,
+            "control_sha256": "4b5215eef76e0de163cc16ba3c772f1a01c01379c5f88af6a2f65c574ff4542d",
+            "protected_sha256": "20383512016f417118eb231f8bd4317bc2cefa439de430f84e65c7c3f6818475",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "group_hd_overlap_face",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 13720,
+            "status": "passed",
+            "best_expected_frame": 343,
+            "expected_pts_seconds": 13.72,
+            "correlation": 0.9997713604152616,
+            "control_sha256": "ecb00833d4f453ec09d99ac4d7744222237b8deda74e61e740236899b0d0231d",
+            "protected_sha256": "6f0101c69a73ec000b298032e3e57e9d92a7daf9b4472b5b0905f2159b961f11",
+            "face_core_status": "needs_visual_review",
+            "tested_face_cores": 4,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": [
+              {
+                "source_bbox": [
+                  1269.9224853515625,
+                  359.35417234897614,
+                  1337.5244092941284,
+                  426.956090927124
+                ],
+                "preview_core": [
+                  854,
+                  247,
+                  884,
+                  277
+                ],
+                "red_fraction": 0.8655555555555555
+              }
+            ]
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "group_hd_overlap_body",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 13720,
+            "status": "passed",
+            "best_expected_frame": 343,
+            "expected_pts_seconds": 13.72,
+            "correlation": 0.9997713604152616,
+            "control_sha256": "ecb00833d4f453ec09d99ac4d7744222237b8deda74e61e740236899b0d0231d",
+            "protected_sha256": "43adfb0125561955009ef2068b80ee03d985a0902d033feb88feab25c8404905",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 4,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "group_4k_face_solid",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 5600,
+            "status": "passed",
+            "best_expected_frame": 140,
+            "expected_pts_seconds": 5.6,
+            "correlation": 0.9997489366252692,
+            "control_sha256": "24c5912c3af1c615db9c1334d81c2b352befa35395ba7ad57222d173f4462bd1",
+            "protected_sha256": "4b521723f759e5ad758b50a97b011dcf2f68075e3644ac67e740cb150ff8c7cb",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 2,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 5780,
+            "status": "passed",
+            "best_expected_frame": 145,
+            "expected_pts_seconds": 5.8,
+            "correlation": 0.9997379945605852,
+            "control_sha256": "7df92c96128738029a45e23dcbc5856c00f176a9c3aa8ece57a7ee5b486cfb87",
+            "protected_sha256": "dff90b6435dbf88f8975c59dab0e98fd10e0d5d2ffa65e0788cfc26615c2f602",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 3,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 5960,
+            "status": "passed",
+            "best_expected_frame": 149,
+            "expected_pts_seconds": 5.96,
+            "correlation": 0.9997223822950299,
+            "control_sha256": "5a55983eef5b7d6a442eaf9a75af39e278af5a5b61bcf23d83f6702e373cb28d",
+            "protected_sha256": "1b74e16208879f7037965b6fda396d57ff3da348a3f42dcba93ebb1307663e30",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 3,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "group_4k_body_solid",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 11400,
+            "status": "passed",
+            "best_expected_frame": 285,
+            "expected_pts_seconds": 11.4,
+            "correlation": 0.9998180646695694,
+            "control_sha256": "966612266a577a6e5f97a363d56d7c935907e507f9fcac05b25d5505ebe31f1e",
+            "protected_sha256": "eab0a9dd4a12c08cc7fb3f4c8325bcee4d2e43c48a4d66a3e62c96f5e59186e7",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 3,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 11580,
+            "status": "passed",
+            "best_expected_frame": 290,
+            "expected_pts_seconds": 11.6,
+            "correlation": 0.9998149804551336,
+            "control_sha256": "9d8c6d892d2fbaa2bad21d90cf6e2ca6ddbfe03822ffdcf4378dbb35afb09389",
+            "protected_sha256": "21a50412452c5983c4167d3e9454de4030627e122b76b1e35d84e635338fb6e9",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 2,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 11760,
+            "status": "passed",
+            "best_expected_frame": 294,
+            "expected_pts_seconds": 11.76,
+            "correlation": 0.9998073950815647,
+            "control_sha256": "05207bea3dcec9d97d6d212928f22cb7413662ad3aa0003fd1a5eaf0922c0c8e",
+            "protected_sha256": "c37e7e6d110177ec1a0e9dec460861feb67c224a39bbdaa5e8cef24d9952be89",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 2,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "group_4k_tail_face",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 22840,
+            "status": "passed",
+            "best_expected_frame": 571,
+            "expected_pts_seconds": 22.84,
+            "correlation": 0.9998323897111924,
+            "control_sha256": "e166222750c34ef943f35f4373f1a475477456b7ef223619e937d7650ae9a0f4",
+            "protected_sha256": "381b4fada78d49523c12d31e0fc545ee717e48da378ee930bdabbec4d1032669",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 23020,
+            "status": "passed",
+            "best_expected_frame": 576,
+            "expected_pts_seconds": 23.04,
+            "correlation": 0.9998438366485916,
+            "control_sha256": "844f0ac9548202254b1887a2bc7a5963e763939bcb2efaff2c3206797ca0085c",
+            "protected_sha256": "02d0bd1fb1cc6935c3a692885427cc2f17c64c3474d63bac327c54751e9bf878",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 23200,
+            "status": "passed",
+            "best_expected_frame": 580,
+            "expected_pts_seconds": 23.2,
+            "correlation": 0.9998465371348378,
+            "control_sha256": "28f867e78e2c19742133d2aa571ec201ce8b12eda26b15cb98465f53999eb270",
+            "protected_sha256": "192410c9f516eda2b28902fa140ce48ea1954ec1b863be568e2cb514bc655152",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_custom_gallery_probe",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 0,
+            "status": "passed",
+            "best_expected_frame": 0,
+            "expected_pts_seconds": 0.0,
+            "correlation": 0.9983877082914944,
+            "control_sha256": "120590417fd6fa171f380e29722bf07e7e9861c1cacedb7fa44086848190c029",
+            "protected_sha256": "3916b75b93cbee0871f2c2e281095cd0e803ae096c5ce103ebee3e8938644985"
+          },
+          {
+            "requested_ms": 300,
+            "status": "passed",
+            "best_expected_frame": 8,
+            "expected_pts_seconds": 0.32,
+            "correlation": 0.9982410790271793,
+            "control_sha256": "6b9dd1f5334db55abd590bc5b0a40473c84e49b68c42edafcdcff7d320d367f3",
+            "protected_sha256": "937ae04d689e2c62d79803aaaaf09217e431ab3866f45d8173a542bb66196687"
+          },
+          {
+            "requested_ms": 600,
+            "status": "passed",
+            "best_expected_frame": 15,
+            "expected_pts_seconds": 0.6,
+            "correlation": 0.99843538467459,
+            "control_sha256": "5bf5dcd2accc0c89bce7b4ad4635d1735131d3b0a9e05eb949dfde683185daef",
+            "protected_sha256": "b236b700562771d6f7d418809377d3e7aef945915e4c3537742233085f932dc9"
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_cancel_probe",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 0,
+            "status": "passed",
+            "best_expected_frame": 0,
+            "expected_pts_seconds": 0.0,
+            "correlation": 0.9983877082914944,
+            "control_sha256": "120590417fd6fa171f380e29722bf07e7e9861c1cacedb7fa44086848190c029",
+            "protected_sha256": "8e765420e6e7e1b3dab6ada3a61c6db45f2bb913a67da8da926c639a6fc0f5e6"
+          },
+          {
+            "requested_ms": 13220,
+            "status": "passed",
+            "best_expected_frame": 331,
+            "expected_pts_seconds": 13.24,
+            "correlation": 0.9987066783207974,
+            "control_sha256": "7caadf763e627af5a7417789e12f6000a6cdc7ff054d7d51b625b2fffec3b7cb",
+            "protected_sha256": "5263a4c53eebe13d6f3f124d5adc3e3adf7bc65de9b5b9887fb447fca318681f"
+          },
+          {
+            "requested_ms": 26440,
+            "status": "passed",
+            "best_expected_frame": 661,
+            "expected_pts_seconds": 26.44,
+            "correlation": 0.9983277039399817,
+            "control_sha256": "0a2979d6a69a049f9dd79d8c83c5dbfae54136213d28a0ec2475e611adf41e4a",
+            "protected_sha256": "79e42537401f56c7129dced25385ee44dd3259d67519f7a1751e9ddea293f2c4"
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_immediate_retry_probe",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 1000,
+            "status": "passed",
+            "best_expected_frame": 25,
+            "expected_pts_seconds": 1.0,
+            "correlation": 0.9986756516334987,
+            "control_sha256": "14cc81553880fba771fa943df8f1dbb042952359e35aa79f080434fcb286a4dc",
+            "protected_sha256": "3ca9e06b9c88b53a3bbeb9163fb9637401988a335bb4b49049a6e582302301f2"
+          },
+          {
+            "requested_ms": 1780,
+            "status": "passed",
+            "best_expected_frame": 45,
+            "expected_pts_seconds": 1.8,
+            "correlation": 0.99842093761734,
+            "control_sha256": "e4a701ff9f3a2f576f4dfc7c35a9b7a610ecfdcacb99bec6e90b64b650b74862",
+            "protected_sha256": "910ebc001a24a9221f3df070ac76234584a2fca86e7f89228e958a72f1905362"
+          },
+          {
+            "requested_ms": 2560,
+            "status": "passed",
+            "best_expected_frame": 64,
+            "expected_pts_seconds": 2.56,
+            "correlation": 0.9984589755198332,
+            "control_sha256": "4e1668363d9560e5836a21e7ca52272e4ffc042b59f4a18b591be03105cd5ee6",
+            "protected_sha256": "240b21fd19853b08942c0e780b5cb2ee1b074d29bd2889c0d860d8aaf1d0e59e"
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      }
+    ]
+  },
+  "gallery": {
+    "run_id": "cancel_scale_0d119275_focused13",
+    "cases": [
+      {
+        "case": "solo_4k_custom_gallery_probe",
+        "status": "passed_saved_original_bytes",
+        "sha256": "f4caa00d744a4013407d740f37a5f2ebd242f6cc4446f9858e0307f8afc43b32",
+        "bytes": 363022
+      }
+    ]
+  }
+}

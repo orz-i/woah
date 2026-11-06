@@ -1,0 +1,34 @@
+{
+  "run_id": "cancel_scale_0d119275_legacy22",
+  "reviewed_cases": [
+    "retry_custom_sticker"
+  ],
+  "reviewed_movie_frames": [
+    0,
+    24,
+    47
+  ],
+  "result": "Actual custom sticker covers visible eyes, nose and mouth in the decoded retry movie at first/middle/last. Media auditor separately decoded all 48 frames and checked every independent source-face core.",
+  "binding": {
+    "case": "retry_custom_sticker",
+    "movie_sha256": "b03aa46c99aba7c3960dd56ab49573ad7baae9fdf321fceba575e410f88cd2b0",
+    "movie_frame_indices": [
+      0,
+      24,
+      47
+    ],
+    "previews": [
+      {
+        "source_frame_indices": [
+          25,
+          49,
+          72
+        ],
+        "source_sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+        "scope": "Frozen source movie decoded sequentially for extra lifecycle retry."
+      }
+    ],
+    "board": "retry_custom_sticker.jpg",
+    "board_sha256": "ccfc0b2efe76c1f0e6a1edec7296de9dc1de9a96719c8ae795569e849bfb018c"
+  }
+}

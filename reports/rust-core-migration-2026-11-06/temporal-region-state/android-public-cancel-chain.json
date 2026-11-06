@@ -1,0 +1,433 @@
+{
+  "platform": "android",
+  "run_id": "cancel_scale_0d119275_legacy22",
+  "api": {
+    "started_at_utc": "2026-11-06T13:40:42.015766Z",
+    "process_id": 31306,
+    "mode": "matrix",
+    "platform": "android",
+    "verify_previews": true,
+    "compiled_source_fingerprint": "94ccf4fb61b95e656d2d038763f158dcdb6ebc77c60cacc0bcf3c6b7721f2991",
+    "compiled_source_commit": "0d1192753f63aeb5fc3e88b3e0448d1ae2efcc11",
+    "capabilities": "NativeCapabilitiesDto(platform: android, osVersion: 34, gpuSupported: true, h264Encoder: true, hevcEncoder: true, maxEncodeWidth: 8192, maxEncodeHeight: 8192, cpuCores: 8, recommendedProfile: balanced, supportedProfiles: [quality, balanced, speed], inferenceBackends: [litert_gpu, litert_cpu])",
+    "cases": [
+      {
+        "input": "solo-hd-7570258.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_face_solid",
+        "expected_frames": 40,
+        "start_ms": 0,
+        "end_ms": 1600,
+        "face_only": true,
+        "output_width": 540,
+        "output_height": 1024,
+        "result": "output_created",
+        "pid": 31306,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 0,
+            "dto_timestamp_ms": 0,
+            "control_file": "solo_face_solid-0-source.png",
+            "control_bytes": 50320,
+            "control_width": 1080,
+            "control_height": 2048,
+            "width": 1080,
+            "height": 2048,
+            "bytes": 48618,
+            "file": "solo_face_solid-0.png"
+          },
+          {
+            "requested_ms": 780,
+            "dto_timestamp_ms": 780,
+            "control_file": "solo_face_solid-780-source.png",
+            "control_bytes": 47906,
+            "control_width": 1080,
+            "control_height": 2048,
+            "width": 1080,
+            "height": 2048,
+            "bytes": 46808,
+            "file": "solo_face_solid-780.png"
+          },
+          {
+            "requested_ms": 1560,
+            "dto_timestamp_ms": 1560,
+            "control_file": "solo_face_solid-1560-source.png",
+            "control_bytes": 49995,
+            "control_width": 1080,
+            "control_height": 2048,
+            "width": 1080,
+            "height": 2048,
+            "bytes": 48720,
+            "file": "solo_face_solid-1560.png"
+          }
+        ],
+        "job_id": "job_3f63b0a5-928e-4182-8416-e8419bfaf9b5",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 2.280631734990592,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_legacy22/outputs/solo_face_solid.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 214883,
+        "partial_files": [],
+        "elapsed_seconds": 22.968
+      }
+    ],
+    "status": "finished",
+    "finished_at_utc": "2026-11-06T13:41:34.668727Z"
+  },
+  "metadata": {
+    "started_utc": "2026-11-06T13:40:41.530458+00:00",
+    "platform": "android",
+    "serial": "334da6a3",
+    "config": {
+      "run_id": "cancel_scale_0d119275_legacy22",
+      "cases": [
+        {
+          "input": "solo-hd-7570258.mp4",
+          "fill": "solid",
+          "startMs": 0,
+          "endMs": 1600,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 540,
+          "height": 1024,
+          "case": "solo_face_solid",
+          "expected_frames": 40
+        }
+      ],
+      "core_smokes": true,
+      "build_source_fingerprint": "94ccf4fb61b95e656d2d038763f158dcdb6ebc77c60cacc0bcf3c6b7721f2991",
+      "partial_stage_check": true,
+      "verify_previews": true,
+      "stage_export_only": false,
+      "lifecycle": true
+    },
+    "sources": {
+      "corrupt-video-1024bytes.mp4": {
+        "bytes": 1024,
+        "sha256": "630b36e85f6e26cd9371088fd201979ca82f1300b04aee24210c9e67df6e7e80"
+      },
+      "custom-sticker.png": {
+        "bytes": 806,
+        "sha256": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6"
+      },
+      "duo-dance-6940536.mp4": {
+        "bytes": 3748966,
+        "sha256": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76"
+      },
+      "group-hd-8956295.mp4": {
+        "bytes": 15726991,
+        "sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5"
+      },
+      "group-mirror-8956295.mp4": {
+        "bytes": 69505821,
+        "sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73"
+      },
+      "no-person-flower.mp4": {
+        "bytes": 1128375,
+        "sha256": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451"
+      },
+      "solo-hd-7570258.mp4": {
+        "bytes": 7454617,
+        "sha256": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0"
+      },
+      "solo-portrait-7570258.mp4": {
+        "bytes": 21156880,
+        "sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1"
+      }
+    },
+    "git_head": "0d1192753f63aeb5fc3e88b3e0448d1ae2efcc11",
+    "binary_sha256": "e769746a40768366dc0a1e49c44aa352d86a8242311207d480872d460e57d16f",
+    "binary_path": "D:\\dance-anonymizer\\.qa-runtime\\rust-migration\\builds\\cancel-scale-0d119275\\app-debug.apk",
+    "harness_sha256": "dc8dce197955d45d0b064fb25dd95bd31ca360db06a038dcc467a5aa7925a928",
+    "matrix_sha256": "cd4ced2482b53f8c439c4dcd3445d754f57312f2fc51c3fd0a2789751c3bf1f8",
+    "application_id": "art.gaoge.dance.privacyqa",
+    "device": {
+      "ro.product.model": "KB2000",
+      "ro.build.version.release": "14",
+      "ro.product.cpu.abi": "arm64-v8a"
+    },
+    "additional_crop_traces": {
+      "retry_custom_sticker.mp4": "qa_pixel_crops_04aa8361-0e79-4ca5-b589-703d9e4bc94b.jsonl",
+      "cancel_long_4k.mp4": "qa_pixel_crops_3412914d-8d13-4c5c-af6a-c6ccdb2fc099.jsonl"
+    },
+    "crop_traces": [
+      "qa_pixel_crops_41b43ffc-dcf7-42d4-a6f6-b699d7be2e6a.jsonl"
+    ],
+    "crop_traces_by_output": {
+      "solo_face_solid.mp4": "qa_pixel_crops_41b43ffc-dcf7-42d4-a6f6-b699d7be2e6a.jsonl"
+    },
+    "finished_utc": "2026-11-06T13:41:42.861409+00:00"
+  },
+  "build": {
+    "source_commit": "0d1192753f63aeb5fc3e88b3e0448d1ae2efcc11",
+    "source_fingerprint": "94ccf4fb61b95e656d2d038763f158dcdb6ebc77c60cacc0bcf3c6b7721f2991",
+    "binary_name": "app-debug.apk",
+    "binary_sha256": "e769746a40768366dc0a1e49c44aa352d86a8242311207d480872d460e57d16f"
+  },
+  "audit_file_sha256": {
+    "media": "de83cb7895194f8e3684f6dd9c0ca868dc8cdd0911098088ab4c83f419291058",
+    "faces": "1ba41df0ebbeb5710e170d3b6279147141cad4398f9f3f0a4556e4a72c86e7d1",
+    "previews": "02d6ce44c4ea9a1bcb28d02c2e4bb7343a2594f1d6070a785163827d86b4989e",
+    "gallery": "f0554625f7fbbe572a4d874a379d5bea7b8af4e96d56b9da850ae0feb51ffc84",
+    "lifecycle": "1880632289077c4a2f03fc0c07d6730511699a5c8432e84ae7f9d507b36714a5"
+  },
+  "media": {
+    "run_id": "cancel_scale_0d119275_legacy22",
+    "cases": [
+      {
+        "case": "solo_face_solid",
+        "status": "passed_media",
+        "sha256": "a0351e543701d45b48479b1721f7cc29d1a25c0385b045b97a20215ed1380d39",
+        "bytes": 214883,
+        "dimensions": [
+          540,
+          1024
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "6986706fe9f797e056dc9466d3a108343ba2d88b68803872a45f21e4951fb583"
+      },
+      {
+        "case": "retry_custom_sticker",
+        "status": "passed_media",
+        "sha256": "b03aa46c99aba7c3960dd56ab49573ad7baae9fdf321fceba575e410f88cd2b0",
+        "bytes": 343610,
+        "dimensions": [
+          674,
+          1280
+        ],
+        "decoded_frames": 48,
+        "expected_frames": 48,
+        "max_pts_delta_seconds": 2.220446049250313e-16,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "683c333e4e49794f578ecdfd25bafcc8df4a55566ee12851b0586413ea46308f"
+      }
+    ]
+  },
+  "faces": {
+    "run_id": "cancel_scale_0d119275_legacy22",
+    "cases": [
+      {
+        "case": "solo_face_solid",
+        "input_binding_sha256": "5c21bd1c68d927448c4ee11d64787b37308513f1b07fb7e0165d171f188dc6a6",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 40,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "retry_custom_sticker",
+        "input_binding_sha256": "e142c330415bf790794ee0a03bb429fd6fbb32077a2e4198e85ebc98114a6d94",
+        "decoded_frames": 48,
+        "tested_visible_face_cores": 48,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "recorded_source_ellipses",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      }
+    ]
+  },
+  "previews": {
+    "run_id": "cancel_scale_0d119275_legacy22",
+    "auditor_sha256": "33e84a7891297fc56fd1517733236da2dcfffeacce86aa95a0a964dd830ae111",
+    "cases": [
+      {
+        "case": "solo_face_solid",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 0,
+            "status": "passed",
+            "best_expected_frame": 0,
+            "expected_pts_seconds": 0.0,
+            "correlation": 0.9983726877521583,
+            "control_sha256": "c77ee61a8bd70ac1c3d067ae786e65e7d31b4f32375c5e3fc1f99d04dc26354a",
+            "protected_sha256": "68f5b1feb0c784834fcdcec429ddff9c6180b33818eaa089b6947518727467c1",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 780,
+            "status": "passed",
+            "best_expected_frame": 20,
+            "expected_pts_seconds": 0.8,
+            "correlation": 0.9983664742792819,
+            "control_sha256": "ff1b7d04fa19e7d17014bee10fa839691748d88a07b24dcfecab5f5e7d0dbb15",
+            "protected_sha256": "009f9ffff4263078f1aae7537dc1448d1267e5927343b8f3a565c5a5a7c3f95e",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 1560,
+            "status": "passed",
+            "best_expected_frame": 39,
+            "expected_pts_seconds": 1.56,
+            "correlation": 0.9983917693164612,
+            "control_sha256": "40fc7881d9b0fedce413a1a962a6423e591e72e948e52f771f013837df54f178",
+            "protected_sha256": "85ad373f4f0355e6a14d9bdd62c278cb7421ae09bb28ae1669decad1669d176e",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      }
+    ]
+  },
+  "gallery": {
+    "run_id": "cancel_scale_0d119275_legacy22",
+    "cases": []
+  },
+  "lifecycle": {
+    "process_id": 31306,
+    "status": "passed_api_chain",
+    "analysis_start_ms": 0,
+    "long_trim_start_ms": 0,
+    "input": "solo-portrait-7570258.mp4",
+    "target_width": 674,
+    "target_height": 1280,
+    "retry_start_ms": 1000,
+    "retry_end_ms": 2920,
+    "face_only": true,
+    "fill": "sticker",
+    "selected_ids": [
+      0
+    ],
+    "custom_sticker_asset": "/data/user/0/art.gaoge.dance.privacyqa/files/stickers/sticker_1793972466178.png",
+    "custom_sticker_exists": true,
+    "cancel_job_id": "job_60f190ee-3be3-42f6-a09f-7b22b9aeaa8f",
+    "before_cancel": {
+      "state": "processing",
+      "job_id": "job_60f190ee-3be3-42f6-a09f-7b22b9aeaa8f",
+      "current_frame": 8,
+      "total_frames": 662,
+      "progress": 0.010574018126888218,
+      "fps": 2.1715526601520088,
+      "output_uri": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "after_cancel": {
+      "state": "cancelled",
+      "job_id": "job_60f190ee-3be3-42f6-a09f-7b22b9aeaa8f",
+      "current_frame": 9,
+      "total_frames": 662,
+      "progress": 0.012084592145015106,
+      "fps": 2.212389380530974,
+      "output_uri": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "cancelled_output_exists": false,
+    "cancelled_partial_files": [],
+    "cancel_passed": true,
+    "retry_status": {
+      "state": "completed",
+      "job_id": "job_01ad137d-8b81-4340-bf40-650b08b4b68d",
+      "current_frame": 48,
+      "total_frames": 48,
+      "progress": 1.0,
+      "fps": 2.4645717806531118,
+      "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/cancel_scale_0d119275_legacy22/outputs/retry_custom_sticker.mp4",
+      "error_code": null,
+      "error_message": null
+    },
+    "retry_bytes": 343610,
+    "retry_passed": true
+  },
+  "negative": {
+    "process_id": 31306,
+    "status": "passed_api_checks",
+    "flower_ids": [],
+    "flower_no_person": true,
+    "corrupt_rejected": true,
+    "corrupt_error": "PlatformException(VIDEO_TRACK_NOT_FOUND, stage=probe; code=VIDEO_TRACK_NOT_FOUND, null, null)",
+    "valid_reimport_person_ids": [
+      0
+    ],
+    "valid_reimport": true
+  },
+  "lifecycle_audit": {
+    "run_id": "cancel_scale_0d119275_legacy22",
+    "status": "passed_api_chain",
+    "retry_movie": "outputs/retry_custom_sticker.mp4",
+    "retry_sha256": "b03aa46c99aba7c3960dd56ab49573ad7baae9fdf321fceba575e410f88cd2b0",
+    "retry_bytes": 343610,
+    "negative_status": "passed_api_checks",
+    "scope": "API flow and owned file evidence. Independent media, face and visual audits remain required."
+  }
+}
