@@ -65,11 +65,14 @@ def android_package_id(binary):
     return match.group(1)
 
 def verify_ios_model(directory):
-    contract=json.loads((ROOT/'mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/yolo11n-seg-fp16.contract.json').read_text(encoding='utf-8'))
-    path=directory/contract['model']
-    if not path.is_file() or path.stat().st_size!=contract['expected_size_bytes'] or sha(path)!=contract['expected_sha256']:
-        raise RuntimeError('QA iOS model missing or different from the pinned model contract: '+str(path)+
-                           '. Provision with tools/release/sync_ios_yolo_model.py before building.')
+    resources=ROOT/'mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources'
+    for name in ['yolo11n-seg-fp16.contract.json','dense-face-v1.contract.json']:
+        contract=json.loads((resources/name).read_text(encoding='utf-8'))
+        path=directory/contract['model']
+        if not path.is_file() or path.stat().st_size!=contract['expected_size_bytes'] or sha(path)!=contract['expected_sha256']:
+            raise RuntimeError('QA iOS model missing or different from pinned model contract: '+str(path)+
+                               '. Provision with tools/release/sync_ios_yolo_model.py and sync_ios_face_model.py before building.')
+
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

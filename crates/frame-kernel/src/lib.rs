@@ -11,6 +11,7 @@ pub mod camera;
 mod ffi;
 mod ffi_tracking;
 pub mod geometry;
+pub mod grid_face;
 pub mod instances;
 mod mask_transitions;
 pub mod pixels;

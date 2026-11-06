@@ -32,7 +32,7 @@ def verify_preview_pipeline() -> None:
     pipeline = text("IOSPreviewPipeline.swift")
     for token in (
         "analysisCache.loadVideoUri(cacheId: request.analysisCacheId)",
-        "analysisCache.loadMetadata(cacheId: cacheId)",
+        "analysisCache.loadMetadata(cacheId: request.analysisCacheId)",
         "AVAssetImageGenerator(asset: asset)",
         "generator.appliesPreferredTrackTransform = true",
         "generator.requestedTimeToleranceBefore = .zero",
@@ -89,10 +89,13 @@ def verify_identity_contract() -> None:
         ROOT
         / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/PreviewPipeline.kt"
     ).read_text(encoding="utf-8")
-    check(
-        "FrameKernel.matchRects(cachedBoxes," in android and "maxCost = 0.70f" in android,
-        "Android preview matching threshold changed; revisit iOS parity",
-    )
+    android_replay=(ROOT/"mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/pipeline/PreviewIdentityReplay.kt").read_text(encoding="utf-8")
+    swift_replay=text("IOSPreviewIdentityReplay.swift")
+    check("FrameKernel.matchRects(boxes,detections.map{it.bbox},0.70f)" in android_replay,
+          "Android analysis-anchor matching threshold changed")
+    check("IOSSharedTrackingSession.replayPlan(" in swift_replay and "metadata?.anchorTimestampUs" in text("IOSPreviewPipeline.swift")
+          and "FrameKernel.replayPlan(" in android_replay and "metadata?.anchorTimestampUs" in android_replay,
+          "Named identity preview must replay from its actual shared analysis anchor")
     adapter = text("IOSFrameKernel.swift")
     core_path = ROOT / "crates/frame-kernel/src/association.rs"
     core = core_path.read_text(encoding="utf-8") if core_path.is_file() else ""

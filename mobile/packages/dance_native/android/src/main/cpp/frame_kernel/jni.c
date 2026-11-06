@@ -520,3 +520,23 @@ JNIEXPORT jlongArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_replay
 JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_trackingReserveNative(JNIEnv *env,jobject self,jlong id,jlong minimum) {
  (void)self;if(frame_kernel_tracking_reserve_id_floor((uint64_t)id,(int64_t)minimum))invalid(env);
 }
+
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_gridFaceInputNative(JNIEnv *env,jobject self,jobject rgba,jint w,jint h,jint stride) {
+ (void)self;void *in=rgba?(*env)->GetDirectBufferAddress(env,rgba):NULL;
+ jlong size=rgba?(*env)->GetDirectBufferCapacity(env,rgba):-1;
+ if(!in||size<0){invalid(env);return NULL;}
+ float *values=malloc(192*192*3*sizeof(float));if(!values){invalid(env);return NULL;}
+ int status=frame_kernel_grid_face_input(in,(size_t)size,(uint32_t)w,(uint32_t)h,(uint32_t)stride,values,192*192*3);
+ jfloatArray result=NULL;if(!status){result=(*env)->NewFloatArray(env,192*192*3);if(result)(*env)->SetFloatArrayRegion(env,result,0,192*192*3,values);}
+ free(values);if(status)invalid(env);return result;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_gridFaceDecodeNative(JNIEnv *env,jobject self,jfloatArray boxes,jfloatArray scores,jint w,jint h,jfloat minimum) {
+ (void)self;if(!boxes||!scores||(*env)->GetArrayLength(env,boxes)!=2304*16||(*env)->GetArrayLength(env,scores)!=2304){invalid(env);return NULL;}
+ jfloat *b=(*env)->GetFloatArrayElements(env,boxes,NULL);if(!b)return NULL;
+ jfloat *s=(*env)->GetFloatArrayElements(env,scores,NULL);if(!s){(*env)->ReleaseFloatArrayElements(env,boxes,b,JNI_ABORT);return NULL;}
+ float *out=malloc(2304*17*sizeof(float));jfloatArray result=NULL;
+ if(out){int count=frame_kernel_grid_face_decode(b,2304*16,s,2304,(uint32_t)w,(uint32_t)h,minimum,.3f,out,2304*17);
+  if(count>=0){result=(*env)->NewFloatArray(env,count*17);if(result&&count)(*env)->SetFloatArrayRegion(env,result,0,count*17,out);}}
+ free(out);(*env)->ReleaseFloatArrayElements(env,boxes,b,JNI_ABORT);(*env)->ReleaseFloatArrayElements(env,scores,s,JNI_ABORT);
+ if(!result)invalid(env);return result;
+}

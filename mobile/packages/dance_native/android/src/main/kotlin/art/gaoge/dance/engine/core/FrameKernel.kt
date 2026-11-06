@@ -6,6 +6,9 @@ import java.nio.ByteBuffer
 
 /** Transport adapter only; the production and JVM paths load the same Rust core. */
 internal object FrameKernel {
+    external fun gridFaceInputNative(rgba:ByteBuffer,width:Int,height:Int,stride:Int):FloatArray
+    external fun gridFaceDecodeNative(boxes:FloatArray,scores:FloatArray,width:Int,height:Int,minimum:Float):FloatArray
+
     init {
         System.loadLibrary("frame_kernel_jni")
         check(abiVersion() == 1) { "Unsupported FrameKernel ABI" }

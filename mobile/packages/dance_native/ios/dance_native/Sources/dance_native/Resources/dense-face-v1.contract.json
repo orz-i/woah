@@ -1,0 +1,43 @@
+{
+  "model": "blaze_face_full_range.tflite",
+  "source": "mobile/packages/dance_native/android/src/main/assets/models/face/blaze_face_full_range.tflite",
+  "expected_size_bytes": 1083786,
+  "expected_sha256": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b",
+  "flatbuffer_magic": "TFL3",
+  "input": [
+    1,
+    192,
+    192,
+    3
+  ],
+  "outputs": [
+    [
+      1,
+      2304,
+      16
+    ],
+    [
+      1,
+      2304,
+      1
+    ]
+  ],
+  "normalization": {
+    "scale": "2/255",
+    "bias": -1,
+    "layout": "NHWC RGB",
+    "padding": "zero RGB, shared pixel-centre letterbox"
+  },
+  "score_threshold": 0.35,
+  "weighted_iou_threshold": 0.3,
+  "reference_sources": [
+    "https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/tasks/cc/vision/face_detector/face_detector_graph.cc",
+    "https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/modules/face_detection/face_detection.pbtxt",
+    "https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/calculators/util/non_max_suppression_calculator.cc"
+  ],
+  "reference_sha256": {
+    "face_detector_graph.cc": "99ea0f1fc638a0764368aaf132cdddd39c4efffb9b64635d2cde379fe0038dc4",
+    "face_detection.pbtxt": "fd341aa362fde402827d170ebf372045daa6543a6157d613ee9a08e5e42e72e0",
+    "non_max_suppression_calculator.cc": "3389748b19e0a7e03cbe1e27d470d71d7a22369a78203fff0bdf702286fc6e4d"
+  }
+}

@@ -981,3 +981,63 @@ pub extern "C" fn frame_kernel_work_transition(state: u32, event: u32) -> i32 {
 pub extern "C" fn frame_kernel_work_can_replace(state: u32) -> i32 {
     crate::work_lifecycle::can_replace(state).map_or(-1, i32::from)
 }
+
+/// # Safety
+/// Input is readable RGBA; output is disjoint aligned writable float storage.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_grid_face_input(
+    input: *const u8,
+    bytes: usize,
+    width: u32,
+    height: u32,
+    stride: u32,
+    output: *mut f32,
+    length: usize,
+) -> i32 {
+    if input.is_null() || output.is_null() || bytes > 268_435_456 || length != 192 * 192 * 3 {
+        return -1;
+    }
+    // SAFETY: caller supplies readable input and exclusive output of checked lengths.
+    let rgba = unsafe { std::slice::from_raw_parts(input, bytes) };
+    // SAFETY: caller supplies aligned disjoint output storage of the exact tensor size.
+    let out = unsafe { std::slice::from_raw_parts_mut(output, length) };
+    crate::grid_face::prepare(rgba, width, height, stride, out).map_or(-1, |()| 0)
+}
+/// # Safety
+/// Readable aligned tensors and disjoint caller-owned output; no pointers retained.
+/// Returns record count, -1 invalid, -2 insufficient output capacity (no partial writes).
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_grid_face_decode(
+    boxes: *const f32,
+    box_len: usize,
+    scores: *const f32,
+    score_len: usize,
+    width: u32,
+    height: u32,
+    minimum: f32,
+    overlap: f32,
+    output: *mut f32,
+    capacity: usize,
+) -> i32 {
+    if boxes.is_null() || scores.is_null() || box_len != 2304 * 16 || score_len != 2304 {
+        return -1;
+    }
+    // SAFETY: caller supplies readable aligned arrays of the checked exact sizes.
+    let b = unsafe { std::slice::from_raw_parts(boxes, box_len) };
+    // SAFETY: caller supplies readable aligned scores of the checked exact size.
+    let s = unsafe { std::slice::from_raw_parts(scores, score_len) };
+    let Some(rows) = crate::grid_face::decode(b, s, width, height, minimum, overlap) else {
+        return -1;
+    };
+    if rows.len() * 17 > capacity || (!rows.is_empty() && output.is_null()) {
+        return -2;
+    }
+    if !rows.is_empty() {
+        // SAFETY: checked capacity and caller's exclusive writable output contract.
+        let out = unsafe { std::slice::from_raw_parts_mut(output, rows.len() * 17) };
+        for (r, d) in rows.iter().zip(out.chunks_exact_mut(17)) {
+            d.copy_from_slice(r);
+        }
+    }
+    rows.len() as i32
+}

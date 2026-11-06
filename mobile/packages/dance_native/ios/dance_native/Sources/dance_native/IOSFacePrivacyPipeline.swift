@@ -1,7 +1,5 @@
 import CoreGraphics
-import CoreML
 import Foundation
-import Vision
 
 enum IOSFacePrivacyRegionSource: String {
   case detectedFace = "DETECTED_FACE"
@@ -245,61 +243,6 @@ protocol IOSFaceLocating {
 }
 extension IOSFaceLocating {
   func locateFaceDetails(in image: CGImage, regions: [CGRect]) throws -> [IOSFaceCandidate] { [] }
-}
-
-/// Apple-only FACE_ONLY localization backend. It never assigns person identity;
-/// IOSFacePrivacyTemporalResolver accepts a Vision rectangle only after it is
-/// attached conservatively to a YOLO-owned person track.
-final class IOSVisionFaceLocator: IOSFaceLocating {
-  func locateFaceDetails(in image: CGImage, regions: [CGRect]) throws -> [IOSFaceCandidate] {
-    let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
-    var result: [IOSFaceCandidate] = []
-    for (viewIndex, region) in regions.enumerated() {
-      let rect = region.integral.intersection(bounds)
-      guard rect.width >= 32, rect.height >= 32, let crop = image.cropping(to: rect) else { continue }
-      result += try locateFaces(in: crop).map { face in
-        IOSFaceCandidate(x1: face.x1 + Float32(rect.minX), y1: face.y1 + Float32(rect.minY),
-          x2: face.x2 + Float32(rect.minX), y2: face.y2 + Float32(rect.minY), confidence: face.confidence,
-          yaw: face.yaw, observationView: viewIndex + 1)
-      }
-    }
-    return result
-  }
-
-  func locateFaces(in image: CGImage) throws -> [IOSFaceCandidate] {
-    let request = VNDetectFaceRectanglesRequest()
-#if targetEnvironment(simulator)
-    if #available(iOS 17.0, *),
-       let cpuDevice = MLComputeDevice.allComputeDevices.first(where: { device in
-         if case .cpu = device { return true }
-         return false
-       }) {
-      request.setComputeDevice(cpuDevice, for: .main)
-    }
-#endif
-    let handler = VNImageRequestHandler(cgImage: image, orientation: .up, options: [:])
-    try handler.perform([request])
-    let width = Float32(image.width)
-    let height = Float32(image.height)
-    return (request.results ?? []).compactMap { observation in
-      let box = observation.boundingBox
-      let x1 = Float32(box.minX) * width
-      let x2 = Float32(box.maxX) * width
-      // Vision normalized coordinates use a bottom-left origin while the
-      // renderer/tracker source space uses top-left coordinates.
-      let y1 = Float32(1.0 - box.maxY) * height
-      let y2 = Float32(1.0 - box.minY) * height
-      guard x2 > x1, y2 > y1 else { return nil }
-      return IOSFaceCandidate(
-        x1: x1,
-        y1: y1,
-        x2: x2,
-        y2: y2,
-        confidence: observation.confidence,
-        yaw: observation.yaw?.floatValue ?? 0
-      )
-    }
-  }
 }
 
 enum IOSFacePrivacyGeometry {
@@ -570,7 +513,7 @@ final class IOSFacePrivacyTemporalResolver {
   private var singleSceneFace: TrustedFaceGeometry?
   private let classFallbackContinuity = IOSFacePrivacyClassFallbackContinuity()
 
-  init(locator: IOSFaceLocating = IOSVisionFaceLocator()) {
+  init(locator: IOSFaceLocating = IOSGridFaceLocator()) {
     self.locator = locator
   }
 

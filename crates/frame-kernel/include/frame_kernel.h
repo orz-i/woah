@@ -211,6 +211,14 @@ int32_t frame_kernel_reproject_mask(const uint8_t *mask, size_t mask_len,
 int32_t frame_kernel_project_mask(const uint8_t *mask, size_t mask_len, FrameKernelTransform transform,
     uint32_t source_width, uint32_t source_height, uint32_t width, uint32_t height,
     FrameKernelRect crop, uint8_t *output, size_t output_len);
+/* Dense face v1: NHWC RGB [-1,1], 192 square, 2304 xywh/6-keypoint anchors.
+   Output records are 17 floats: source xyxy, score, six source xy landmarks.
+   Inputs/outputs must be disjoint. Returns count, -1 invalid, -2 capacity. */
+int32_t frame_kernel_grid_face_input(const uint8_t *rgba, size_t bytes, uint32_t width,
+ uint32_t height, uint32_t stride, float *output, size_t length);
+int32_t frame_kernel_grid_face_decode(const float *boxes, size_t box_len,
+ const float *scores, size_t score_len, uint32_t width, uint32_t height,
+ float minimum, float overlap, float *output, size_t capacity);
 #ifdef __cplusplus
 }
 #endif
