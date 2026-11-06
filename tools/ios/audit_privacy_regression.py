@@ -6,7 +6,10 @@ import cv2
 import numpy as np
 from audio_regression_check import compare_audio_samples
 
+import sys
 ROOT=pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT))
+from tools.privacy.lifecycle_evidence import retry_case
 REPORT=ROOT/'reports/privacy-ios-22-and-4k-regression-2026-11-05'
 SOURCES=ROOT/'reports/privacy-ios-regression-2026-11-04/artifacts/sources'
 
@@ -185,6 +188,8 @@ def main(argv=None):
     args=p.parse_args(argv);REPORT=args.report_root.resolve();SOURCES=args.sources.resolve()
     root=REPORT/'artifacts'/args.run_id
     data=json.loads((root/'results.json').read_text())
+    additional=retry_case(root)
+    if additional:data['cases']=data['cases']+[additional]
     metadata=json.loads((root/'run-metadata.json').read_text()) if (root/'run-metadata.json').exists() else {}
     out=REPORT/'media-audits'/args.run_id;out.mkdir(parents=True,exist_ok=True)
     samples=root/'review-frames';samples.mkdir(exist_ok=True)

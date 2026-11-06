@@ -1,0 +1,2515 @@
+{
+  "platform": "ios",
+  "run_id": "region_continuation_f03da987_focused13",
+  "api": {
+    "started_at_utc": "2026-11-06T11:08:19.556295Z",
+    "process_id": 13176,
+    "mode": "matrix",
+    "platform": "ios",
+    "verify_previews": true,
+    "compiled_source_fingerprint": "1ac4a1a11a9e3e7ac4bd87df323f771cbbedad7fcee2af4e0db6cf4e4a76958b",
+    "compiled_source_commit": "f03da987924a14ffdc9a49fea7a9312f7a9c05d2",
+    "capabilities": "NativeCapabilitiesDto(platform: ios, osVersion: 17.0.1, gpuSupported: true, h264Encoder: false, hevcEncoder: false, maxEncodeWidth: 0, maxEncodeHeight: 0, cpuCores: 10, recommendedProfile: balanced, supportedProfiles: [], inferenceBackends: [tflite_metal, tflite_xnnpack])",
+    "cases": [
+      {
+        "input": "group-mirror-8956295.mp4",
+        "fill": "solid",
+        "startMs": 16000,
+        "endMs": 17600,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 3840,
+        "height": 2160,
+        "case": "group_4k_body_face_union",
+        "bitrate": 26956800,
+        "expected_frames": 40,
+        "start_ms": 16000,
+        "end_ms": 17600,
+        "face_only": false,
+        "output_width": 3840,
+        "output_height": 2160,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0,
+          1,
+          2
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 16000,
+            "dto_timestamp_ms": 16000,
+            "control_file": "group_4k_body_face_union-16000-source.png",
+            "control_bytes": 197852,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 126310,
+            "file": "group_4k_body_face_union-16000.png"
+          },
+          {
+            "requested_ms": 16780,
+            "dto_timestamp_ms": 16780,
+            "control_file": "group_4k_body_face_union-16780-source.png",
+            "control_bytes": 203226,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 130394,
+            "file": "group_4k_body_face_union-16780.png"
+          },
+          {
+            "requested_ms": 17560,
+            "dto_timestamp_ms": 17560,
+            "control_file": "group_4k_body_face_union-17560-source.png",
+            "control_bytes": 186892,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 130939,
+            "file": "group_4k_body_face_union-17560.png"
+          }
+        ],
+        "job_id": "job_1793963301778_5F8A0F05",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 1.2448140264405498,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/group_4k_body_face_union.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 5613814,
+        "partial_files": [],
+        "elapsed_seconds": 35.451
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 7800,
+        "endMs": 9400,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_body_face_union",
+        "bitrate": 28753920,
+        "expected_frames": 40,
+        "start_ms": 7800,
+        "end_ms": 9400,
+        "face_only": false,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 7800,
+            "dto_timestamp_ms": 7800,
+            "control_file": "solo_4k_body_face_union-7800-source.png",
+            "control_bytes": 133064,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 130197,
+            "file": "solo_4k_body_face_union-7800.png"
+          },
+          {
+            "requested_ms": 8580,
+            "dto_timestamp_ms": 8580,
+            "control_file": "solo_4k_body_face_union-8580-source.png",
+            "control_bytes": 127437,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 116418,
+            "file": "solo_4k_body_face_union-8580.png"
+          },
+          {
+            "requested_ms": 9360,
+            "dto_timestamp_ms": 9360,
+            "control_file": "solo_4k_body_face_union-9360-source.png",
+            "control_bytes": 134431,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 124122,
+            "file": "solo_4k_body_face_union-9360.png"
+          }
+        ],
+        "job_id": "job_1793963336453_2DE23E06",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 2.427598550575779,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/solo_4k_body_face_union.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 1014327,
+        "partial_files": [],
+        "elapsed_seconds": 18.596
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 21440,
+        "endMs": 23040,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_sticker",
+        "bitrate": 28753920,
+        "expected_frames": 40,
+        "start_ms": 21440,
+        "end_ms": 23040,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "dto_timestamp_ms": 21440,
+            "control_file": "solo_4k_raised_arm_sticker-21440-source.png",
+            "control_bytes": 125073,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 133153,
+            "file": "solo_4k_raised_arm_sticker-21440.png"
+          },
+          {
+            "requested_ms": 22220,
+            "dto_timestamp_ms": 22220,
+            "control_file": "solo_4k_raised_arm_sticker-22220-source.png",
+            "control_bytes": 135257,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 171495,
+            "file": "solo_4k_raised_arm_sticker-22220.png"
+          },
+          {
+            "requested_ms": 23000,
+            "dto_timestamp_ms": 23000,
+            "control_file": "solo_4k_raised_arm_sticker-23000-source.png",
+            "control_bytes": 142513,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 150201,
+            "file": "solo_4k_raised_arm_sticker-23000.png"
+          }
+        ],
+        "job_id": "job_1793963355014_8618F8B1",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 2.3651310610346448,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/solo_4k_raised_arm_sticker.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 2332512,
+        "partial_files": [],
+        "elapsed_seconds": 18.978
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 21440,
+        "endMs": 23040,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_solid",
+        "bitrate": 28753920,
+        "expected_frames": 40,
+        "start_ms": 21440,
+        "end_ms": 23040,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "dto_timestamp_ms": 21440,
+            "control_file": "solo_4k_raised_arm_solid-21440-source.png",
+            "control_bytes": 125073,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 124841,
+            "file": "solo_4k_raised_arm_solid-21440.png"
+          },
+          {
+            "requested_ms": 22220,
+            "dto_timestamp_ms": 22220,
+            "control_file": "solo_4k_raised_arm_solid-22220-source.png",
+            "control_bytes": 135257,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 143139,
+            "file": "solo_4k_raised_arm_solid-22220.png"
+          },
+          {
+            "requested_ms": 23000,
+            "dto_timestamp_ms": 23000,
+            "control_file": "solo_4k_raised_arm_solid-23000-source.png",
+            "control_bytes": 142513,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 141994,
+            "file": "solo_4k_raised_arm_solid-23000.png"
+          }
+        ],
+        "job_id": "job_1793963373483_B37AC69D",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 2.3790696579068222,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/solo_4k_raised_arm_solid.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 1916081,
+        "partial_files": [],
+        "elapsed_seconds": 18.446
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 21440,
+        "endMs": 23040,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_body",
+        "bitrate": 28753920,
+        "expected_frames": 40,
+        "start_ms": 21440,
+        "end_ms": 23040,
+        "face_only": false,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "dto_timestamp_ms": 21440,
+            "control_file": "solo_4k_raised_arm_body-21440-source.png",
+            "control_bytes": 125073,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 114443,
+            "file": "solo_4k_raised_arm_body-21440.png"
+          },
+          {
+            "requested_ms": 22220,
+            "dto_timestamp_ms": 22220,
+            "control_file": "solo_4k_raised_arm_body-22220-source.png",
+            "control_bytes": 135257,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 143067,
+            "file": "solo_4k_raised_arm_body-22220.png"
+          },
+          {
+            "requested_ms": 23000,
+            "dto_timestamp_ms": 23000,
+            "control_file": "solo_4k_raised_arm_body-23000-source.png",
+            "control_bytes": 142513,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 136985,
+            "file": "solo_4k_raised_arm_body-23000.png"
+          }
+        ],
+        "job_id": "job_1793963391944_B2441852",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 2.3531708231978308,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/solo_4k_raised_arm_body.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 1174994,
+        "partial_files": [],
+        "elapsed_seconds": 18.463
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 13720,
+        "endMs": 13760,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 1920,
+        "height": 1080,
+        "case": "group_hd_overlap_face",
+        "expected_frames": 1,
+        "start_ms": 13720,
+        "end_ms": 13760,
+        "face_only": true,
+        "output_width": 1920,
+        "output_height": 1080,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 13720,
+            "dto_timestamp_ms": 13720,
+            "control_file": "group_hd_overlap_face-13720-source.png",
+            "control_bytes": 204274,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 203588,
+            "file": "group_hd_overlap_face-13720.png"
+          }
+        ],
+        "job_id": "job_1793963410165_97FBE97E",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 1.4819534716589875,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/group_hd_overlap_face.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 86127,
+        "partial_files": [],
+        "elapsed_seconds": 1.713
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 13720,
+        "endMs": 13760,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 1920,
+        "height": 1080,
+        "case": "group_hd_overlap_body",
+        "expected_frames": 1,
+        "start_ms": 13720,
+        "end_ms": 13760,
+        "face_only": false,
+        "output_width": 1920,
+        "output_height": 1080,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 13720,
+            "dto_timestamp_ms": 13720,
+            "control_file": "group_hd_overlap_body-13720-source.png",
+            "control_bytes": 204274,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 130348,
+            "file": "group_hd_overlap_body-13720.png"
+          }
+        ],
+        "job_id": "job_1793963411595_516F8E69",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 1.4300566645306019,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/group_hd_overlap_body.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 55642,
+        "partial_files": [],
+        "elapsed_seconds": 1.426
+      },
+      {
+        "input": "group-mirror-8956295.mp4",
+        "fill": "solid",
+        "startMs": 5600,
+        "endMs": 6000,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 3840,
+        "height": 2160,
+        "case": "group_4k_face_solid",
+        "bitrate": 26956800,
+        "expected_frames": 10,
+        "start_ms": 5600,
+        "end_ms": 6000,
+        "face_only": true,
+        "output_width": 3840,
+        "output_height": 2160,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 5600,
+            "dto_timestamp_ms": 5600,
+            "control_file": "group_4k_face_solid-5600-source.png",
+            "control_bytes": 215995,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 214214,
+            "file": "group_4k_face_solid-5600.png"
+          },
+          {
+            "requested_ms": 5780,
+            "dto_timestamp_ms": 5780,
+            "control_file": "group_4k_face_solid-5780-source.png",
+            "control_bytes": 215299,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 212945,
+            "file": "group_4k_face_solid-5780.png"
+          },
+          {
+            "requested_ms": 5960,
+            "dto_timestamp_ms": 5960,
+            "control_file": "group_4k_face_solid-5960-source.png",
+            "control_bytes": 218517,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 208936,
+            "file": "group_4k_face_solid-5960.png"
+          }
+        ],
+        "job_id": "job_1793963415906_B7DD7525",
+        "state": "completed",
+        "current_frame": 10,
+        "total_frames": 10,
+        "progress": 1.0,
+        "fps": 1.0573042980905079,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/group_4k_face_solid.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 1357914,
+        "partial_files": [],
+        "elapsed_seconds": 13.461
+      },
+      {
+        "input": "group-mirror-8956295.mp4",
+        "fill": "solid",
+        "startMs": 11400,
+        "endMs": 11800,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 3840,
+        "height": 2160,
+        "case": "group_4k_body_solid",
+        "bitrate": 26956800,
+        "expected_frames": 10,
+        "start_ms": 11400,
+        "end_ms": 11800,
+        "face_only": false,
+        "output_width": 3840,
+        "output_height": 2160,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 11400,
+            "dto_timestamp_ms": 11400,
+            "control_file": "group_4k_body_solid-11400-source.png",
+            "control_bytes": 204096,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 129973,
+            "file": "group_4k_body_solid-11400.png"
+          },
+          {
+            "requested_ms": 11580,
+            "dto_timestamp_ms": 11580,
+            "control_file": "group_4k_body_solid-11580-source.png",
+            "control_bytes": 205271,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 134568,
+            "file": "group_4k_body_solid-11580.png"
+          },
+          {
+            "requested_ms": 11760,
+            "dto_timestamp_ms": 11760,
+            "control_file": "group_4k_body_solid-11760-source.png",
+            "control_bytes": 204671,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 131683,
+            "file": "group_4k_body_solid-11760.png"
+          }
+        ],
+        "job_id": "job_1793963429041_8FA6AE93",
+        "state": "completed",
+        "current_frame": 10,
+        "total_frames": 10,
+        "progress": 1.0,
+        "fps": 1.1044638302330931,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/group_4k_body_solid.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 1181915,
+        "partial_files": [],
+        "elapsed_seconds": 12.692
+      },
+      {
+        "input": "group-mirror-8956295.mp4",
+        "fill": "solid",
+        "startMs": 22840,
+        "endMs": 23240,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 3840,
+        "height": 2160,
+        "case": "group_4k_tail_face",
+        "bitrate": 26956800,
+        "expected_frames": 10,
+        "start_ms": 22840,
+        "end_ms": 23240,
+        "face_only": true,
+        "output_width": 3840,
+        "output_height": 2160,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "selected_ids": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 22840,
+            "dto_timestamp_ms": 22840,
+            "control_file": "group_4k_tail_face-22840-source.png",
+            "control_bytes": 185330,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 182536,
+            "file": "group_4k_tail_face-22840.png"
+          },
+          {
+            "requested_ms": 23020,
+            "dto_timestamp_ms": 23020,
+            "control_file": "group_4k_tail_face-23020-source.png",
+            "control_bytes": 180879,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 179542,
+            "file": "group_4k_tail_face-23020.png"
+          },
+          {
+            "requested_ms": 23200,
+            "dto_timestamp_ms": 23200,
+            "control_file": "group_4k_tail_face-23200-source.png",
+            "control_bytes": 173037,
+            "control_width": 1280,
+            "control_height": 720,
+            "width": 1280,
+            "height": 720,
+            "bytes": 172645,
+            "file": "group_4k_tail_face-23200.png"
+          }
+        ],
+        "job_id": "job_1793963441090_0380DE13",
+        "state": "completed",
+        "current_frame": 10,
+        "total_frames": 10,
+        "progress": 1.0,
+        "fps": 1.252003837050944,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/group_4k_tail_face.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 1206297,
+        "partial_files": [],
+        "elapsed_seconds": 10.922
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 0,
+        "endMs": 640,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_custom_gallery_probe",
+        "customSticker": true,
+        "saveToGallery": true,
+        "bitrate": 28753920,
+        "expected_frames": 16,
+        "start_ms": 0,
+        "end_ms": 640,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0
+        ],
+        "custom_sticker_bytes": 806,
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 0,
+            "dto_timestamp_ms": 0,
+            "control_file": "solo_4k_custom_gallery_probe-0-source.png",
+            "control_bytes": 151313,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 156504,
+            "file": "solo_4k_custom_gallery_probe-0.png"
+          },
+          {
+            "requested_ms": 300,
+            "dto_timestamp_ms": 300,
+            "control_file": "solo_4k_custom_gallery_probe-300-source.png",
+            "control_bytes": 152292,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 157535,
+            "file": "solo_4k_custom_gallery_probe-300.png"
+          },
+          {
+            "requested_ms": 600,
+            "dto_timestamp_ms": 600,
+            "control_file": "solo_4k_custom_gallery_probe-600-source.png",
+            "control_bytes": 145228,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 151226,
+            "file": "solo_4k_custom_gallery_probe-600.png"
+          }
+        ],
+        "job_id": "job_1793963451056_C78FFD0A",
+        "state": "completed",
+        "current_frame": 16,
+        "total_frames": 16,
+        "progress": 1.0,
+        "fps": 2.4414539189691338,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/solo_4k_custom_gallery_probe.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 772195,
+        "partial_files": [],
+        "gallery_saved_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/solo_4k_custom_gallery_probe.mp4",
+        "gallery_save_completed": true,
+        "elapsed_seconds": 8.968
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 0,
+        "endMs": 26480,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "bitrate": 28753920,
+        "case": "solo_4k_cancel_probe",
+        "cancelAtFrame": 25,
+        "expected_frames": 0,
+        "start_ms": 0,
+        "end_ms": 26480,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "cancelled_cleanly",
+        "pid": 13176,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 0,
+            "dto_timestamp_ms": 0,
+            "control_file": "solo_4k_cancel_probe-0-source.png",
+            "control_bytes": 151313,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 160001,
+            "file": "solo_4k_cancel_probe-0.png"
+          },
+          {
+            "requested_ms": 13220,
+            "dto_timestamp_ms": 13220,
+            "control_file": "solo_4k_cancel_probe-13220-source.png",
+            "control_bytes": 158989,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 168077,
+            "file": "solo_4k_cancel_probe-13220.png"
+          },
+          {
+            "requested_ms": 26440,
+            "dto_timestamp_ms": 26440,
+            "control_file": "solo_4k_cancel_probe-26440-source.png",
+            "control_bytes": 130719,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 139909,
+            "file": "solo_4k_cancel_probe-26440.png"
+          }
+        ],
+        "job_id": "job_1793963460003_28DCAB24",
+        "before_cancel": {
+          "state": "exporting",
+          "job_id": "job_1793963460003_28DCAB24",
+          "current_frame": 25,
+          "total_frames": 662,
+          "progress": 0.036253776435045314,
+          "fps": 2.393256677221415,
+          "output_uri": null,
+          "error_code": null,
+          "error_message": null
+        },
+        "state": "cancelled",
+        "current_frame": 25,
+        "total_frames": 662,
+        "progress": 0.036253776435045314,
+        "fps": 2.393256677221415,
+        "output_uri": null,
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 0,
+        "partial_files": [],
+        "elapsed_seconds": 11.948
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 1000,
+        "endMs": 2600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "bitrate": 28753920,
+        "case": "solo_4k_immediate_retry_probe",
+        "expected_frames": 40,
+        "start_ms": 1000,
+        "end_ms": 2600,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 13176,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 1000,
+            "dto_timestamp_ms": 1000,
+            "control_file": "solo_4k_immediate_retry_probe-1000-source.png",
+            "control_bytes": 144799,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 152939,
+            "file": "solo_4k_immediate_retry_probe-1000.png"
+          },
+          {
+            "requested_ms": 1780,
+            "dto_timestamp_ms": 1780,
+            "control_file": "solo_4k_immediate_retry_probe-1780-source.png",
+            "control_bytes": 143990,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 152327,
+            "file": "solo_4k_immediate_retry_probe-1780.png"
+          },
+          {
+            "requested_ms": 2560,
+            "dto_timestamp_ms": 2560,
+            "control_file": "solo_4k_immediate_retry_probe-2560-source.png",
+            "control_bytes": 154443,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 162341,
+            "file": "solo_4k_immediate_retry_probe-2560.png"
+          }
+        ],
+        "job_id": "job_1793963472371_33CE9CCE",
+        "state": "completed",
+        "current_frame": 40,
+        "total_frames": 40,
+        "progress": 1.0,
+        "fps": 2.434052685514279,
+        "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C/Documents/qa_ios_runs/region_continuation_f03da987_focused13/outputs/solo_4k_immediate_retry_probe.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 2049137,
+        "partial_files": [],
+        "elapsed_seconds": 18.836
+      }
+    ],
+    "status": "finished",
+    "finished_at_utc": "2026-11-06T11:11:29.539927Z"
+  },
+  "metadata": {
+    "started_utc": "2026-11-06T11:08:09.572852+00:00",
+    "udid": "EE228BE6-0F7F-48E1-9892-313B7CFFBB63",
+    "config": {
+      "run_id": "region_continuation_f03da987_focused13",
+      "cases": [
+        {
+          "input": "group-mirror-8956295.mp4",
+          "fill": "solid",
+          "startMs": 16000,
+          "endMs": 17600,
+          "faceOnly": false,
+          "profile": "quality",
+          "width": 3840,
+          "height": 2160,
+          "case": "group_4k_body_face_union",
+          "bitrate": 26956800,
+          "expected_frames": 40
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 7800,
+          "endMs": 9400,
+          "faceOnly": false,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_body_face_union",
+          "bitrate": 28753920,
+          "expected_frames": 40
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "sticker",
+          "startMs": 21440,
+          "endMs": 23040,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_sticker",
+          "bitrate": 28753920,
+          "expected_frames": 40
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 21440,
+          "endMs": 23040,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_solid",
+          "bitrate": 28753920,
+          "expected_frames": 40
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 21440,
+          "endMs": 23040,
+          "faceOnly": false,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_body",
+          "bitrate": 28753920,
+          "expected_frames": 40
+        },
+        {
+          "input": "group-hd-8956295.mp4",
+          "fill": "solid",
+          "startMs": 13720,
+          "endMs": 13760,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 1920,
+          "height": 1080,
+          "case": "group_hd_overlap_face",
+          "expected_frames": 1
+        },
+        {
+          "input": "group-hd-8956295.mp4",
+          "fill": "solid",
+          "startMs": 13720,
+          "endMs": 13760,
+          "faceOnly": false,
+          "profile": "quality",
+          "width": 1920,
+          "height": 1080,
+          "case": "group_hd_overlap_body",
+          "expected_frames": 1
+        },
+        {
+          "input": "group-mirror-8956295.mp4",
+          "fill": "solid",
+          "startMs": 5600,
+          "endMs": 6000,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 3840,
+          "height": 2160,
+          "case": "group_4k_face_solid",
+          "bitrate": 26956800,
+          "expected_frames": 10
+        },
+        {
+          "input": "group-mirror-8956295.mp4",
+          "fill": "solid",
+          "startMs": 11400,
+          "endMs": 11800,
+          "faceOnly": false,
+          "profile": "quality",
+          "width": 3840,
+          "height": 2160,
+          "case": "group_4k_body_solid",
+          "bitrate": 26956800,
+          "expected_frames": 10
+        },
+        {
+          "input": "group-mirror-8956295.mp4",
+          "fill": "solid",
+          "startMs": 22840,
+          "endMs": 23240,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 3840,
+          "height": 2160,
+          "case": "group_4k_tail_face",
+          "bitrate": 26956800,
+          "expected_frames": 10
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "sticker",
+          "startMs": 0,
+          "endMs": 640,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_custom_gallery_probe",
+          "customSticker": true,
+          "saveToGallery": true,
+          "bitrate": 28753920,
+          "expected_frames": 16
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "sticker",
+          "startMs": 0,
+          "endMs": 26480,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "bitrate": 28753920,
+          "case": "solo_4k_cancel_probe",
+          "cancelAtFrame": 25,
+          "expected_frames": 0
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "sticker",
+          "startMs": 1000,
+          "endMs": 2600,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "bitrate": 28753920,
+          "case": "solo_4k_immediate_retry_probe",
+          "expected_frames": 40
+        }
+      ],
+      "core_smokes": true,
+      "build_source_fingerprint": "1ac4a1a11a9e3e7ac4bd87df323f771cbbedad7fcee2af4e0db6cf4e4a76958b",
+      "partial_stage_check": false,
+      "verify_previews": true,
+      "stage_export_only": false,
+      "lifecycle": false
+    },
+    "sources": {
+      "corrupt-video-1024bytes.mp4": {
+        "sha256": "630b36e85f6e26cd9371088fd201979ca82f1300b04aee24210c9e67df6e7e80",
+        "bytes": 1024
+      },
+      "custom-sticker.png": {
+        "sha256": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6",
+        "bytes": 806
+      },
+      "duo-dance-6940536.mp4": {
+        "sha256": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76",
+        "bytes": 3748966
+      },
+      "group-hd-8956295.mp4": {
+        "sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+        "bytes": 15726991
+      },
+      "group-mirror-8956295.mp4": {
+        "sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+        "bytes": 69505821
+      },
+      "no-person-flower.mp4": {
+        "sha256": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451",
+        "bytes": 1128375
+      },
+      "solo-hd-7570258.mp4": {
+        "sha256": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0",
+        "bytes": 7454617
+      },
+      "solo-portrait-7570258.mp4": {
+        "sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+        "bytes": 21156880
+      }
+    },
+    "git_head": "f03da987924a14ffdc9a49fea7a9312f7a9c05d2",
+    "harness_sha256": "515705b9a3043ed9658988f5b20b32c6743d5408c98d7f5dc9e5032fed711b78",
+    "binary_sha256": "f18430bf26947c2fc2badc7036468bb9ce5b5a2191bcbd3978ea27c0695522ce",
+    "native_binary_images": {
+      "Runner": "f18430bf26947c2fc2badc7036468bb9ce5b5a2191bcbd3978ea27c0695522ce"
+    },
+    "app_bundle": "/Users/mini/Coding/woah-rust-tools/builds/region-continuation-78eb0a3c/Runner.app",
+    "container": "/Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/F610D83D-E51B-425D-8D58-A6DE81B3F31C",
+    "native_optimization": "-O; Flutter debug simulator",
+    "crop_traces": [
+      "qa_pixel_crops_FD41FC98-A166-4FCE-B5D8-3DC82DC8F0C3.jsonl",
+      "qa_pixel_crops_A9F6CFE1-4AE5-46E6-A647-1223020ABDC6.jsonl",
+      "qa_pixel_crops_3436770D-5252-41CA-AF54-2DF24B2A1F0A.jsonl",
+      "qa_pixel_crops_E301B848-BE30-40EB-867E-7100614CF6BE.jsonl",
+      "qa_pixel_crops_7FC813D6-4830-4440-AACB-6A7502EE61C5.jsonl",
+      "qa_pixel_crops_2F74A527-518F-4060-B621-BA00F53FDA5B.jsonl",
+      "qa_pixel_crops_60ACD180-95EA-4B82-870A-BE4902E31D0E.jsonl",
+      "qa_pixel_crops_350EDF18-AC0A-4813-9553-4C633187403D.jsonl",
+      "qa_pixel_crops_6AE00D85-0E07-48A2-A543-76332A3299E8.jsonl",
+      "qa_pixel_crops_AF8DAAE1-EF45-4270-9C13-D5968C49717A.jsonl",
+      "qa_pixel_crops_E025B67B-2872-4CE1-ACE4-76B29454C52B.jsonl",
+      "qa_pixel_crops_AC06E312-F594-4A98-B494-2A261A05B679.jsonl",
+      "qa_pixel_crops_597E929E-59FA-45B7-A42E-D31EA6138F4C.jsonl"
+    ],
+    "resources": {
+      "samples": 39,
+      "peak_rss_kib": 1860240,
+      "minimum_free_disk_bytes": 22375608320,
+      "peak_system_swap_used_bytes": 3058108989
+    },
+    "finished_utc": "2026-11-06T11:11:30.457952+00:00"
+  },
+  "media": {
+    "run_id": "region_continuation_f03da987_focused13",
+    "cases": [
+      {
+        "case": "group_4k_body_face_union",
+        "status": "passed_media",
+        "sha256": "be00c7e07604f8edd8dad2812c97543045e499f7d26275959ce54dfc09a2b698",
+        "bytes": 5613814,
+        "dimensions": [
+          3840,
+          2160
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 1.7763568394002505e-15,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 411,
+            "label": "body_omitted_face_411",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "6c4cb0fcc3402f7975a26ab96f41cff2d584645858328855d0bebfc6707bbfe5"
+      },
+      {
+        "case": "solo_4k_body_face_union",
+        "status": "passed_media",
+        "sha256": "ef0b8b7f604b3308cc6d8f80f0a42396cac2ee4d8a19dd1894551908766f5cd3",
+        "bytes": 1014327,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 1.1102230246251565e-15,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 217,
+            "label": "body_omitted_face_217",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "4a39f58ddaa35afaa98d3a529c8da59ad096322d303868531e3993edc5d7620b"
+      },
+      {
+        "case": "solo_4k_raised_arm_sticker",
+        "status": "passed_media",
+        "sha256": "74cc3f55bcfd4eab6e591f060abbc721c6492facb38f84736ee5b2c1c385fa91",
+        "bytes": 2332512,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 2.9976021664879227e-15,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "90d5f521485db542265d5df423ffe08a1436afc8967087ee034c14bb3d55f912"
+      },
+      {
+        "case": "solo_4k_raised_arm_solid",
+        "status": "passed_media",
+        "sha256": "8fe283919e21b0a04f7d30911b67cc0eb4bab30625ec51da8abb02b15ba9f024",
+        "bytes": 1916081,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 2.9976021664879227e-15,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 556,
+            "label": "occluded_face_556",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 557,
+            "label": "occluded_face_557",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 558,
+            "label": "occluded_face_558",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 559,
+            "label": "occluded_face_559",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 560,
+            "label": "raised_arm_face_560",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 561,
+            "label": "raised_arm_face_561",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 562,
+            "label": "raised_arm_face_562",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 563,
+            "label": "raised_arm_face_563",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "82e4d55d4c416a3eae7690719bd89218c7f85d2adc3b6a16a08774d5323ecd23"
+      },
+      {
+        "case": "solo_4k_raised_arm_body",
+        "status": "passed_media",
+        "sha256": "f6ffca5012146a3b818bdcd30581abcee075459846cca29679dfe4ccf649eded",
+        "bytes": 1174994,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 2.9976021664879227e-15,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 556,
+            "label": "occluded_face_556",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 557,
+            "label": "occluded_face_557",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 558,
+            "label": "occluded_face_558",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 559,
+            "label": "occluded_face_559",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 560,
+            "label": "raised_arm_face_560",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 561,
+            "label": "raised_arm_face_561",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 562,
+            "label": "raised_arm_face_562",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          },
+          {
+            "source_frame": 563,
+            "label": "raised_arm_face_563",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "7854630dfb675937b6255d9343428cb0c0e46b85382307c70810482b502949f6"
+      },
+      {
+        "case": "group_hd_overlap_face",
+        "status": "passed_media",
+        "sha256": "98850a0ef2d5851971e87e06203dda7d830a6cabc2c6a6813613e07422f32822",
+        "bytes": 86127,
+        "dimensions": [
+          1920,
+          1080
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "4ae9b07418e5e149c4e53cd51c7ce8e1a03126d39f376570342f5e9480ac29ea"
+      },
+      {
+        "case": "group_hd_overlap_body",
+        "status": "passed_media",
+        "sha256": "1ef2cccdc63d78780df4406d3c252cc82021b0dd2ae59682b4fe94367d993f03",
+        "bytes": 55642,
+        "dimensions": [
+          1920,
+          1080
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "54129b9a9b53b05b1f567176f27d0f53c8206598d79ac86196574dff7c62fa15"
+      },
+      {
+        "case": "group_4k_face_solid",
+        "status": "passed_media",
+        "sha256": "967db4d8b614b3ebaa5870a2c63c4dab6a81577b0c26dace800d57afc330e1f4",
+        "bytes": 1357914,
+        "dimensions": [
+          3840,
+          2160
+        ],
+        "decoded_frames": 10,
+        "expected_frames": 10,
+        "max_pts_delta_seconds": 3.3306690738754696e-16,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 145,
+            "label": "side_face",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "d4ca7ee607f62d13b7aa1f92e031cb1679c931c9dbd3b03b08fa4e4365f86015"
+      },
+      {
+        "case": "group_4k_body_solid",
+        "status": "passed_media",
+        "sha256": "30fc1f49278a5e7fef2abe251b9d56bc8bafc64d0c5c10c6e13fb7f864199f64",
+        "bytes": 1181915,
+        "dimensions": [
+          3840,
+          2160
+        ],
+        "decoded_frames": 10,
+        "expected_frames": 10,
+        "max_pts_delta_seconds": 8.534839501805891e-16,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 290,
+            "label": "mirror_face",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "b10f5179a251a6abd094530ccd7761c0bbacf35b4c16478750a8cc617d2d2699"
+      },
+      {
+        "case": "group_4k_tail_face",
+        "status": "passed_media",
+        "sha256": "2f7ba7df72af3c9cda0ed66104b502b9f60dca9e7327b0eeca8a17b4c9e906a6",
+        "bytes": 1206297,
+        "dimensions": [
+          3840,
+          2160
+        ],
+        "decoded_frames": 10,
+        "expected_frames": 10,
+        "max_pts_delta_seconds": 1.8457457784393227e-15,
+        "audio_streams": 0,
+        "audio_waveform": null,
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 580,
+            "label": "foreground_leg",
+            "red_pixels": 0,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "aaa347b05074359e68f3cbd2394320c8f78ec8638fd0db204bab73b16236e5bd"
+      },
+      {
+        "case": "solo_4k_custom_gallery_probe",
+        "status": "passed_media",
+        "sha256": "92dfb4645c83810ccdcd8aa9c5eb893ff27e61f4c32585a5a136802dfe7a1ed2",
+        "bytes": 772195,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 16,
+        "expected_frames": 16,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "gallery_original_sha_matches": [
+          "DCIM/100APPLE/IMG_0039.MP4"
+        ],
+        "input_binding_sha256": "f25480b3c62152ad0abd3aa7d0c6cb384f52a652a8f35db984befdc7d116acd9"
+      },
+      {
+        "case": "solo_4k_cancel_probe",
+        "status": "passed_cancellation",
+        "cancelled_at_frame": 25,
+        "input_binding_sha256": "51d293c9414e40322d3bd44def7ce9def09596b84f4846825d3fcb5c07252a00"
+      },
+      {
+        "case": "solo_4k_immediate_retry_probe",
+        "status": "passed_media",
+        "sha256": "fd2454008b5d9bb68ce1ab0f35f0b537b70a3173a63d61ca4bc32387ef5a4230",
+        "bytes": 2049137,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 40,
+        "expected_frames": 40,
+        "max_pts_delta_seconds": 2.220446049250313e-16,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "ad1821e5b7f053fb80fd70eed397c3b4e4a0efec40db6da4aaaa8e45da4dd995"
+      }
+    ]
+  },
+  "faces": {
+    "run_id": "region_continuation_f03da987_focused13",
+    "cases": [
+      {
+        "case": "group_4k_body_face_union",
+        "input_binding_sha256": "d2ebf2c3d24e9928226ac266abc4075f48aad89e2d5983b37c2ea4a1dc33a8f2",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 29,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_body_face_union",
+        "input_binding_sha256": "f1d52cbdfdd7b2d7ad271307fa87d555f9c5aceb96cf1902a73c556337fbdf4f",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 40,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_sticker",
+        "input_binding_sha256": "5b838f31de2a64e65dc52aab3dbb4f1e7c792a80c9507eb9158acf8a172b57ab",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 30,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "recorded_source_ellipses",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_solid",
+        "input_binding_sha256": "dd475deae88dec9f3e9f327e0afd0e68e1cbc020e6bd18576fa158576c8aceb1",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 30,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_body",
+        "input_binding_sha256": "ed03cf74750e29fa43acee68d42d8f2554a7d90956c5e8fc948dc4f8cca65d32",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 30,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "group_hd_overlap_face",
+        "input_binding_sha256": "bec9da8cb1748a2713456c110fc26366c3413a40bc401bbfe94751fbf646c1f6",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 4,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "group_hd_overlap_body",
+        "input_binding_sha256": "9bb0b1a6b7e3d2175b62874165b4c04656ed6868cc08da0ff4077d4f702ae7f1",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 4,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "group_4k_face_solid",
+        "input_binding_sha256": "e7f79793182e68c707510fcd9b21428002b569358e96537164e71dc2c296e473",
+        "decoded_frames": 10,
+        "tested_visible_face_cores": 31,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "group_4k_body_solid",
+        "input_binding_sha256": "c19621032a9ee3546e99321f8f55eb6666fc42f465bec28e12094054a6e6ad80",
+        "decoded_frames": 10,
+        "tested_visible_face_cores": 23,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "group_4k_tail_face",
+        "input_binding_sha256": "11bce708ed822465794e172696ef3f755ba9bcc47a839dae9cce61682d72a1a4",
+        "decoded_frames": 10,
+        "tested_visible_face_cores": 4,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_custom_gallery_probe",
+        "input_binding_sha256": "cddcd36c27570338844bcc420851ecd5dddf8a4cf54cc4f31ce4587b0392a900",
+        "decoded_frames": 16,
+        "tested_visible_face_cores": 16,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "recorded_source_ellipses",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_immediate_retry_probe",
+        "input_binding_sha256": "f61ddedf862946802a8714e5287908f06487a563be1de1875715e56c68f651ef",
+        "decoded_frames": 40,
+        "tested_visible_face_cores": 40,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "recorded_source_ellipses",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      }
+    ]
+  },
+  "previews": {
+    "run_id": "region_continuation_f03da987_focused13",
+    "auditor_sha256": "719614621c2405e82b213421cb206edc128eea0aad7659a9d4d3d6e940f56ff7",
+    "cases": [
+      {
+        "case": "group_4k_body_face_union",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 16000,
+            "status": "passed",
+            "best_expected_frame": 400,
+            "expected_pts_seconds": 16.0,
+            "correlation": 0.9979388016255092,
+            "control_sha256": "06748ee748e87c0c8b0efabec1e28c9d2b70b044ceb1f6159c376ec1bb78d115",
+            "protected_sha256": "ee0df25ee5ccc3b793a67f3800c200bcb15945ee2315fa5ecf6361f21d67bae1",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 16780,
+            "status": "passed",
+            "best_expected_frame": 419,
+            "expected_pts_seconds": 16.76,
+            "correlation": 0.9981658664758092,
+            "control_sha256": "eac6b525a9432991fe798491badfec4ffe0442bb8fb0fcc6c5c608d1aefe15c9",
+            "protected_sha256": "acb036dec6f610b50dd9ba66b0bb865c2623c0eca34c7cb6b0427fc644481a24",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 17560,
+            "status": "passed",
+            "best_expected_frame": 439,
+            "expected_pts_seconds": 17.56,
+            "correlation": 0.9984172303542953,
+            "control_sha256": "fe3d7c6ed0ec455b8cfd7dedeb775e56219f25eb9ef1b99ce75bed7cb693f3b7",
+            "protected_sha256": "6edcf1ff279cb3b36da22256a5c855782e0380bf1927552f108b20560f6b3c88",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_body_face_union",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 7800,
+            "status": "passed",
+            "best_expected_frame": 195,
+            "expected_pts_seconds": 7.8,
+            "correlation": 0.9990516114694938,
+            "control_sha256": "a7cdae322fc9e20a096178c1be87dcc90495b1d716ee1abff8dafb10bddf36e7",
+            "protected_sha256": "39f4235acacbaff307f509c027d98dfc20b2285fc0eff82c1cb9c1a0e62c8778",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 8580,
+            "status": "passed",
+            "best_expected_frame": 214,
+            "expected_pts_seconds": 8.56,
+            "correlation": 0.9990807852016909,
+            "control_sha256": "c9682675256239b620aefc1372c99d166a29858f9b48cb28c2b989bbf61d6520",
+            "protected_sha256": "5f8067a156d2ad85b494c555e46f1a2fef193bf47da641b36070c0580de102da",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 9360,
+            "status": "passed",
+            "best_expected_frame": 234,
+            "expected_pts_seconds": 9.36,
+            "correlation": 0.9991166061322799,
+            "control_sha256": "57ac3cfb5ffdddf52084b861790200f4e19e930e30eaa5960f86d4faa6c03e4f",
+            "protected_sha256": "105b2ec1bbeb4556d0249f1df0829186452a5ac49ed00666d7ae94cdedc2bfbd",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_sticker",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "status": "passed",
+            "best_expected_frame": 536,
+            "expected_pts_seconds": 21.44,
+            "correlation": 0.9988990371771278,
+            "control_sha256": "3d29aa5b62e094187f6c213b909add598dfae5debd03c9a60b6b2ae8d7cbfcb6",
+            "protected_sha256": "a00d5982c927ccd182a641b38af9ce788392f4389144511665676da1e259839a"
+          },
+          {
+            "requested_ms": 22220,
+            "status": "passed",
+            "best_expected_frame": 555,
+            "expected_pts_seconds": 22.2,
+            "correlation": 0.9989763070645621,
+            "control_sha256": "cb218a23b2a790c056917b5b539b2e1d654468a36f709b3d306723f4177a2203",
+            "protected_sha256": "dbe606053c5b06f3f8adec2bd97800aa55f99883930db03737a6a12045f90187"
+          },
+          {
+            "requested_ms": 23000,
+            "status": "passed",
+            "best_expected_frame": 575,
+            "expected_pts_seconds": 23.0,
+            "correlation": 0.9988332749445068,
+            "control_sha256": "aa28f19f3df4dbe904914d94e12481171d2a4dac992a10d49c74007a4bb54578",
+            "protected_sha256": "793688733e751e9e14e298ff7b984cb05c668d7940cea79885ca5423b4b40dc8"
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_solid",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "status": "passed",
+            "best_expected_frame": 536,
+            "expected_pts_seconds": 21.44,
+            "correlation": 0.9988990371771278,
+            "control_sha256": "3d29aa5b62e094187f6c213b909add598dfae5debd03c9a60b6b2ae8d7cbfcb6",
+            "protected_sha256": "6a40771dc3d49526b2c27ae2580179d68b25bf1435cd633332eec01baf23b403",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 22220,
+            "status": "passed",
+            "best_expected_frame": 555,
+            "expected_pts_seconds": 22.2,
+            "correlation": 0.9989763070645621,
+            "control_sha256": "cb218a23b2a790c056917b5b539b2e1d654468a36f709b3d306723f4177a2203",
+            "protected_sha256": "acf6471d8c3c1da28a1dc4f02b9ca259c817f64e7db42050afc0b8663d268560",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 23000,
+            "status": "passed",
+            "best_expected_frame": 575,
+            "expected_pts_seconds": 23.0,
+            "correlation": 0.9988332749445068,
+            "control_sha256": "aa28f19f3df4dbe904914d94e12481171d2a4dac992a10d49c74007a4bb54578",
+            "protected_sha256": "97ff8f1eda4c7ff16911ffa2644426f1d6bed4bf5b4ea7044c86786325937123",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_body",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 21440,
+            "status": "passed",
+            "best_expected_frame": 536,
+            "expected_pts_seconds": 21.44,
+            "correlation": 0.9988990371771278,
+            "control_sha256": "3d29aa5b62e094187f6c213b909add598dfae5debd03c9a60b6b2ae8d7cbfcb6",
+            "protected_sha256": "2ab44ff6bb398da1a657a66be73bf67b6c46aa7dc7a271317f969b4e6e0d0ebe",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 22220,
+            "status": "passed",
+            "best_expected_frame": 555,
+            "expected_pts_seconds": 22.2,
+            "correlation": 0.9989763070645621,
+            "control_sha256": "cb218a23b2a790c056917b5b539b2e1d654468a36f709b3d306723f4177a2203",
+            "protected_sha256": "266de44b1950a3a46b4e38f7d9cba03fedefa9909f1ffff33aed85b6bcb5c80f",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 23000,
+            "status": "passed",
+            "best_expected_frame": 575,
+            "expected_pts_seconds": 23.0,
+            "correlation": 0.9988332749445068,
+            "control_sha256": "aa28f19f3df4dbe904914d94e12481171d2a4dac992a10d49c74007a4bb54578",
+            "protected_sha256": "4d7115acfee4f208530ea6238eb14bf75b9276637c9074c41d67adade2b0fd03",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "group_hd_overlap_face",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 13720,
+            "status": "passed",
+            "best_expected_frame": 343,
+            "expected_pts_seconds": 13.72,
+            "correlation": 0.9984597167697863,
+            "control_sha256": "a7bf8a056a5b4f41383d3ad925971a2a24f783c72682fdd44179051817078cee",
+            "protected_sha256": "1edd93afe6c2256158094fe6ca5e92d6bc1a05acf916f7952d6569fcc514b2fd",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 4,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "group_hd_overlap_body",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 13720,
+            "status": "passed",
+            "best_expected_frame": 343,
+            "expected_pts_seconds": 13.72,
+            "correlation": 0.9984597167697863,
+            "control_sha256": "a7bf8a056a5b4f41383d3ad925971a2a24f783c72682fdd44179051817078cee",
+            "protected_sha256": "3624897fe2f6c5bc846eaa09a2bcdc3a8417f63bbf016a1380f0b031b91e7f8f",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 4,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "group_4k_face_solid",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 5600,
+            "status": "passed",
+            "best_expected_frame": 140,
+            "expected_pts_seconds": 5.6,
+            "correlation": 0.9980855980820804,
+            "control_sha256": "9bc813bcd2aa125d10347aff5d3326fa39ecd6aa65fc6623b7bdd21c7773fe8d",
+            "protected_sha256": "ef3978b0b29d4a3241bb2d4cd6f54e3e0e01841ab78b5cdfd7a97bdd2a6cd5f3",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 2,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 5780,
+            "status": "passed",
+            "best_expected_frame": 144,
+            "expected_pts_seconds": 5.76,
+            "correlation": 0.998096822123901,
+            "control_sha256": "98d06ca8e64d95cebb426426b80c256c2301f7d4d24739e03e29066bbe90556a",
+            "protected_sha256": "8986a19b97c6a6ce53caa6dd98d5b6bbfee25c9add90aedbfb741dc91c6778e1",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 3,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 5960,
+            "status": "passed",
+            "best_expected_frame": 149,
+            "expected_pts_seconds": 5.96,
+            "correlation": 0.9981094065062791,
+            "control_sha256": "e150e96c5d954ce84da4a9ced01122fa6b76a359cae9fef8ee3b57c95060b884",
+            "protected_sha256": "c3972cd4a85b6aaee6663c8f90ccacf3a4bc9bc7fe6a871b6b6357d6bcd9026a",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 3,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "group_4k_body_solid",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 11400,
+            "status": "passed",
+            "best_expected_frame": 285,
+            "expected_pts_seconds": 11.4,
+            "correlation": 0.9983997819923492,
+            "control_sha256": "482ba1bdc92eaa8f48666b6b3fed16e6097d3d3257136f5ac30080cfc02d74e0",
+            "protected_sha256": "63baa76b6d9e413680737505e5b4b7bdd9654bcb3d7e95253e112637757892f3",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 3,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 11580,
+            "status": "passed",
+            "best_expected_frame": 289,
+            "expected_pts_seconds": 11.56,
+            "correlation": 0.9983995760144125,
+            "control_sha256": "894f905caa34ae42d2f56ff988ba1fb336f175737c7cddfff71d044074890b98",
+            "protected_sha256": "0928b053876c5786e9fa6060bc1c90882351d198ca0b320693555b587206baa2",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 2,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 11760,
+            "status": "passed",
+            "best_expected_frame": 294,
+            "expected_pts_seconds": 11.76,
+            "correlation": 0.9983865476273992,
+            "control_sha256": "b8bbf6374be58b50441c22d1b5c6f1154763173bbf452b378face2b0862934ad",
+            "protected_sha256": "db18c54631929652288d6cebe29ac23ac6b796d5ac4492d5a60256cdc2ac9c65",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 2,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "group_4k_tail_face",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 22840,
+            "status": "passed",
+            "best_expected_frame": 571,
+            "expected_pts_seconds": 22.84,
+            "correlation": 0.99845068418727,
+            "control_sha256": "3f0bee1aa067108fcf46fa0f8672010582115648ef4728d595d38bae390d84d8",
+            "protected_sha256": "8307be29a3b8a465408beba413e78a7d802397879c91eb4d8fae8014dc2397d3",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 23020,
+            "status": "passed",
+            "best_expected_frame": 575,
+            "expected_pts_seconds": 23.0,
+            "correlation": 0.998464675159545,
+            "control_sha256": "d0b38d2330aeb64ac3fb89c13d7bb7fe9ee462c375a413a46efc125e761026d0",
+            "protected_sha256": "f66471141324c3a97e8cd1de1fb032865aec6d63cb43da44df55912fb57aec8f",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          },
+          {
+            "requested_ms": 23200,
+            "status": "passed",
+            "best_expected_frame": 580,
+            "expected_pts_seconds": 23.2,
+            "correlation": 0.9984831434106817,
+            "control_sha256": "09048c24f7d0bf79d642247eec5761fa5d951ba039b7ddca2464b7f230d760cf",
+            "protected_sha256": "27dffe5d81db302dd57b083c609809bb92b478e382e6be1d589d7249299cf39a",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_custom_gallery_probe",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 0,
+            "status": "passed",
+            "best_expected_frame": 0,
+            "expected_pts_seconds": 0.0,
+            "correlation": 0.9988883799367176,
+            "control_sha256": "9f6efbd0bdd0af2a1be6be65075252c8abcfa3e6a9835fb5ba6c6e3d0d6698a8",
+            "protected_sha256": "321f4bfb9aaf3847256b27232749e1c692183ec1f8476ebdfc3b42852164984b"
+          },
+          {
+            "requested_ms": 300,
+            "status": "passed",
+            "best_expected_frame": 7,
+            "expected_pts_seconds": 0.28,
+            "correlation": 0.9989122783602384,
+            "control_sha256": "9a0c92b025fab3e926cf791ad628e491b939382c16ee235732e6c166abc7f1bd",
+            "protected_sha256": "b8d843cf7df7aefb1c2a62ff89cb78a5da6c2f1b5b0b22bdda01ac91865a09fb"
+          },
+          {
+            "requested_ms": 600,
+            "status": "passed",
+            "best_expected_frame": 15,
+            "expected_pts_seconds": 0.6,
+            "correlation": 0.9989567453643021,
+            "control_sha256": "80373c1f676c3bfbf280c6e6353e8e559096a32e4907cc7ec5807326b2c13829",
+            "protected_sha256": "9933f572adfcb21889556a1e36bc5d7c919dc5b0a85f3aea8168291d31a3c7af"
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_cancel_probe",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 0,
+            "status": "passed",
+            "best_expected_frame": 0,
+            "expected_pts_seconds": 0.0,
+            "correlation": 0.9988883799367176,
+            "control_sha256": "9f6efbd0bdd0af2a1be6be65075252c8abcfa3e6a9835fb5ba6c6e3d0d6698a8",
+            "protected_sha256": "96356a18586ae3612eba57e2a2d103b61b975c5b03ffbdc57d9c40fffaab0c53"
+          },
+          {
+            "requested_ms": 13220,
+            "status": "passed",
+            "best_expected_frame": 330,
+            "expected_pts_seconds": 13.2,
+            "correlation": 0.9989904928956854,
+            "control_sha256": "c960fe5f0e36c6f5e7f8e4fa6da2ac1a225942c8ebd8d7143bcacbc074b50a6d",
+            "protected_sha256": "06e1227be149426adef0cf36d7e85e85633a18041f9002420c33892018cdf72b"
+          },
+          {
+            "requested_ms": 26440,
+            "status": "passed",
+            "best_expected_frame": 661,
+            "expected_pts_seconds": 26.44,
+            "correlation": 0.9990354847611594,
+            "control_sha256": "d0ef2e20e5d03e6d9882935b79e3c931af51b324ae35df19e522ff2d1d9802ab",
+            "protected_sha256": "69d051c7961898864f4f1cf876be9a17070b99af526a84c2dd1389795afdb4fc"
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_immediate_retry_probe",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 1000,
+            "status": "passed",
+            "best_expected_frame": 25,
+            "expected_pts_seconds": 1.0,
+            "correlation": 0.9991040976306028,
+            "control_sha256": "a5a93474fac5f17211feddd228be236d359944214da5f45c70e2e6adb4206002",
+            "protected_sha256": "562b3739f1de35119eae729521bd34f075827f96a50b78b19954f31beee4bff6"
+          },
+          {
+            "requested_ms": 1780,
+            "status": "passed",
+            "best_expected_frame": 44,
+            "expected_pts_seconds": 1.76,
+            "correlation": 0.9990336161486872,
+            "control_sha256": "7bbc104fc09d9934db0ca0b9638ddb967c73dcfb4be30040cf8b5c096607e111",
+            "protected_sha256": "e7ecb8f76af83e3308d63ab005e3def88b75703b7f3e7ab883a19e7d8a0c0d54"
+          },
+          {
+            "requested_ms": 2560,
+            "status": "passed",
+            "best_expected_frame": 64,
+            "expected_pts_seconds": 2.56,
+            "correlation": 0.999017307180997,
+            "control_sha256": "a66bb273f20cad71f6ee6bf71447126b616c36183778b707f54109d3e132f41c",
+            "protected_sha256": "9de8f71b8ca71a5126518a883e77411a56ead7e9bae0d1ccf9dfa5eb39bfdfc1"
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      }
+    ]
+  },
+  "gallery_proof": {
+    "scope": "Host inspection of this QA simulator only; no extra Photos read permission requested by the app. Exact byte hash and run time window binding.",
+    "cases": [
+      {
+        "case": "solo_4k_custom_gallery_probe",
+        "status": "passed_photos_saved_original",
+        "photos_original_relative_to_simulator_media": "DCIM/100APPLE/IMG_0039.MP4",
+        "sha256": "92dfb4645c83810ccdcd8aa9c5eb893ff27e61f4c32585a5a136802dfe7a1ed2",
+        "bytes": 772195,
+        "photos_original_mtime_utc": "2026-11-06T11:10:58.059270+00:00",
+        "copied_file": "gallery/IMG_0039.MP4"
+      }
+    ]
+  }
+}

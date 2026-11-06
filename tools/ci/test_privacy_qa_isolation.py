@@ -23,6 +23,17 @@ class PrivacyQaAcceptanceBoundary(unittest.TestCase):
             self.assertEqual(result.exception.code,2)
             device.assert_not_called()
 
+class LifecycleStageBoundary(unittest.TestCase):
+    def test_lifecycle_diagnosis_requires_a_marked_legacy_subset(self):
+        import io
+        base=['runner','android','--prefix','test','--media','media','--report','report',
+              '--binary','qa.apk','--stage-lifecycle']
+        for extra in [[],['--case-filter','probe','--suite','focused13']]:
+            with self.subTest(extra=extra), patch('sys.argv',base+extra), patch('sys.stderr',new_callable=io.StringIO), patch.object(run_regression,'Android') as device:
+                with self.assertRaises(SystemExit) as result:run_regression.main()
+                self.assertEqual(result.exception.code,2)
+                device.assert_not_called()
+
 class PrivacyQaLaunch(unittest.TestCase):
     def test_launch_tolerates_a_missing_pid_before_process_creation(self):
         with patch.object(run_regression, 'command', side_effect=[None, '', '123']), patch.object(run_regression.time, 'sleep') as sleep:
@@ -71,5 +82,15 @@ class AndroidForegroundReadinessTest(unittest.TestCase):
         with patch.object(run_regression.subprocess,'run',return_value=subprocess.CompletedProcess([],1,'',"adb: device 'test-device' not found")) as process:
             with self.assertRaises(RuntimeError):run_regression.command('adb','-s','test-device','shell','am','start','test')
         self.assertEqual(process.call_count,1)
+
+class IosQaModelBinding(unittest.TestCase):
+    def test_missing_or_mismatched_model_is_rejected_before_a_successful_archive(self):
+        import tempfile
+        from tools.privacy import build_qa
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for contents in [None,b'invalid model']:
+                if contents is not None:(root/'yolo11n-seg-fp16.tflite').write_bytes(contents)
+                with self.assertRaisesRegex(RuntimeError,'pinned model contract'):build_qa.verify_ios_model(root)
 
 if __name__=='__main__':unittest.main()

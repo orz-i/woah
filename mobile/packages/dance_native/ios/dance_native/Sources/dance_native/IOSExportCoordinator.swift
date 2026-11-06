@@ -148,6 +148,11 @@ final class IOSExportCoordinator {
     withLock { statuses[jobId] } ?? journal.status(jobId)
   }
 
+  func waitForRuntime(jobId: String) async {
+    guard let task = withLock({ tasks[jobId] }) else { return }
+    await task.value
+  }
+
   func hasActiveRuntime(jobId: String) -> Bool {
     withLock { tasks[jobId] != nil }
   }

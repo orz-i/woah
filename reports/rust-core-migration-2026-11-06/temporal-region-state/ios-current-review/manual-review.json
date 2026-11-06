@@ -1,0 +1,26 @@
+{
+  "run_id": "scene_context_fec72da3_focused13",
+  "reviewed_cases": [
+    "group_4k_body_face_union",
+    "solo_4k_body_face_union",
+    "solo_4k_raised_arm_sticker",
+    "solo_4k_raised_arm_solid",
+    "solo_4k_raised_arm_body",
+    "group_hd_overlap_face",
+    "group_hd_overlap_body",
+    "group_4k_face_solid",
+    "group_4k_body_solid",
+    "group_4k_tail_face",
+    "solo_4k_custom_gallery_probe",
+    "solo_4k_cancel_probe",
+    "solo_4k_immediate_retry_probe"
+  ],
+  "reviewed_movie_frames": "first/middle/last of all 12 movies",
+  "reviewed_native_previews": 35,
+  "result": "Visible facial features covered in reviewed frames and native previews. Independent full-frame face and known-point audits remain separate.",
+  "precision_observations": [
+    "Raised-arm fallback can conservatively enlarge face/sticker coverage over the raised arm and upper torso.",
+    "Group face fallback can produce additional or oversized regions. No exemption is inferred from these masks."
+  ],
+  "scope": "Stage evidence. Does not establish final 62-case acceptance or iPhone performance."
+}

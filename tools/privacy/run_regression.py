@@ -15,8 +15,10 @@ import sys
 import time
 try:
     from .build_qa import inputs, fingerprint, binary_hashes, android_package_id
+    from .lifecycle_evidence import verify_lifecycle
 except ImportError:
     from build_qa import inputs, fingerprint, binary_hashes, android_package_id
+    from lifecycle_evidence import verify_lifecycle
 
 ROOT = Path(__file__).resolve().parents[2]
 MATRIX = ROOT / 'testdata/privacy/matrix.json'
@@ -186,9 +188,14 @@ class Android:
             for name in ['qa_lifecycle_results.json','qa_negative_results.json']:
                 value=self.read(name)
                 if config.get('lifecycle') and value: atomic(dest/name,value)
+            if config.get('lifecycle'):
+                (dest/'outputs').mkdir(exist_ok=True)
+                command(*self.adb,'pull',ANDROID_DOCUMENTS+'/'+relative+'/outputs/retry_custom_sticker.mp4',
+                        dest/'outputs/retry_custom_sticker.mp4',required=False)
         if not data or data['status']!='finished' or len(data['cases'])!=len(config['cases']): raise RuntimeError('Incomplete matrix')
         if any(r['result'] not in ['output_created','cancelled_cleanly'] for r in data['cases']): raise RuntimeError('Matrix contains failures')
         if len(by_output)!=len(config['cases']): raise RuntimeError('Missing per-case crop traces')
+        verify_lifecycle(dest)
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -203,11 +210,14 @@ def main():
     p.add_argument('--install',action='store_true')
     p.add_argument('--case-filter',help='Explicit partial stage check; final acceptance omits this option')
     p.add_argument('--stage-export-only',action='store_true',help='Export diagnosis only; requires --case-filter and never qualifies as full acceptance')
+    p.add_argument('--stage-lifecycle',action='store_true',help='Include lifecycle diagnosis in a filtered legacy22 stage; never full acceptance')
     p.add_argument('--build-manifest',type=Path)
     p.add_argument('--deadline-hours',type=float,default=16)
     args=p.parse_args()
     if args.stage_export_only and not args.case_filter:
         p.error('Export-only diagnosis requires an explicit --case-filter; final acceptance must include previews')
+    if args.stage_lifecycle and (not args.case_filter or args.suite!='legacy22' or args.stage_export_only):
+        p.error('Lifecycle diagnosis requires --suite legacy22 and --case-filter with previews')
     if not re.fullmatch(r'[A-Za-z0-9_-]+',args.prefix): p.error('Use a simple unique run prefix')
     build_path=args.build_manifest or args.binary.parent/'build-manifest.json'
     build=json.loads(build_path.read_text(encoding='utf-8'))
@@ -235,7 +245,7 @@ def main():
                     'build_source_fingerprint':build['source_fingerprint'],
                     'partial_stage_check':args.case_filter is not None,
                     'verify_previews':not args.stage_export_only,'stage_export_only':args.stage_export_only,
-                    'lifecycle':suite['id']=='legacy22' and args.case_filter is None}
+                    'lifecycle':suite['id']=='legacy22' and (args.case_filter is None or args.stage_lifecycle)}
             shutil.copyfile(build_path,dest/'build-manifest.json')
             if len({c['case'] for c in config['cases']})!=len(config['cases']): raise ValueError('Duplicate output names in a suite')
             print('QA_SUITE_START',args.platform,run_id,len(config['cases']),flush=True)

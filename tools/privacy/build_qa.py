@@ -64,6 +64,13 @@ def android_package_id(binary):
     if not match:raise RuntimeError('APK package metadata is missing')
     return match.group(1)
 
+def verify_ios_model(directory):
+    contract=json.loads((ROOT/'mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/yolo11n-seg-fp16.contract.json').read_text(encoding='utf-8'))
+    path=directory/contract['model']
+    if not path.is_file() or path.stat().st_size!=contract['expected_size_bytes'] or sha(path)!=contract['expected_sha256']:
+        raise RuntimeError('QA iOS model missing or different from the pinned model contract: '+str(path)+
+                           '. Provision with tools/release/sync_ios_yolo_model.py before building.')
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('platform',choices=['android','ios'])
@@ -73,7 +80,9 @@ def main():
     args=p.parse_args()
     flutter=shutil.which('flutter')
     if not flutter:raise RuntimeError('Flutter is missing from PATH')
-    if args.platform=='ios':run(['pod','install'],cwd=APP/'ios')
+    if args.platform=='ios':
+        verify_ios_model(ROOT/'mobile/packages/dance_native/ios/dance_native/Sources/dance_native/Resources/InferenceAssets')
+        run(['pod','install'],cwd=APP/'ios')
     before=inputs();digest=fingerprint(before)
     head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     destination=args.output.resolve()
@@ -102,6 +111,7 @@ def main():
              '-derivedDataPath',derived,'CODE_SIGNING_ALLOWED=NO','SWIFT_OPTIMIZATION_LEVEL=-O',
              'GCC_OPTIMIZATION_LEVEL=2','ONLY_ACTIVE_ARCH=YES','build'])
         binary=derived/'Build/Products/Debug-iphonesimulator/Runner.app'
+        verify_ios_model(binary/'dance_native_models.bundle')
     after=inputs()
     if before!=after:
         changed=[name for name in sorted(before.keys()|after.keys()) if before.get(name)!=after.get(name)]

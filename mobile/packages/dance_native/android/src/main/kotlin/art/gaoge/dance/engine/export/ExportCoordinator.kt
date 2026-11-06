@@ -100,6 +100,8 @@ class ExportCoordinator private constructor(private val appContext: Context) {
         return true
     }
 
+    @Synchronized fun hasActiveRuntime(jobId: String): Boolean = lifecycles.containsKey(jobId)
+
     fun getJobStatus(jobId: String): JobStatusDto {
         val record = jobStore.getJob(jobId)
         return record?.toJobStatusDto() ?: JobStatusDto(

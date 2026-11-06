@@ -5,6 +5,7 @@ import argparse, datetime, hashlib, json, os, pathlib, plistlib, re, shutil, sub
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from tools.privacy.gallery_evidence import capture_simulator_gallery
+from tools.privacy.lifecycle_evidence import verify_lifecycle
 REPORT = ROOT / 'reports/privacy-ios-22-and-4k-regression-2026-11-05'
 SOURCES = ROOT / 'reports/privacy-ios-regression-2026-11-04/artifacts/sources'
 BUNDLE = 'art.gaoge.dance'
@@ -138,6 +139,12 @@ def main():
                         meta['preview_files_sha256']=preview_files
                         for name in ['qa_lifecycle_results.json','qa_negative_results.json']:
                             if config.get('lifecycle') and (docs/name).exists(): shutil.copyfile(docs/name,dest/name)
+                        if config.get('lifecycle'):
+                            retry=live/'outputs/retry_custom_sticker.mp4'
+                            target=dest/'outputs/retry_custom_sticker.mp4'
+                            if retry.exists() and not target.exists():
+                                try:os.link(retry,target)
+                                except OSError:shutil.copyfile(retry,target)
                         if (live/'core-smokes.json').exists(): shutil.copyfile(live/'core-smokes.json',dest/'core-smokes.json')
                         traces = sorted((p for p in docs.glob('qa_pixel_crops_*.jsonl') if p.stat().st_mtime >= crop_started
                           and json.loads(p.open().readline()).get('source_basename') in sources), key=lambda p:p.stat().st_birthtime)
@@ -154,6 +161,7 @@ def main():
                             raise RuntimeError(f'Incomplete matrix: {len(data["cases"])} != {expected_count}')
                         if any(r['result'] not in ['output_created','cancelled_cleanly'] for r in data['cases']):
                             raise RuntimeError('Native matrix contains failures; preserve results for diagnosis')
+                        verify_lifecycle(dest)
                         capture_simulator_gallery(dest,pathlib.Path.home()/'Library/Developer/CoreSimulator/Devices'/args.udid/'data/Media/DCIM')
                         print('QA_RUN_FINISHED',run_id,flush=True)
                         return 0
