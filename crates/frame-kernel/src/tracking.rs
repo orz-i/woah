@@ -128,7 +128,7 @@ pub struct Track {
     pub offscreen_dormant: bool,
 }
 impl Track {
-    fn observed(id: i64, d: Detection) -> Self {
+    pub(crate) fn observed(id: i64, d: Detection) -> Self {
         let mut filter = BoxFilter::default();
         filter.init(d.bounds, -1);
         Self {

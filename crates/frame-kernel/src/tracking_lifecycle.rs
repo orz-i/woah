@@ -40,7 +40,7 @@ pub fn bound_prediction(
         bottom: y + h * 0.5,
     }
 }
-fn bounded(track: &Track, predicted: Rect, protected: bool) -> Rect {
+pub(crate) fn bounded(track: &Track, predicted: Rect, protected: bool) -> Rect {
     if !protected {
         return predicted;
     }
@@ -65,7 +65,7 @@ fn blend(a: Rect, b: Rect) -> Rect {
 fn increment(n: u32) -> u32 {
     n.saturating_add(1).min(i32::MAX as u32)
 }
-fn likely_exit(track: &Track, enabled: bool, selected: bool) -> bool {
+pub(crate) fn likely_exit(track: &Track, enabled: bool, selected: bool) -> bool {
     if !enabled || !selected || track.offscreen_dormant {
         return false;
     }
@@ -83,7 +83,11 @@ fn likely_exit(track: &Track, enabled: bool, selected: bool) -> bool {
         || (r.top <= height * 0.06 && dy <= -sy)
         || (r.bottom >= height * (1.0 - 0.06) && dy >= sy)
 }
-fn render_prediction(track: &mut Track, bounds: Rect, missed: u32) -> Result<(), TrackingError> {
+pub(crate) fn render_prediction(
+    track: &mut Track,
+    bounds: Rect,
+    missed: u32,
+) -> Result<(), TrackingError> {
     if let Some(mask) = &track.observed_mask {
         track.render_mask = Some(
             warp_mask(mask, track.observed_bounds, bounds, missed)
