@@ -3,6 +3,8 @@ package art.gaoge.dance.engine.inference
 import art.gaoge.dance.engine.core.FrameKernel
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
+import java.nio.ByteOrder
+import java.security.MessageDigest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -49,6 +51,16 @@ class FrameKernelInstanceParityTest {
                 assertEquals(old.confidence, current.confidence)
                 assertContentEquals(bytes(requireNotNull(old.mask)), bytes(requireNotNull(current.mask)))
             }
+            val digest = MessageDigest.getInstance("SHA-256")
+            actual.forEach { detection ->
+                val geometry = ByteBuffer.allocate(20).order(ByteOrder.LITTLE_ENDIAN)
+                listOf(detection.bbox.left, detection.bbox.top, detection.bbox.right,
+                    detection.bbox.bottom, detection.confidence).forEach(geometry::putFloat)
+                digest.update(geometry.array())
+                digest.update(bytes(requireNotNull(detection.mask)))
+            }
+            assertEquals("f70e4b84ef18dea594bda49968cdaec9ef52a72e55976b4d776b6974986db8e9",
+                digest.digest().joinToString("") { "%02x".format(it) })
         }
     }
 
