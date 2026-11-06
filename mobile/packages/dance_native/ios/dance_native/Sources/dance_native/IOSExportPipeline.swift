@@ -506,7 +506,7 @@ final class IOSExportPipeline {
             : (freshSceneCoverage && !faceOnlyIds.isEmpty ? sceneIds : faceOnlyIds)
           let coveredHeadFallbackIds = useCurrentObservations
             ? IOSHighResolutionPrivacyCoverage.coveredHeadFallbackIds(persons: renderPersons, preprocess: inference.preprocess) : []
-          let faceRegions = facePrivacyResolver?.resolve(
+          let faceRegions = try facePrivacyResolver?.resolve(
             image: frame,
             persons: renderPersons,
             // Full-body segmentation can omit a profile, a jaw or a mirror

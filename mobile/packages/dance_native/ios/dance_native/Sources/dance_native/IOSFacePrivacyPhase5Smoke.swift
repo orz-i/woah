@@ -51,7 +51,7 @@ enum IOSFacePrivacyPhase5Smoke {
     let resolver = IOSFacePrivacyTemporalResolver(
       locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
     )
-    let detected = resolver.resolve(
+    let detected = try resolver.resolve(
       image: source,
       persons: [person],
       faceOnlyIds: [0],
@@ -66,7 +66,7 @@ enum IOSFacePrivacyPhase5Smoke {
     try assertNear(detectedRegion.radiusX, 6.6, tolerance: 0.05, label: "detected radiusX")
     try assertNear(detectedRegion.radiusY, 8.88, tolerance: 0.05, label: "detected radiusY")
 
-    let missed = resolver.resolve(
+    let missed = try resolver.resolve(
       image: source,
       persons: [person],
       faceOnlyIds: [0],
@@ -84,7 +84,7 @@ enum IOSFacePrivacyPhase5Smoke {
       id: 0,
       detection: makeDetection(x1: 12, y1: 4, x2: 60, y2: 60)
     )
-    let translatedPrediction = resolver.resolve(
+    let translatedPrediction = try resolver.resolve(
       image: source,
       persons: [movedPerson],
       faceOnlyIds: [0],
@@ -101,7 +101,7 @@ enum IOSFacePrivacyPhase5Smoke {
       label: "translated predicted centerX"
     )
 
-    let expired = resolver.resolve(
+    let expired = try resolver.resolve(
       image: source,
       persons: [movedPerson],
       faceOnlyIds: [0],
@@ -121,7 +121,7 @@ enum IOSFacePrivacyPhase5Smoke {
     let maskGuidedResolver = IOSFacePrivacyTemporalResolver(
       locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], [], []])
     )
-    _ = maskGuidedResolver.resolve(
+    _ = try maskGuidedResolver.resolve(
       image: source,
       persons: [person],
       faceOnlyIds: [0],
@@ -145,7 +145,7 @@ enum IOSFacePrivacyPhase5Smoke {
         mask: headShiftMask
       )
     )
-    let maskGuided = maskGuidedResolver.resolve(
+    let maskGuided = try maskGuidedResolver.resolve(
       image: source,
       persons: [maskGuidedPerson],
       faceOnlyIds: [0],
@@ -157,7 +157,7 @@ enum IOSFacePrivacyPhase5Smoke {
           maskGuidedRegion.centerX > 34 else {
       throw smokeFailure("Expired trusted face did not move toward current head-like YOLO mask support.")
     }
-    let maskSeedExpired = maskGuidedResolver.resolve(
+    let maskSeedExpired = try maskGuidedResolver.resolve(
       image: source,
       persons: [maskGuidedPerson],
       faceOnlyIds: [0],
@@ -178,7 +178,7 @@ enum IOSFacePrivacyPhase5Smoke {
     let unsupportedMaskResolver = IOSFacePrivacyTemporalResolver(
       locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
     )
-    _ = unsupportedMaskResolver.resolve(
+    _ = try unsupportedMaskResolver.resolve(
       image: source,
       persons: [person],
       faceOnlyIds: [0],
@@ -198,7 +198,7 @@ enum IOSFacePrivacyPhase5Smoke {
         )
       )
     )
-    let unsupportedMask = unsupportedMaskResolver.resolve(
+    let unsupportedMask = try unsupportedMaskResolver.resolve(
       image: source,
       persons: [emptyMaskPerson],
       faceOnlyIds: [0],
@@ -222,7 +222,7 @@ enum IOSFacePrivacyPhase5Smoke {
         IOSFaceCandidate(x1: 34, y1: 8, x2: 44, y2: 20, confidence: 0.99),
       ]])
     )
-    let ambiguous = ambiguousResolver.resolve(
+    let ambiguous = try ambiguousResolver.resolve(
       image: source,
       persons: [person],
       faceOnlyIds: [0],
@@ -244,7 +244,7 @@ enum IOSFacePrivacyPhase5Smoke {
       id: 1,
       detection: makeDetection(x1: 20, y1: 4, x2: 60, y2: 60)
     )
-    let neighborCompetition = neighborResolver.resolve(
+    let neighborCompetition = try neighborResolver.resolve(
       image: source,
       persons: [selectedOverlap, unselectedOverlap],
       faceOnlyIds: [0],
@@ -263,7 +263,7 @@ enum IOSFacePrivacyPhase5Smoke {
       detection: personDetection,
       conservativePrivacyFallback: true
     )
-    let predicted = predictedResolver.resolve(
+    let predicted = try predictedResolver.resolve(
       image: source,
       persons: [predictedPerson],
       faceOnlyIds: [0],
@@ -277,7 +277,7 @@ enum IOSFacePrivacyPhase5Smoke {
     let cachedPredictedResolver = IOSFacePrivacyTemporalResolver(
       locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
     )
-    _ = cachedPredictedResolver.resolve(
+    _ = try cachedPredictedResolver.resolve(
       image: source,
       persons: [person],
       faceOnlyIds: [0],
@@ -289,7 +289,7 @@ enum IOSFacePrivacyPhase5Smoke {
       detection: makeDetection(x1: 12, y1: 4, x2: 60, y2: 60),
       conservativePrivacyFallback: true
     )
-    let cachedPredicted = cachedPredictedResolver.resolve(
+    let cachedPredicted = try cachedPredictedResolver.resolve(
       image: source,
       persons: [cachedPredictedBody],
       faceOnlyIds: [0],
@@ -377,7 +377,7 @@ enum IOSFacePrivacyPhase5Smoke {
     let classResolver = IOSFacePrivacyTemporalResolver(
       locator: IOSPhase5SequenceFaceLocator(batches: [[]])
     )
-    let classRegions = classResolver.resolve(
+    let classRegions = try classResolver.resolve(
       image: source,
       persons: selectedClassPersons,
       faceOnlyIds: [0, 1],
@@ -431,7 +431,7 @@ enum IOSFacePrivacyPhase5Smoke {
     let uniqueClassResolver = IOSFacePrivacyTemporalResolver(
       locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
     )
-    _ = uniqueClassResolver.resolve(
+    _ = try uniqueClassResolver.resolve(
       image: source,
       persons: [person],
       faceOnlyIds: [0],
@@ -452,7 +452,7 @@ enum IOSFacePrivacyPhase5Smoke {
       ),
       residualTrackIds: [0]
     )
-    let uniqueClassRegions = uniqueClassResolver.resolve(
+    let uniqueClassRegions = try uniqueClassResolver.resolve(
       image: source,
       persons: [predictedPerson],
       faceOnlyIds: [0],
@@ -469,7 +469,7 @@ enum IOSFacePrivacyPhase5Smoke {
 
     let classContinuity = IOSFacePrivacyClassFallbackContinuity()
     let continuityBbox = makeDetection(x1: 100, y1: 100, x2: 400, y2: 700)
-    let continuityFirst = classContinuity.stabilize(
+    let continuityFirst = try classContinuity.stabilize(
       ownerId: 6,
       rawRegion: IOSFacePrivacyEllipse(
         centerX: 300,
@@ -482,7 +482,7 @@ enum IOSFacePrivacyPhase5Smoke {
       timestampUs: 0,
       bodyMaskGuided: false
     )
-    let continuityGuided = classContinuity.stabilize(
+    let continuityGuided = try classContinuity.stabilize(
       ownerId: 6,
       rawRegion: IOSFacePrivacyEllipse(
         centerX: 360,
@@ -495,7 +495,7 @@ enum IOSFacePrivacyPhase5Smoke {
       timestampUs: 16_667,
       bodyMaskGuided: true
     )
-    let continuityRawAgain = classContinuity.stabilize(
+    let continuityRawAgain = try classContinuity.stabilize(
       ownerId: 6,
       rawRegion: IOSFacePrivacyEllipse(
         centerX: 302,
@@ -525,7 +525,7 @@ enum IOSFacePrivacyPhase5Smoke {
     }
 
     let translationContinuity = IOSFacePrivacyClassFallbackContinuity()
-    let translatedFirst = translationContinuity.stabilize(
+    let translatedFirst = try translationContinuity.stabilize(
       ownerId: 6,
       rawRegion: IOSFacePrivacyEllipse(
         centerX: 300,
@@ -538,7 +538,7 @@ enum IOSFacePrivacyPhase5Smoke {
       timestampUs: 0,
       bodyMaskGuided: true
     )
-    let translatedSecond = translationContinuity.stabilize(
+    let translatedSecond = try translationContinuity.stabilize(
       ownerId: 6,
       rawRegion: IOSFacePrivacyEllipse(
         centerX: 390,

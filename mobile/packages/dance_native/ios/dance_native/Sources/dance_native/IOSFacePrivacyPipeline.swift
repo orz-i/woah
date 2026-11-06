@@ -591,7 +591,7 @@ final class IOSFacePrivacyTemporalResolver {
     unmaskedPersonId: Int? = nil,
     coveredHeadFallbackIds: Set<Int> = [],
     timestampUs: Int64
-  ) -> [Int: IOSFacePrivacyEllipse] {
+  ) throws -> [Int: IOSFacePrivacyEllipse] {
     localizationFailed = false
     let coverUnownedFaces = protectUnassignedFaces && persons.allSatisfy {
       faceOnlyIds.contains($0.id) || $0.id == unmaskedPersonId

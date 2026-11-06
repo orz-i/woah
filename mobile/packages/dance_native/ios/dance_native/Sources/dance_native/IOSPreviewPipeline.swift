@@ -92,7 +92,7 @@ final class IOSPreviewPipeline {
     }
     let coveredHeadIds = allOthers
       ? IOSHighResolutionPrivacyCoverage.coveredHeadFallbackIds(persons: renderPersons, preprocess: frameAnalysis.preprocess) : []
-    let faceRegions = requestedPrivacyIds.isEmpty
+    let faceRegions = try requestedPrivacyIds.isEmpty
       ? [:]
       : facePrivacyResolver(cacheId: request.analysisCacheId).resolve(
         image: frameAnalysis.image,
