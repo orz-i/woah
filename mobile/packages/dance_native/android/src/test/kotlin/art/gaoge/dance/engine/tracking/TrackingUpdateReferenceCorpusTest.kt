@@ -26,7 +26,7 @@ class TrackingUpdateReferenceCorpusTest {
   val bytes=ByteArrayOutputStream();val out=DataOutputStream(bytes);out.writeInt(0x464B5531);out.writeInt(12)
   repeat(12){mode->
    val config=TrackingConfig(maxMissedFrames=3+mode%3,postOcclusionGraceFrames=3,enableSceneMotionCompensation=mode>=6)
-   val tracker=TrackManager(config,diagnosticsEnabled=false)
+   val tracker=CanonicalTrackManager(config,diagnosticsEnabled=false)
    val protected=if(mode%3==0)setOf(9,2)else if(mode%3==1)setOf(9)else emptySet()
    val selected=if(mode%3==0)setOf(9)else emptySet()
    val face=protected-selected

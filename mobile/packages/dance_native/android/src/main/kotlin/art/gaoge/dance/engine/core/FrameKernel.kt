@@ -11,6 +11,21 @@ internal object FrameKernel {
         check(abiVersion() == 1) { "Unsupported FrameKernel ABI" }
     }
 
+    private external fun trackingCreateNative(scalars:FloatArray,integers:IntArray):Long
+    private external fun trackingDestroyNative(id:Long)
+    private external fun trackingSelectionNative(id:Long,protected:LongArray,body:LongArray,face:LongArray,dormancy:Boolean)
+    private external fun trackingStepNative(id:Long,action:Int,timestampUs:Long,values:FloatArray,offsets:LongArray,pixels:ByteArray,assigned:LongArray):ByteArray
+    class TrackingSession(scalars:FloatArray,integers:IntArray):AutoCloseable {
+        private var id=trackingCreateNative(scalars,integers)
+        @Synchronized fun select(protected:LongArray,body:LongArray,face:LongArray,dormancy:Boolean) {
+            check(id!=0L);trackingSelectionNative(id,protected,body,face,dormancy)
+        }
+        @Synchronized fun step(action:Int,timestampUs:Long,values:FloatArray,offsets:LongArray,pixels:ByteArray,assigned:LongArray):ByteArray {
+            check(id!=0L);return trackingStepNative(id,action,timestampUs,values,offsets,pixels,assigned)
+        }
+        @Synchronized override fun close() {if(id!=0L){trackingDestroyNative(id);id=0L}}
+    }
+
     private external fun workCanReplaceNative(state: Int): Int
     private external fun workTransitionNative(state: Int, event: Int): Int
     class WorkLifecycle {

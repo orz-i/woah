@@ -28,13 +28,13 @@ class TrackingStateReferenceCorpusTest {
             val predicted=FloatRect(420f+x,150f+y,980f+x+(i%5-2)*11.5f,940f+y+(i%3-1)*17.25f)
             val missed=i%14;val stride=1+i%5
             out.writeInt(i);out.rect(previous);out.rect(predicted);out.writeInt(missed);out.writeInt(stride)
-            out.mask(TrackManager.warpMask(mask(i),previous,predicted,missed))
-            out.writeFloat(TrackManager.computeWarpedMaskIoU(mask(i),previous,predicted,mask(i+3),stride))
-            out.mask(TrackManager.generateConservativeFallbackMask(mask(i),predicted,missed))
+            out.mask(CanonicalTrackManager.warpMask(mask(i),previous,predicted,missed))
+            out.writeFloat(CanonicalTrackManager.computeWarpedMaskIoU(mask(i),previous,predicted,mask(i+3),stride))
+            out.mask(CanonicalTrackManager.generateConservativeFallbackMask(mask(i),predicted,missed))
         }
         out.writeInt(4)
         repeat(4){mode->
-            val t=TrackManager(TrackingConfig(maxMissedFrames=3,postOcclusionGraceFrames=2),diagnosticsEnabled=false)
+            val t=CanonicalTrackManager(TrackingConfig(maxMissedFrames=3,postOcclusionGraceFrames=2),diagnosticsEnabled=false)
             if(mode==1)t.setIdentityProtectedTrackIds(setOf(5))
             if(mode==2){t.setProtectedTrackIds(setOf(5));t.setPrivacyOffscreenDormancyEnabled(true)}
             t.initializeWithAssignedIds(listOf(PersonDetection(FloatRect(420f,150f,980f,940f),0.9f,mask(0),940f),PersonDetection(FloatRect(1080f,120f,1690f,1010f),0.8f,mask(1),1010f)),listOf(5,2))

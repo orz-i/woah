@@ -2,6 +2,7 @@
 #include <jni.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "frame_kernel.h"
 
 static void invalid(JNIEnv *env) {
@@ -473,4 +474,39 @@ JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_workCanRepla
     int32_t result=frame_kernel_work_can_replace((uint32_t)state);
     if(result<0) invalid(env);
     return result;
+}
+JNIEXPORT jlong JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_trackingCreateNative(JNIEnv *env,jobject self,jfloatArray scalars,jintArray integers) {
+ (void)self;jfloat f[11];jint n[6];if(!scalars||!integers||(*env)->GetArrayLength(env,scalars)!=11||(*env)->GetArrayLength(env,integers)!=6){invalid(env);return 0;}
+ (*env)->GetFloatArrayRegion(env,scalars,0,11,f);(*env)->GetIntArrayRegion(env,integers,0,6,n);if((*env)->ExceptionCheck(env))return 0;
+ for(int i=0;i<6;i++)if(n[i]<0){invalid(env);return 0;}
+ FrameKernelTrackingOptions c={(uint32_t)n[0],(uint32_t)n[1],(uint32_t)n[2],(uint32_t)n[3],f[0],{f[1],f[2],f[3],f[4],f[5]},f[6],f[7],f[8],f[9],(uint32_t)n[4],f[10],(uint32_t)n[5]};
+ uint64_t id=frame_kernel_tracking_create(c);if(!id)invalid(env);return (jlong)id;
+}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_trackingDestroyNative(JNIEnv *env,jobject self,jlong id){(void)self;if(frame_kernel_tracking_destroy((uint64_t)id))invalid(env);}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_trackingSelectionNative(JNIEnv *env,jobject self,jlong id,jlongArray protected_ids,jlongArray body,jlongArray face,jboolean dormancy){
+ (void)self;IdInput p={0},b={0},f={0};int result=-1;
+ if(read_ids(env,protected_ids,&p)&&read_ids(env,body,&b)&&read_ids(env,face,&f))result=frame_kernel_tracking_selection((uint64_t)id,(const int64_t*)p.values,p.count,(const int64_t*)b.values,b.count,(const int64_t*)f.values,f.count,dormancy?1u:0u);
+ release_ids(env,&p);release_ids(env,&b);release_ids(env,&f);if(result)invalid(env);
+}
+JNIEXPORT jbyteArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_trackingStepNative(JNIEnv *env,jobject self,jlong id,jint action,jlong at,jfloatArray values,jlongArray offsets,jbyteArray pixels,jlongArray assigned){
+ (void)self;jbyteArray result=NULL;FrameKernelTrackingObservation *observations=NULL;jfloat *v=NULL;jbyte *pool=NULL;IdInput off={0},ids={0};uint8_t *snapshot=NULL;
+ if(!values||!pixels||!read_ids(env,offsets,&off)||!read_ids(env,assigned,&ids))goto cleanup;
+ if((*env)->GetArrayLength(env,values)!=(jlong)off.count*15)goto cleanup;
+ jsize bytes=(*env)->GetArrayLength(env,pixels);if(bytes>256*1024*1024)goto cleanup;
+ v=off.count?(*env)->GetFloatArrayElements(env,values,NULL):NULL;pool=bytes?(*env)->GetByteArrayElements(env,pixels,NULL):NULL;
+ if((off.count&&!v)||(bytes&&!pool))goto cleanup;
+ observations=off.count?calloc((size_t)off.count,sizeof(*observations)):NULL;if(off.count&&!observations)goto cleanup;
+ for(jsize i=0;i<off.count;i++){
+  jfloat *a=v+i*15;
+  for(int k=6;k<8;k++)if(!(a[k]>=0&&a[k]<=65535&&isfinite(a[k])))goto cleanup;
+  for(int k=11;k<15;k++)if(!(a[k]>=0&&a[k]<=65535&&isfinite(a[k])))goto cleanup;
+  if(off.values[i]!=-1){for(int k=6;k<8;k++)if(!(a[k]>=1&&a[k]<=65535))goto cleanup;for(int k=11;k<15;k++)if(!(a[k]>=1&&a[k]<=65535))goto cleanup;}
+  observations[i]=(FrameKernelTrackingObservation){{a[0],a[1],a[2],a[3]},a[4],a[5],(uint64_t)off.values[i],(uint32_t)a[6],(uint32_t)a[7],{a[8],a[9],a[10],(uint32_t)a[11],(uint32_t)a[12],(uint32_t)a[13],(uint32_t)a[14]}};
+ }
+ if(frame_kernel_tracking_step((uint64_t)id,(uint32_t)action,(int64_t)at,observations,off.count,(const uint8_t*)pool,bytes,(const int64_t*)ids.values,ids.count))goto cleanup;
+ int64_t size=frame_kernel_tracking_snapshot((uint64_t)id,NULL,0);if(size<0||size>2147483647)goto cleanup;
+ snapshot=size?malloc((size_t)size):NULL;if(size&&!snapshot)goto cleanup;
+ if(frame_kernel_tracking_snapshot((uint64_t)id,snapshot,(size_t)size)!=size)goto cleanup;
+ result=(*env)->NewByteArray(env,(jsize)size);if(result&&size)(*env)->SetByteArrayRegion(env,result,0,(jsize)size,(const jbyte*)snapshot);
+ cleanup:free(snapshot);free(observations);if(v)(*env)->ReleaseFloatArrayElements(env,values,v,JNI_ABORT);if(pool)(*env)->ReleaseByteArrayElements(env,pixels,pool,JNI_ABORT);release_ids(env,&off);release_ids(env,&ids);if(!result)invalid(env);return result;
 }

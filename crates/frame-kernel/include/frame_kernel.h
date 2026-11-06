@@ -147,6 +147,42 @@ int32_t frame_kernel_decode_instances(const float *head, size_t head_len, const 
     FrameKernelInstanceSpec spec, FrameKernelTransform transform, FrameKernelInstanceThresholds thresholds,
     FrameKernelInstanceDetection *detections, size_t detection_capacity, uint8_t *masks, size_t mask_capacity,
     FrameKernelInstanceMetrics *metrics);
+/* Independent owned identity sessions. Handles are monotonic IDs, never
+   pointers; close/reuse of an invalid handle returns an error. Calls on a
+   session serialize internally; distinct sessions can run independently. */
+typedef struct FrameKernelTrackingOptions {
+ uint32_t max_missed, grace, occlusion_max, scene_inliers;
+ float minimum_score;
+ FrameKernelAssociationWeights weights;
+ float overlap, ambiguity, scene_tolerance, maximum_shift;
+ uint32_t scene_compensation;
+ float foot_margin;
+ uint32_t erosion_radius;
+} FrameKernelTrackingOptions;
+typedef struct FrameKernelTrackingObservation {
+ FrameKernelRect bounds;
+ float confidence, foot_y;
+ uint64_t mask_offset; /* UINT64_MAX for no mask; otherwise an offset in pixels. */
+ uint32_t mask_width, mask_height;
+ FrameKernelTransform transform;
+} FrameKernelTrackingObservation;
+FrameKernelTrackingOptions frame_kernel_tracking_defaults(void);
+uint64_t frame_kernel_tracking_create(FrameKernelTrackingOptions options);
+int32_t frame_kernel_tracking_destroy(uint64_t session);
+int32_t frame_kernel_tracking_selection(uint64_t session,
+ const int64_t *protected_ids, size_t protected_len,
+ const int64_t *body_ids, size_t body_len, const int64_t *face_ids, size_t face_len, uint32_t dormancy);
+/* action: 0 initialize, 1 observe, 2 real miss, 3 inference skip. Inputs are
+   borrowed only for this call; the session owns any retained observations.
+   Zero succeeds; -1 rejects invalid input without replacing the old state. */
+int32_t frame_kernel_tracking_step(uint64_t session, uint32_t action, int64_t timestamp_us,
+ const FrameKernelTrackingObservation *observations, size_t count,
+ const uint8_t *pixels, size_t pixels_len, const int64_t *assigned_ids, size_t assigned_len);
+/* Snapshot v1 uses little-endian fixed-width fields, as documented in
+   tracking-session-v1.md. Null/zero queries the required size. A successful
+   copy returns its byte count; -1 invalid handle/buffer, -2 insufficient space.
+   Query/copy never advances tracking. Output must not overlap input storage. */
+int64_t frame_kernel_tracking_snapshot(uint64_t session, uint8_t *output, size_t capacity);
 uint32_t frame_kernel_protection_layers(int32_t body, int32_t face, int32_t sticker);
 int32_t frame_kernel_face_targets(const int64_t *body, size_t body_len,
     const int64_t *face, size_t face_len, int64_t *output, size_t capacity);

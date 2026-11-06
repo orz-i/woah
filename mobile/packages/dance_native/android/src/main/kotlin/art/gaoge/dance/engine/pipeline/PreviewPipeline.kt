@@ -107,7 +107,7 @@ class PreviewPipeline(
 
             // 3. Assign stable IDs matching analysis cache
             val tracker = TrackManager()
-            val persons = if (metadata != null && metadata.persons.isNotEmpty() && detections.isNotEmpty()) {
+            val persons = try { if (metadata != null && metadata.persons.isNotEmpty() && detections.isNotEmpty()) {
                 val cached = metadata.persons
                 val cachedBoxes = cached.map { person ->
                     FloatRect((person.bbox.left * frameWidth).toFloat(), (person.bbox.top * frameHeight).toFloat(),
@@ -134,7 +134,7 @@ class PreviewPipeline(
                 tracker.initializeWithAssignedIds(detections, assignedIds.toList())
             } else {
                 tracker.initialize(detections)
-            }
+            } } finally { tracker.close() }
 
             analysisCache.put(
                 cacheKey,
