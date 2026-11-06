@@ -20,7 +20,8 @@ final class IOSGridFaceLocator: IOSFaceLocating {
       return try locateFaces(in:crop).map {face in
         IOSFaceCandidate(x1:face.x1+Float(rect.minX),y1:face.y1+Float(rect.minY),
           x2:face.x2+Float(rect.minX),y2:face.y2+Float(rect.minY),confidence:face.confidence,
-          yaw:face.yaw,observationView:index+1)
+          yaw:face.yaw,observationView:index+1,
+          landmarks:face.landmarks.map { $0 + SIMD2<Float>(Float(rect.minX),Float(rect.minY)) })
       }
     }
   }
@@ -73,7 +74,8 @@ final class IOSGridFaceLocator: IOSFaceLocating {
     guard count>=0 else {throw failure("FACE_POSTPROCESS_FAILED")}
     return (0..<Int(count)).map {index in
       let i=index*17
-      return IOSFaceCandidate(x1:output[i],y1:output[i+1],x2:output[i+2],y2:output[i+3],confidence:output[i+4])
+      return IOSFaceCandidate(x1:output[i],y1:output[i+1],x2:output[i+2],y2:output[i+3],confidence:output[i+4],
+        landmarks:(0..<6).map { SIMD2<Float>(output[i+5+$0*2],output[i+6+$0*2]) })
     }
 #else
     throw failure("FACE_RUNTIME_UNAVAILABLE")

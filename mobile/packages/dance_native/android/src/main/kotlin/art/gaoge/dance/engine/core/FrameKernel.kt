@@ -6,6 +6,11 @@ import java.nio.ByteBuffer
 
 /** Transport adapter only; the production and JVM paths load the same Rust core. */
 internal object FrameKernel {
+    external fun faceHeadPlanNative(person:FloatArray,width:Int,height:Int):FloatArray?
+    external fun faceCenterNative(row:FloatArray):FloatArray
+    external fun faceSelectNative(rows:FloatArray,view:FloatArray,ax:Float,ay:Float,maximum:Float,separation:Float):FloatArray?
+    external fun faceOwnedNative(rows:FloatArray,source:FloatArray,size:Float,person:FloatArray):IntArray
+
     external fun gridFaceInputNative(rgba:ByteBuffer,width:Int,height:Int,stride:Int):FloatArray
     external fun gridFaceDecodeNative(boxes:FloatArray,scores:FloatArray,width:Int,height:Int,minimum:Float):FloatArray
 

@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+@_implementationOnly import FrameKernelC
 
 enum IOSFacePrivacyRegionSource: String {
   case detectedFace = "DETECTED_FACE"
@@ -235,6 +236,7 @@ struct IOSFaceCandidate {
   let confidence: Float32
   var yaw: Float32 = 0
   var observationView: Int = 0
+  var landmarks: [SIMD2<Float32>] = []
 }
 
 protocol IOSFaceLocating {
@@ -578,7 +580,8 @@ final class IOSFacePrivacyTemporalResolver {
         // Search the hero ROI too, even when the hero already has a face: one
         // body observation is not evidence that no other visible face exists.
         var detail: [IOSFaceCandidate] = []
-        var searchRegions = currentPeople.map { IOSFacePrivacyGeometry.faceSearchRegion($0.detection) }
+        var searchRegions = currentPeople.compactMap { IOSFrameKernel.faceHeadPlan($0.detection,
+          width: preprocess.sourceWidth, height: preprocess.sourceHeight)?.rect }
         if faces.isEmpty, currentPeople.count == 1 {
           searchRegions.append(IOSFacePrivacyGeometry.upperBodyFaceSearchRegion(currentPeople[0].detection))
         }
@@ -756,7 +759,9 @@ final class IOSFacePrivacyTemporalResolver {
   private func uniqueCurrentOwner(face: IOSFaceCandidate, persons: [IOSPreviewPerson],
                                   unmaskedPersonId: Int?, preprocess: IOSYoloPreprocessResult) -> Int? {
     let ranked = persons.compactMap { person -> (Int, Float32)? in
-      associationScore(face: face, person: person.detection, preprocess: preprocess,
+      guard let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
+            IOSFrameKernel.selectFace([face],plan:plan) != nil else {return nil}
+      return associationScore(face: face, person: person.detection, preprocess: preprocess,
         requireMaskSupport: person.id == unmaskedPersonId).map { (person.id, $0) }
     }.sorted { $0.1 > $1.1 }
     guard let first = ranked.first else { return nil }
@@ -788,13 +793,12 @@ final class IOSFacePrivacyTemporalResolver {
 
     var accepted: [Int: Int] = [:]
     for person in persons {
-      let options = candidates
-        .filter { $0.personId == person.id }
-        .sorted { $0.score > $1.score }
-      guard let best = options.first else { continue }
-      if options.count > 1 && best.score - options[1].score < ambiguityMargin {
-        continue
-      }
+      let options = candidates.filter { $0.personId == person.id }
+      guard let preprocess,
+            let plan = IOSFrameKernel.faceHeadPlan(person.detection,
+              width: preprocess.sourceWidth, height: preprocess.sourceHeight),
+            let chosen = IOSFrameKernel.selectFace(options.map { faces[$0.faceIndex] }, plan: plan) else { continue }
+      let best = options[chosen]
       let competingPersons = candidates
         .filter { $0.faceIndex == best.faceIndex && $0.personId != person.id }
         .sorted { $0.score > $1.score }
@@ -882,4 +886,42 @@ final class IOSFacePrivacyTemporalResolver {
   private static let expiredFaceMaskFallbackExpansion: Float32 = 1.10
   private static let syntheticClassFallbackBase = -1_000_000
   private static let classFallbackTrustedSizeExpansion: Float32 = 1.24
+}
+
+extension IOSFrameKernel {
+  struct FaceHeadPlan {
+    let rect: CGRect
+    let anchor: SIMD2<Float>
+  }
+  private static func faceRecord(_ face: IOSFaceCandidate) -> [Float] {
+    var row: [Float] = [face.x1,face.y1,face.x2,face.y2,face.confidence,Float(min(6,face.landmarks.count))]
+    for i in 0..<6 {
+      row.append(i<face.landmarks.count ? face.landmarks[i].x : 0)
+      row.append(i<face.landmarks.count ? face.landmarks[i].y : 0)
+    }
+    return row
+  }
+  static func faceHeadPlan(_ person: IOSYoloDetection, width: Int, height: Int) -> FaceHeadPlan? {
+    guard width>1,height>1,width<=65535,height<=65535 else {return nil}
+    var out=[Float](repeating:0,count:6)
+    let status=out.withUnsafeMutableBufferPointer { p in
+      frame_kernel_face_head_plan(FrameKernelRect(left:person.x1,top:person.y1,right:person.x2,bottom:person.y2),
+        UInt32(width),UInt32(height),p.baseAddress)
+    }
+    guard status==0 else {return nil}
+    return FaceHeadPlan(rect:CGRect(x:CGFloat(out[0]),y:CGFloat(out[1]),width:CGFloat(out[2]-out[0]),height:CGFloat(out[3]-out[1])),
+      anchor:SIMD2<Float>(out[4],out[5]))
+  }
+  static func selectFace(_ faces: [IOSFaceCandidate], plan: FaceHeadPlan) -> Int? {
+    let rows=faces.flatMap { faceRecord($0) }
+    let r=plan.rect
+    var distance: Float=0
+    let index=rows.withUnsafeBufferPointer { p in
+      frame_kernel_face_select(p.baseAddress,faces.count,
+        FrameKernelRect(left:Float(r.minX),top:Float(r.minY),right:Float(r.maxX),bottom:Float(r.maxY)),
+        plan.anchor.x,plan.anchor.y,0.22,0.04,&distance)
+    }
+    return index>=0 ? Int(index) : nil
+  }
+
 }

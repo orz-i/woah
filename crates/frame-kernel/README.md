@@ -16,7 +16,8 @@ ratio sizing, deterministic thresholded association, RGBA fixed-point bilinear
 letterboxing, configurable tensor normalization/layout/orientation, and YUV 4:2:0
 sampling with explicit crop/rotation/plane strides and BT.601/709/2020 range metadata,
 an XYAH motion/covariance filter, prediction-first association metrics and
-evidence-checked reservation release, plus current-scene selection scope.
+evidence-checked reservation release, plus current-scene selection scope, canonical
+head crops and landmark-based face ownership gating.
 Detection-head dimensions, score/coefficient offsets, tensor layouts and coordinate
 units are supplied by consumers. Full stateful tracking and temporal protection
 policies remain subsequent migration work; this extraction does not claim those

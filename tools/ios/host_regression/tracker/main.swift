@@ -403,4 +403,16 @@ let resetPadding=try paddingResolver.resolve(image:image,persons:[armPerson],fac
 test(!resetPadding.values.contains{$0.source == .predictedFace},"single-person padding crossed a multi-person scope boundary")
 print("SINGLE_SCENE_OCCLUSION_PADDING_CURRENT_MASK_EXPIRY_AND_SCOPE=PASS")
 
+// Bound to the actual source observations at 22.16/22.24 seconds in raised-arm footage.
+let realArmBody=box(152.49,430.80,1942.18,3455.41)
+let realArmPlan=IOSFrameKernel.faceHeadPlan(realArmBody,width:2160,height:4096)!
+let waistFalseFace=IOSFaceCandidate(x1:900.16,y1:1814.05,x2:1100.16,y2:2014.05,confidence:0.99)
+test(IOSFrameKernel.selectFace([waistFalseFace],plan:realArmPlan)==nil,"waist false positive replaced current head fallback")
+let validArmFace=IOSFaceCandidate(x1:1162.10,y1:1077.52,x2:1362.10,y2:1277.52,confidence:0.55)
+test(IOSFrameKernel.selectFace([waistFalseFace,validArmFace],plan:realArmPlan)==1,"valid head lost to confident waist detection")
+let realHandPlan=IOSFrameKernel.faceHeadPlan(box(172.46,637.08,2103.70,3438.19),width:2160,height:4096)!
+let handFalseFace=IOSFaceCandidate(x1:1399.36,y1:661.19,x2:1599.36,y2:861.19,confidence:0.99)
+test(IOSFrameKernel.selectFace([handFalseFace],plan:realHandPlan)==nil,"raised hand replaced current head fallback")
+print("SHARED_HEAD_OWNERSHIP_RAISED_ARM_WAIST_AND_HAND=PASS")
+
 print("IOS_TRACKER_HOST_REGRESSION=PASS")
