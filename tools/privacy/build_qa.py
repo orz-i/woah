@@ -22,6 +22,7 @@ def sha(path):
 def inputs():
     files=set()
     for name in ['crates/frame-kernel/src','crates/frame-kernel/include',
+                 'mobile/app/android/app/src/main','mobile/app/android/app/src/debug','mobile/app/ios/Runner',
                  'mobile/packages/dance_native/android/src/main',
                  'mobile/packages/dance_native/android/src/debug',
                  'mobile/packages/dance_native/ios/dance_native/Sources',

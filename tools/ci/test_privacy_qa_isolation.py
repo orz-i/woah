@@ -35,6 +35,13 @@ class PrivacyQaLaunch(unittest.TestCase):
                 run_regression.wait_for_android_process(['adb'], timeout=0)
 
 
+class QaActivityBindingTest(unittest.TestCase):
+    def test_build_binding_contains_the_native_activity_wake_policy(self):
+        from tools.privacy import build_qa
+        files=build_qa.inputs()
+        self.assertIn('mobile/app/android/app/src/main/kotlin/art/gaoge/dance/MainActivity.kt',files)
+        self.assertIn('mobile/app/ios/Runner/AppDelegate.swift',files)
+
 class AndroidForegroundReadinessTest(unittest.TestCase):
     def adapter(self):
         adapter=object.__new__(run_regression.Android)
