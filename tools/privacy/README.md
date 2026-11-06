@@ -84,3 +84,13 @@ source PTS (including ties) and records image SHA/NCC. DTO timestamps alone do
 not establish decode accuracy. Protected output still requires visual review.
 Android startup waits for Activity launch and actual process creation, so a
 brief missing PID between suites cannot be mistaken for a crashed export.
+
+The isolated Android QA Activity keeps its own window awake. The runner checks
+keyguard readiness and never requires WRITE_SECURE_SETTINGS. Transient ADB reads
+may reconnect for up to 30 seconds; failed mutations are never automatically repeated.
+
+Saved-original checks compare the actual MediaStore copy or the simulator Photos
+original with the exported movie byte for byte. iOS collection is performed by
+the host against this QA simulator's DCIM directory, restricted to the run-time
+window and exact output hash; the application retains add-only Photos permission.
+Missing, ambiguous, or changed saved originals remain failures.
