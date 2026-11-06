@@ -42,21 +42,21 @@ enum IOSFrameKernel {
     return result == -1 ? nil:Int(result)
   }
 
-  struct BoxFilter {
+  final class BoxFilter {
     private var state = FrameKernelBoxFilter()
     init(bounds: SIMD4<Float>, timestampUs: Int64) throws {
       _ = IOSFrameKernel.checkedABI
       _ = try step(0,bounds:bounds,pts:timestampUs)
     }
-    mutating func predict(timestampUs: Int64) throws -> SIMD4<Float> { try step(1,pts:timestampUs).bounds }
-    mutating func observe(bounds: SIMD4<Float>, timestampUs: Int64) throws { _ = try step(2,bounds:bounds,pts:timestampUs) }
-    mutating func dampen(_ factor: Float) throws { _ = try step(3,factor:factor) }
-    mutating func gating(bounds: SIMD4<Float>) throws -> Float { try step(4,bounds:bounds).distance }
-    mutating func bounds() throws -> SIMD4<Float> { try step(5).bounds }
+    func predict(timestampUs: Int64) throws -> SIMD4<Float> { try step(1,pts:timestampUs).bounds }
+    func observe(bounds: SIMD4<Float>, timestampUs: Int64) throws { _ = try step(2,bounds:bounds,pts:timestampUs) }
+    func dampen(_ factor: Float) throws { _ = try step(3,factor:factor) }
+    func gating(bounds: SIMD4<Float>) throws -> Float { try step(4,bounds:bounds).distance }
+    func bounds() throws -> SIMD4<Float> { try step(5).bounds }
     func snapshotFloats() -> [Float] {
       withUnsafeBytes(of:state) { Array($0.bindMemory(to:Float.self).prefix(72)) }
     }
-    private mutating func step(_ operation: UInt32, bounds: SIMD4<Float> = .zero,
+    private func step(_ operation: UInt32, bounds: SIMD4<Float> = .zero,
         pts: Int64 = -1, factor: Float = 1) throws -> (bounds: SIMD4<Float>, distance: Float) {
       var out = FrameKernelRect();var distance:Float=0
       let input = FrameKernelRect(left:bounds.x,top:bounds.y,right:bounds.z,bottom:bounds.w)

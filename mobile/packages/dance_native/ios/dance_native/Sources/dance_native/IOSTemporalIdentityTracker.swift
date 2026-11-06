@@ -735,7 +735,7 @@ final class IOSTemporalIdentityTracker {
     for index in tracks.indices {
       var track = tracks[index]
       track.observedThisFrame = false
-      var motion = try track.motion ?? IOSFrameKernel.BoxFilter(
+      let motion = try track.motion ?? IOSFrameKernel.BoxFilter(
         bounds: SIMD4<Float>(track.detection.x1, track.detection.y1, track.detection.x2, track.detection.y2),
         timestampUs: track.lastTimestampUs)
       let bounds = try motion.predict(timestampUs: timestampUs)
@@ -830,7 +830,7 @@ final class IOSTemporalIdentityTracker {
   ) throws {
     var track = tracks[trackIndex]
     let bounds = SIMD4<Float>(detection.x1, detection.y1, detection.x2, detection.y2)
-    var motion = try track.motion ?? IOSFrameKernel.BoxFilter(bounds: bounds, timestampUs: timestampUs)
+    let motion = try track.motion ?? IOSFrameKernel.BoxFilter(bounds: bounds, timestampUs: timestampUs)
     try motion.observe(bounds: bounds, timestampUs: timestampUs)
     track.motion = motion
     track.detection = detection
