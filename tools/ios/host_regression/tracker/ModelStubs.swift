@@ -25,4 +25,9 @@ struct IOSYoloPreprocessResult {
   let sourceHeight: Int
   let inputSize: Int
 }
-enum IOSYoloPostprocessor { static let protoSize = 160 }
+enum IOSYoloPostprocessor {
+  static let protoSize = 160
+  static let protoChannels = 32
+  static let anchorCount = 8400
+  static let attributeCount = 116
+}

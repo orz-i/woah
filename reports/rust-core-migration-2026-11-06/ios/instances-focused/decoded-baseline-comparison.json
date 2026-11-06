@@ -1,0 +1,146 @@
+[
+  {
+    "case": "group_4k_body_face_union",
+    "baseline": {
+      "frames": 40,
+      "decoded_bgr_sha256": "a178440f42cafe83cee0308a636068e1522eac9537f6091a2b5b00bc502237c1"
+    },
+    "current": {
+      "frames": 40,
+      "decoded_bgr_sha256": "a178440f42cafe83cee0308a636068e1522eac9537f6091a2b5b00bc502237c1"
+    },
+    "same": true
+  },
+  {
+    "case": "group_4k_body_solid",
+    "baseline": {
+      "frames": 10,
+      "decoded_bgr_sha256": "8d349010887614887f45b6d098f70b6010dfc7ee77d64b10a29a16477b74d722"
+    },
+    "current": {
+      "frames": 10,
+      "decoded_bgr_sha256": "8d349010887614887f45b6d098f70b6010dfc7ee77d64b10a29a16477b74d722"
+    },
+    "same": true
+  },
+  {
+    "case": "group_4k_face_solid",
+    "baseline": {
+      "frames": 10,
+      "decoded_bgr_sha256": "eaec6c759ac2f5fc8ced9cfc37f619109d95906e505107b04ab1a54fe07b23f1"
+    },
+    "current": {
+      "frames": 10,
+      "decoded_bgr_sha256": "eaec6c759ac2f5fc8ced9cfc37f619109d95906e505107b04ab1a54fe07b23f1"
+    },
+    "same": true
+  },
+  {
+    "case": "group_4k_tail_face",
+    "baseline": {
+      "frames": 10,
+      "decoded_bgr_sha256": "736c5569df426cdef517eb5f0215ef9f49e39de66397dc40efc530a06b453f32"
+    },
+    "current": {
+      "frames": 10,
+      "decoded_bgr_sha256": "736c5569df426cdef517eb5f0215ef9f49e39de66397dc40efc530a06b453f32"
+    },
+    "same": true
+  },
+  {
+    "case": "group_hd_overlap_body",
+    "baseline": {
+      "frames": 1,
+      "decoded_bgr_sha256": "53abe07416eeb3daf94628d36d68a3ac503e6dc31486af15035af0b7f4f7422c"
+    },
+    "current": {
+      "frames": 1,
+      "decoded_bgr_sha256": "53abe07416eeb3daf94628d36d68a3ac503e6dc31486af15035af0b7f4f7422c"
+    },
+    "same": true
+  },
+  {
+    "case": "group_hd_overlap_face",
+    "baseline": {
+      "frames": 1,
+      "decoded_bgr_sha256": "800fde419a3b6544e01c492f5fa4646bdedc4618fac0a8bcd5bb804d615f6c57"
+    },
+    "current": {
+      "frames": 1,
+      "decoded_bgr_sha256": "800fde419a3b6544e01c492f5fa4646bdedc4618fac0a8bcd5bb804d615f6c57"
+    },
+    "same": true
+  },
+  {
+    "case": "solo_4k_body_face_union",
+    "baseline": {
+      "frames": 40,
+      "decoded_bgr_sha256": "a0a41d42f6dd8837ba227a1bb7d31fa175af3b6d96a7bb097162089cc1580a67"
+    },
+    "current": {
+      "frames": 40,
+      "decoded_bgr_sha256": "a0a41d42f6dd8837ba227a1bb7d31fa175af3b6d96a7bb097162089cc1580a67"
+    },
+    "same": true
+  },
+  {
+    "case": "solo_4k_custom_gallery_probe",
+    "baseline": {
+      "frames": 16,
+      "decoded_bgr_sha256": "99cec9f997637c1f17c912cad6aa26f9bb4c10e07478b8214d58bc549ee58c44"
+    },
+    "current": {
+      "frames": 16,
+      "decoded_bgr_sha256": "99cec9f997637c1f17c912cad6aa26f9bb4c10e07478b8214d58bc549ee58c44"
+    },
+    "same": true
+  },
+  {
+    "case": "solo_4k_immediate_retry_probe",
+    "baseline": {
+      "frames": 40,
+      "decoded_bgr_sha256": "7ac3b9dd49fc44b09eb885e9b1e72d8072bc2e48d9d4edd0ba934f4b1b9d05ea"
+    },
+    "current": {
+      "frames": 40,
+      "decoded_bgr_sha256": "7ac3b9dd49fc44b09eb885e9b1e72d8072bc2e48d9d4edd0ba934f4b1b9d05ea"
+    },
+    "same": true
+  },
+  {
+    "case": "solo_4k_raised_arm_body",
+    "baseline": {
+      "frames": 40,
+      "decoded_bgr_sha256": "04bd3470db9d2fce348eb382c8b7aa025e4baeb12e894cffa0029348a34a3f3e"
+    },
+    "current": {
+      "frames": 40,
+      "decoded_bgr_sha256": "04bd3470db9d2fce348eb382c8b7aa025e4baeb12e894cffa0029348a34a3f3e"
+    },
+    "same": true
+  },
+  {
+    "case": "solo_4k_raised_arm_solid",
+    "baseline": {
+      "frames": 40,
+      "decoded_bgr_sha256": "49dfe6bf63cabd060319a0acfdc113579bbf78010b86174465d3ee3423d0149d"
+    },
+    "current": {
+      "frames": 40,
+      "decoded_bgr_sha256": "49dfe6bf63cabd060319a0acfdc113579bbf78010b86174465d3ee3423d0149d"
+    },
+    "same": true
+  },
+  {
+    "case": "solo_4k_raised_arm_sticker",
+    "baseline": {
+      "frames": 40,
+      "decoded_bgr_sha256": "fd6ca7463d610149e01f33ef672faf0bde71345c9786122830a31f8dea089c3c"
+    },
+    "current": {
+      "frames": 40,
+      "decoded_bgr_sha256": "fd6ca7463d610149e01f33ef672faf0bde71345c9786122830a31f8dea089c3c"
+    },
+    "same": true
+  }
+]

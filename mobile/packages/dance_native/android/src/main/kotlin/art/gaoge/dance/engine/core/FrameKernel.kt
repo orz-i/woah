@@ -12,6 +12,9 @@ internal object FrameKernel {
     }
 
     private external fun abiVersion(): Int
+    private external fun maskBytesNative(input: FloatArray): ByteArray
+    private external fun decodeInstancesNative(head: FloatArray, proto: FloatArray, spec: IntArray, transform: FloatArray,
+        thresholds: FloatArray, detections: FloatArray, masks: ByteBuffer, metrics: LongArray): Int
     private external fun needsFaceProtectionNative(body: Boolean, face: Boolean): Boolean
     private external fun faceProtectionIdsNative(body: LongArray, face: LongArray): LongArray
     private external fun detailViewsNative(width: Int, height: Int): FloatArray
@@ -20,6 +23,12 @@ internal object FrameKernel {
     private external fun reprojectMaskNative(mask: ByteBuffer, output: ByteBuffer, local: FloatArray, scene: FloatArray, view: FloatArray)
 
     fun needsFaceProtection(body: Boolean, face: Boolean): Boolean = needsFaceProtectionNative(body, face)
+
+    fun maskBytes(input: FloatArray): ByteArray = maskBytesNative(input)
+
+    fun decodeInstances(head: FloatArray, proto: FloatArray, spec: IntArray, transform: FloatArray,
+        thresholds: FloatArray, detections: FloatArray, masks: ByteBuffer, metrics: LongArray): Int =
+        decodeInstancesNative(head, proto, spec, transform, thresholds, detections, masks, metrics)
 
     fun faceProtectionIds(body: Set<Int>, face: Set<Int>): Set<Int> =
         faceProtectionIdsNative(body.map { it.toLong() }.toLongArray(), face.map { it.toLong() }.toLongArray())

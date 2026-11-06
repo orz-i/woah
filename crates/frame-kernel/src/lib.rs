@@ -6,6 +6,8 @@
 
 mod ffi;
 pub mod geometry;
+pub mod instances;
+mod mask_transitions;
 pub mod protection;
 
 pub use ffi::*;

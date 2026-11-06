@@ -45,6 +45,10 @@ jobs:
           rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
           rustup target add --toolchain 1.97.1 aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
           python tools/rust/run.py check
+          python tools/rust/run.py build
+          python tools/rust/abi_smoke.py crates/frame-kernel/target/release/libframe_kernel.dylib
+          python tools/rust/instances_smoke.py crates/frame-kernel/target/release/libframe_kernel.dylib
+          bash tools/ios/host_regression/run_instances.sh
           python tools/rust/run.py build --target aarch64-apple-ios
           python tools/rust/run.py build --target aarch64-apple-ios-sim
           python tools/rust/run.py build --target x86_64-apple-ios

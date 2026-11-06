@@ -1,7 +1,96 @@
+use crate::instances::{InstanceDetection, InstanceMetrics, InstanceSpec, InstanceThresholds};
 use crate::{
     ABI_VERSION,
     geometry::{self, Rect, Transform},
 };
+
+/// # Safety
+/// Nonempty buffers must be valid, aligned, disjoint and have the stated lengths.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_mask_bytes(
+    input: *const f32,
+    len: usize,
+    output: *mut u8,
+    output_len: usize,
+) -> i32 {
+    if len > 64_000_000 || output_len < len || (len > 0 && (input.is_null() || output.is_null())) {
+        return -1;
+    }
+    if len == 0 {
+        return 0;
+    }
+    // SAFETY: caller provides disjoint buffers of checked nonzero lengths.
+    let (input, output) = unsafe {
+        (
+            std::slice::from_raw_parts(input, len),
+            std::slice::from_raw_parts_mut(output, len),
+        )
+    };
+    for (value, byte) in input.iter().zip(output.iter_mut()) {
+        *byte = crate::instances::mask_byte(*value);
+    }
+    0
+}
+
+/// Returns count on success, -1 for invalid tensors/buffers, or -(required+1)
+/// when output capacity is insufficient. No partial detection/mask writes.
+/// # Safety
+/// Nonempty input/output buffers must be valid, aligned, disjoint and sized as
+/// declared. metrics may be null or point to one writable InstanceMetrics.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_decode_instances(
+    head: *const f32,
+    head_len: usize,
+    proto: *const f32,
+    proto_len: usize,
+    spec: InstanceSpec,
+    transform: Transform,
+    thresholds: InstanceThresholds,
+    detections: *mut InstanceDetection,
+    detection_capacity: usize,
+    masks: *mut u8,
+    mask_capacity: usize,
+    metrics: *mut InstanceMetrics,
+) -> i32 {
+    if spec.lengths(transform) != Some((head_len, proto_len)) || head.is_null() || proto.is_null() {
+        return -1;
+    }
+    // SAFETY: caller supplies readable, aligned buffers of validated dimensions.
+    let (head, proto) = unsafe {
+        (
+            std::slice::from_raw_parts(head, head_len),
+            std::slice::from_raw_parts(proto, proto_len),
+        )
+    };
+    let Ok((instances, measurements)) =
+        crate::instances::decode_instances(head, proto, spec, transform, thresholds)
+    else {
+        return -1;
+    };
+    if !metrics.is_null() {
+        // SAFETY: caller supplies one writable aligned metrics struct, if nonnull.
+        unsafe {
+            metrics.write(measurements);
+        }
+    }
+    let count = instances.len();
+    let pixels = (transform.proto_size as usize).pow(2);
+    if detection_capacity < count || mask_capacity < count * pixels {
+        return -(count as i32) - 1;
+    }
+    if count > 0 && (detections.is_null() || masks.is_null()) {
+        return -1;
+    }
+    for (i, instance) in instances.iter().enumerate() {
+        // SAFETY: output capacities were checked; buffers are writable, disjoint
+        // from inputs and from each other, and each mask has exactly pixels bytes.
+        unsafe {
+            detections.add(i).write(instance.detection);
+            std::ptr::copy_nonoverlapping(instance.mask.as_ptr(), masks.add(i * pixels), pixels);
+        }
+    }
+    count as i32
+}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn frame_kernel_abi_version() -> u32 {

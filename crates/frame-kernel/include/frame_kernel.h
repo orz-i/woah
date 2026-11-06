@@ -14,6 +14,25 @@ typedef struct FrameKernelTransform {
     uint32_t source_width, source_height, input_size, proto_size;
 } FrameKernelTransform;
 uint32_t frame_kernel_abi_version(void);
+typedef struct FrameKernelInstanceSpec {
+    uint32_t anchors, attributes, score_index, coefficient_index, channels;
+    uint32_t head_transposed, proto_nhwc, coordinate_units;
+} FrameKernelInstanceSpec;
+typedef struct FrameKernelInstanceThresholds { float confidence, bbox_iou, mask_iou; } FrameKernelInstanceThresholds;
+typedef struct FrameKernelInstanceDetection { FrameKernelRect bounds; float confidence; } FrameKernelInstanceDetection;
+typedef struct FrameKernelInstanceMetrics {
+    uint64_t candidate_scan_ns, suppression_ns, mask_decode_ns, mask_iou_ns, materialize_ns;
+} FrameKernelInstanceMetrics;
+int32_t frame_kernel_mask_bytes(const float *input, size_t len, uint8_t *output, size_t output_len);
+/* Layout flags: head_transposed=0 attribute-major/1 anchor-major;
+   proto_nhwc=0 planar/1 interleaved; coordinate_units=0 pixels/1 normalized/2 auto.
+   No buffers may overlap. All outputs belong to the caller; nothing is retained.
+   Result >=0: count; -1: invalid; <=-2: insufficient capacity, need -(result+1).
+   On insufficient capacity no detections or masks are written. */
+int32_t frame_kernel_decode_instances(const float *head, size_t head_len, const float *proto, size_t proto_len,
+    FrameKernelInstanceSpec spec, FrameKernelTransform transform, FrameKernelInstanceThresholds thresholds,
+    FrameKernelInstanceDetection *detections, size_t detection_capacity, uint8_t *masks, size_t mask_capacity,
+    FrameKernelInstanceMetrics *metrics);
 uint32_t frame_kernel_protection_layers(int32_t body, int32_t face, int32_t sticker);
 int32_t frame_kernel_face_targets(const int64_t *body, size_t body_len,
     const int64_t *face, size_t face_len, int64_t *output, size_t capacity);

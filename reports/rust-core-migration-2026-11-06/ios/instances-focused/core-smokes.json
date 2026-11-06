@@ -1,0 +1,279 @@
+{
+  "status": "passed",
+  "checks": {
+    "runIOSMetalPhase3Smoke": {
+      "width": 8,
+      "height": 8,
+      "pixel_rgba": [
+        255,
+        0,
+        0,
+        255
+      ],
+      "status": "pass",
+      "render_ms": 6.533026695251465,
+      "device_name": "Apple iOS simulator GPU"
+    },
+    "runIOSExportPhase4Smoke": {
+      "job_id": "job_1793938141525_EF8485BB",
+      "output_presentation_frames": 36,
+      "active_export_busy_guard": true,
+      "output_audio_duration_seconds": 0.6,
+      "output_first_pts_seconds": 0.0,
+      "output_measured_fps": 60.0,
+      "progress_events": 39,
+      "output_height": 1080,
+      "output_min_frame_duration_seconds": 0.016666666666666666,
+      "output_last_pts_seconds": 0.5833333333333334,
+      "cancel_state": "cancelled",
+      "immediate_retry_frames": 36,
+      "cancel_cache_lease_drained": true,
+      "source_codec": "avc1",
+      "status": "pass",
+      "output_duration_seconds": 0.6,
+      "cancel_partial_clean": true,
+      "failed_admission_releases_reservation": true,
+      "atomic_output": true,
+      "queued_cancel_state": "cancelled",
+      "output_nominal_fps": 60.000003814697266,
+      "phase5_face_only_e2e": {
+        "face_locator_misses": 35,
+        "codec": "avc1",
+        "face_detected_emissions": 1,
+        "body_missing_observations": 1,
+        "presentation_frames": 36,
+        "mirrored_face_pixel_rgba": [
+          144,
+          77,
+          144,
+          255
+        ],
+        "upper_face_pixel_rgba": [
+          255,
+          1,
+          0,
+          255
+        ],
+        "has_audio": true,
+        "job_id": "job_1793938148559_6F0B370C",
+        "body_center_pixel_rgba": [
+          149,
+          147,
+          141,
+          255
+        ]
+      },
+      "temporal_missing_observations": 1,
+      "output_has_audio": true,
+      "privacy_pixel_rgba": [
+        255,
+        1,
+        0,
+        255
+      ],
+      "output_width": 1920,
+      "output_codec": "avc1"
+    },
+    "runIOSGoldenTracePhase5Smoke": {
+      "totalFrames": 337,
+      "resource": "phase5_tracking_golden.json",
+      "cases": [
+        {
+          "androidReferenceCount": 1,
+          "name": "short_gap_reacquire_full_body",
+          "frames": 3,
+          "expectedFailureObserved": false
+        },
+        {
+          "name": "face_only_unselected_neighbor_isolation",
+          "frames": 3,
+          "expectedFailureObserved": false,
+          "androidReferenceCount": 2
+        },
+        {
+          "androidReferenceCount": 1,
+          "expectedFailureObserved": false,
+          "name": "ambiguous_face_only_defers_identity_commit",
+          "frames": 2
+        },
+        {
+          "frames": 21,
+          "name": "protected_lost_stale_anchor_isolation",
+          "androidReferenceCount": 2,
+          "expectedFailureObserved": false
+        },
+        {
+          "name": "long_occlusion_grace_reacquires_original_id",
+          "frames": 29,
+          "androidReferenceCount": 1,
+          "expectedFailureObserved": false
+        },
+        {
+          "androidReferenceCount": 1,
+          "name": "full_body_ambiguous_root_reservation_prevents_duplicate_id",
+          "frames": 3,
+          "expectedFailureObserved": false
+        },
+        {
+          "name": "selected_root_occluded_by_unselected_hero_fails_closed",
+          "frames": 92,
+          "androidReferenceCount": 1,
+          "expectedFailureObserved": true
+        },
+        {
+          "expectedFailureObserved": true,
+          "name": "face_only_selected_root_occluded_by_unselected_hero_fails_closed",
+          "frames": 92,
+          "androidReferenceCount": 1
+        },
+        {
+          "expectedFailureObserved": true,
+          "name": "selected_identity_long_gap_fails_closed",
+          "frames": 92,
+          "androidReferenceCount": 1
+        }
+      ],
+      "facePrivacy": {
+        "mask_seed_expired_center_x": 32.0,
+        "class_continuity_translation": [
+          306.0,
+          183.0
+        ],
+        "predicted_body_source": "YOLO_HEAD_FALLBACK",
+        "translated_prediction_source": "PREDICTED_FACE",
+        "unsupported_mask_center_x": 36.0,
+        "top_edge_jitter_motion": [
+          0.0,
+          0.0
+        ],
+        "synthetic_pixel": [
+          255,
+          0,
+          0,
+          255
+        ],
+        "mask_guided_center_x": 37.80799865722656,
+        "ambiguous_source": "YOLO_HEAD_FALLBACK",
+        "class_continuity_steps": [
+          22.39998435974121,
+          0.0
+        ],
+        "full_body_unselected_face_pixel": [
+          0,
+          0,
+          255,
+          255
+        ],
+        "center_pixel": [
+          255,
+          0,
+          0,
+          255
+        ],
+        "miss_source": "PREDICTED_FACE",
+        "status": "pass",
+        "mixed_class_evidence_count": 0,
+        "detected_source": "DETECTED_FACE",
+        "class_evidence_center_x": 30.0,
+        "class_evidence_residual_ids": [
+          0,
+          1
+        ],
+        "cached_predicted_body_source": "PREDICTED_FACE",
+        "coherent_body_motion": [
+          40.0,
+          35.0
+        ],
+        "unique_class_radius": [
+          8.184000968933105,
+          11.011199951171875
+        ],
+        "corner_pixel": [
+          0,
+          0,
+          255,
+          255
+        ],
+        "full_body_face_union_pixel": [
+          255,
+          0,
+          0,
+          255
+        ],
+        "synthetic_mirrored_pixel": [
+          0,
+          0,
+          255,
+          255
+        ],
+        "vision_runtime_face_count": 0,
+        "suppressed_head_pixel": [
+          0,
+          0,
+          255,
+          255
+        ],
+        "expired_prediction_source": "YOLO_HEAD_FALLBACK",
+        "class_evidence_synthetic_id": -1000000,
+        "neighbor_competition_source": "YOLO_HEAD_FALLBACK"
+      },
+      "failClosedCases": 3,
+      "schemaVersion": 1,
+      "caseCount": 9
+    },
+    "runIOSPrivacyClassPhase6Smoke": {
+      "merged_unknown_fail_closed": true,
+      "uncached_similarity_evaluations": 18,
+      "renderer": {
+        "full_body_unselected_pixel": [
+          0,
+          0,
+          255,
+          255
+        ],
+        "mixed_tracked_pixel": [
+          255,
+          0,
+          0,
+          255
+        ],
+        "mixed_fresh_pixel": [
+          0,
+          0,
+          255,
+          255
+        ],
+        "full_body_unresolved_selected_fallback_pixel": [
+          255,
+          0,
+          0,
+          255
+        ],
+        "full_body_selected_pixel": [
+          255,
+          0,
+          0,
+          255
+        ]
+      },
+      "one_frame_occlusion_return": "UNSELECTED",
+      "cached_similarity_evaluations": 12,
+      "immutable_roots": true,
+      "status": "pass",
+      "far_entrant_unknown_fail_closed": true,
+      "crossing_frames": 3
+    },
+    "runIOSCacheLifecycleSmoke": {
+      "status": "PASS",
+      "syntheticOnly": true,
+      "cycles": 100
+    },
+    "runIOSDiagnosticPrivacySmoke": {
+      "checks": 14,
+      "business_uri_unchanged": true,
+      "nested_error_redacted": true,
+      "actual_channel_boundary": true,
+      "known_codes_preserved": true
+    }
+  }
+}
