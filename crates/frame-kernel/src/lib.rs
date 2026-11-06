@@ -15,6 +15,10 @@ mod mask_transitions;
 pub mod pixels;
 pub mod protection;
 pub mod temporal_region;
+pub mod tracking;
+pub mod tracking_groups;
+pub mod tracking_lifecycle;
+pub mod tracking_mask;
 pub mod yuv;
 
 pub use ffi::*;
