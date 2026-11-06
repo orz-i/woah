@@ -2,6 +2,9 @@
 #define FRAME_KERNEL_H
 #include <stddef.h>
 #include <stdint.h>
+#define FRAME_KERNEL_LAYER_BODY 1u
+#define FRAME_KERNEL_LAYER_FACE 2u
+#define FRAME_KERNEL_LAYER_STICKER 4u
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -11,6 +14,9 @@ typedef struct FrameKernelTransform {
     uint32_t source_width, source_height, input_size, proto_size;
 } FrameKernelTransform;
 uint32_t frame_kernel_abi_version(void);
+uint32_t frame_kernel_protection_layers(int32_t body, int32_t face, int32_t sticker);
+int32_t frame_kernel_face_targets(const int64_t *body, size_t body_len,
+    const int64_t *face, size_t face_len, int64_t *output, size_t capacity);
 /* Returns zero on success; output has four elements. */
 int32_t frame_kernel_detail_views(uint32_t width, uint32_t height, FrameKernelRect *output);
 int32_t frame_kernel_detail_complete(FrameKernelRect box, FrameKernelRect view, uint32_t width, uint32_t height);

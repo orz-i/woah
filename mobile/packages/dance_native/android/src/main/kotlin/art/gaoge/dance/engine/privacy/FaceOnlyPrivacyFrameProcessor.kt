@@ -2,6 +2,7 @@ package art.gaoge.dance.engine.privacy
 
 import android.content.Context
 import android.util.Log
+import art.gaoge.dance.engine.core.FrameKernel
 import art.gaoge.dance.engine.face.FaceHeadRoiPlanner
 import art.gaoge.dance.engine.face.FaceHeadRoiPlan
 import art.gaoge.dance.engine.face.FaceLocator
@@ -69,11 +70,12 @@ data class FaceOnlyPrivacyFrameResult(
     val roiReadbackMs: Double,
     val maskBuildMs: Double,
     val privacyResolveMs: Double,
-    val stickerPlacements: List<FaceStickerPlacement>
+    val stickerPlacements: List<FaceStickerPlacement>,
+    val bodySupplementResolved: ResolvedCompositorMasks? = null
 )
 
 /**
- * Resolves FACE_ONLY privacy independently from the full-body fresh-class path.
+ * Resolves face localization for explicit FACE_ONLY and FULL_BODY supplements.
  * Identity remains owned by YOLO/TrackManager. Detector/ROI failures reduce
  * localization precision only: privacy falls back to the YOLO-owned head region.
  */
@@ -555,14 +557,16 @@ class FaceOnlyPrivacyFrameProcessor(
         persons: List<TrackedPerson>,
         faceOnlyTrackIds: Set<Int>,
         fullBodyTrackIds: Set<Int> = emptySet(),
+        bodySupplementTrackIds: Set<Int> = emptySet(),
         protectedMotionEvidence: List<ProtectedTrackMotionEvidence> = emptyList(),
         freshPrivacyClassEvidence: List<FreshPrivacyClassEvidence> = emptyList(),
         canonicalModelRgbaBottomUp: ByteBuffer? = null,
         ptsUs: Long,
         coveredHeadFallbackTrackIds: Set<Int> = emptySet()
     ): FaceOnlyPrivacyFrameResult {
+        val faceTargetIds = FrameKernel.faceProtectionIds(bodySupplementTrackIds, faceOnlyTrackIds)
         val canonicalizeReferenceGeometry = canonicalModelRgbaBottomUp != null
-        if (faceOnlyTrackIds.isEmpty()) {
+        if (faceTargetIds.isEmpty()) {
             return FaceOnlyPrivacyFrameResult(
                 resolvedPrivacy = null,
                 readyForRender = true,
@@ -612,11 +616,11 @@ class FaceOnlyPrivacyFrameProcessor(
         }
 
         val personsById = persons.associateBy { it.id }
-        val missingTrackIds = faceOnlyTrackIds.filterTo(linkedSetOf()) { id ->
+        val missingTrackIds = faceTargetIds.filterTo(linkedSetOf()) { id ->
             val person = personsById[id]
             person == null || person.state == TrackState.REMOVED
         }
-        val activeFaceOnlyTrackIds = faceOnlyTrackIds.filterTo(linkedSetOf()) { id ->
+        val activeFaceOnlyTrackIds = faceTargetIds.filterTo(linkedSetOf()) { id ->
             val person = personsById[id]
             person != null && person.state != TrackState.REMOVED
         }
@@ -1483,7 +1487,7 @@ class FaceOnlyPrivacyFrameProcessor(
 
         val rawClassFallbacks = FacePrivacyClassFallbackResolver.resolve(
             evidence = freshPrivacyClassEvidence,
-            faceOnlyTrackIds = faceOnlyTrackIds,
+            faceOnlyTrackIds = faceTargetIds,
             dormantSuppressedTrackIds = dormantSuppressedTrackIds,
             existingPlacements = stickerPlacements,
             trustedFaceGeometryByTrackId = buildMap {
@@ -1500,6 +1504,9 @@ class FaceOnlyPrivacyFrameProcessor(
             ptsUs = ptsUs,
             canonicalizeReferenceGeometry = canonicalizeReferenceGeometry
         )
+        val bodyClassFallbackIds = classFallbacks.filter {
+            it.residualTrackIds.isNotEmpty() && it.residualTrackIds.all(bodySupplementTrackIds::contains)
+        }.map { it.syntheticTrackId }.toSet()
         classFallbacks.forEach { classFallback ->
             FaceStickerPlacement.from(
                 trackId = classFallback.syntheticTrackId,
@@ -1508,14 +1515,16 @@ class FaceOnlyPrivacyFrameProcessor(
                 sourceHeight = mapper.srcHeight
             )?.let(stickerPlacements::add)
         }
-        val classFallbackMask = if (classFallbacks.isEmpty()) {
-            null
-        } else {
+        fun classMask(body: Boolean): NativeMask? {
+            val regions = classFallbacks.filter { bodyClassFallbackIds.contains(it.syntheticTrackId) == body }.map { it.region }
+            if (regions.isEmpty()) return null
             val startNs = System.nanoTime()
-            FacePrivacyMaskBuilder.build(classFallbacks.map { it.region }, mapper).also {
+            return FacePrivacyMaskBuilder.build(regions, mapper).also {
                 maskBuildMs += (System.nanoTime() - startNs) / 1_000_000.0
             }
         }
+        val classFallbackMask = classMask(false)
+        val bodyClassFallbackMask = classMask(true)
         if (classFallbacks.isNotEmpty() && diagnosticJobId != null) {
             NativeDiagnostics.event(
                 level = "INFO",
@@ -1566,37 +1575,38 @@ class FaceOnlyPrivacyFrameProcessor(
             addAll(missingTrackIds)
             addAll(adaptation.unresolvedSelectedTrackIds)
         }
-        val baseResolved = if (adaptation.selectedPersonIds.isEmpty()) {
-            null
-        } else {
-            PrivacyOcclusionResolver.resolveMasks(
-                persons = adaptation.persons,
-                selectedPersonIds = adaptation.selectedPersonIds,
+        val bodyFaceIds = adaptation.selectedPersonIds.intersect(bodySupplementTrackIds)
+        fun resolveLayer(ids: Set<Int>, fallbackMask: NativeMask?): ResolvedCompositorMasks? {
+            val baseResolved = if (ids.isEmpty()) null else PrivacyOcclusionResolver.resolveMasks(
+                persons = adaptation.persons.map { if (ids.contains(it.id)) it else it.copy(mask = null) },
+                selectedPersonIds = ids,
                 ptsUs = ptsUs,
-                expectedSelectedCount = adaptation.selectedPersonIds.size,
+                expectedSelectedCount = ids.size,
                 behaviorNeutralFaceOnlyFastPaths = true
             )
-        }
-        val classResolved = classFallbackMask?.let { mask ->
-            ResolvedCompositorMasks(
-                privacyMask = mask,
-                occluderMask = null,
-                hasPrivacy = true,
-                hasOccluder = false
-            )
-        }
-        val resolved = when {
-            baseResolved != null && classResolved != null ->
-                PrivacyOcclusionResolver.mergeResolvedMasks(
-                    parts = listOf(baseResolved, classResolved),
-                    behaviorNeutralFaceOnlyFastPaths = true
+            val classResolved = fallbackMask?.let { mask ->
+                ResolvedCompositorMasks(
+                    privacyMask = mask,
+                    occluderMask = null,
+                    hasPrivacy = true,
+                    hasOccluder = false
                 )
-            baseResolved != null -> baseResolved
-            else -> classResolved
-        }?.let { merged ->
-            val filled = FacePrivacyMaskBuilder.fillIsolatedHoles(merged.privacyMask)
-            if (filled === merged.privacyMask) merged else merged.copy(privacyMask = filled)
+            }
+            return when {
+                baseResolved != null && classResolved != null ->
+                    PrivacyOcclusionResolver.mergeResolvedMasks(
+                        parts = listOf(baseResolved, classResolved),
+                        behaviorNeutralFaceOnlyFastPaths = true
+                    )
+                baseResolved != null -> baseResolved
+                else -> classResolved
+            }?.let { merged ->
+                val filled = FacePrivacyMaskBuilder.fillIsolatedHoles(merged.privacyMask)
+                if (filled === merged.privacyMask) merged else merged.copy(privacyMask = filled)
+            }
         }
+        val resolved = resolveLayer(adaptation.selectedPersonIds - bodyFaceIds, classFallbackMask)
+        val bodyResolved = resolveLayer(bodyFaceIds, bodyClassFallbackMask)
         val privacyResolveMs = (System.nanoTime() - privacyResolveStartNs) / 1_000_000.0
 
         if (privacyResolveMs >= SLOW_STAGE_LOG_THRESHOLD_MS) {
@@ -1619,7 +1629,8 @@ class FaceOnlyPrivacyFrameProcessor(
         return FaceOnlyPrivacyFrameResult(
             resolvedPrivacy = resolved,
             readyForRender = unresolved.isEmpty() &&
-                (adaptation.selectedPersonIds.isEmpty() || resolved?.hasPrivacy == true),
+                ((adaptation.selectedPersonIds - bodyFaceIds).isEmpty() || resolved?.hasPrivacy == true) &&
+                (bodyFaceIds.isEmpty() || bodyResolved?.hasPrivacy == true),
             unresolvedTrackIds = unresolved,
             detectedTrackIds = detected,
             predictedTrackIds = predicted,
@@ -1663,7 +1674,10 @@ class FaceOnlyPrivacyFrameProcessor(
             roiReadbackMs = roiReadbackMs,
             maskBuildMs = maskBuildMs,
             privacyResolveMs = privacyResolveMs,
-            stickerPlacements = stickerPlacements
+            stickerPlacements = stickerPlacements.filterNot {
+                bodySupplementTrackIds.contains(it.trackId) || bodyClassFallbackIds.contains(it.trackId)
+            },
+            bodySupplementResolved = bodyResolved
         )
     }
 

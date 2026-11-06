@@ -9,8 +9,9 @@ application-model dependencies. Native bindings, video I/O, model execution and
 GPU resources belong to consumers and adapters outside this directory.
 
 Current functionality includes overlapping detail views, tile boundary checks,
-prototype-mask reprojection and cropped output-mask projection. Tracking,
-inference postprocessing and protection policies are subsequent migration work;
+prototype-mask reprojection, cropped output-mask projection and protection-layer
+intent (including face supplements for full-body targets). Tracking,
+inference postprocessing and temporal protection policies are subsequent migration work;
 this initial extraction does not claim those modules are complete.
 
 ```rust

@@ -8,6 +8,56 @@ pub extern "C" fn frame_kernel_abi_version() -> u32 {
     ABI_VERSION
 }
 
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_protection_layers(body: i32, face: i32, sticker: i32) -> u32 {
+    crate::protection::layers(body != 0, face != 0, sticker != 0)
+}
+
+/// # Safety
+/// Nonempty inputs and output are valid, aligned and nonoverlapping. Output
+/// capacity is at least body_len + face_len. Zero-length inputs may be null.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_targets(
+    body: *const i64,
+    body_len: usize,
+    face: *const i64,
+    face_len: usize,
+    output: *mut i64,
+    capacity: usize,
+) -> i32 {
+    let Some(total) = body_len.checked_add(face_len) else {
+        return -1;
+    };
+    if total > 65536
+        || capacity < total
+        || (total > 0 && output.is_null())
+        || (body_len > 0 && body.is_null())
+        || (face_len > 0 && face.is_null())
+    {
+        return -1;
+    }
+    let bodies = if body_len == 0 {
+        &[]
+    } else {
+        // SAFETY: caller supplies a readable aligned input of checked length.
+        unsafe { std::slice::from_raw_parts(body, body_len) }
+    };
+    let faces = if face_len == 0 {
+        &[]
+    } else {
+        // SAFETY: caller supplies a readable aligned input of checked length.
+        unsafe { std::slice::from_raw_parts(face, face_len) }
+    };
+    let targets = crate::protection::face_targets(bodies, faces);
+    if !targets.is_empty() {
+        // SAFETY: output is writable, disjoint and large enough (validated).
+        unsafe {
+            std::ptr::copy_nonoverlapping(targets.as_ptr(), output, targets.len());
+        }
+    }
+    targets.len() as i32
+}
+
 /// # Safety
 /// `output` must point to at least four writable, aligned Rect values.
 #[unsafe(no_mangle)]

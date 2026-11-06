@@ -639,7 +639,8 @@ class ExportPipeline(
                     "Pipeline Config: profileName=${profile.name}, stride=$frameStride, inputSize=${profile.inputSize}, target=${targetWidth}x${targetHeight}"
                 )
 
-                if (faceOnlyPersonIds.isNotEmpty()) {
+                if (art.gaoge.dance.engine.core.FrameKernel.needsFaceProtection(
+                        body = fullBodyPersonIds.isNotEmpty(), face = faceOnlyPersonIds.isNotEmpty())) {
                     faceOnlyPrivacyProcessor =
                         art.gaoge.dance.engine.privacy.FaceOnlyPrivacyFrameProcessor.create(
                             context = context,
@@ -1410,6 +1411,13 @@ class ExportPipeline(
                             val faceGeometryPersons = if (enhanceFullScenePrivacy) {
                                 anonymousFaceCoverage.current(fullSceneDetections)
                             } else trackedFaceGeometryPersons
+                            val currentSceneIds = faceGeometryPersons.map { it.id }.toSet()
+                            val bodyFaceIds = if (enhanceFullScenePrivacy && fullBodyPersonIds.isNotEmpty()) {
+                                currentSceneIds
+                            } else fullBodyPersonIds
+                            val explicitFaceIds = if (enhanceFullScenePrivacy && faceOnlyPersonIds.isNotEmpty()) {
+                                currentSceneIds
+                            } else faceOnlyPersonIds
                             val protectedMotionEvidence = if (useCpuReferenceGeometry) {
                                 canonicalizeCpuReferenceMotionEvidence(
                                     crossDeviceTrackingDiagnostics
@@ -1439,10 +1447,9 @@ class ExportPipeline(
                                     texMatrix = finalTexMatrix,
                                     textureType = renderTexType,
                                     persons = faceGeometryPersons,
-                                    faceOnlyTrackIds = if (enhanceFullScenePrivacy) {
-                                        faceGeometryPersons.map { it.id }.toSet()
-                                    } else faceOnlyPersonIds,
-                                    fullBodyTrackIds = selectedIds,
+                                    faceOnlyTrackIds = explicitFaceIds,
+                                    fullBodyTrackIds = bodyFaceIds,
+                                    bodySupplementTrackIds = bodyFaceIds,
                                     protectedMotionEvidence = protectedMotionEvidence,
                                     freshPrivacyClassEvidence = freshFacePrivacyClassEvidence,
                                     // Face localization needs source-resolution pixels.
@@ -1865,6 +1872,7 @@ class ExportPipeline(
                                         expectedSelectedPrivacyCount = selectedIds.size,
                                         maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
                                         additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
+                                        bodySupplementResolvedPrivacy = faceOnlyFrameResult?.bodySupplementResolved,
                                         faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
                                         tightMask = shouldUseTightFullBodyMaskForExport(selectedIds),
                                         sourceWidth = trackingWidth,
@@ -2296,6 +2304,7 @@ class ExportPipeline(
                                     expectedSelectedPrivacyCount = selectedIds.size,
                                     maxFallbackObservationAgeFrames = trackManager.getMaxMissedFrames(),
                                     additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
+                                    bodySupplementResolvedPrivacy = faceOnlyFrameResult?.bodySupplementResolved,
                                     faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
                                     tightMask = shouldUseTightFullBodyMaskForExport(selectedIds),
                                     sourceWidth = trackingWidth,

@@ -1,0 +1,9 @@
+{
+  "baseline_commit": "23aa3dd2ef029e85a06d691431f073f235ea584e",
+  "frames": 40,
+  "changed_channels": 0,
+  "max_channel_delta": 0,
+  "current_decoded_sha256": "4d8404d0e5ae5fc11d468abfc17dc3cc59c934872ba206125d02164f36b80db3",
+  "baseline_decoded_sha256": "4d8404d0e5ae5fc11d468abfc17dc3cc59c934872ba206125d02164f36b80db3",
+  "baseline_face411_red_ratio": 0.0
+}

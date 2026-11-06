@@ -587,6 +587,7 @@ class GlRenderer : FrameRenderer {
         maxFallbackObservationAgeFrames: Int = 15,
         conservativePrimaryUnobservedOccluderPolicy: Boolean = false,
         additionalResolvedPrivacy: art.gaoge.dance.engine.privacy.ResolvedCompositorMasks? = null,
+        bodySupplementResolvedPrivacy: art.gaoge.dance.engine.privacy.ResolvedCompositorMasks? = null,
         faceStickerPlacements: List<FaceStickerPlacement> = emptyList(),
         tightMask: Boolean = false,
         sourceWidth: Int? = null,
@@ -804,7 +805,7 @@ class GlRenderer : FrameRenderer {
             maxFallbackObservationAgeFrames = maxFallbackObservationAgeFrames,
             conservativeUnobservedOccluderPolicy = conservativePrimaryUnobservedOccluderPolicy
         )
-        val primaryResolved = if (tightMask && primaryResolvedRaw.privacyMask != null) {
+        val primaryBodyResolved = if (tightMask && primaryResolvedRaw.privacyMask != null) {
             primaryResolvedRaw.copy(
                 privacyMask = art.gaoge.dance.engine.privacy.MaskPrivacyProcessor.threshold(
                     primaryResolvedRaw.privacyMask,
@@ -813,6 +814,13 @@ class GlRenderer : FrameRenderer {
             )
         } else {
             primaryResolvedRaw
+        }
+        // Body face supplements always use the body's regular fill. They must
+        // survive the FACE_ONLY sticker branch in a mixed selection.
+        val primaryResolved = if (bodySupplementResolvedPrivacy == null) primaryBodyResolved else {
+            art.gaoge.dance.engine.privacy.PrivacyOcclusionResolver.mergeResolvedMasks(
+                listOf(primaryBodyResolved, bodySupplementResolvedPrivacy)
+            )
         }
         val mergedResolved = if (additionalResolvedPrivacy == null) {
             primaryResolved

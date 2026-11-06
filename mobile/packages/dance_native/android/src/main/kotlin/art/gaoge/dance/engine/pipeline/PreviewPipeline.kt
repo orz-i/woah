@@ -288,7 +288,8 @@ class PreviewPipeline(
         var faceOnlyPrivacyProcessor: FaceOnlyPrivacyFrameProcessor? = null
         val renderedBitmap: Bitmap
         try {
-            val faceOnlyFrameResult = if (faceOnlyPersonIds.isNotEmpty()) {
+            val faceOnlyFrameResult = if (art.gaoge.dance.engine.core.FrameKernel.needsFaceProtection(
+                    body = fullBodyPersonIds.isNotEmpty(), face = faceOnlyPersonIds.isNotEmpty())) {
                 val referenceMask = trackedPersons.firstNotNullOfOrNull { it.mask }
                 val faceMapper = referenceMask?.mapper?.also { mapper ->
                     require(mapper.srcWidth == sourceFrameWidth && mapper.srcHeight == sourceFrameHeight) {
@@ -312,6 +313,7 @@ class PreviewPipeline(
                     persons = trackedPersons,
                     faceOnlyTrackIds = faceOnlyPersonIds,
                     fullBodyTrackIds = fullBodyPersonIds,
+                    bodySupplementTrackIds = fullBodyPersonIds,
                     ptsUs = request.timestampMs * 1000L
                 ).also { result ->
                     if (!result.readyForRender) {
@@ -341,6 +343,7 @@ class PreviewPipeline(
                         textureType = SourceTextureType.TEXTURE_2D,
                         expectedSelectedPrivacyCount = fullBodyPersonIds.size,
                         additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
+                        bodySupplementResolvedPrivacy = faceOnlyFrameResult?.bodySupplementResolved,
                         faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
                         tightMask = request.tightMaskPreview ?: false,
                         sourceWidth = sourceFrameWidth,
@@ -389,6 +392,7 @@ class PreviewPipeline(
                     textureType = SourceTextureType.TEXTURE_2D,
                     expectedSelectedPrivacyCount = fullBodyPersonIds.size,
                     additionalResolvedPrivacy = faceOnlyFrameResult?.resolvedPrivacy,
+                    bodySupplementResolvedPrivacy = faceOnlyFrameResult?.bodySupplementResolved,
                     faceStickerPlacements = faceOnlyFrameResult?.stickerPlacements.orEmpty(),
                     tightMask = request.tightMaskPreview ?: false,
                     sourceWidth = sourceFrameWidth,

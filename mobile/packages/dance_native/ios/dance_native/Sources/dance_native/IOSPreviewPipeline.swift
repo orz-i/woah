@@ -69,7 +69,7 @@ final class IOSPreviewPipeline {
     let fullBodyIds = Set(request.selectedPersonIds.map { Int($0) })
     let faceOnlyIds = Set((request.faceOnlyPersonIds ?? []).map { Int($0) })
       .subtracting(fullBodyIds)
-    let requestedPrivacyIds = fullBodyIds.union(faceOnlyIds)
+    let requestedPrivacyIds = IOSFrameKernel.faceProtectionIds(body: fullBodyIds, face: faceOnlyIds)
     let resolvedIds = Set(frameAnalysis.persons.map(\.id))
     let unresolvedIds = requestedPrivacyIds.subtracting(resolvedIds)
     guard unresolvedIds.isEmpty else {
@@ -80,12 +80,12 @@ final class IOSPreviewPipeline {
       )
     }
 
-    let faceRegions = faceOnlyIds.isEmpty
+    let faceRegions = requestedPrivacyIds.isEmpty
       ? [:]
       : facePrivacyResolver(cacheId: request.analysisCacheId).resolve(
         image: frameAnalysis.image,
         persons: frameAnalysis.persons,
-        faceOnlyIds: faceOnlyIds,
+        faceOnlyIds: requestedPrivacyIds,
         preprocess: frameAnalysis.preprocess,
         timestampUs: requestedTimestampMs * 1_000
       )
