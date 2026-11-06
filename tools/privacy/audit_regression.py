@@ -22,7 +22,7 @@ def main():
     args=[a.run_id,'--report-root',str(a.report),'--sources',str(a.media)]
     media_result=media.main(args)
     face_result=faces.main(args+['--source-faces',str(a.source_faces),'--require-face-cache'])
-    preview_result=audit_previews(run,a.report,a.media)
+    preview_result=audit_previews(run,a.report,a.media,a.source_faces)
     return 1 if media_result or face_result or preview_result else 0
 
 if __name__=='__main__':raise SystemExit(main())
