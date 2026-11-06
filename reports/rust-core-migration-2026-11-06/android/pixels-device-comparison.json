@@ -1,0 +1,42 @@
+[
+  {
+    "case": "full",
+    "outputs": [
+      {
+        "file": "frame_kernel_association_full.mp4",
+        "frames": 581,
+        "decoded_bgr_sha256": "cea0d0005a617b66b4b35871c7717315ddc4eab1f427977b7335c7c0676cc877",
+        "face411_red_ratio": null,
+        "file_sha256": "1d603c25ee86253e7c5cd36abd115b025c7a05eeb6be556ff296b4975e76ec0e"
+      },
+      {
+        "file": "frame_kernel_pixels_full.mp4",
+        "frames": 581,
+        "decoded_bgr_sha256": "cea0d0005a617b66b4b35871c7717315ddc4eab1f427977b7335c7c0676cc877",
+        "face411_red_ratio": null,
+        "file_sha256": "dee57668da6263abb0833779ec0955f3560ed5c8a349752f8ebc07c2e08ecae1"
+      }
+    ],
+    "exact_pixels": true
+  },
+  {
+    "case": "body411",
+    "outputs": [
+      {
+        "file": "frame-kernel-body-face411.mp4",
+        "frames": 40,
+        "decoded_bgr_sha256": "76d0dd943330ad6c95c392441b661e0f333d772698288e135993d1de54c14c20",
+        "face411_red_ratio": 1,
+        "file_sha256": "a91d7906c5deefd3ad15bac9727139fa836e5dfb0bcaa6816d5ebc6ab0c1117e"
+      },
+      {
+        "file": "frame_kernel_pixels_body411.mp4",
+        "frames": 40,
+        "decoded_bgr_sha256": "76d0dd943330ad6c95c392441b661e0f333d772698288e135993d1de54c14c20",
+        "face411_red_ratio": 1,
+        "file_sha256": "f7b697eca78499a2222a7b0d3ccce1f9ba0f5d9001d589c6c7b383c34a025b1f"
+      }
+    ],
+    "exact_pixels": true
+  }
+]
