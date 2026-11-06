@@ -10,6 +10,168 @@ use crate::{
     geometry::{self, Rect, Transform},
 };
 
+/// Source context probe timestamp, or -1 for a zero/invalid request.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_region_context_probe_us(timestamp_us: i64) -> i64 {
+    crate::region_continuation::context_probe_us(timestamp_us).unwrap_or(-1)
+}
+
+/// # Safety
+/// Inputs are readable aligned values. Output is disjoint writable storage.
+/// Return total records (history then current), -1 invalid, <=-2 capacity query.
+/// No caller pointers are retained and failures never partially write output.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_continue_regions(
+    history: *const crate::temporal_region::RegionMeasurement,
+    history_len: usize,
+    current: *const crate::temporal_region::RegionMeasurement,
+    current_len: usize,
+    now: i64,
+    enabled: u32,
+    output: *mut crate::temporal_region::RegionMeasurement,
+    capacity: usize,
+) -> i32 {
+    if history_len > 1024
+        || current_len > 1024
+        || enabled > 1
+        || (history_len > 0 && history.is_null())
+        || (current_len > 0 && current.is_null())
+    {
+        return -1;
+    }
+    // SAFETY: bounded readable/aligned input storage is the caller's contract.
+    let old = if history_len == 0 {
+        &[]
+    } else {
+        // SAFETY: caller provides readable aligned history_len entries.
+        unsafe { std::slice::from_raw_parts(history, history_len) }
+    };
+    // SAFETY: bounded readable/aligned input storage is the caller's contract.
+    let fresh = if current_len == 0 {
+        &[]
+    } else {
+        // SAFETY: caller provides readable aligned current_len entries.
+        unsafe { std::slice::from_raw_parts(current, current_len) }
+    };
+    let Some(result) = crate::region_continuation::step(old, fresh, now, enabled == 1) else {
+        return -1;
+    };
+    if capacity < result.len() {
+        return -(result.len() as i32) - 1;
+    }
+    if !result.is_empty() {
+        if output.is_null() {
+            return -1;
+        }
+        // SAFETY: caller supplies disjoint output for capacity measurement entries.
+        unsafe {
+            std::ptr::copy_nonoverlapping(result.as_ptr(), output, result.len());
+        }
+    }
+    result.len() as i32
+}
+
+/// # Safety
+/// All ID slices are readable/aligned and output has capacity disjoint entries.
+/// Returns count; -1 invalid; <=-2 insufficient capacity, need -(result+1).
+/// No partial writes on failure and no caller pointers are retained.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_scene_targets(
+    roots: *const i64,
+    roots_len: usize,
+    body: *const i64,
+    body_len: usize,
+    face: *const i64,
+    face_len: usize,
+    current: *const i64,
+    current_len: usize,
+    has_hero: u32,
+    hero: i64,
+    output: *mut crate::protection::SceneTarget,
+    capacity: usize,
+) -> i32 {
+    // SAFETY: slice construction is bounded by the shared checked ID helper.
+    let (Some(roots), Some(body), Some(face), Some(current)) = (unsafe {
+        (
+            id_slice(roots, roots_len),
+            id_slice(body, body_len),
+            id_slice(face, face_len),
+            id_slice(current, current_len),
+        )
+    }) else {
+        return -1;
+    };
+    if has_hero > 1 {
+        return -1;
+    }
+    let targets = crate::protection::scene_targets(
+        roots,
+        body,
+        face,
+        current,
+        (has_hero == 1).then_some(hero),
+    );
+    if capacity < targets.len() {
+        return -(targets.len() as i32) - 1;
+    }
+    if !targets.is_empty() {
+        if output.is_null() {
+            return -1;
+        }
+        // SAFETY: caller supplies disjoint storage for capacity target entries.
+        unsafe {
+            std::ptr::copy_nonoverlapping(targets.as_ptr(), output, targets.len());
+        }
+    }
+    targets.len() as i32
+}
+
+/// # Safety
+/// State and output are writable, aligned, nonoverlapping caller-owned values.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_region_step(
+    state: *mut crate::temporal_region::RegionState,
+    measurement: crate::temporal_region::RegionMeasurement,
+    output: *mut crate::temporal_region::Ellipse,
+) -> i32 {
+    if state.is_null() || output.is_null() {
+        return -1;
+    }
+    // SAFETY: both pointers are checked; alignment/lifetime are caller contracts.
+    let mut next = unsafe { state.read() };
+    let Some(region) = next.step(measurement) else {
+        return -1;
+    };
+    // SAFETY: output buffers are disjoint and no references are retained.
+    unsafe {
+        state.write(next);
+        output.write(region);
+    }
+    0
+}
+
+/// # Safety
+/// Output points to two writable aligned floats; no data is retained.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_anchor_translation(
+    previous: Rect,
+    current: Rect,
+    output: *mut f32,
+) -> i32 {
+    if output.is_null() {
+        return -1;
+    }
+    let Some(value) = crate::temporal_region::anchor_translation(previous, current) else {
+        return -1;
+    };
+    // SAFETY: caller supplies space for two aligned floats.
+    unsafe {
+        output.write(value[0]);
+        output.add(1).write(value[1]);
+    }
+    0
+}
+
 unsafe fn id_slice<'a>(pointer: *const i64, len: usize) -> Option<&'a [i64]> {
     if len > 100_000 || (len > 0 && pointer.is_null()) {
         return None;
@@ -806,4 +968,16 @@ pub unsafe extern "C" fn frame_kernel_project_mask(
     } else {
         -1
     }
+}
+
+/// Native worker completion barrier; -1 rejects an invalid state or event.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_work_transition(state: u32, event: u32) -> i32 {
+    crate::work_lifecycle::transition(state, event).map_or(-1, |s| s as i32)
+}
+
+/// -1 invalid; otherwise 1 permits a serialized replacement and 0 rejects it.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_work_can_replace(state: u32) -> i32 {
+    crate::work_lifecycle::can_replace(state).map_or(-1, i32::from)
 }

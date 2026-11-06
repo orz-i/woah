@@ -8,6 +8,72 @@ enum IOSFrameKernel {
     precondition(frame_kernel_abi_version() == 1, "Unsupported FrameKernel ABI")
   }()
 
+  final class WorkLifecycle {
+    private var state: Int32 = 0
+    var acceptingProgress: Bool { state <= 1 }
+    var canAdmitReplacement: Bool {
+      _ = checkedABI
+      return frame_kernel_work_can_replace(UInt32(state)) == 1
+    }
+    func requestCancel() -> Bool {
+      _ = checkedABI
+      state = frame_kernel_work_transition(UInt32(state), 0)
+      precondition(state >= 0)
+      return state == 1
+    }
+    @discardableResult func observe(_ outcome: String) -> Bool {
+      let event: UInt32
+      switch outcome {
+      case "completed": event = 1
+      case "failed": event = 2
+      case "cancelled": event = 3
+      default: return false
+      }
+      _ = checkedABI
+      state = frame_kernel_work_transition(UInt32(state), event)
+      precondition(state >= 0)
+      return true
+    }
+    func release() -> String {
+      _ = checkedABI
+      state = frame_kernel_work_transition(UInt32(state), 4)
+      switch state {
+      case 5: return "completed"
+      case 6: return "failed"
+      case 7: return "cancelled"
+      default: preconditionFailure("Shared worker outcome is not terminal")
+      }
+    }
+  }
+
+  static func regionContextProbeUs(_ timestampUs: Int64) -> Int64? {
+    _ = checkedABI
+    let result = frame_kernel_region_context_probe_us(timestampUs)
+    return result >= 0 ? result : nil
+  }
+
+  final class RegionContinuation {
+    private var history: [FrameKernelRegionMeasurement] = []
+    func reset() { history.removeAll(keepingCapacity: true) }
+    func step(raw: SIMD4<Float>, anchor: SIMD4<Float>, timestampUs: Int64, kind: UInt32) throws -> SIMD4<Float> {
+      _ = checkedABI
+      var measurement = FrameKernelRegionMeasurement(
+        region: FrameKernelEllipse(center_x: raw.x, center_y: raw.y, radius_x: raw.z, radius_y: raw.w),
+        anchor: FrameKernelRect(left: anchor.x, top: anchor.y, right: anchor.z, bottom: anchor.w),
+        timestamp_us: timestampUs, kind: kind, flags: 0)
+      var output = [FrameKernelRegionMeasurement](repeating: FrameKernelRegionMeasurement(), count: 1025)
+      let count = history.withUnsafeBufferPointer { old in
+        output.withUnsafeMutableBufferPointer { out in
+          frame_kernel_continue_regions(old.baseAddress, old.count, &measurement, 1, timestampUs, 1, out.baseAddress, out.count)
+        }
+      }
+      guard count >= 1 else { throw pixelError() }
+      history = Array(output.prefix(Int(count) - 1))
+      let region = output[Int(count) - 1].region
+      return SIMD4(region.center_x, region.center_y, region.radius_x, region.radius_y)
+    }
+  }
+
   static var associationWeights: [Float] {
     _ = checkedABI
     let value=frame_kernel_association_defaults()
@@ -36,6 +102,23 @@ enum IOSFrameKernel {
     let result=frame_kernel_reservation_release(flags,owners,bboxIoU,maskIoU)
     guard result >= 0 else {throw pixelError()}
     return result == 1
+  }
+
+  struct SceneTargets { let body: Set<Int>; let faceOnly: Set<Int> }
+  static func sceneTargets(roots: Set<Int>, body: Set<Int>, face: Set<Int>, current: Set<Int>, hero: Int?) -> SceneTargets {
+    _ = checkedABI
+    let roots=roots.map {Int64($0)},body=body.map {Int64($0)},face=face.map {Int64($0)},current=current.map {Int64($0)}
+    var output=[FrameKernelSceneTarget](repeating:FrameKernelSceneTarget(),count:body.count+face.count+current.count)
+    let count=roots.withUnsafeBufferPointer { r in body.withUnsafeBufferPointer { b in face.withUnsafeBufferPointer { f in current.withUnsafeBufferPointer { c in
+      output.withUnsafeMutableBufferPointer { out in
+        frame_kernel_scene_targets(r.baseAddress,r.count,b.baseAddress,b.count,f.baseAddress,f.count,
+          c.baseAddress,c.count,hero == nil ? 0:1,Int64(hero ?? 0),out.baseAddress,out.count)
+      }
+    } } } }
+    precondition(count>=0,"Invalid shared current-scene selection")
+    let rows=output.prefix(Int(count))
+    return SceneTargets(body:Set(rows.filter {$0.layers & 1 != 0}.map {Int($0.id)}),
+      faceOnly:Set(rows.filter {$0.layers == 2}.map {Int($0.id)}))
   }
 
   static func sceneScope(roots: Set<Int>, body: Set<Int>, face: Set<Int>, hero: Int?) -> Int {
@@ -70,6 +153,37 @@ enum IOSFrameKernel {
     }
     guard result >= -1 else {throw PigeonError(code:"TRACKING_OBSERVATION_INVALID",message:"FrameKernel rejected the current observation geometry.",details:nil)}
     return result == -1 ? nil:Int(result)
+  }
+
+  static func anchorTranslation(previous: SIMD4<Float>, current: SIMD4<Float>) -> SIMD2<Float> {
+    _ = checkedABI
+    let a=FrameKernelRect(left:previous.x,top:previous.y,right:previous.z,bottom:previous.w)
+    let b=FrameKernelRect(left:current.x,top:current.y,right:current.z,bottom:current.w)
+    var output=[Float](repeating:0,count:2)
+    let status=output.withUnsafeMutableBufferPointer {frame_kernel_anchor_translation(a,b,$0.baseAddress)}
+    precondition(status==0,"Invalid shared anchor geometry")
+    return SIMD2<Float>(output[0],output[1])
+  }
+
+  final class RegionState {
+    private var state=FrameKernelRegionState()
+    var referenceRadii: SIMD2<Float>? {
+      state.flags & 2 == 0 ? nil:SIMD2<Float>(state.reference_radius_x,state.reference_radius_y)
+    }
+    func step(region: SIMD4<Float>, anchor: SIMD4<Float>, timestampUs: Int64, kind: UInt32,
+        observed: Bool=true, trustedCenter: Bool=false, canonical: Bool=false,
+        translationOnly: Bool=false, coverCurrent: Bool=false) throws -> SIMD4<Float> {
+      _ = IOSFrameKernel.checkedABI
+      let flags:UInt32=(observed ? 1:0) | (trustedCenter ? 2:0) | (canonical ? 4:0)
+        | (translationOnly ? 8:0) | (coverCurrent ? 16:0)
+      let measurement=FrameKernelRegionMeasurement(
+        region:FrameKernelEllipse(center_x:region.x,center_y:region.y,radius_x:region.z,radius_y:region.w),
+        anchor:FrameKernelRect(left:anchor.x,top:anchor.y,right:anchor.z,bottom:anchor.w),
+        timestamp_us:timestampUs,kind:kind,flags:flags)
+      var output=FrameKernelEllipse()
+      guard frame_kernel_region_step(&state,measurement,&output)==0 else {throw IOSFrameKernel.pixelError()}
+      return SIMD4<Float>(output.center_x,output.center_y,output.radius_x,output.radius_y)
+    }
   }
 
   final class BoxFilter {

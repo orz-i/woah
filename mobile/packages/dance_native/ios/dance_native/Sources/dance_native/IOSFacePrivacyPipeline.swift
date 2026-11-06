@@ -185,48 +185,10 @@ enum IOSBodyMaskFaceHeadEstimator {
 }
 
 enum IOSPersonBboxMotionEstimator {
-  private static let minEdgeAgreementPx: Float32 = 8
-  private static let edgeAgreementDimensionRatio: Float32 = 0.07
-
-  static func estimate(
-    previous: IOSYoloDetection,
-    current: IOSYoloDetection
-  ) -> (dx: Float32, dy: Float32) {
-    let previousWidth = max(1, previous.x2 - previous.x1)
-    let currentWidth = max(1, current.x2 - current.x1)
-    let previousHeight = max(1, previous.y2 - previous.y1)
-    let currentHeight = max(1, current.y2 - current.y1)
-    let referenceWidth = max((previousWidth + currentWidth) * 0.5, 1)
-    let referenceHeight = max((previousHeight + currentHeight) * 0.5, 1)
-    return (
-      resolveAxisTranslation(
-        firstEdgeDelta: current.x1 - previous.x1,
-        secondEdgeDelta: current.x2 - previous.x2,
-        referenceDimension: referenceWidth
-      ),
-      resolveAxisTranslation(
-        firstEdgeDelta: current.y1 - previous.y1,
-        secondEdgeDelta: current.y2 - previous.y2,
-        referenceDimension: referenceHeight
-      )
-    )
-  }
-
-  private static func resolveAxisTranslation(
-    firstEdgeDelta: Float32,
-    secondEdgeDelta: Float32,
-    referenceDimension: Float32
-  ) -> Float32 {
-    let agreementTolerance = max(
-      minEdgeAgreementPx,
-      referenceDimension * edgeAgreementDimensionRatio
-    )
-    if abs(firstEdgeDelta - secondEdgeDelta) <= agreementTolerance {
-      return (firstEdgeDelta + secondEdgeDelta) * 0.5
-    }
-    return abs(firstEdgeDelta) <= abs(secondEdgeDelta)
-      ? firstEdgeDelta
-      : secondEdgeDelta
+  static func estimate(previous: IOSYoloDetection, current: IOSYoloDetection) -> (dx: Float32, dy: Float32) {
+    let out=IOSFrameKernel.anchorTranslation(previous:SIMD4<Float>(previous.x1,previous.y1,previous.x2,previous.y2),
+      current:SIMD4<Float>(current.x1,current.y1,current.x2,current.y2))
+    return (dx:out.x,dy:out.y)
   }
 }
 
@@ -242,114 +204,29 @@ struct IOSFacePrivacyEllipse {
 /// fallbacks. The owner ID is only a private state key; this class never writes
 /// back to IOSTemporalIdentityTracker or the normal per-ID face cache.
 final class IOSFacePrivacyClassFallbackContinuity {
-  private struct State {
-    let output: IOSFacePrivacyEllipse
-    let personDetection: IOSYoloDetection
-    let timestampUs: Int64
-  }
-
-  private var stateByOwnerId: [Int: State] = [:]
-
-  func reset() {
-    stateByOwnerId.removeAll()
-  }
-
-  func retain(ownerIds: Set<Int>) {
-    stateByOwnerId = stateByOwnerId.filter { ownerIds.contains($0.key) }
-  }
-
-  func stabilize(
-    ownerId: Int,
-    rawRegion: IOSFacePrivacyEllipse,
-    personDetection: IOSYoloDetection,
-    timestampUs: Int64,
-    bodyMaskGuided: Bool
-  ) -> IOSFacePrivacyEllipse {
-    let previous = stateByOwnerId[ownerId]
-    var target = rawRegion
-    if !bodyMaskGuided, let previous {
-      // Weak raw body-head geometry may jump when segmentation coverage changes.
-      // Preserve only robust whole-person translation from the fresh detection;
-      // a later mask-guided measurement can correct through the residual gate.
-      let translation = IOSPersonBboxMotionEstimator.estimate(
-        previous: previous.personDetection,
-        current: personDetection
-      )
-      target = IOSFacePrivacyEllipse(
-        centerX: previous.output.centerX + translation.dx,
-        centerY: previous.output.centerY + translation.dy,
-        radiusX: rawRegion.radiusX,
-        radiusY: rawRegion.radiusY,
-        source: rawRegion.source
-      )
-    }
-
-    let output: IOSFacePrivacyEllipse
-    if previous == nil || timestampUs < previous!.timestampUs {
-      output = target
-    } else {
-      let prior = previous!
-      let rawDtSeconds = max(
-        0,
-        Double(timestampUs - prior.timestampUs) / 1_000_000.0
-      )
-      let dtSeconds = min(maxDtSeconds, max(minDtSeconds, rawDtSeconds))
-      let sizeAlpha = Float32(1.0 - exp(-dtSeconds / fallbackSizeTimeConstantSeconds))
-      let smoothedRadiusX = prior.output.radiusX
-        + (target.radiusX - prior.output.radiusX) * sizeAlpha
-      let smoothedRadiusY = prior.output.radiusY
-        + (target.radiusY - prior.output.radiusY) * sizeAlpha
-
-      let translation = IOSPersonBboxMotionEstimator.estimate(
-        previous: prior.personDetection,
-        current: personDetection
-      )
-      let expectedCenterX = prior.output.centerX + translation.dx
-      let expectedCenterY = prior.output.centerY + translation.dy
-      let residualDx = target.centerX - expectedCenterX
-      let residualDy = target.centerY - expectedCenterY
-      let residualDistance = sqrt(residualDx * residualDx + residualDy * residualDy)
-      let referenceRadius = max(
-        max(prior.output.radiusX, prior.output.radiusY),
-        max(target.radiusX, target.radiusY)
-      )
-      let maxResidualStep = max(
-        positionMinResidualStepPx,
-        referenceRadius * positionMaxRadiusStep
-      )
-      let clampPosition = rawDtSeconds <= positionGateMaxDtSeconds
-        && residualDistance > maxResidualStep
-        && residualDistance > 0.001
-      let centerScale = clampPosition ? maxResidualStep / residualDistance : 1
-
-      output = IOSFacePrivacyEllipse(
-        centerX: clampPosition
-          ? expectedCenterX + residualDx * centerScale
-          : target.centerX,
-        centerY: clampPosition
-          ? expectedCenterY + residualDy * centerScale
-          : target.centerY,
-        radiusX: max(smoothedRadiusX, target.radiusX * privacyTargetFloor),
-        radiusY: max(smoothedRadiusY, target.radiusY * privacyTargetFloor),
-        source: target.source
-      )
-    }
-
-    stateByOwnerId[ownerId] = State(
-      output: output,
-      personDetection: personDetection,
-      timestampUs: timestampUs
-    )
+  private var states: [Int: IOSFrameKernel.RegionState] = [:]
+  func reset() { states.removeAll() }
+  func retain(ownerIds: Set<Int>) { states = states.filter { ownerIds.contains($0.key) } }
+  func stabilize(ownerId: Int, rawRegion: IOSFacePrivacyEllipse, personDetection: IOSYoloDetection,
+      timestampUs: Int64, bodyMaskGuided: Bool) throws -> IOSFacePrivacyEllipse {
+    let state=states[ownerId] ?? IOSFrameKernel.RegionState()
+    let output=try rawRegion.sharedStep(state:state,person:personDetection,timestampUs:timestampUs,
+      observed:true,trustedCenter:false,translationOnly:!bodyMaskGuided)
+    states[ownerId]=state
     return output
   }
+}
 
-  private let privacyTargetFloor: Float32 = 0.90
-  private let positionMinResidualStepPx: Float32 = 10
-  private let positionMaxRadiusStep: Float32 = 0.80
-  private let positionGateMaxDtSeconds = 0.10
-  private let minDtSeconds = 1.0 / 120.0
-  private let maxDtSeconds = 0.25
-  private let fallbackSizeTimeConstantSeconds = 0.18
+private extension IOSFacePrivacyEllipse {
+  func sharedStep(state: IOSFrameKernel.RegionState, person: IOSYoloDetection, timestampUs: Int64,
+      observed: Bool, trustedCenter: Bool, translationOnly: Bool=false) throws -> IOSFacePrivacyEllipse {
+    let kind:UInt32
+    switch source {case .detectedFace:kind=0;case .predictedFace:kind=1;case .yoloHeadFallback:kind=2}
+    let out=try state.step(region:SIMD4<Float>(centerX,centerY,radiusX,radiusY),
+      anchor:SIMD4<Float>(person.x1,person.y1,person.x2,person.y2),timestampUs:timestampUs,kind:kind,
+      observed:observed,trustedCenter:trustedCenter,translationOnly:translationOnly,coverCurrent:kind==0)
+    return IOSFacePrivacyEllipse(centerX:out.x,centerY:out.y,radiusX:out.z,radiusY:out.w,source:source)
+  }
 }
 
 struct IOSFaceCandidate {
@@ -680,15 +557,8 @@ final class IOSFacePrivacyTemporalResolver {
   }
 
   private struct State {
-    let output: IOSFacePrivacyEllipse
-    let detectedRadiusX: Float32?
-    let detectedRadiusY: Float32?
-    let detectedPersonWidth: Float32?
-    let detectedPersonHeight: Float32?
+    let motion: IOSFrameKernel.RegionState
     let trustedFace: TrustedFaceGeometry?
-    let personDetection: IOSYoloDetection
-    let personObservedThisFrame: Bool
-    let lastTimestampUs: Int64
   }
 
   private let locator: IOSFaceLocating
@@ -696,6 +566,7 @@ final class IOSFacePrivacyTemporalResolver {
   private var stateByTrackId: [Int: State] = [:]
   // Spatial privacy padding for one uniformly selected current person. This
   // never supplies an identity, owns a hero exemption, or renews itself.
+  private let uniformRegionContinuation = IOSFrameKernel.RegionContinuation()
   private var singleSceneFace: TrustedFaceGeometry?
   private let classFallbackContinuity = IOSFacePrivacyClassFallbackContinuity()
 
@@ -707,6 +578,7 @@ final class IOSFacePrivacyTemporalResolver {
     lock.lock()
     stateByTrackId.removeAll()
     singleSceneFace = nil
+    uniformRegionContinuation.reset()
     classFallbackContinuity.reset()
     lock.unlock()
   }
@@ -721,7 +593,7 @@ final class IOSFacePrivacyTemporalResolver {
     unmaskedPersonId: Int? = nil,
     coveredHeadFallbackIds: Set<Int> = [],
     timestampUs: Int64
-  ) -> [Int: IOSFacePrivacyEllipse] {
+  ) throws -> [Int: IOSFacePrivacyEllipse] {
     localizationFailed = false
     let coverUnownedFaces = protectUnassignedFaces && persons.allSatisfy {
       faceOnlyIds.contains($0.id) || $0.id == unmaskedPersonId
@@ -831,13 +703,25 @@ final class IOSFacePrivacyTemporalResolver {
       }
       guard let raw else { continue }
       if raw.source == .yoloHeadFallback && coveredHeadFallbackIds.contains(person.id) { continue }
-      regions[person.id] = stabilize(
+      var region = try stabilize(
         trackId: person.id,
         rawRegion: raw,
         personDetection: person.detection,
         timestampUs: timestampUs,
         personObservedThisFrame: !person.conservativePrivacyFallback
       )
+      if coverUnownedFaces && unmaskedPersonId == nil {
+        let kind: UInt32 = region.source == .detectedFace ? 0 : (region.source == .predictedFace ? 1 : 2)
+        let d = person.detection
+        let continued = try uniformRegionContinuation.step(
+          raw: SIMD4(region.centerX, region.centerY, region.radiusX, region.radiusY),
+          anchor: SIMD4(d.x1, d.y1, d.x2, d.y2), timestampUs: timestampUs, kind: kind)
+        region = IOSFacePrivacyEllipse(centerX: continued.x, centerY: continued.y,
+          radiusX: continued.z, radiusY: continued.w, source: region.source)
+      } else {
+        uniformRegionContinuation.reset()
+      }
+      regions[person.id] = region
     }
 
     let activeUniqueClassOwners = Set(freshPrivacyClassEvidence.compactMap { evidence -> Int? in
@@ -889,7 +773,7 @@ final class IOSFacePrivacyTemporalResolver {
       }
 
       if let ownerId = uniqueOwnerId {
-        region = classFallbackContinuity.stabilize(
+        region = try classFallbackContinuity.stabilize(
           ownerId: ownerId,
           rawRegion: region,
           personDetection: evidence.detection,
@@ -1029,190 +913,23 @@ final class IOSFacePrivacyTemporalResolver {
       + max(0, min(1, face.confidence)) * 0.10
   }
 
-  private func stabilize(
-    trackId: Int,
-    rawRegion: IOSFacePrivacyEllipse,
-    personDetection: IOSYoloDetection,
-    timestampUs: Int64,
-    personObservedThisFrame: Bool
-  ) -> IOSFacePrivacyEllipse {
-    let personWidth = max(1, personDetection.x2 - personDetection.x1)
-    let personHeight = max(1, personDetection.y2 - personDetection.y1)
-    let previous = stateByTrackId[trackId]
-    let detectedRadiusX = updatedReference(
-      previous?.detectedRadiusX,
-      rawRegion.source == .detectedFace ? rawRegion.radiusX : nil
-    )
-    let detectedRadiusY = updatedReference(
-      previous?.detectedRadiusY,
-      rawRegion.source == .detectedFace ? rawRegion.radiusY : nil
-    )
-    let detectedPersonWidth = updatedReference(
-      previous?.detectedPersonWidth,
-      rawRegion.source == .detectedFace ? personWidth : nil
-    )
-    let detectedPersonHeight = updatedReference(
-      previous?.detectedPersonHeight,
-      rawRegion.source == .detectedFace ? personHeight : nil
-    )
-
-    var target = rawRegion
-    if rawRegion.source == .yoloHeadFallback,
-       let detectedRadiusX, let detectedRadiusY,
-       let detectedPersonWidth, let detectedPersonHeight {
-      let widthRatio = max(0.1, personWidth / max(1, detectedPersonWidth))
-      let heightRatio = max(0.1, personHeight / max(1, detectedPersonHeight))
-      let boundedScale = min(
-        fallbackMaxTrustedScale,
-        max(fallbackMinTrustedScale, sqrt(widthRatio * heightRatio))
-      )
-      let referenceRadiusX = detectedRadiusX * boundedScale * fallbackReferenceExpansion
-      let referenceRadiusY = detectedRadiusY * boundedScale * fallbackReferenceExpansion
-      target = IOSFacePrivacyEllipse(
-        centerX: rawRegion.centerX,
-        centerY: rawRegion.centerY,
-        radiusX: min(
-          rawRegion.radiusX,
-          max(referenceRadiusX, detectedRadiusX * fallbackMinTrustedExpansion)
-        ),
-        radiusY: min(
-          rawRegion.radiusY,
-          max(referenceRadiusY, detectedRadiusY * fallbackMinTrustedExpansion)
-        ),
-        source: rawRegion.source
-      )
-    }
-
-    let output: IOSFacePrivacyEllipse
-    if previous == nil || timestampUs < previous!.lastTimestampUs {
-      output = target
-    } else {
-      let prior = previous!
-      let dtSeconds = min(
-        maxDtSeconds,
-        max(minDtSeconds, Double(timestampUs - prior.lastTimestampUs) / 1_000_000.0)
-      )
-      let sizeTau: Double
-      switch target.source {
-      case .detectedFace:
-        sizeTau = (target.radiusX < prior.output.radiusX || target.radiusY < prior.output.radiusY)
-          ? detectedShrinkTimeConstantSeconds
-          : detectedGrowTimeConstantSeconds
-      case .predictedFace:
-        sizeTau = predictedSizeTimeConstantSeconds
-      case .yoloHeadFallback:
-        sizeTau = fallbackSizeTimeConstantSeconds
-      }
-      let sizeAlpha = Float32(1.0 - exp(-dtSeconds / sizeTau))
-      let smoothedRadiusX = lerp(prior.output.radiusX, target.radiusX, sizeAlpha)
-      let smoothedRadiusY = lerp(prior.output.radiusY, target.radiusY, sizeAlpha)
-
-      let rawDtSeconds = max(0, Double(timestampUs - prior.lastTimestampUs) / 1_000_000.0)
-      let priorPersonCenterX = (prior.personDetection.x1 + prior.personDetection.x2) * 0.5
-      let priorPersonCenterY = (prior.personDetection.y1 + prior.personDetection.y2) * 0.5
-      let personCenterX = (personDetection.x1 + personDetection.x2) * 0.5
-      let personCenterY = (personDetection.y1 + personDetection.y2) * 0.5
-      let rawPersonDx = personCenterX - priorPersonCenterX
-      let rawPersonDy = personCenterY - priorPersonCenterY
-      let rawPersonStep = sqrt(rawPersonDx * rawPersonDx + rawPersonDy * rawPersonDy)
-      let referenceRadius = max(
-        max(prior.output.radiusX, prior.output.radiusY),
-        max(target.radiusX, target.radiusY)
-      )
-      let trustWholePersonStep = personObservedThisFrame && prior.personObservedThisFrame
-      let maxUnobservedPersonStep = max(
-        positionMinUnobservedPersonStepPx,
-        referenceRadius * positionMaxUnobservedPersonRadiusStep
-      )
-      let personScale: Float32
-      if !trustWholePersonStep,
-         rawDtSeconds <= positionGateMaxDtSeconds,
-         rawPersonStep > maxUnobservedPersonStep,
-         rawPersonStep > 0.001 {
-        personScale = maxUnobservedPersonStep / rawPersonStep
-      } else {
-        personScale = 1
-      }
-      let expectedCenterX = prior.output.centerX + rawPersonDx * personScale
-      let expectedCenterY = prior.output.centerY + rawPersonDy * personScale
-      let residualDx = target.centerX - expectedCenterX
-      let residualDy = target.centerY - expectedCenterY
-      let residualDistance = sqrt(residualDx * residualDx + residualDy * residualDy)
-      let maxResidualStep = max(
-        positionMinResidualStepPx,
-        referenceRadius * positionMaxRadiusStep
-      )
-      // Current face observations must be covered immediately; only a
-      // prediction/fallback may be motion-gated toward previous geometry.
-      let clampPosition = target.source != .detectedFace && rawDtSeconds <= positionGateMaxDtSeconds
-        && residualDistance > maxResidualStep
-        && residualDistance > 0.001
-      let centerScale = clampPosition ? maxResidualStep / residualDistance : 1
-
-      output = IOSFacePrivacyEllipse(
-        centerX: clampPosition ? expectedCenterX + residualDx * centerScale : target.centerX,
-        centerY: clampPosition ? expectedCenterY + residualDy * centerScale : target.centerY,
-        radiusX: max(smoothedRadiusX, target.radiusX * (target.source == .detectedFace ? 1 : privacyTargetFloor)),
-        radiusY: max(smoothedRadiusY, target.radiusY * (target.source == .detectedFace ? 1 : privacyTargetFloor)),
-        source: target.source
-      )
-    }
-
+  private func stabilize(trackId: Int, rawRegion: IOSFacePrivacyEllipse,
+      personDetection: IOSYoloDetection, timestampUs: Int64,
+      personObservedThisFrame: Bool) throws -> IOSFacePrivacyEllipse {
+    let previous=stateByTrackId[trackId]
+    let motion=previous?.motion ?? IOSFrameKernel.RegionState()
+    let output=try rawRegion.sharedStep(state:motion,person:personDetection,timestampUs:timestampUs,
+      observed:personObservedThisFrame,trustedCenter:rawRegion.source == .detectedFace)
     let trustedFace: TrustedFaceGeometry?
     if rawRegion.source == .detectedFace {
-      trustedFace = TrustedFaceGeometry(
-        centerX: output.centerX,
-        centerY: output.centerY,
-        radiusX: detectedRadiusX ?? output.radiusX,
-        radiusY: detectedRadiusY ?? output.radiusY,
-        trustedPersonDetection: personDetection,
-        lastTrustedTimestampUs: timestampUs
-      )
-    } else {
-      trustedFace = previous?.trustedFace
-    }
-
-    stateByTrackId[trackId] = State(
-      output: output,
-      detectedRadiusX: detectedRadiusX,
-      detectedRadiusY: detectedRadiusY,
-      detectedPersonWidth: detectedPersonWidth,
-      detectedPersonHeight: detectedPersonHeight,
-      trustedFace: trustedFace,
-      personDetection: personDetection,
-      personObservedThisFrame: personObservedThisFrame,
-      lastTimestampUs: timestampUs
-    )
+      let reference=motion.referenceRadii
+      trustedFace=TrustedFaceGeometry(centerX:output.centerX,centerY:output.centerY,
+        radiusX:reference?.x ?? output.radiusX,radiusY:reference?.y ?? output.radiusY,
+        trustedPersonDetection:personDetection,lastTrustedTimestampUs:timestampUs)
+    } else {trustedFace=previous?.trustedFace}
+    stateByTrackId[trackId]=State(motion:motion,trustedFace:trustedFace)
     return output
   }
-
-  private func updatedReference(_ previous: Float32?, _ observed: Float32?) -> Float32? {
-    guard let observed, observed.isFinite, observed > 0 else { return previous }
-    guard let previous else { return observed }
-    return lerp(previous, observed, detectedReferenceAlpha)
-  }
-
-  private func lerp(_ first: Float32, _ second: Float32, _ alpha: Float32) -> Float32 {
-    first + (second - first) * alpha
-  }
-
-  private let fallbackReferenceExpansion: Float32 = 1.24
-  private let fallbackMinTrustedExpansion: Float32 = 1.10
-  private let fallbackMinTrustedScale: Float32 = 0.90
-  private let fallbackMaxTrustedScale: Float32 = 1.12
-  private let detectedReferenceAlpha: Float32 = 0.25
-  private let privacyTargetFloor: Float32 = 0.90
-  private let positionMinResidualStepPx: Float32 = 10
-  private let positionMaxRadiusStep: Float32 = 0.80
-  private let positionMinUnobservedPersonStepPx: Float32 = 12
-  private let positionMaxUnobservedPersonRadiusStep: Float32 = 0.65
-  private let positionGateMaxDtSeconds = 0.10
-  private let minDtSeconds = 1.0 / 120.0
-  private let maxDtSeconds = 0.25
-  private let detectedGrowTimeConstantSeconds = 0.075
-  private let detectedShrinkTimeConstantSeconds = 0.24
-  private let predictedSizeTimeConstantSeconds = 0.15
-  private let fallbackSizeTimeConstantSeconds = 0.18
 
   private static let maxPredictedFaceAgeUs: Int64 = 150_000
   private static let trustedMaskSeedMaxAgeUs: Int64 = 800_000

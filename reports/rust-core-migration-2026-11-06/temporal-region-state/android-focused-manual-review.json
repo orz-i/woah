@@ -1,0 +1,22 @@
+{
+  "platform": "android",
+  "run_id": "region_continuation_f03da987_focused13",
+  "automatic_results_preserved": true,
+  "manual_resolutions": [
+    {
+      "case": "group_hd_overlap_face",
+      "source_frame": 343,
+      "source_bbox": [
+        1269.9224853515625,
+        359.35417234897614,
+        1337.5244092941284,
+        426.956090927124
+      ],
+      "movie_sha256": "02018d2509e3710e1d02083a1582a8732485156bf47564934f8c080ce48d5446",
+      "preview_sha256": "6f0101c69a73ec000b298032e3e57e9d92a7daf9b4472b5b0905f2159b961f11",
+      "resolution": "Current movie and real preview ROI reviewed: eyes, nose and mouth covered; remaining Vision extent is hair and neck.",
+      "image": "android-focused-overlap-current.jpg",
+      "image_sha256": "f5d063c733fc6340ac09e8af5694668be1518d9c6824b4296c8b6734abeb5ff8"
+    }
+  ]
+}

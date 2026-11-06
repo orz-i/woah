@@ -1,0 +1,57 @@
+{
+  "platform": "ios",
+  "run_id": "frame_kernel_fec_baseline62_legacy22",
+  "source_commit": "fec72da327fa4524c01ed7c50f51752ca6d83059",
+  "source_fingerprint": "a091cca5f2e1209f716ef430c3a5d21f41501f524dfc9f0e09b6a03bed304962",
+  "lifecycle": {
+    "process_id": 78226,
+    "status": "failed",
+    "analysis_start_ms": 0,
+    "long_trim_start_ms": 0,
+    "custom_sticker_asset": "/Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/1539CE05-210A-4F7C-9E1E-19ECABA81F83/Library/Application Support/stickers/sticker_1793970530370.png",
+    "custom_sticker_exists": true,
+    "cancel_job_id": "job_1793970530372_B9888EB5",
+    "before_cancel": {
+      "state": "exporting",
+      "job_id": "job_1793970530372_B9888EB5",
+      "current_frame": 8,
+      "total_frames": 662,
+      "progress": 0.010574018126888218,
+      "fps": 2.43909949582731,
+      "output_uri": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "after_cancel": {
+      "state": "exporting",
+      "job_id": "job_1793970530372_B9888EB5",
+      "current_frame": 8,
+      "total_frames": 662,
+      "progress": 0.010574018126888218,
+      "fps": 2.43909949582731,
+      "output_uri": null,
+      "error_code": null,
+      "error_message": null
+    },
+    "cancelled_output_exists": false,
+    "cancel_passed": false,
+    "retry_status": {
+      "state": "completed",
+      "job_id": "job_1793970535928_8B093D7D",
+      "current_frame": 48,
+      "total_frames": 48,
+      "progress": 1,
+      "fps": 2.6050648439280244,
+      "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/1539CE05-210A-4F7C-9E1E-19ECABA81F83/Documents/qa_ios_runs/frame_kernel_fec_baseline62_legacy22/outputs/retry_custom_sticker.mp4",
+      "error_code": null,
+      "error_message": null
+    },
+    "retry_bytes": 549970,
+    "retry_passed": true
+  },
+  "sha256": {
+    "qa_lifecycle_results.json": "b619072cf4370f85a66edc5b9eee874499891f22056ed1da22bb0baa64ad4ae6",
+    "results.json": "28a86c555abc392e1ad2111814be80c8a002e0f9b6973de3c2dfe9c0279754de",
+    "run-metadata.json": "c1bc88a2d966e262069f0450449d4c5085de3139343db4f4f839299bb4135d3c"
+  }
+}

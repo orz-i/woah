@@ -153,7 +153,8 @@ class ExportPipeline(
         val currentOtherFaceCoverage = (privacyScope and art.gaoge.dance.engine.core.FrameKernel.SCENE_OTHER_FACES) != 0
         val detailResolution = art.gaoge.dance.engine.inference.HighResolutionPrivacyCoverage.hasDetailResolution(
             videoInfo.displayWidth.toInt(), videoInfo.displayHeight.toInt())
-        val allSceneCoverage = !request.follow.enabled && detailResolution && (privacyScope and 3) != 0
+        val uniformSceneCoverage = !request.follow.enabled && (privacyScope and 3) != 0
+        val allSceneCoverage = uniformSceneCoverage && detailResolution
         val enhanceSpatialDetail = detailResolution && initialIds.size > 1 && (allSceneCoverage || currentOtherFaceCoverage)
         val faceOnlyIdentityProtectedIds = if (faceOnlyPersonIds.isNotEmpty()) {
             resolveFaceOnlyIdentityProtectedIds(
@@ -654,6 +655,13 @@ class ExportPipeline(
                             mapper = mapper,
                             diagnosticJobId = diagnosticJobId
                         )
+                }
+
+                if (uniformSceneCoverage) {
+                    faceOnlyPrivacyProcessor?.let { processor ->
+                        art.gaoge.dance.engine.privacy.SceneRegionContext.seed(context,segmenter,processor,
+                            sourceUri,trimStartUs,videoInfo.rotation.toInt(),trackingWidth,trackingHeight)
+                    }
                 }
 
                 var lastLivePreviewCaptureTime = 0L
@@ -1477,7 +1485,8 @@ class ExportPipeline(
                                     // faces even though their body identities are retained.
                                     canonicalModelRgbaBottomUp = null,
                                     ptsUs = ptsUs,
-                                    coveredHeadFallbackTrackIds = coveredHeadFallbackIds
+                                    coveredHeadFallbackTrackIds = coveredHeadFallbackIds,
+                                    conservativeSceneCoverage = uniformSceneCoverage
                                 )
                             }
                         }
@@ -2498,6 +2507,14 @@ class ExportPipeline(
                     status = status.copy(state = "cancelled")
                     emitProgress(status, onStatusChange)
                     return@post
+                }
+
+                if (encodedFrameCount > 0 && lastEncoderPtsUs >= 0L) {
+                    val endTimeUs = minOf(
+                        lastEncoderPtsUs + (frameDurationNs / 1_000L).coerceAtLeast(1L),
+                        trimEndUs - trimStartUs
+                    )
+                    muxer.finishVideo(endTimeUs)
                 }
 
                 // Copy audio

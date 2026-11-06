@@ -2,6 +2,7 @@
 """Run the frozen suites through one Dart harness on device and simulator."""
 from __future__ import annotations
 import argparse
+from contextlib import contextmanager, nullcontext
 import datetime as dt
 import hashlib
 import json
@@ -14,8 +15,10 @@ import sys
 import time
 try:
     from .build_qa import inputs, fingerprint, binary_hashes, android_package_id
+    from .lifecycle_evidence import verify_lifecycle
 except ImportError:
     from build_qa import inputs, fingerprint, binary_hashes, android_package_id
+    from lifecycle_evidence import verify_lifecycle
 
 ROOT = Path(__file__).resolve().parents[2]
 MATRIX = ROOT / 'testdata/privacy/matrix.json'
@@ -29,10 +32,24 @@ def sha(path):
     return h.hexdigest()
 
 def command(*args, required=True):
-    result = subprocess.run([str(x) for x in args], text=True, capture_output=True)
+    argv=[str(x) for x in args]
+    adb=Path(argv[0]).name.lower().removesuffix('.exe')=='adb'
+    verb=3 if len(argv)>3 and argv[1]=='-s' else 1
+    readonly=adb and len(argv)>verb and (argv[verb] in ['pull','get-state'] or
+        (argv[verb]=='shell' and len(argv)>verb+1 and argv[verb+1] in
+         ['cat','pidof','find','sha256sum','getprop','ls','dumpsys']))
+    deadline=time.monotonic()+30
+    retried=False
+    while True:
+        result=subprocess.run(argv,text=True,capture_output=True)
+        transport_error=result.returncode and re.search(r"device .* not found|device offline|no devices/emulators found|device disconnected",result.stderr)
+        if not (readonly and transport_error and time.monotonic()<deadline):break
+        if not retried:print('ADB_READ_TRANSPORT_RETRY',flush=True)
+        retried=True;time.sleep(.5)
     if required and result.returncode:
         raise RuntimeError(f'{args[0]} failed ({result.returncode}): {result.stderr[-1500:]}')
-    return result.stdout.strip() if result.returncode == 0 else None
+    return result.stdout.strip() if result.returncode==0 else None
+
 
 def atomic(path, value):
     path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
@@ -65,6 +82,18 @@ class Android:
         if installed.lower() != sha(args.binary): raise RuntimeError('Installed APK differs from the supplied binary')
         self.installed_sha = installed
         command(*self.adb, 'shell', 'mkdir', '-p', ANDROID_DOCUMENTS+'/qa_sources')
+
+    @contextmanager
+    def awake(self):
+        # The isolated QA Activity owns FLAG_KEEP_SCREEN_ON. Do not require
+        # WRITE_SECURE_SETTINGS: several real phones deny global ADB changes.
+        command(*self.adb,'shell','input','keyevent','KEYCODE_WAKEUP')
+        command(*self.adb,'shell','wm','dismiss-keyguard')
+        command(*self.adb,'shell','cmd','statusbar','collapse')
+        policy=command(*self.adb,'shell','dumpsys','window','policy')
+        if re.search(r'\bshowing=true\b',policy):
+            raise RuntimeError('Android requires manual unlock before foreground-service export tests')
+        yield
 
     def read(self, relative):
         value = command(*self.adb, 'shell', 'cat', ANDROID_DOCUMENTS+'/'+relative, required=False)
@@ -159,9 +188,14 @@ class Android:
             for name in ['qa_lifecycle_results.json','qa_negative_results.json']:
                 value=self.read(name)
                 if config.get('lifecycle') and value: atomic(dest/name,value)
+            if config.get('lifecycle'):
+                (dest/'outputs').mkdir(exist_ok=True)
+                command(*self.adb,'pull',ANDROID_DOCUMENTS+'/'+relative+'/outputs/retry_custom_sticker.mp4',
+                        dest/'outputs/retry_custom_sticker.mp4',required=False)
         if not data or data['status']!='finished' or len(data['cases'])!=len(config['cases']): raise RuntimeError('Incomplete matrix')
         if any(r['result'] not in ['output_created','cancelled_cleanly'] for r in data['cases']): raise RuntimeError('Matrix contains failures')
         if len(by_output)!=len(config['cases']): raise RuntimeError('Missing per-case crop traces')
+        verify_lifecycle(dest)
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
@@ -175,9 +209,15 @@ def main():
     p.add_argument('--udid',default='EE228BE6-0F7F-48E1-9892-313B7CFFBB63')
     p.add_argument('--install',action='store_true')
     p.add_argument('--case-filter',help='Explicit partial stage check; final acceptance omits this option')
+    p.add_argument('--stage-export-only',action='store_true',help='Export diagnosis only; requires --case-filter and never qualifies as full acceptance')
+    p.add_argument('--stage-lifecycle',action='store_true',help='Include lifecycle diagnosis in a filtered legacy22 stage; never full acceptance')
     p.add_argument('--build-manifest',type=Path)
     p.add_argument('--deadline-hours',type=float,default=16)
     args=p.parse_args()
+    if args.stage_export_only and not args.case_filter:
+        p.error('Export-only diagnosis requires an explicit --case-filter; final acceptance must include previews')
+    if args.stage_lifecycle and (not args.case_filter or args.suite!='legacy22' or args.stage_export_only):
+        p.error('Lifecycle diagnosis requires --suite legacy22 and --case-filter with previews')
     if not re.fullmatch(r'[A-Za-z0-9_-]+',args.prefix): p.error('Use a simple unique run prefix')
     build_path=args.build_manifest or args.binary.parent/'build-manifest.json'
     build=json.loads(build_path.read_text(encoding='utf-8'))
@@ -191,36 +231,38 @@ def main():
     selected=[s for s in matrix['suites'] if args.suite in ['all',s['id']]]
     deadline=time.monotonic()+args.deadline_hours*3600
     adapter=Android(args) if args.platform=='android' else None
-    if adapter: adapter.sources(matrix['materials'])
     failed=[]
-    for suite in selected:
-        cases=[c for c in suite['cases'] if not args.case_filter or re.fullmatch(args.case_filter,c['case'])]
-        if not cases:continue
-        run_id=args.prefix+'_'+suite['id']
-        dest=args.report/'artifacts'/run_id
-        if dest.exists(): raise FileExistsError(f'Preserve old evidence: {dest}')
-        dest.mkdir(parents=True)
-        config={'run_id':run_id,'cases':cases,'core_smokes':True,
-                'build_source_fingerprint':build['source_fingerprint'],
-                'partial_stage_check':args.case_filter is not None,
-                'verify_previews':True,'lifecycle':suite['id']=='legacy22' and args.case_filter is None}
-        shutil.copyfile(build_path,dest/'build-manifest.json')
-        if len({c['case'] for c in config['cases']})!=len(config['cases']): raise ValueError('Duplicate output names in a suite')
-        print('QA_SUITE_START',args.platform,run_id,len(config['cases']),flush=True)
-        try:
-            if adapter: adapter.run(config,dest,matrix['materials'],deadline)
-            else:
-                configuration=dest/'configuration.json';atomic(configuration,config)
-                cmd=[sys.executable,str(ROOT/'tools/ios/run_privacy_regression.py'),str(configuration),
-                     '--app',str(args.binary),'--udid',args.udid,'--optimized-native',
-                     '--report-root',str(args.report),'--sources',str(args.media),
-                     '--deadline-hours',str(max(.1,(deadline-time.monotonic())/3600))]
-                if args.install:cmd.append('--install')
-                subprocess.run(cmd,check=True)
-            print('QA_SUITE_FINISHED',run_id,flush=True)
-        except (RuntimeError,TimeoutError,subprocess.CalledProcessError) as error:
-            atomic(dest/'runner-error.json',{'error':str(error),'at_utc':utc()})
-            failed.append(run_id);print('QA_SUITE_FAILED',run_id,str(error),flush=True)
+    with adapter.awake() if adapter else nullcontext():
+        if adapter: adapter.sources(matrix['materials'])
+        for suite in selected:
+            cases=[c for c in suite['cases'] if not args.case_filter or re.fullmatch(args.case_filter,c['case'])]
+            if not cases:continue
+            run_id=args.prefix+'_'+suite['id']
+            dest=args.report/'artifacts'/run_id
+            if dest.exists(): raise FileExistsError(f'Preserve old evidence: {dest}')
+            dest.mkdir(parents=True)
+            config={'run_id':run_id,'cases':cases,'core_smokes':True,
+                    'build_source_fingerprint':build['source_fingerprint'],
+                    'partial_stage_check':args.case_filter is not None,
+                    'verify_previews':not args.stage_export_only,'stage_export_only':args.stage_export_only,
+                    'lifecycle':suite['id']=='legacy22' and (args.case_filter is None or args.stage_lifecycle)}
+            shutil.copyfile(build_path,dest/'build-manifest.json')
+            if len({c['case'] for c in config['cases']})!=len(config['cases']): raise ValueError('Duplicate output names in a suite')
+            print('QA_SUITE_START',args.platform,run_id,len(config['cases']),flush=True)
+            try:
+                if adapter: adapter.run(config,dest,matrix['materials'],deadline)
+                else:
+                    configuration=dest/'configuration.json';atomic(configuration,config)
+                    cmd=[sys.executable,str(ROOT/'tools/ios/run_privacy_regression.py'),str(configuration),
+                         '--app',str(args.binary),'--udid',args.udid,'--optimized-native',
+                         '--report-root',str(args.report),'--sources',str(args.media),
+                         '--deadline-hours',str(max(.1,(deadline-time.monotonic())/3600))]
+                    if args.install:cmd.append('--install')
+                    subprocess.run(cmd,check=True)
+                print('QA_SUITE_FINISHED',run_id,flush=True)
+            except (RuntimeError,TimeoutError,subprocess.CalledProcessError) as error:
+                atomic(dest/'runner-error.json',{'error':str(error),'at_utc':utc()})
+                failed.append(run_id);print('QA_SUITE_FAILED',run_id,str(error),flush=True)
     return 1 if failed else 0
 
 if __name__=='__main__':raise SystemExit(main())

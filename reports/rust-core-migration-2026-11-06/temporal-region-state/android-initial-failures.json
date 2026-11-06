@@ -1,0 +1,41 @@
+{
+  "run_id": "temporal_regions_7906787a_focused13",
+  "failed_cases": [
+    {
+      "case": "group_4k_body_face_union",
+      "result": "failed",
+      "error_code": null,
+      "error_message": null
+    },
+    {
+      "case": "solo_4k_raised_arm_sticker",
+      "result": "failed",
+      "error_code": null,
+      "error_message": null
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "result": "failed",
+      "error_code": null,
+      "error_message": null
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "result": "failed",
+      "error_code": null,
+      "error_message": null
+    },
+    {
+      "case": "group_4k_body_solid",
+      "result": "failed",
+      "error_code": null,
+      "error_message": null
+    },
+    {
+      "case": "group_4k_tail_face",
+      "result": "failed",
+      "error_code": null,
+      "error_message": null
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 //! is covered. BODY therefore always requests a face supplement. A supplement
 //! belongs to the body fill; only an explicit FACE_ONLY layer uses a sticker.
 use crate::geometry::Rect;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 pub const BODY: u32 = 1;
 pub const FACE: u32 = 2;
@@ -40,6 +40,60 @@ pub fn scene_scope(roots: &[i64], body: &[i64], face: &[i64], follow: Option<i64
     } else {
         0
     }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SceneTarget {
+    pub id: i64,
+    pub layers: u32,
+}
+
+/// Uniform scene intent follows current observations. An individual or mixed
+/// selection retains its exact requested identity, even if currently absent.
+/// A body target also requests its face supplement; no identity is reassigned.
+pub fn scene_targets(
+    roots: &[i64],
+    body: &[i64],
+    face: &[i64],
+    current: &[i64],
+    hero: Option<i64>,
+) -> Vec<SceneTarget> {
+    let body_set: BTreeSet<_> = body.iter().copied().collect();
+    let face: Vec<_> = face
+        .iter()
+        .copied()
+        .filter(|id| !body_set.contains(id))
+        .collect();
+    let scope = if current.is_empty() {
+        0
+    } else {
+        scene_scope(roots, body, &face, hero)
+    };
+    let (body, face): (Vec<_>, Vec<_>) = match scope {
+        SCENE_BODY => (current.to_vec(), vec![]),
+        SCENE_FACE => (vec![], current.to_vec()),
+        SCENE_OTHER_FACES => (
+            vec![],
+            current
+                .iter()
+                .copied()
+                .filter(|id| Some(*id) != hero)
+                .collect(),
+        ),
+        _ => (body.to_vec(), face),
+    };
+    let mut targets = BTreeMap::new();
+    for id in face {
+        targets.insert(id, FACE);
+    }
+    for id in body {
+        targets.insert(id, BODY | FACE);
+    }
+    targets
+        .into_iter()
+        .map(|(id, layers)| SceneTarget { id, layers })
+        .collect()
 }
 
 pub fn compositor_targets(selected: &[i64], covered: &[i64], explicit: &[i64]) -> Vec<i64> {
@@ -90,6 +144,72 @@ pub fn face_targets(body_ids: &[i64], face_ids: &[i64]) -> Vec<i64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scene_target_capacity_failure_keeps_caller_storage_unchanged() {
+        let roots = [0_i64, 1];
+        let current = [8_i64, 9];
+        let mut output = SceneTarget { id: 42, layers: 99 };
+        // SAFETY: all slices are valid; only one output slot is provided.
+        let count = unsafe {
+            crate::frame_kernel_scene_targets(
+                roots.as_ptr(),
+                2,
+                roots.as_ptr(),
+                2,
+                std::ptr::null(),
+                0,
+                current.as_ptr(),
+                2,
+                0,
+                0,
+                &mut output,
+                1,
+            )
+        };
+        assert_eq!(count, -3);
+        assert_eq!(output, SceneTarget { id: 42, layers: 99 });
+    }
+
+    #[test]
+    fn current_scene_targets_do_not_require_first_frame_identity_but_individual_targets_do() {
+        let ids = |targets: Vec<SceneTarget>| {
+            targets
+                .into_iter()
+                .map(|t| (t.id, t.layers))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            ids(scene_targets(&[0, 1], &[0, 1], &[], &[8, 7], None)),
+            vec![(7, BODY | FACE), (8, BODY | FACE)]
+        );
+        assert_eq!(
+            ids(scene_targets(&[0, 1], &[], &[0, 1], &[8, 7], None)),
+            vec![(7, FACE), (8, FACE)]
+        );
+        assert_eq!(
+            ids(scene_targets(&[0, 1, 2], &[0], &[0, 1], &[8, 7], None)),
+            vec![(0, BODY | FACE), (1, FACE)]
+        );
+        assert_eq!(
+            ids(scene_targets(
+                &[0, 1, 2],
+                &[],
+                &[0, 2],
+                &[-3, 1, -2],
+                Some(1)
+            )),
+            vec![(-3, FACE), (-2, FACE)]
+        );
+        assert_eq!(
+            ids(scene_targets(&[0, 1, 2], &[], &[0, 2], &[-3, -2], Some(1))),
+            vec![(-3, FACE), (-2, FACE)]
+        );
+        assert_eq!(
+            ids(scene_targets(&[0], &[0], &[], &[], None)),
+            vec![(0, BODY | FACE)]
+        );
+    }
 
     #[test]
     fn current_scope_never_exempts_an_ambiguous_or_absent_hero() {

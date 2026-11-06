@@ -204,6 +204,9 @@ class DanceNativeApiImpl(
 
     override suspend fun cancelJob(jobId: String) = withContext(Dispatchers.Default) {
         coordinator.cancelJob(jobId)
+        // The public cancellation future completes only after the shared terminal
+        // barrier releases the worker, model, cache lease and native resource lane.
+        while (coordinator.hasActiveRuntime(jobId)) kotlinx.coroutines.delay(20L)
     }
 
     override suspend fun getJobStatus(jobId: String): JobStatusDto = withContext(Dispatchers.Default) {

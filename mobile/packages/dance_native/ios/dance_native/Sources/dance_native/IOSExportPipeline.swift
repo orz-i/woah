@@ -360,6 +360,11 @@ final class IOSExportPipeline {
         facePrivacyResolver = IOSFacePrivacyTemporalResolver()
       }
 
+      if freshSceneCoverage, let runner, let facePrivacyResolver {
+        try IOSSceneRegionContext.seed(asset: asset, timestampUs: trimStartMs * 1_000,
+          runner: runner, resolver: facePrivacyResolver, preferredBackend: .xnnpack)
+      }
+
       let videoReader = try makeVideoReader(
         asset: asset,
         track: videoTrack,
@@ -506,7 +511,7 @@ final class IOSExportPipeline {
             : (freshSceneCoverage && !faceOnlyIds.isEmpty ? sceneIds : faceOnlyIds)
           let coveredHeadFallbackIds = useCurrentObservations
             ? IOSHighResolutionPrivacyCoverage.coveredHeadFallbackIds(persons: renderPersons, preprocess: inference.preprocess) : []
-          let faceRegions = facePrivacyResolver?.resolve(
+          let faceRegions = try facePrivacyResolver?.resolve(
             image: frame,
             persons: renderPersons,
             // Full-body segmentation can omit a profile, a jaw or a mirror

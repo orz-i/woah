@@ -1,0 +1,7 @@
+{
+  "result": "All 12 decoded movies and all 35 actual source/protected native preview pairs are pixel-identical to the previously reviewed fec72da3 cohort.",
+  "comparison": "ios-cancel-pixel-comparison.json",
+  "comparison_sha256": "834e15e9f64795962352bb72de5840ba5643244d53a865768f7b79ba8d5527bd",
+  "prior_manual_review": "ios-current-review/manual-review.json",
+  "scope": "Unchanged visual evidence reused; not final 62-case acceptance."
+}

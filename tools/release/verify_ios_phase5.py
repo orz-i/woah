@@ -219,12 +219,6 @@ def verify_ios_replay_surface() -> None:
         "fallbackCenterYRatio: Float32 = 0.14",
         "fallbackRadiusXFromWidth: Float32 = 0.22",
         "fallbackRadiusYFromWidth: Float32 = 0.26",
-        "fallbackReferenceExpansion: Float32 = 1.24",
-        "fallbackMinTrustedExpansion: Float32 = 1.10",
-        "detectedReferenceAlpha: Float32 = 0.25",
-        "privacyTargetFloor: Float32 = 0.90",
-        "positionMaxRadiusStep: Float32 = 0.80",
-        "positionMaxUnobservedPersonRadiusStep: Float32 = 0.65",
         "maxPredictedFaceAgeUs: Int64 = 150_000",
         "trustedMaskSeedMaxAgeUs: Int64 = 800_000",
         "minPredictedFaceScale: Float32 = 0.88",
@@ -243,14 +237,12 @@ def verify_ios_replay_surface() -> None:
         "classFallbackTrustedSizeExpansion: Float32 = 1.24",
         "Borrow only",
         "final class IOSFacePrivacyClassFallbackContinuity",
-        "private var stateByOwnerId: [Int: State] = [:]",
         "func retain(ownerIds: Set<Int>)",
         "bodyMaskGuided: Bool",
         "classFallbackContinuity = IOSFacePrivacyClassFallbackContinuity()",
         "let activeUniqueClassOwners = Set(",
         "classFallbackContinuity.retain(ownerIds: activeUniqueClassOwners)",
-        "region = classFallbackContinuity.stabilize(",
-        "referenceRadius * positionMaxRadiusStep",
+        "region = try classFallbackContinuity.stabilize(",
     ):
         check(token in face_pipeline, f"Phase 5C-H FACE_ONLY pipeline missing: {token}")
     trusted_start = face_pipeline.find("private struct TrustedFaceGeometry")
@@ -388,7 +380,11 @@ def verify_ios_replay_surface() -> None:
     )
     for token in (
         "facePrivacyResolvers: [String: IOSFacePrivacyTemporalResolver]",
-        "facePrivacyResolver(cacheId: request.analysisCacheId).resolve(",
+        "let privacyResolver = uniformSceneCoverage ? IOSFacePrivacyTemporalResolver()",
+        ": facePrivacyResolver(cacheId: request.analysisCacheId)",
+        "try IOSSceneRegionContext.seed(",
+        "runner: runner, resolver: privacyResolver)",
+        ": privacyResolver.resolve(" ,
         "preprocess: frameAnalysis.preprocess",
         "facePrivacyResolvers.removeValue(forKey: cacheId)?.reset()",
         "faceRegions: faceRegions",
@@ -454,15 +450,19 @@ def verify_android_reference_boundary() -> None:
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyTemporalStabilizer.kt",
         "Android FacePrivacyTemporalStabilizer",
     )
-    for token in (
-        "private const val FALLBACK_REFERENCE_EXPANSION = 1.24f",
-        "private const val FALLBACK_MIN_TRUSTED_EXPANSION = 1.10f",
-        "private const val DETECTED_REFERENCE_ALPHA = 0.25f",
-        "private const val PRIVACY_TARGET_FLOOR = 0.90f",
-        "private const val POSITION_MAX_RADIUS_STEP = 0.80f",
-        "private const val POSITION_MAX_UNOBSERVED_PERSON_RADIUS_STEP = 0.65f",
-    ):
-        check(token in face_temporal, f"Android FACE_ONLY temporal reference drifted: {token}")
+    check("FrameKernel.RegionState()" in face_temporal and ".step(" in face_temporal
+          and "coverCurrent = kind == 0" in face_temporal,
+          "Android temporal geometry must cross Rust and fully cover current measured faces")
+    face_pipeline = text(ROOT / "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSFacePrivacyPipeline.swift", "iOS face pipeline")
+    adapter = text(ROOT / "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSFrameKernel.swift", "FrameKernel Swift transport")
+    check("frame_kernel_region_step(&state,measurement,&output)" in adapter
+          and "let motion: IOSFrameKernel.RegionState" in face_pipeline
+          and "coverCurrent:kind==0" in face_pipeline,
+          "iOS normal and class geometry must use shared Rust temporal state")
+    core = text(ROOT / "crates/frame-kernel/src/temporal_region.rs", "shared temporal geometry")
+    for token in ("pub struct RegionState", "pub fn step(", "pub fn anchor_translation(",
+                  "max_anchor_step", "max_residual", "target.radius_x * floor"):
+        check(token in core, f"Shared temporal geometry contract missing: {token}")
 
     face_processor = text(
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FaceOnlyPrivacyFrameProcessor.kt",
@@ -482,12 +482,9 @@ def verify_android_reference_boundary() -> None:
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/PersonBboxMotionEstimator.kt",
         "Android PersonBboxMotionEstimator",
     )
-    for token in (
-        "private const val MIN_EDGE_AGREEMENT_PX = 8f",
-        "private const val EDGE_AGREEMENT_DIMENSION_RATIO = 0.07f",
-        "return if (abs(firstEdgeDelta) <= abs(secondEdgeDelta))",
-    ):
-        check(token in motion_estimator, f"Android person-bbox motion reference drifted: {token}")
+    check("FrameKernel.anchorTranslation(previous, current)" in motion_estimator
+          and "IOSFrameKernel.anchorTranslation(previous:" in face_pipeline,
+          "Both motion adapters must use shared edge-agreement translation")
     motion_test = text(
         ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PersonBboxMotionEstimatorTest.kt",
         "Android PersonBboxMotionEstimatorTest",
@@ -581,16 +578,12 @@ def verify_android_reference_boundary() -> None:
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyClassFallbackContinuity.kt",
         "Android FacePrivacyClassFallbackContinuity",
     )
-    for token in (
-        "Render-only temporal continuity for anonymous FACE_ONLY class fallbacks",
-        "private val stateByOwnerId = mutableMapOf<Int, State>()",
-        "it.residualTrackIds.singleOrNull()",
-        "PersonBboxMotionEstimator.estimate(",
-        "trustedCurrentPixelCenter = false",
-        "nothing here is written",
-        "back to TrackManager",
-    ):
-        check(token in class_continuity, f"Android FACE_ONLY class-continuity reference drifted: {token}")
+    for token in ("it.residualTrackIds.singleOrNull()", "stabilizer.retainTracks(",
+                  "translationOnly = !fallback.bodyMaskGuided"):
+        check(token in class_continuity, f"Android class-continuity adapter missing: {token}")
+    check("states: [Int: IOSFrameKernel.RegionState]" in face_pipeline
+          and "translationOnly:!bodyMaskGuided" in face_pipeline,
+          "Anonymous iOS class state must be isolated and use the shared weak measurement path")
     class_continuity_test = text(
         ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyClassFallbackContinuityTest.kt",
         "Android FacePrivacyClassFallbackContinuityTest",

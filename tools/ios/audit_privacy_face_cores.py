@@ -3,7 +3,10 @@
 import argparse, json, pathlib, hashlib
 import cv2
 import numpy as np
+import sys
 ROOT=pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT))
+from tools.privacy.lifecycle_evidence import retry_case
 REPORT=ROOT/'reports/privacy-ios-22-and-4k-regression-2026-11-05'
 SOURCES=ROOT/'reports/privacy-ios-regression-2026-11-04/artifacts/sources'
 
@@ -31,9 +34,12 @@ def main(argv=None):
     cache_root=args.source_faces or REPORT/'artifacts/source-faces'
     run=REPORT/'artifacts'/args.run_id
     data=json.loads((run/'results.json').read_text())
+    additional=retry_case(run)
+    if additional:data['cases']=data['cases']+[additional]
     meta=json.loads((run/'run-metadata.json').read_text())
-    traces=[read_jsonl(run/'crop-traces'/p) for p in meta.get('crop_traces',[])]
-    trace_by_output={t[0]['output_basename']:(t,name) for t,name in zip(traces,meta.get('crop_traces',[])) if t[0].get('output_basename')}
+    trace_names=list(dict.fromkeys(meta.get('crop_traces',[])+list(meta.get('additional_crop_traces',{}).values())))
+    traces=[read_jsonl(run/'crop-traces'/p) for p in trace_names]
+    trace_by_output={t[0]['output_basename']:(t,name) for t,name in zip(traces,trace_names) if t[0].get('output_basename')}
     rows=[];summary=REPORT/'face-audits'/args.run_id;summary.mkdir(parents=True,exist_ok=True)
     previous={}
     for prior in [REPORT/'face-audits'/(args.run_id+'_prefix')/'results.json',summary/'results.json']:

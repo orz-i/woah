@@ -11,9 +11,78 @@ internal object FrameKernel {
         check(abiVersion() == 1) { "Unsupported FrameKernel ABI" }
     }
 
+    private external fun workCanReplaceNative(state: Int): Int
+    private external fun workTransitionNative(state: Int, event: Int): Int
+    class WorkLifecycle {
+        private var state = 0
+        val acceptingProgress: Boolean get() = state <= 1
+        val canAdmitReplacement: Boolean get() = workCanReplaceNative(state) == 1
+        fun requestCancel(): Boolean {
+            state = workTransitionNative(state, 0)
+            return state == 1
+        }
+        fun observe(outcome: String): Boolean {
+            val event = when(outcome) {
+                "completed" -> 1; "failed" -> 2; "cancelled" -> 3
+                else -> return false
+            }
+            state = workTransitionNative(state, event)
+            return true
+        }
+        fun outcomeAfterRelease(): String = terminalName(workTransitionNative(state, 4))
+        fun release(): String {
+            state = workTransitionNative(state, 4)
+            return terminalName(state)
+        }
+        private fun terminalName(value: Int): String = when(value) {
+            5 -> "completed"; 6 -> "failed"; 7 -> "cancelled"
+            else -> error("Shared worker outcome is not terminal")
+        }
+    }
+
+    private external fun regionStepNative(values: FloatArray, clock: LongArray, raw: FloatArray,
+        anchor: FloatArray, pts: Long, kind: Int, flags: Int): FloatArray
+    private external fun anchorTranslationNative(previous: FloatArray, current: FloatArray): FloatArray
+
+    private external fun continueRegionNative(values: FloatArray, clock: LongArray,
+        current: FloatArray, pts: Long, kind: Int): FloatArray
+    private external fun regionContextProbeUsNative(pts: Long): Long
+    fun regionContextProbeUs(pts: Long): Long? = regionContextProbeUsNative(pts).takeIf { it >= 0 }
+    class RegionContinuation {
+        private val values = FloatArray(1024 * 8)
+        private val clock = LongArray(1025)
+        fun reset() { clock[0] = 0 }
+        fun step(raw: FloatArray, anchor: FloatRect, pts: Long, kind: Int): FloatArray =
+            continueRegionNative(values, clock, raw + anchor.values(), pts, kind)
+    }
+
+    class RegionState {
+        private val values = FloatArray(12)
+        private val clock = LongArray(2)
+        fun step(raw: FloatArray, anchor: FloatRect, pts: Long, kind: Int,
+            observed: Boolean = true, trustedCenter: Boolean = false, canonical: Boolean = false,
+            translationOnly: Boolean = false, coverCurrent: Boolean = false): FloatArray {
+            val flags = (if (observed) 1 else 0) or (if (trustedCenter) 2 else 0) or
+                (if (canonical) 4 else 0) or (if (translationOnly) 8 else 0) or (if (coverCurrent) 16 else 0)
+            return regionStepNative(values, clock, raw, anchor.values(), pts, kind, flags)
+        }
+        fun snapshot(): FloatArray = values.copyOf()
+    }
+    fun anchorTranslation(previous: FloatRect, current: FloatRect): FloatArray =
+        anchorTranslationNative(previous.values(), current.values())
+
     private external fun abiVersion(): Int
     private external fun associationDefaultsNative(): FloatArray
     private external fun associationScoreNative(values: FloatArray, historyAge: Long, flags: Int, weights: FloatArray): Float
+    private external fun sceneTargetsNative(roots: LongArray, body: LongArray, face: LongArray,
+        current: LongArray, hasHero: Boolean, hero: Long): LongArray
+    data class SceneTargets(val body: Set<Int>, val faceOnly: Set<Int>)
+    fun sceneTargets(roots: Set<Int>, body: Set<Int>, face: Set<Int>, current: Set<Int>, hero: Int?): SceneTargets {
+        val targets=sceneTargetsNative(roots.ids(),body.ids(),face.ids(),current.ids(),hero!=null,hero?.toLong()?:0)
+            .asList().chunked(2)
+        return SceneTargets(targets.filter { it[1] and 1L != 0L }.map {it[0].toInt()}.toSet(),
+            targets.filter { it[1] == 2L }.map {it[0].toInt()}.toSet())
+    }
     private external fun sceneScopeNative(roots: LongArray, body: LongArray, face: LongArray, hasHero: Boolean, hero: Long): Int
     private external fun compositorTargetsNative(selected: LongArray, covered: LongArray, explicit: LongArray): LongArray
     private external fun currentHeroIndexNative(boxes: FloatArray, observed: FloatArray?): Int

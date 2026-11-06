@@ -58,7 +58,9 @@ jobs:
           bash tools/ios/host_regression/run_association.sh
           bash tools/ios/host_regression/run_pixels.sh
           bash tools/ios/host_regression/run_box_filter.sh
+          python tools/rust/temporal_region_smoke.py crates/frame-kernel/target/release/libframe_kernel.dylib
           bash tools/ios/host_regression/run_selection.sh
+          bash tools/ios/host_regression/run_temporal_regions.sh
           python tools/rust/run.py build --target aarch64-apple-ios
           python tools/rust/run.py build --target aarch64-apple-ios-sim
           python tools/rust/run.py build --target x86_64-apple-ios

@@ -1,0 +1,44 @@
+{
+  "run_id": "scene_context_fec72da3_focused13",
+  "reviewed_cases": [
+    "group_4k_body_face_union",
+    "solo_4k_body_face_union",
+    "solo_4k_raised_arm_sticker",
+    "solo_4k_raised_arm_solid",
+    "solo_4k_raised_arm_body",
+    "group_hd_overlap_face",
+    "group_hd_overlap_body",
+    "group_4k_face_solid",
+    "group_4k_body_solid",
+    "group_4k_tail_face",
+    "solo_4k_custom_gallery_probe",
+    "solo_4k_cancel_probe",
+    "solo_4k_immediate_retry_probe"
+  ],
+  "reviewed_movie_frames": "first/middle/last of all 12 movies",
+  "reviewed_native_previews": 35,
+  "result": "Visible facial features covered in reviewed frames and native previews. Independent full-frame face and known-point audits remain separate.",
+  "automatic_results_preserved": true,
+  "manual_resolutions": [
+    {
+      "case": "group_hd_overlap_face",
+      "source_frame": 343,
+      "source_bbox": [
+        1269.9224853515625,
+        359.35417234897614,
+        1337.5244092941284,
+        426.956090927124
+      ],
+      "automatic_fraction": 0.8478260869565217,
+      "movie_sha256": "966051ebc60c305b7da07000a2439d1d3ca511a906ccd5c657c634328a992070",
+      "preview_sha256": "6f0101c69a73ec000b298032e3e57e9d92a7daf9b4472b5b0905f2159b961f11",
+      "resolution": "Current source/movie/preview ROI reviewed: eyes, nose and mouth covered; remaining Vision extent is hair and neck.",
+      "image": "group-overlap-detail.jpg"
+    }
+  ],
+  "precision_observations": [
+    "Raised-arm fallback can conservatively enlarge face/sticker coverage over the raised arm and upper torso.",
+    "Group face fallback can produce additional or oversized regions."
+  ],
+  "scope": "Stage evidence. Does not establish final 62-case acceptance."
+}

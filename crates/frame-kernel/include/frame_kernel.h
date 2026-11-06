@@ -11,7 +11,48 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* Worker events: 0 cancel request, 1 published success, 2 failure,
+   3 cancellation acknowledged, 4 resources released.
+   States: 0 running, 1 cancellation requested, 2/3/4 pending success/failure/
+   cancellation, 5/6/7 terminal success/failure/cancellation. -1 invalid.
+   Do not expose pending outcomes as terminal; release native resources first. */
+int32_t frame_kernel_work_transition(uint32_t state, uint32_t event);
+int32_t frame_kernel_work_can_replace(uint32_t state);
+
 typedef struct FrameKernelRect { float left, top, right, bottom; } FrameKernelRect;
+typedef struct FrameKernelSceneTarget { int64_t id; uint32_t layers; } FrameKernelSceneTarget;
+/* layers: 1 body, 2 face. Body always has both bits for its face supplement.
+   No aliases/retained pointers. Count or -1 invalid; <=-2 need -(result+1).
+   Individual/mixed absent IDs remain requested; only uniform intent maps current IDs. */
+int32_t frame_kernel_scene_targets(const int64_t *roots, size_t roots_len,
+    const int64_t *body, size_t body_len, const int64_t *face, size_t face_len,
+    const int64_t *current, size_t current_len, uint32_t has_hero, int64_t hero,
+    FrameKernelSceneTarget *output, size_t capacity);
+typedef struct FrameKernelEllipse { float center_x, center_y, radius_x, radius_y; } FrameKernelEllipse;
+typedef struct FrameKernelRegionMeasurement {
+    FrameKernelEllipse region; FrameKernelRect anchor; int64_t timestamp_us;
+    uint32_t kind, flags;
+} FrameKernelRegionMeasurement;
+/* Additive continuation for uniform coverage only; enabled=0 clears history.
+   Output records are retained observations then current_count resolved values.
+   No identity ownership/exemptions are inferred. Inputs/outputs cannot alias.
+   Returns count, -1 invalid, <=-2 needs -(result+1) records. No partial writes. */
+int32_t frame_kernel_continue_regions(const FrameKernelRegionMeasurement *history, size_t history_len,
+    const FrameKernelRegionMeasurement *current, size_t current_len, int64_t now, uint32_t enabled,
+    FrameKernelRegionMeasurement *output, size_t capacity);
+int64_t frame_kernel_region_context_probe_us(int64_t timestamp_us);
+typedef struct FrameKernelRegionState {
+    FrameKernelEllipse output;
+    float reference_radius_x, reference_radius_y, reference_width, reference_height;
+    FrameKernelRect anchor; int64_t timestamp_us; uint32_t flags;
+} FrameKernelRegionState;
+/* Initialize state to zero. kind: 0 observed, 1 projected, 2 estimated.
+   Measurement flags: 1 current observed anchor, 2 trusted local center,
+   4 half-pixel lattice, 8 weak translation-only center, 16 cover measured extent.
+   All state/output memory belongs to the caller; outputs cannot alias state.
+   0 success, -1 invalid; invalid inputs leave state and output unchanged. */
+int32_t frame_kernel_region_step(FrameKernelRegionState *state, FrameKernelRegionMeasurement measurement, FrameKernelEllipse *output);
+int32_t frame_kernel_anchor_translation(FrameKernelRect previous, FrameKernelRect current, float output[2]);
 typedef struct FrameKernelTransform {
     float scale, pad_left, pad_top;
     uint32_t source_width, source_height, input_size, proto_size;
