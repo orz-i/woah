@@ -56,6 +56,7 @@ jobs:
           python tools/rust/instances_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
           python tools/rust/follow_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
           python tools/rust/association_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
+          python tools/rust/pixels_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
           python tools/rust/verify_matrix.py
 
       - name: Verify Android namespace contract

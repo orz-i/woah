@@ -12,6 +12,13 @@ internal object FrameKernel {
     }
 
     private external fun abiVersion(): Int
+    private external fun letterboxNative(width: Int, height: Int, outputWidth: Int, outputHeight: Int): FloatArray
+    private external fun normalizePixelsNative(input: ByteBuffer, width: Int, height: Int, rowStride: Int,
+        channels: Int, red: Int, green: Int, blue: Int, flipRows: Boolean, flipColumns: Boolean,
+        interleaved: Boolean, scale: Float, bias: Float, output: FloatArray)
+    private external fun resizeRgbaNative(input: ByteBuffer, width: Int, height: Int, stride: Int,
+        output: ByteBuffer, outputWidth: Int, outputHeight: Int, fill: Int)
+    private external fun yuv420Native(y: ByteBuffer, u: ByteBuffer, v: ByteBuffer, metadata: IntArray, output: ByteBuffer)
     private external fun matchCostsNative(costs: FloatArray, rows: Int, columns: Int, maxCost: Float): IntArray
     private external fun matchRectsNative(rows: FloatArray, columns: FloatArray, maxCost: Float): IntArray
     private external fun followResetNative(values: FloatArray, clock: LongArray)
@@ -68,6 +75,20 @@ internal object FrameKernel {
 
     fun reprojectMask(mask: ByteBuffer, output: ByteBuffer, local: ModelCoordinateMapper, scene: ModelCoordinateMapper, view: FloatRect) =
         reprojectMaskNative(mask, output, local.values(), scene.values(), view.values())
+
+    fun letterbox(width: Int, height: Int, outputWidth: Int, outputHeight: Int) = letterboxNative(width, height, outputWidth, outputHeight)
+    fun yuv420(y: ByteBuffer, u: ByteBuffer, v: ByteBuffer, metadata: IntArray, output: ByteBuffer) = yuv420Native(y, u, v, metadata, output)
+
+    fun normalizePixels(input: ByteBuffer, width: Int, height: Int, rowStride: Int, output: FloatArray,
+        channels: Int = 4, red: Int = 0, green: Int = 1, blue: Int = 2,
+        flipRows: Boolean = false, flipColumns: Boolean = false, interleaved: Boolean = false,
+        scale: Float = 1f / 255f, bias: Float = 0f) =
+        normalizePixelsNative(input, width, height, rowStride, channels, red, green, blue,
+            flipRows, flipColumns, interleaved, scale, bias, output)
+
+    fun resizeRgba(input: ByteBuffer, width: Int, height: Int, stride: Int, output: ByteBuffer,
+        outputWidth: Int, outputHeight: Int, fill: Int = 114) =
+        resizeRgbaNative(input, width, height, stride, output, outputWidth, outputHeight, fill)
 
     private fun FloatRect.values() = floatArrayOf(left, top, right, bottom)
     private fun ModelCoordinateMapper.values() = floatArrayOf(scale, padLeft, padTop, srcWidth.toFloat(), srcHeight.toFloat(), modelInputSize.toFloat(), protoSize.toFloat())

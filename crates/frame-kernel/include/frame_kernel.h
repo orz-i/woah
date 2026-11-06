@@ -14,6 +14,31 @@ typedef struct FrameKernelTransform {
     uint32_t source_width, source_height, input_size, proto_size;
 } FrameKernelTransform;
 uint32_t frame_kernel_abi_version(void);
+
+typedef struct FrameKernelLetterbox { float scale, width, height, left, top; } FrameKernelLetterbox;
+typedef struct FrameKernelPixelSpec {
+    uint32_t width, height, row_stride, channels, red, green, blue;
+    uint32_t flip_rows, flip_columns, interleaved;
+    float scale, bias;
+} FrameKernelPixelSpec;
+/* Caller-owned nonoverlapping buffers; invalid contracts return -1 before writes.
+   Pixel layout: interleaved=0 planar RGB, =1 interleaved RGB. Channel indices map
+   RGB/RGBA/BGR/BGRA inputs explicitly; normalization is byte*scale+bias. */
+int32_t frame_kernel_letterbox(uint32_t width, uint32_t height, uint32_t ow, uint32_t oh, FrameKernelLetterbox *output);
+int32_t frame_kernel_normalize_pixels(const uint8_t *input, size_t len, FrameKernelPixelSpec spec, float *output, size_t capacity);
+int32_t frame_kernel_resize_rgba(const uint8_t *input, size_t len, uint32_t width, uint32_t height, uint32_t stride,
+    uint8_t *output, size_t capacity, uint32_t ow, uint32_t oh, uint8_t fill, FrameKernelLetterbox *plan);
+typedef struct FrameKernelPlane { const uint8_t *data; size_t len; uint32_t row_stride, pixel_stride; } FrameKernelPlane;
+typedef struct FrameKernelYuvSpec {
+    uint32_t width, height, crop_left, crop_top, crop_right, crop_bottom;
+    uint32_t display_width, display_height, rotation, output_width, output_height;
+    uint32_t flip_rows, matrix, full_range, fill;
+} FrameKernelYuvSpec;
+/* Matrix: 0 BT.601, 1 BT.709, 2 BT.2020. Chroma sample coordinates are luma/2.
+   Native adapters supply crop, rotation, plane offsets/strides and range metadata.
+   Input planes may overlap each other; output must be disjoint. */
+int32_t frame_kernel_yuv420_rgba(FrameKernelPlane y, FrameKernelPlane u, FrameKernelPlane v,
+    FrameKernelYuvSpec spec, uint8_t *output, size_t capacity);
 typedef struct FrameKernelMatchPair { uint32_t row, column; } FrameKernelMatchPair;
 /* Stable thresholded greedy matching, not an optimal Hungarian assignment.
    Returns count; -1 invalid; <=-2 needs -(result+1) pair capacity, no partial writes. */

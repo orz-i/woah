@@ -1,6 +1,8 @@
 use crate::association::MatchPair;
 use crate::camera::FollowState;
 use crate::instances::{InstanceDetection, InstanceMetrics, InstanceSpec, InstanceThresholds};
+use crate::pixels::{Letterbox, PixelSpec};
+use crate::yuv::YuvSpec;
 use crate::{
     ABI_VERSION,
     geometry::{self, Rect, Transform},
@@ -22,6 +24,141 @@ unsafe fn write_matches(pairs: &[MatchPair], output: *mut MatchPair, capacity: u
         std::ptr::copy_nonoverlapping(pairs.as_ptr(), output, pairs.len());
     }
     pairs.len() as i32
+}
+
+/// # Safety
+/// output points to one writable aligned Letterbox.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_letterbox(
+    width: u32,
+    height: u32,
+    ow: u32,
+    oh: u32,
+    output: *mut Letterbox,
+) -> i32 {
+    let Some(plan) = crate::pixels::letterbox(width, height, ow, oh) else {
+        return -1;
+    };
+    if output.is_null() {
+        return -1;
+    }
+    // SAFETY: caller supplies a live aligned output; no pointers retained.
+    unsafe {
+        output.write(plan);
+    }
+    0
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct PlaneView {
+    pub data: *const u8,
+    pub len: usize,
+    pub row_stride: u32,
+    pub pixel_stride: u32,
+}
+
+/// # Safety
+/// Input planes are readable for declared lengths (they may overlap each other).
+/// Output is writable for capacity bytes and disjoint from every input plane.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_yuv420_rgba(
+    y: PlaneView,
+    u: PlaneView,
+    v: PlaneView,
+    spec: YuvSpec,
+    output: *mut u8,
+    capacity: usize,
+) -> i32 {
+    if [y, u, v].iter().any(|p| p.data.is_null() || p.len == 0) || output.is_null() || capacity == 0
+    {
+        return -1;
+    }
+    let view = |p: PlaneView| {
+        // SAFETY: caller provides a readable plane of len bytes, no retention.
+        crate::yuv::Plane {
+            // SAFETY: caller supplies a readable plane of the declared length.
+            bytes: unsafe { std::slice::from_raw_parts(p.data, p.len) },
+            row_stride: p.row_stride,
+            pixel_stride: p.pixel_stride,
+        }
+    };
+    let (y, u, v) = (view(y), view(u), view(v));
+    // SAFETY: caller provides disjoint writable output of capacity bytes.
+    let out = unsafe { std::slice::from_raw_parts_mut(output, capacity) };
+    if crate::yuv::convert([&y, &u, &v], spec, out).is_some() {
+        0
+    } else {
+        -1
+    }
+}
+
+/// # Safety
+/// Nonempty buffers must be aligned, valid and disjoint as declared.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_normalize_pixels(
+    input: *const u8,
+    len: usize,
+    spec: PixelSpec,
+    output: *mut f32,
+    capacity: usize,
+) -> i32 {
+    if input.is_null() || output.is_null() || len == 0 || capacity == 0 {
+        return -1;
+    }
+    // SAFETY: caller supplies readable/writable disjoint buffers of these lengths.
+    let (input, output) = unsafe {
+        (
+            std::slice::from_raw_parts(input, len),
+            std::slice::from_raw_parts_mut(output, capacity),
+        )
+    };
+    if crate::pixels::normalize(input, spec, output).is_some() {
+        0
+    } else {
+        -1
+    }
+}
+
+/// # Safety
+/// Nonempty buffers must be valid and disjoint as declared. Optional plan points
+/// to one aligned writable Letterbox, disjoint from both buffers.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_resize_rgba(
+    input: *const u8,
+    len: usize,
+    width: u32,
+    height: u32,
+    stride: u32,
+    output: *mut u8,
+    capacity: usize,
+    ow: u32,
+    oh: u32,
+    fill: u8,
+    plan: *mut Letterbox,
+) -> i32 {
+    if input.is_null() || output.is_null() || len == 0 || capacity == 0 {
+        return -1;
+    }
+    // SAFETY: caller supplies readable/writable disjoint buffers of these lengths.
+    let (input, output) = unsafe {
+        (
+            std::slice::from_raw_parts(input, len),
+            std::slice::from_raw_parts_mut(output, capacity),
+        )
+    };
+    let Some(value) =
+        crate::pixels::resize_rgba(input, width, height, stride, output, ow, oh, fill)
+    else {
+        return -1;
+    };
+    if !plan.is_null() {
+        // SAFETY: caller supplies an aligned writable optional plan.
+        unsafe {
+            plan.write(value);
+        }
+    }
+    0
 }
 
 /// # Safety

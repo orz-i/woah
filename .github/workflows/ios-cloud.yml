@@ -50,9 +50,11 @@ jobs:
           python tools/rust/instances_smoke.py crates/frame-kernel/target/release/libframe_kernel.dylib
           python tools/rust/follow_smoke.py crates/frame-kernel/target/release/libframe_kernel.dylib
           python tools/rust/association_smoke.py crates/frame-kernel/target/release/libframe_kernel.dylib
+          python tools/rust/pixels_smoke.py crates/frame-kernel/target/release/libframe_kernel.dylib
           bash tools/ios/host_regression/run_instances.sh
           bash tools/ios/host_regression/run_follow.sh
           bash tools/ios/host_regression/run_association.sh
+          bash tools/ios/host_regression/run_pixels.sh
           python tools/rust/run.py build --target aarch64-apple-ios
           python tools/rust/run.py build --target aarch64-apple-ios-sim
           python tools/rust/run.py build --target x86_64-apple-ios

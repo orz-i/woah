@@ -1,8 +1,6 @@
 package art.gaoge.dance.engine.geometry
 
 import art.gaoge.dance.engine.inference.FloatRect
-import kotlin.math.max
-import kotlin.math.min
 
 data class ModelCoordinateMapper(
     val srcWidth: Int,
@@ -10,14 +8,12 @@ data class ModelCoordinateMapper(
     val modelInputSize: Int = 640,
     val protoSize: Int = 160
 ) {
-    val scale: Float = min(
-        modelInputSize.toFloat() / max(1, srcWidth),
-        modelInputSize.toFloat() / max(1, srcHeight)
-    )
-    val scaledW: Float = srcWidth * scale
-    val scaledH: Float = srcHeight * scale
-    val padLeft: Float = (modelInputSize - scaledW) / 2f
-    val padTop: Float = (modelInputSize - scaledH) / 2f
+    private val letterbox = art.gaoge.dance.engine.core.FrameKernel.letterbox(srcWidth, srcHeight, modelInputSize, modelInputSize)
+    val scale: Float = letterbox[0]
+    val scaledW: Float = letterbox[1]
+    val scaledH: Float = letterbox[2]
+    val padLeft: Float = letterbox[3]
+    val padTop: Float = letterbox[4]
 
     fun sourceToModelX(srcX: Float): Float {
         return padLeft + srcX * scale

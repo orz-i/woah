@@ -26,17 +26,9 @@ enum IOSYoloPreprocessor {
       )
     }
 
-    let size = inputSize
-    let scale = min(
-      Float32(size) / Float32(sourceWidth),
-      Float32(size) / Float32(sourceHeight)
-    )
-    let scaledWidth = max(1, Int(Float32(sourceWidth) * scale))
-    let scaledHeight = max(1, Int(Float32(sourceHeight) * scale))
-    let padLeft = Float32(size - scaledWidth) / 2.0
-    let padTop = Float32(size - scaledHeight) / 2.0
-
-    var rgba = [UInt8](repeating: letterboxValue, count: size * size * 4)
+    // Native image decoding/color transport only; resize, padding and tensor
+    // layout use the same portable kernel as Android.
+    var rgba = [UInt8](repeating: 0, count: sourceWidth * sourceHeight * 4)
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue
       | CGImageAlphaInfo.premultipliedLast.rawValue
@@ -44,35 +36,17 @@ enum IOSYoloPreprocessor {
       guard let base = rawBuffer.baseAddress,
             let context = CGContext(
               data: base,
-              width: size,
-              height: size,
+              width: sourceWidth,
+              height: sourceHeight,
               bitsPerComponent: 8,
-              bytesPerRow: size * 4,
+              bytesPerRow: sourceWidth * 4,
               space: colorSpace,
               bitmapInfo: bitmapInfo
             ) else {
         return false
       }
 
-      let gray = CGFloat(letterboxValue) / 255.0
-      context.setFillColor(red: gray, green: gray, blue: gray, alpha: 1.0)
-      context.fill(CGRect(x: 0, y: 0, width: size, height: size))
-
-      // CGContext's RGBA bitmap is already row-major top-to-bottom when
-      // drawing this CGImage. Applying a second Y flip inverted every video
-      // inference frame (unlike Android's upright letterbox), which made
-      // multiple real people disappear at the analysis root. The input pixel
-      // orientation is verified against the matching FFmpeg source frames.
-      context.interpolationQuality = .high
-      context.draw(
-        image,
-        in: CGRect(
-          x: CGFloat(padLeft),
-          y: CGFloat(padTop),
-          width: CGFloat(scaledWidth),
-          height: CGFloat(scaledHeight)
-        )
-      )
+      context.draw(image, in: CGRect(x: 0, y: 0, width: sourceWidth, height: sourceHeight))
       return true
     }
     guard created else {
@@ -83,27 +57,18 @@ enum IOSYoloPreprocessor {
       )
     }
 
-    let pixels = size * size
-    var input = [Float32](repeating: 0, count: pixels * 3)
-    let rOffset = 0
-    let gOffset = pixels
-    let bOffset = pixels * 2
-    let inv255: Float32 = 1.0 / 255.0
-    for index in 0..<pixels {
-      let rgbaOffset = index * 4
-      input[rOffset + index] = Float32(rgba[rgbaOffset]) * inv255
-      input[gOffset + index] = Float32(rgba[rgbaOffset + 1]) * inv255
-      input[bOffset + index] = Float32(rgba[rgbaOffset + 2]) * inv255
-    }
+    let resized = try IOSFrameKernel.resizeRgba(rgba, width: sourceWidth, height: sourceHeight,
+      outputWidth: inputSize, outputHeight: inputSize, fill: letterboxValue)
+    let input = try IOSFrameKernel.normalizePixels(resized.pixels, width: inputSize, height: inputSize)
 
     return IOSYoloPreprocessResult(
       input: input,
-      scale: scale,
-      padLeft: padLeft,
-      padTop: padTop,
+      scale: resized.geometry[0],
+      padLeft: resized.geometry[3],
+      padTop: resized.geometry[4],
       sourceWidth: sourceWidth,
       sourceHeight: sourceHeight,
-      inputSize: size
+      inputSize: inputSize
     )
   }
 }
