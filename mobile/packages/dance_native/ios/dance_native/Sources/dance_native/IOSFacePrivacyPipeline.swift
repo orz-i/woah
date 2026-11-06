@@ -566,6 +566,7 @@ final class IOSFacePrivacyTemporalResolver {
   private var stateByTrackId: [Int: State] = [:]
   // Spatial privacy padding for one uniformly selected current person. This
   // never supplies an identity, owns a hero exemption, or renews itself.
+  private let uniformRegionContinuation = IOSFrameKernel.RegionContinuation()
   private var singleSceneFace: TrustedFaceGeometry?
   private let classFallbackContinuity = IOSFacePrivacyClassFallbackContinuity()
 
@@ -577,6 +578,7 @@ final class IOSFacePrivacyTemporalResolver {
     lock.lock()
     stateByTrackId.removeAll()
     singleSceneFace = nil
+    uniformRegionContinuation.reset()
     classFallbackContinuity.reset()
     lock.unlock()
   }
@@ -701,13 +703,25 @@ final class IOSFacePrivacyTemporalResolver {
       }
       guard let raw else { continue }
       if raw.source == .yoloHeadFallback && coveredHeadFallbackIds.contains(person.id) { continue }
-      regions[person.id] = try stabilize(
+      var region = try stabilize(
         trackId: person.id,
         rawRegion: raw,
         personDetection: person.detection,
         timestampUs: timestampUs,
         personObservedThisFrame: !person.conservativePrivacyFallback
       )
+      if coverUnownedFaces && unmaskedPersonId == nil {
+        let kind: UInt32 = region.source == .detectedFace ? 0 : (region.source == .predictedFace ? 1 : 2)
+        let d = person.detection
+        let continued = try uniformRegionContinuation.step(
+          raw: SIMD4(region.centerX, region.centerY, region.radiusX, region.radiusY),
+          anchor: SIMD4(d.x1, d.y1, d.x2, d.y2), timestampUs: timestampUs, kind: kind)
+        region = IOSFacePrivacyEllipse(centerX: continued.x, centerY: continued.y,
+          radiusX: continued.z, radiusY: continued.w, source: region.source)
+      } else {
+        uniformRegionContinuation.reset()
+      }
+      regions[person.id] = region
     }
 
     let activeUniqueClassOwners = Set(freshPrivacyClassEvidence.compactMap { evidence -> Int? in

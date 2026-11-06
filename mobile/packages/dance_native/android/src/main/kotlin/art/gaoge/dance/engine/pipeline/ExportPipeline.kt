@@ -1477,7 +1477,8 @@ class ExportPipeline(
                                     // faces even though their body identities are retained.
                                     canonicalModelRgbaBottomUp = null,
                                     ptsUs = ptsUs,
-                                    coveredHeadFallbackTrackIds = coveredHeadFallbackIds
+                                    coveredHeadFallbackTrackIds = coveredHeadFallbackIds,
+                                    conservativeSceneCoverage = allSceneCoverage
                                 )
                             }
                         }

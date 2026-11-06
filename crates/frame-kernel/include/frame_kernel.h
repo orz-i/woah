@@ -25,6 +25,13 @@ typedef struct FrameKernelRegionMeasurement {
     FrameKernelEllipse region; FrameKernelRect anchor; int64_t timestamp_us;
     uint32_t kind, flags;
 } FrameKernelRegionMeasurement;
+/* Additive continuation for uniform coverage only; enabled=0 clears history.
+   Output records are retained observations then current_count resolved values.
+   No identity ownership/exemptions are inferred. Inputs/outputs cannot alias.
+   Returns count, -1 invalid, <=-2 needs -(result+1) records. No partial writes. */
+int32_t frame_kernel_continue_regions(const FrameKernelRegionMeasurement *history, size_t history_len,
+    const FrameKernelRegionMeasurement *current, size_t current_len, int64_t now, uint32_t enabled,
+    FrameKernelRegionMeasurement *output, size_t capacity);
 typedef struct FrameKernelRegionState {
     FrameKernelEllipse output;
     float reference_radius_x, reference_radius_y, reference_width, reference_height;

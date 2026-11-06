@@ -14,6 +14,7 @@ pub mod instances;
 mod mask_transitions;
 pub mod pixels;
 pub mod protection;
+pub mod region_continuation;
 pub mod temporal_region;
 pub mod yuv;
 

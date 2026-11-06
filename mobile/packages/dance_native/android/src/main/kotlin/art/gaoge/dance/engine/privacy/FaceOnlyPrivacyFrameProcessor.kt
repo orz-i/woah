@@ -551,6 +551,8 @@ class FaceOnlyPrivacyFrameProcessor(
         )
     }
 
+    private val uniformRegionContinuation = FrameKernel.RegionContinuation()
+
     fun resolveFrame(
         frameTexture: Int,
         texMatrix: FloatArray,
@@ -563,8 +565,10 @@ class FaceOnlyPrivacyFrameProcessor(
         freshPrivacyClassEvidence: List<FreshPrivacyClassEvidence> = emptyList(),
         canonicalModelRgbaBottomUp: ByteBuffer? = null,
         ptsUs: Long,
-        coveredHeadFallbackTrackIds: Set<Int> = emptySet()
+        coveredHeadFallbackTrackIds: Set<Int> = emptySet(),
+        conservativeSceneCoverage: Boolean = false
     ): FaceOnlyPrivacyFrameResult {
+        if (!conservativeSceneCoverage) uniformRegionContinuation.reset()
         val faceTargetIds = FrameKernel.faceProtectionIds(bodySupplementTrackIds, faceOnlyTrackIds)
         val fallbackTargetIds = if (coveredHeadFallbackTrackIds.isEmpty()) faceTargetIds else
             FrameKernel.compositorTargets(faceTargetIds, coveredHeadFallbackTrackIds, emptySet())
@@ -1445,6 +1449,13 @@ class FaceOnlyPrivacyFrameProcessor(
                             ptsUs = ptsUs
                         )
                     }
+                }
+                if (conservativeSceneCoverage) {
+                    val continued = uniformRegionContinuation.step(
+                        floatArrayOf(region.centerX, region.centerY, region.radiusX, region.radiusY),
+                        person.bbox, ptsUs, region.source.ordinal)
+                    region = region.copy(centerX = continued[0], centerY = continued[1],
+                        radiusX = continued[2], radiusY = continued[3])
                 }
                 val maskStartNs = System.nanoTime()
                 val builtMask = FacePrivacyMaskBuilder.build(listOf(region), mapper)

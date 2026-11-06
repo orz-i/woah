@@ -11,6 +11,61 @@ use crate::{
 };
 
 /// # Safety
+/// Inputs are readable aligned values. Output is disjoint writable storage.
+/// Return total records (history then current), -1 invalid, <=-2 capacity query.
+/// No caller pointers are retained and failures never partially write output.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_continue_regions(
+    history: *const crate::temporal_region::RegionMeasurement,
+    history_len: usize,
+    current: *const crate::temporal_region::RegionMeasurement,
+    current_len: usize,
+    now: i64,
+    enabled: u32,
+    output: *mut crate::temporal_region::RegionMeasurement,
+    capacity: usize,
+) -> i32 {
+    if history_len > 1024
+        || current_len > 1024
+        || enabled > 1
+        || (history_len > 0 && history.is_null())
+        || (current_len > 0 && current.is_null())
+    {
+        return -1;
+    }
+    // SAFETY: bounded readable/aligned input storage is the caller's contract.
+    let old = if history_len == 0 {
+        &[]
+    } else {
+        // SAFETY: caller provides readable aligned history_len entries.
+        unsafe { std::slice::from_raw_parts(history, history_len) }
+    };
+    // SAFETY: bounded readable/aligned input storage is the caller's contract.
+    let fresh = if current_len == 0 {
+        &[]
+    } else {
+        // SAFETY: caller provides readable aligned current_len entries.
+        unsafe { std::slice::from_raw_parts(current, current_len) }
+    };
+    let Some(result) = crate::region_continuation::step(old, fresh, now, enabled == 1) else {
+        return -1;
+    };
+    if capacity < result.len() {
+        return -(result.len() as i32) - 1;
+    }
+    if !result.is_empty() {
+        if output.is_null() {
+            return -1;
+        }
+        // SAFETY: caller supplies disjoint output for capacity measurement entries.
+        unsafe {
+            std::ptr::copy_nonoverlapping(result.as_ptr(), output, result.len());
+        }
+    }
+    result.len() as i32
+}
+
+/// # Safety
 /// All ID slices are readable/aligned and output has capacity disjoint entries.
 /// Returns count; -1 invalid; <=-2 insufficient capacity, need -(result+1).
 /// No partial writes on failure and no caller pointers are retained.
