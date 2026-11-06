@@ -41,14 +41,16 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
   s.script_phase = {
     :name => 'Build FrameKernel',
     :execution_position => :before_compile,
-    :script => 'set -eu; python3 "${PODS_TARGET_SRCROOT}/../../../../tools/rust/build_xcode.py"',
-    :input_files => Dir.glob('{src/**/*.rs,include/*,README.md}', :base => File.expand_path('../../../../crates/frame-kernel', __dir__)).sort.map { |path|
-      '$(PODS_TARGET_SRCROOT)/../../../../crates/frame-kernel/' + path
+    :script => 'set -eu; python3 "${PODS_ROOT}/../../../../tools/rust/build_xcode.py"',
+    # Resolve Flutter's plugin symlink before globbing. Xcode normalizes input
+    # paths lexically, so its paths must start from the real Pods directory.
+    :input_files => Dir.glob('{src/**/*.rs,include/*,README.md}', :base => File.expand_path('../../../../crates/frame-kernel', File.realpath(__dir__))).sort.map { |path|
+      '$(PODS_ROOT)/../../../../crates/frame-kernel/' + path
     } +
-      ['$(PODS_TARGET_SRCROOT)/../../../../crates/frame-kernel/Cargo.toml', '$(PODS_TARGET_SRCROOT)/../../../../crates/frame-kernel/Cargo.lock',
-       '$(PODS_TARGET_SRCROOT)/../../../../rust-toolchain.toml',
-       '$(PODS_TARGET_SRCROOT)/../../../../tools/rust/build_xcode.py',
-       '$(PODS_TARGET_SRCROOT)/../../../../tools/rust/run.py'],
+      ['$(PODS_ROOT)/../../../../crates/frame-kernel/Cargo.toml', '$(PODS_ROOT)/../../../../crates/frame-kernel/Cargo.lock',
+       '$(PODS_ROOT)/../../../../rust-toolchain.toml',
+       '$(PODS_ROOT)/../../../../tools/rust/build_xcode.py',
+       '$(PODS_ROOT)/../../../../tools/rust/run.py'],
     :output_files => ['$(BUILT_PRODUCTS_DIR)/FrameKernel/libframe_kernel.a']
   }
   s.swift_version = '5.0'
