@@ -357,6 +357,114 @@ pub fn decode_instances(
 mod tests {
     use super::*;
     #[test]
+    fn c_output_capacity_query_and_retry_never_write_a_partial_frame() {
+        let spec = InstanceSpec {
+            anchors: 1,
+            attributes: 6,
+            score_index: 4,
+            coefficient_index: 5,
+            channels: 1,
+            head_transposed: 1,
+            proto_nhwc: 0,
+            coordinate_units: 0,
+        };
+        let transform = Transform {
+            scale: 1.0,
+            pad_left: 0.0,
+            pad_top: 0.0,
+            source_width: 8,
+            source_height: 8,
+            input_size: 8,
+            proto_size: 4,
+        };
+        let thresholds = InstanceThresholds {
+            confidence: 0.25,
+            bbox_iou: 0.5,
+            mask_iou: 0.5,
+        };
+        let head = [4.0, 4.0, 6.0, 6.0, 0.9, 1.0];
+        let proto = [1.0; 16];
+        let sentinel = InstanceDetection {
+            bounds: Rect {
+                left: 42.0,
+                top: 42.0,
+                right: 42.0,
+                bottom: 42.0,
+            },
+            confidence: 42.0,
+        };
+        let mut output = sentinel;
+        let mut mask = [42_u8; 16];
+        // SAFETY: arrays are live, aligned, correctly sized and disjoint.
+        unsafe {
+            assert_eq!(
+                crate::frame_kernel_decode_instances(
+                    head.as_ptr(),
+                    head.len(),
+                    proto.as_ptr(),
+                    proto.len(),
+                    spec,
+                    transform,
+                    thresholds,
+                    &mut output,
+                    0,
+                    mask.as_mut_ptr(),
+                    16,
+                    std::ptr::null_mut()
+                ),
+                -2
+            );
+            assert_eq!(output, sentinel);
+            assert_eq!(mask, [42; 16]);
+            assert_eq!(
+                crate::frame_kernel_decode_instances(
+                    head.as_ptr(),
+                    head.len(),
+                    proto.as_ptr(),
+                    proto.len(),
+                    spec,
+                    transform,
+                    thresholds,
+                    &mut output,
+                    1,
+                    mask.as_mut_ptr(),
+                    15,
+                    std::ptr::null_mut()
+                ),
+                -2
+            );
+            assert_eq!(output, sentinel);
+            assert_eq!(mask, [42; 16]);
+            assert_eq!(
+                crate::frame_kernel_decode_instances(
+                    head.as_ptr(),
+                    head.len(),
+                    proto.as_ptr(),
+                    proto.len(),
+                    spec,
+                    transform,
+                    thresholds,
+                    &mut output,
+                    1,
+                    mask.as_mut_ptr(),
+                    16,
+                    std::ptr::null_mut()
+                ),
+                1
+            );
+        }
+        assert_eq!(
+            output.bounds,
+            Rect {
+                left: 1.0,
+                top: 1.0,
+                right: 7.0,
+                bottom: 7.0
+            }
+        );
+        assert_eq!(mask, [186; 16]);
+    }
+    #[test]
     fn float_byte_boundaries_and_special_values_are_stable() {
         for (i, &bits) in TRANSITION_BITS.iter().enumerate() {
             let value = f32::from_bits(bits);
