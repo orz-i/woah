@@ -1,0 +1,1277 @@
+{
+  "platform": "android",
+  "run_id": "critical_trim_fec72da3_focused13",
+  "api": {
+    "started_at_utc": "2026-11-06T12:45:25.857445Z",
+    "process_id": 11570,
+    "mode": "matrix",
+    "platform": "android",
+    "verify_previews": true,
+    "compiled_source_fingerprint": "35c42d102a5fcd27286e73ab1d7b5ef6df56d8bb99b7aef1011c2dd54e61a989",
+    "compiled_source_commit": "fec72da327fa4524c01ed7c50f51752ca6d83059",
+    "capabilities": "NativeCapabilitiesDto(platform: android, osVersion: 34, gpuSupported: true, h264Encoder: true, hevcEncoder: true, maxEncodeWidth: 8192, maxEncodeHeight: 8192, cpuCores: 8, recommendedProfile: balanced, supportedProfiles: [quality, balanced, speed], inferenceBackends: [litert_gpu, litert_cpu])",
+    "cases": [
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22240,
+        "endMs": 22280,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_556",
+        "bitrate": 28753920,
+        "expected_frames": 1,
+        "start_ms": 22240,
+        "end_ms": 22280,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 11570,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 22240,
+            "dto_timestamp_ms": 22240,
+            "control_file": "solo_4k_raised_arm_trim_556-22240-source.png",
+            "control_bytes": 59133,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 56074,
+            "file": "solo_4k_raised_arm_trim_556-22240.png"
+          }
+        ],
+        "job_id": "job_29bdfa33-362f-4c5c-8a8e-1872aa3a5d2f",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 0.12607160867372666,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/critical_trim_fec72da3_focused13/outputs/solo_4k_raised_arm_trim_556.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 54056,
+        "partial_files": [],
+        "elapsed_seconds": 12.614
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22280,
+        "endMs": 22320,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_557",
+        "bitrate": 28753920,
+        "expected_frames": 1,
+        "start_ms": 22280,
+        "end_ms": 22320,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 11570,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 22280,
+            "dto_timestamp_ms": 22280,
+            "control_file": "solo_4k_raised_arm_trim_557-22280-source.png",
+            "control_bytes": 59974,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 56100,
+            "file": "solo_4k_raised_arm_trim_557-22280.png"
+          }
+        ],
+        "job_id": "job_6ceeac36-171b-4984-aa51-112db667feaf",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 0.15595757953836556,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/critical_trim_fec72da3_focused13/outputs/solo_4k_raised_arm_trim_557.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 53767,
+        "partial_files": [],
+        "elapsed_seconds": 10.568
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22320,
+        "endMs": 22360,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_558",
+        "bitrate": 28753920,
+        "expected_frames": 1,
+        "start_ms": 22320,
+        "end_ms": 22360,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 11570,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 22320,
+            "dto_timestamp_ms": 22320,
+            "control_file": "solo_4k_raised_arm_trim_558-22320-source.png",
+            "control_bytes": 61047,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 58032,
+            "file": "solo_4k_raised_arm_trim_558-22320.png"
+          }
+        ],
+        "job_id": "job_9b20e545-30cf-4bc7-ba28-766f437bed82",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 0.1584786053882726,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/critical_trim_fec72da3_focused13/outputs/solo_4k_raised_arm_trim_558.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 54391,
+        "partial_files": [],
+        "elapsed_seconds": 10.714
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22360,
+        "endMs": 22400,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_559",
+        "bitrate": 28753920,
+        "expected_frames": 1,
+        "start_ms": 22360,
+        "end_ms": 22400,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 11570,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 22360,
+            "dto_timestamp_ms": 22360,
+            "control_file": "solo_4k_raised_arm_trim_559-22360-source.png",
+            "control_bytes": 61424,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 59204,
+            "file": "solo_4k_raised_arm_trim_559-22360.png"
+          }
+        ],
+        "job_id": "job_1ae91d1d-7b3e-4e04-8703-c6f8852aa169",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 0.1545595054095827,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/critical_trim_fec72da3_focused13/outputs/solo_4k_raised_arm_trim_559.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 54052,
+        "partial_files": [],
+        "elapsed_seconds": 10.68
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22400,
+        "endMs": 22440,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_560",
+        "bitrate": 28753920,
+        "expected_frames": 1,
+        "start_ms": 22400,
+        "end_ms": 22440,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 11570,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 22400,
+            "dto_timestamp_ms": 22400,
+            "control_file": "solo_4k_raised_arm_trim_560-22400-source.png",
+            "control_bytes": 61926,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 61369,
+            "file": "solo_4k_raised_arm_trim_560-22400.png"
+          }
+        ],
+        "job_id": "job_09e2d59a-2aaa-4343-81c2-b3531085745e",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 0.1552553951249806,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/critical_trim_fec72da3_focused13/outputs/solo_4k_raised_arm_trim_560.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 55847,
+        "partial_files": [],
+        "elapsed_seconds": 10.713
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22440,
+        "endMs": 22480,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_561",
+        "bitrate": 28753920,
+        "expected_frames": 1,
+        "start_ms": 22440,
+        "end_ms": 22480,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 11570,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 22440,
+            "dto_timestamp_ms": 22440,
+            "control_file": "solo_4k_raised_arm_trim_561-22440-source.png",
+            "control_bytes": 62639,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 61501,
+            "file": "solo_4k_raised_arm_trim_561-22440.png"
+          }
+        ],
+        "job_id": "job_102bf3b8-1024-4e5c-ac53-446106e8424c",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 0.15349194167306218,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/critical_trim_fec72da3_focused13/outputs/solo_4k_raised_arm_trim_561.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 55368,
+        "partial_files": [],
+        "elapsed_seconds": 11.002
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22480,
+        "endMs": 22520,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_562",
+        "bitrate": 28753920,
+        "expected_frames": 1,
+        "start_ms": 22480,
+        "end_ms": 22520,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 11570,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 22480,
+            "dto_timestamp_ms": 22480,
+            "control_file": "solo_4k_raised_arm_trim_562-22480-source.png",
+            "control_bytes": 63511,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 63297,
+            "file": "solo_4k_raised_arm_trim_562-22480.png"
+          }
+        ],
+        "job_id": "job_d11c87da-981f-40cc-9279-640746975640",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 0.15267175572519084,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/critical_trim_fec72da3_focused13/outputs/solo_4k_raised_arm_trim_562.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 55671,
+        "partial_files": [],
+        "elapsed_seconds": 11.061
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22520,
+        "endMs": 22560,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_563",
+        "bitrate": 28753920,
+        "expected_frames": 1,
+        "start_ms": 22520,
+        "end_ms": 22560,
+        "face_only": true,
+        "output_width": 2160,
+        "output_height": 4096,
+        "result": "output_created",
+        "pid": 11570,
+        "detected_ids": [
+          0
+        ],
+        "selected_ids": [
+          0
+        ],
+        "hero_id": null,
+        "previews": [
+          {
+            "requested_ms": 22520,
+            "dto_timestamp_ms": 22520,
+            "control_file": "solo_4k_raised_arm_trim_563-22520-source.png",
+            "control_bytes": 64497,
+            "control_width": 1280,
+            "control_height": 2427,
+            "width": 1280,
+            "height": 2427,
+            "bytes": 64049,
+            "file": "solo_4k_raised_arm_trim_563-22520.png"
+          }
+        ],
+        "job_id": "job_da75e3c3-925a-49d5-b73b-bc2a96cfdb85",
+        "state": "completed",
+        "current_frame": 1,
+        "total_frames": 1,
+        "progress": 1.0,
+        "fps": 0.1529285823520416,
+        "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/critical_trim_fec72da3_focused13/outputs/solo_4k_raised_arm_trim_563.mp4",
+        "error_code": null,
+        "error_message": null,
+        "file_bytes": 56087,
+        "partial_files": [],
+        "elapsed_seconds": 11.086
+      }
+    ],
+    "status": "finished",
+    "finished_at_utc": "2026-11-06T12:46:54.418693Z"
+  },
+  "metadata": {
+    "started_utc": "2026-11-06T12:45:25.735192+00:00",
+    "platform": "android",
+    "serial": "334da6a3",
+    "config": {
+      "run_id": "critical_trim_fec72da3_focused13",
+      "cases": [
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 22240,
+          "endMs": 22280,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_trim_556",
+          "bitrate": 28753920,
+          "expected_frames": 1
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 22280,
+          "endMs": 22320,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_trim_557",
+          "bitrate": 28753920,
+          "expected_frames": 1
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 22320,
+          "endMs": 22360,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_trim_558",
+          "bitrate": 28753920,
+          "expected_frames": 1
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 22360,
+          "endMs": 22400,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_trim_559",
+          "bitrate": 28753920,
+          "expected_frames": 1
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 22400,
+          "endMs": 22440,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_trim_560",
+          "bitrate": 28753920,
+          "expected_frames": 1
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 22440,
+          "endMs": 22480,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_trim_561",
+          "bitrate": 28753920,
+          "expected_frames": 1
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 22480,
+          "endMs": 22520,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_trim_562",
+          "bitrate": 28753920,
+          "expected_frames": 1
+        },
+        {
+          "input": "solo-portrait-7570258.mp4",
+          "fill": "solid",
+          "startMs": 22520,
+          "endMs": 22560,
+          "faceOnly": true,
+          "profile": "quality",
+          "width": 2160,
+          "height": 4096,
+          "case": "solo_4k_raised_arm_trim_563",
+          "bitrate": 28753920,
+          "expected_frames": 1
+        }
+      ],
+      "core_smokes": true,
+      "build_source_fingerprint": "35c42d102a5fcd27286e73ab1d7b5ef6df56d8bb99b7aef1011c2dd54e61a989",
+      "partial_stage_check": true,
+      "verify_previews": true,
+      "stage_export_only": false,
+      "lifecycle": false
+    },
+    "sources": {
+      "corrupt-video-1024bytes.mp4": {
+        "bytes": 1024,
+        "sha256": "630b36e85f6e26cd9371088fd201979ca82f1300b04aee24210c9e67df6e7e80"
+      },
+      "custom-sticker.png": {
+        "bytes": 806,
+        "sha256": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6"
+      },
+      "duo-dance-6940536.mp4": {
+        "bytes": 3748966,
+        "sha256": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76"
+      },
+      "group-hd-8956295.mp4": {
+        "bytes": 15726991,
+        "sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5"
+      },
+      "group-mirror-8956295.mp4": {
+        "bytes": 69505821,
+        "sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73"
+      },
+      "no-person-flower.mp4": {
+        "bytes": 1128375,
+        "sha256": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451"
+      },
+      "solo-hd-7570258.mp4": {
+        "bytes": 7454617,
+        "sha256": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0"
+      },
+      "solo-portrait-7570258.mp4": {
+        "bytes": 21156880,
+        "sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1"
+      }
+    },
+    "git_head": "fec72da327fa4524c01ed7c50f51752ca6d83059",
+    "binary_sha256": "d1c6231a44b8d390ebf3042635ff911733c6d8ebf900ea59865fca7479e2e823",
+    "binary_path": "D:\\dance-anonymizer\\.qa-runtime\\rust-migration\\builds\\scene-context-fec72da3\\app-debug.apk",
+    "harness_sha256": "2887e8937c26e33976dfd73ce8bf76d1ba05c74c11855f94ba98deb8fd584f96",
+    "matrix_sha256": "c91beb62c3899366daea2916c02e9b500762879bc5a5243eb87d71dffb12119d",
+    "application_id": "art.gaoge.dance.privacyqa",
+    "device": {
+      "ro.product.model": "KB2000",
+      "ro.build.version.release": "14",
+      "ro.product.cpu.abi": "arm64-v8a"
+    },
+    "additional_crop_traces": {},
+    "crop_traces": [
+      "qa_pixel_crops_9cc8fe68-bf78-41cb-8b97-917f2b72bd80.jsonl",
+      "qa_pixel_crops_e0fe628c-5377-4ec8-83de-0f310adae64c.jsonl",
+      "qa_pixel_crops_4f9b5408-fc49-446a-a54a-571e7a16d740.jsonl",
+      "qa_pixel_crops_627acfb4-0a7c-4cb2-a7f6-448859f853c9.jsonl",
+      "qa_pixel_crops_c13b1607-4860-4fcb-a125-90b14c23e99f.jsonl",
+      "qa_pixel_crops_b1adb45e-5c3e-49bc-bef5-64646300436b.jsonl",
+      "qa_pixel_crops_b1be22b8-6920-4250-a101-f13e667ef462.jsonl",
+      "qa_pixel_crops_a5662c2b-275a-4526-87de-f97c7815e6e2.jsonl"
+    ],
+    "crop_traces_by_output": {
+      "solo_4k_raised_arm_trim_558.mp4": "qa_pixel_crops_4f9b5408-fc49-446a-a54a-571e7a16d740.jsonl",
+      "solo_4k_raised_arm_trim_559.mp4": "qa_pixel_crops_627acfb4-0a7c-4cb2-a7f6-448859f853c9.jsonl",
+      "solo_4k_raised_arm_trim_556.mp4": "qa_pixel_crops_9cc8fe68-bf78-41cb-8b97-917f2b72bd80.jsonl",
+      "solo_4k_raised_arm_trim_563.mp4": "qa_pixel_crops_a5662c2b-275a-4526-87de-f97c7815e6e2.jsonl",
+      "solo_4k_raised_arm_trim_561.mp4": "qa_pixel_crops_b1adb45e-5c3e-49bc-bef5-64646300436b.jsonl",
+      "solo_4k_raised_arm_trim_562.mp4": "qa_pixel_crops_b1be22b8-6920-4250-a101-f13e667ef462.jsonl",
+      "solo_4k_raised_arm_trim_560.mp4": "qa_pixel_crops_c13b1607-4860-4fcb-a125-90b14c23e99f.jsonl",
+      "solo_4k_raised_arm_trim_557.mp4": "qa_pixel_crops_e0fe628c-5377-4ec8-83de-0f310adae64c.jsonl"
+    },
+    "finished_utc": "2026-11-06T12:46:58.375720+00:00"
+  },
+  "build": {
+    "source_commit": "fec72da327fa4524c01ed7c50f51752ca6d83059",
+    "source_fingerprint": "35c42d102a5fcd27286e73ab1d7b5ef6df56d8bb99b7aef1011c2dd54e61a989",
+    "binary_name": "app-debug.apk",
+    "binary_sha256": "d1c6231a44b8d390ebf3042635ff911733c6d8ebf900ea59865fca7479e2e823"
+  },
+  "audit_file_sha256": {
+    "media": "2c4bab0d7a0dc82571faeefb5fc3c9449031350936ade3f1978d19d2c530e29b",
+    "faces": "3d8d0ec1748ea84d9f2796b8fa790ab41e79c3525eb71c288780f10d219bd779",
+    "previews": "a1e83b5a2df8f3042a61facd4f0c3ee99cde2410a46023461e2fbd0b50344342",
+    "gallery": "5e0243d471d81f2b61e85164d3c9f4477f18b6975da441cf588d611099e70223"
+  },
+  "media": {
+    "run_id": "critical_trim_fec72da3_focused13",
+    "cases": [
+      {
+        "case": "solo_4k_raised_arm_trim_556",
+        "status": "passed_media",
+        "sha256": "9a44c9eebcbd7071020fa007c7ef699d769161aeabfafb3d2360f06ebedf61fc",
+        "bytes": 54056,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 556,
+            "label": "occluded_face_556",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "e4f83dc4345ff1efc63d6376bf3567c8a83ed8d377274f234c68471c5de5538b"
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_557",
+        "status": "passed_media",
+        "sha256": "6bf09e03e26bfa0d475028cca7a20a3a506fdb77b2cbb109e909f612393124a9",
+        "bytes": 53767,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 557,
+            "label": "occluded_face_557",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "c1f1556598a213bc98824f5ad1049ef04d58c69817b3157d54be70fe1b2f98ba"
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_558",
+        "status": "passed_media",
+        "sha256": "ccea8c17dc4944d991f3c2582add995eee11151f9b42625b672a84e9d9d2a2b2",
+        "bytes": 54391,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 558,
+            "label": "occluded_face_558",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "dd4d8da83780f922f444c1d23f8b2009a2ba53c9a7fc292c7a1f63a2d7368de9"
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_559",
+        "status": "passed_media",
+        "sha256": "bb57e5510e0003e1681d507b54ea462819b17663eeff99cdcd4e302941a6ce21",
+        "bytes": 54052,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 559,
+            "label": "occluded_face_559",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "421d28ae786da597e5827f97c37e7463ed4428b537f7d1902e50856de28aef03"
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_560",
+        "status": "passed_media",
+        "sha256": "e3ef0d58dde6c6050e76aa17d723b183134c5384ce86ea310f35159cfa7a54b5",
+        "bytes": 55847,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 560,
+            "label": "raised_arm_face_560",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "58b7450d4c441e08b7cf0a31735cb029203cd32ed987f782b7c800a16aabea7a"
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_561",
+        "status": "passed_media",
+        "sha256": "e81a8103af56d5c4aa5d5c37c28450f0e46ab6e6442a398a5fd15c04e83a28a8",
+        "bytes": 55368,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 561,
+            "label": "raised_arm_face_561",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "2ec0dd14a30d83ee31bae89f854a1495db22a4f76cf21eae5b23b77c7daf4326"
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_562",
+        "status": "passed_media",
+        "sha256": "8ec725685a58bd6de56c7d5cc90284038263f5dce539cf8831803cdcdafae845",
+        "bytes": 55671,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 562,
+            "label": "raised_arm_face_562",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "770d587a88362159c90002290707a8137f82797c1e101049ecb3d10cbeeb17d0"
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_563",
+        "status": "passed_media",
+        "sha256": "99e5eab2abecda71982f3360e39fa8751cd993c336d5e9c0ff89d718b54aaed7",
+        "bytes": 56087,
+        "dimensions": [
+          2160,
+          4096
+        ],
+        "decoded_frames": 1,
+        "expected_frames": 1,
+        "max_pts_delta_seconds": 0.0,
+        "audio_streams": 1,
+        "audio_waveform": {
+          "correlation": 1.0,
+          "lag_ms": 0.0,
+          "reference_rms": 0.0,
+          "output_rms": 0.0,
+          "gain_ratio": 1.0,
+          "alignment_observable": false
+        },
+        "faststart": {
+          "atoms": [
+            "ftyp",
+            "moov",
+            "free",
+            "mdat"
+          ],
+          "moov_before_mdat": true
+        },
+        "black_frames": 0,
+        "green_frames": 0,
+        "privacy_probes": [
+          {
+            "source_frame": 563,
+            "label": "raised_arm_face_563",
+            "red_pixels": 576,
+            "pixels": 576,
+            "passed": true
+          }
+        ],
+        "topology_candidates": [],
+        "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+        "input_binding_sha256": "3d9818a838821a34fd4915f06539a433b4f28714d53321d6d2f7d35f2ece8ef0"
+      }
+    ]
+  },
+  "faces": {
+    "run_id": "critical_trim_fec72da3_focused13",
+    "cases": [
+      {
+        "case": "solo_4k_raised_arm_trim_556",
+        "input_binding_sha256": "f84ab5a3edf7faa53a49f2e8df93d6c2c2ca3ca222cd6110e23ab6f109c5e358",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 0,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_557",
+        "input_binding_sha256": "8b7c01919fd45a0f6a6511739844b9e73cde22ed808e13873b5096b7ff31a2b8",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 0,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_558",
+        "input_binding_sha256": "a2638e3e87ce3d19653fa1031b4568940da9bcc8426febc267cd3a9c3d76d634",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 0,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_559",
+        "input_binding_sha256": "b674069f040d3f1f8c90732345306971785ebe719a4b75cf6734bdfe774acd43",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 0,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_560",
+        "input_binding_sha256": "562ca1f7133db9942a968346fb09532fdd830d226c5652beeb9d84cee672fe90",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 0,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_561",
+        "input_binding_sha256": "de42baae620212a5a8da33bf4ef7a2e11f1bd02c9c275d2e1003d4be587bb82c",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 1,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_562",
+        "input_binding_sha256": "d60b94042c4e441018e75e4ae286e85a61cde32839460ce4823774902403e74c",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 1,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_563",
+        "input_binding_sha256": "18a97d3a02b5727cdd3040f38a0eda15ed50ea513063b268f777c8a2a4eaf464",
+        "decoded_frames": 1,
+        "tested_visible_face_cores": 1,
+        "outside_or_tiny_cores": 0,
+        "uncovered_face_cores": [],
+        "follow_hero_id": null,
+        "status": "passed_all_detected_face_cores",
+        "coverage_measure": "decoded_opaque_red_pixels",
+        "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+      }
+    ]
+  },
+  "previews": {
+    "run_id": "critical_trim_fec72da3_focused13",
+    "auditor_sha256": "33e84a7891297fc56fd1517733236da2dcfffeacce86aa95a0a964dd830ae111",
+    "cases": [
+      {
+        "case": "solo_4k_raised_arm_trim_556",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 22240,
+            "status": "passed",
+            "best_expected_frame": 556,
+            "expected_pts_seconds": 22.24,
+            "correlation": 0.9980560952447926,
+            "control_sha256": "422327ce9a04f59af424c7cb7634411c474cf9afec2bde739c87bc6baf6f4312",
+            "protected_sha256": "16a0e68caeda0ea6e37a82c335cbcabe2dab560d8865668afbf181c351ea2a9d",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_557",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 22280,
+            "status": "passed",
+            "best_expected_frame": 557,
+            "expected_pts_seconds": 22.28,
+            "correlation": 0.9979888314621609,
+            "control_sha256": "157fa796cb51de88d26be5ebd20e392790e484242f5705f004ca75a18a54b330",
+            "protected_sha256": "1f60c15f3aa9392d71003bca53772f9b67f2bfcf519f85f23d03ca27635ee91b",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_558",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 22320,
+            "status": "passed",
+            "best_expected_frame": 558,
+            "expected_pts_seconds": 22.32,
+            "correlation": 0.997913443193587,
+            "control_sha256": "047913a68040f2b4e03a5b0de84138d7338a8293c0d136cea3e6ce4409889de2",
+            "protected_sha256": "04a1bc8482f2e8909e14085dda6b502f63261818a833113074e46832f1167808",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_559",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 22360,
+            "status": "passed",
+            "best_expected_frame": 559,
+            "expected_pts_seconds": 22.36,
+            "correlation": 0.9978748559782161,
+            "control_sha256": "b6c1d6a87abc1b3358393ded95dbc1d7a22c1d2e6b1a17b2e90f68e7c4319226",
+            "protected_sha256": "3816e4a4d5fec4b47b298741fa234e94d0fb04fb8dd296b4f160e546e32e31c7",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_560",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 22400,
+            "status": "passed",
+            "best_expected_frame": 560,
+            "expected_pts_seconds": 22.4,
+            "correlation": 0.9978739615501433,
+            "control_sha256": "27d57c075e8652b99c08f9295b311b6968a68b2fa28aa6fa66d8ff2bd9cc9c80",
+            "protected_sha256": "9327568c46bdbfa7922b6177474004923f9717b78a7d429ef88f4e48f122b895",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 0,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_561",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 22440,
+            "status": "passed",
+            "best_expected_frame": 561,
+            "expected_pts_seconds": 22.44,
+            "correlation": 0.9978434378559596,
+            "control_sha256": "0ee77689ee776dcdee4ce5be64084ee38c698eaa18da58cfed2c3b94c697c2fa",
+            "protected_sha256": "3e739a77974cd9ee0f7f0b6e51f388d62b9b4a3c26fd2a68570411b1179dbec5",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_562",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 22480,
+            "status": "passed",
+            "best_expected_frame": 562,
+            "expected_pts_seconds": 22.48,
+            "correlation": 0.997830339290341,
+            "control_sha256": "aaa4f1d9503bf211f32b24512eae53b328b2790339f9e281f5e49dd36cba1240",
+            "protected_sha256": "70130066264c61b7ad6ac97373bd1c6007baec0429207b33d0baa8c7cf4b4c14",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      },
+      {
+        "case": "solo_4k_raised_arm_trim_563",
+        "status": "passed_preview_time",
+        "previews": [
+          {
+            "requested_ms": 22520,
+            "status": "passed",
+            "best_expected_frame": 563,
+            "expected_pts_seconds": 22.52,
+            "correlation": 0.997846657128754,
+            "control_sha256": "1745c1baced69a091d42ce9849febb6f66a9db5531ee898889d5d634403d18e3",
+            "protected_sha256": "16eac3259a5329b2fedc4edd1b0d3ebb0ab319b9f456014aa9921252558a6557",
+            "face_core_status": "passed_detected_face_cores",
+            "tested_face_cores": 1,
+            "tiny_face_cores": 0,
+            "uncovered_face_candidates": []
+          }
+        ],
+        "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+      }
+    ]
+  },
+  "gallery": {
+    "run_id": "critical_trim_fec72da3_focused13",
+    "cases": []
+  }
+}

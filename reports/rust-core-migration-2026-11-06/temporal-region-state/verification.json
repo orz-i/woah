@@ -1,0 +1,22 @@
+{
+  "source_commit": "fec72da327fa4524c01ed7c50f51752ca6d83059",
+  "checks": {
+    "rust": {
+      "passed": 34,
+      "log_sha256": "e119ef79264a871490f044de2ddc603b8c6c01b60808ba5414ddbc9c35cd2122",
+      "log_file": "scene-context-lifecycle-rust.log"
+    },
+    "jvm": {
+      "passed": 595,
+      "log_sha256": "6bc95665511c459ab7b88c9d1e682b79dde1a392574debf5bc905ebc6a485f03",
+      "log_file": "scene-context-lifecycle-final-jvm.log",
+      "logged_passed_tests": 595
+    },
+    "python_ci": {
+      "passed": 87,
+      "log_sha256": "ae48ad9414201993c11c84cfffaac514d3ac742c35c5c8f2e7752f4fe47e6045",
+      "log_file": "scene-context-lifecycle-python.log"
+    }
+  },
+  "scope": "Local checks; GitHub required checks are verified separately."
+}
