@@ -2,6 +2,7 @@
 """Run the frozen suites through one Dart harness on device and simulator."""
 from __future__ import annotations
 import argparse
+from contextlib import contextmanager, nullcontext
 import datetime as dt
 import hashlib
 import json
@@ -65,6 +66,24 @@ class Android:
         if installed.lower() != sha(args.binary): raise RuntimeError('Installed APK differs from the supplied binary')
         self.installed_sha = installed
         command(*self.adb, 'shell', 'mkdir', '-p', ANDROID_DOCUMENTS+'/qa_sources')
+
+    @contextmanager
+    def awake(self):
+        original=command(*self.adb,'shell','settings','get','global','stay_on_while_plugged_in')
+        if original not in ['null','0','1','2','3','4','5','6','7']:
+            raise RuntimeError('Cannot snapshot Android wake setting')
+        try:
+            command(*self.adb,'shell','svc','power','stayon','usb')
+            command(*self.adb,'shell','input','keyevent','KEYCODE_WAKEUP')
+            command(*self.adb,'shell','wm','dismiss-keyguard')
+            command(*self.adb,'shell','cmd','statusbar','collapse')
+            policy=command(*self.adb,'shell','dumpsys','window','policy')
+            if re.search(r'\bshowing=true\b',policy):
+                raise RuntimeError('Android requires manual unlock before foreground-service export tests')
+            yield
+        finally:
+            if original=='null': command(*self.adb,'shell','settings','delete','global','stay_on_while_plugged_in')
+            else: command(*self.adb,'shell','settings','put','global','stay_on_while_plugged_in',original)
 
     def read(self, relative):
         value = command(*self.adb, 'shell', 'cat', ANDROID_DOCUMENTS+'/'+relative, required=False)
@@ -194,37 +213,38 @@ def main():
     selected=[s for s in matrix['suites'] if args.suite in ['all',s['id']]]
     deadline=time.monotonic()+args.deadline_hours*3600
     adapter=Android(args) if args.platform=='android' else None
-    if adapter: adapter.sources(matrix['materials'])
     failed=[]
-    for suite in selected:
-        cases=[c for c in suite['cases'] if not args.case_filter or re.fullmatch(args.case_filter,c['case'])]
-        if not cases:continue
-        run_id=args.prefix+'_'+suite['id']
-        dest=args.report/'artifacts'/run_id
-        if dest.exists(): raise FileExistsError(f'Preserve old evidence: {dest}')
-        dest.mkdir(parents=True)
-        config={'run_id':run_id,'cases':cases,'core_smokes':True,
-                'build_source_fingerprint':build['source_fingerprint'],
-                'partial_stage_check':args.case_filter is not None,
-                'verify_previews':not args.stage_export_only,'stage_export_only':args.stage_export_only,
-                'lifecycle':suite['id']=='legacy22' and args.case_filter is None}
-        shutil.copyfile(build_path,dest/'build-manifest.json')
-        if len({c['case'] for c in config['cases']})!=len(config['cases']): raise ValueError('Duplicate output names in a suite')
-        print('QA_SUITE_START',args.platform,run_id,len(config['cases']),flush=True)
-        try:
-            if adapter: adapter.run(config,dest,matrix['materials'],deadline)
-            else:
-                configuration=dest/'configuration.json';atomic(configuration,config)
-                cmd=[sys.executable,str(ROOT/'tools/ios/run_privacy_regression.py'),str(configuration),
-                     '--app',str(args.binary),'--udid',args.udid,'--optimized-native',
-                     '--report-root',str(args.report),'--sources',str(args.media),
-                     '--deadline-hours',str(max(.1,(deadline-time.monotonic())/3600))]
-                if args.install:cmd.append('--install')
-                subprocess.run(cmd,check=True)
-            print('QA_SUITE_FINISHED',run_id,flush=True)
-        except (RuntimeError,TimeoutError,subprocess.CalledProcessError) as error:
-            atomic(dest/'runner-error.json',{'error':str(error),'at_utc':utc()})
-            failed.append(run_id);print('QA_SUITE_FAILED',run_id,str(error),flush=True)
+    with adapter.awake() if adapter else nullcontext():
+        if adapter: adapter.sources(matrix['materials'])
+        for suite in selected:
+            cases=[c for c in suite['cases'] if not args.case_filter or re.fullmatch(args.case_filter,c['case'])]
+            if not cases:continue
+            run_id=args.prefix+'_'+suite['id']
+            dest=args.report/'artifacts'/run_id
+            if dest.exists(): raise FileExistsError(f'Preserve old evidence: {dest}')
+            dest.mkdir(parents=True)
+            config={'run_id':run_id,'cases':cases,'core_smokes':True,
+                    'build_source_fingerprint':build['source_fingerprint'],
+                    'partial_stage_check':args.case_filter is not None,
+                    'verify_previews':not args.stage_export_only,'stage_export_only':args.stage_export_only,
+                    'lifecycle':suite['id']=='legacy22' and args.case_filter is None}
+            shutil.copyfile(build_path,dest/'build-manifest.json')
+            if len({c['case'] for c in config['cases']})!=len(config['cases']): raise ValueError('Duplicate output names in a suite')
+            print('QA_SUITE_START',args.platform,run_id,len(config['cases']),flush=True)
+            try:
+                if adapter: adapter.run(config,dest,matrix['materials'],deadline)
+                else:
+                    configuration=dest/'configuration.json';atomic(configuration,config)
+                    cmd=[sys.executable,str(ROOT/'tools/ios/run_privacy_regression.py'),str(configuration),
+                         '--app',str(args.binary),'--udid',args.udid,'--optimized-native',
+                         '--report-root',str(args.report),'--sources',str(args.media),
+                         '--deadline-hours',str(max(.1,(deadline-time.monotonic())/3600))]
+                    if args.install:cmd.append('--install')
+                    subprocess.run(cmd,check=True)
+                print('QA_SUITE_FINISHED',run_id,flush=True)
+            except (RuntimeError,TimeoutError,subprocess.CalledProcessError) as error:
+                atomic(dest/'runner-error.json',{'error':str(error),'at_utc':utc()})
+                failed.append(run_id);print('QA_SUITE_FAILED',run_id,str(error),flush=True)
     return 1 if failed else 0
 
 if __name__=='__main__':raise SystemExit(main())
