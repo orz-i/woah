@@ -24,3 +24,26 @@ Validation is staged. Passing automatic face audits is insufficient: the source
 Vision face cache missed this visible partial face. Explicit source-timed pixel
 and manual checks are required before acceptance. This document does not claim
 final 62-case Android/iOS acceptance or resolution of the separate hero overmask.
+
+## Current-owner reservation evidence
+
+Actual simulator preview observations exposed a separate follow-target overmask.
+At6.12 seconds, target6 had an unambiguous0.788 box IoU and0.768 mask IoU but was
+reserved by the neighboring[4,5] group because its bounding box touched the group's
+edge. Both group members already had different current observations and neither
+could match this candidate under the existing score/identity gates.
+
+The shared tracker now permits release of that direct reservation only for a
+strict reciprocal-best non-body match, with the existing0.50 box/0.45 mask gates,
+and only when every owner has a committed current observation and fails both the
+ordinary minimum match score and canonical identity evidence for this candidate.
+Missing or stale owners keep the reservation. No thresholds are lowered.
+
+`replay-ios-hero-v1.bin` freezes166 actual simulator inputs and pre-fix output
+states. It is failure evidence, not an independent desired-behavior oracle. All13
+source frames153-165 were viewed, and the expected teal-subject detection indices
+are recorded in its manifest. The regression requires target6's current observed
+box and exact current mask on each frame. The original960-step independent
+native corpus continues to match every state unchanged. Correcting other earlier
+reservation misses can change later group cadence in this new failure capture;
+full device privacy auditing remains required before acceptance.

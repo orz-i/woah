@@ -2,11 +2,12 @@
 //! identity transition policy once this session is adopted by both adapters.
 use crate::{
     association::match_costs,
-    association_score::reservation_release,
+    association_score::reservation_release_with_owner_evidence,
     geometry::{Rect, overlap_iou},
     tracking::*,
     tracking_evidence::{
-        AssociationCache, dormant_mixed_body, identity_evidence, motion_evidence, record_motion,
+        AssociationCache, CurrentOwnerEvidence, current_owner_refutes_candidate,
+        dormant_mixed_body, identity_evidence, motion_evidence, record_motion,
     },
     tracking_motion,
 };
@@ -323,11 +324,39 @@ impl Tracker {
                         } else {
                             0
                         };
-                    if reservation_release(
+                    let all_owners_refuted = flags & 7 == 7
+                        && f.owner_tracks.get(&di).is_some_and(|owners| {
+                            !owners.is_empty()
+                                && owners.iter().all(|owner_id| {
+                                    self.tracks
+                                        .iter()
+                                        .enumerate()
+                                        .find(|(_, owner)| owner.id == *owner_id)
+                                        .is_some_and(|(owner_index, owner)| {
+                                            let owner_bounds =
+                                                overlap_iou(owner.predicted_bounds, d[di].bounds);
+                                            let owner_mask = f.cache.mask_iou(owner, d, di);
+                                            let owner_score =
+                                                f.cache.score(self, owner_index, d, di, at);
+                                            current_owner_refutes_candidate(
+                                                CurrentOwnerEvidence {
+                                                    observed: owner.observed_this_frame,
+                                                    state: owner.state,
+                                                    score: owner_score,
+                                                    bounds_iou: owner_bounds,
+                                                    mask_iou: owner_mask,
+                                                },
+                                                self.config.min_match_score,
+                                            )
+                                        })
+                                })
+                        });
+                    if reservation_release_with_owner_evidence(
                         flags,
                         f.owner_groups.get(&di).map_or(0, Vec::len) as u32,
                         bi,
                         mi,
+                        all_owners_refuted,
                     ) == Some(true)
                     {
                         rescue.insert(di);

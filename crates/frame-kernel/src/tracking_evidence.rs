@@ -14,6 +14,26 @@ pub fn identity_evidence(state: TrackState, bounds_iou: f32, mask_iou: f32) -> b
         _ => bounds_iou >= 0.35 || mask_iou >= 0.20,
     }
 }
+#[derive(Clone, Copy)]
+pub struct CurrentOwnerEvidence {
+    pub observed: bool,
+    pub state: TrackState,
+    pub score: Option<f32>,
+    pub bounds_iou: f32,
+    pub mask_iou: f32,
+}
+/// Refutation needs a different committed current observation. Missing, stale,
+/// invalid or match-capable owner evidence keeps the reservation in place.
+pub fn current_owner_refutes_candidate(e: CurrentOwnerEvidence, minimum_score: f32) -> bool {
+    e.observed
+        && [e.bounds_iou, e.mask_iou]
+            .into_iter()
+            .all(|v| v.is_finite() && (0.0..=1.0).contains(&v))
+        && e.score
+            .is_some_and(|score| score.is_finite() && score >= 0.0 && score < minimum_score)
+        && !identity_evidence(e.state, e.bounds_iou, e.mask_iou)
+}
+
 pub fn motion_evidence(bounds_iou: f32, mask_iou: f32) -> bool {
     bounds_iou >= 0.20 || mask_iou >= 0.08
 }
@@ -189,6 +209,42 @@ impl AssociationCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn only_a_current_unmatchable_owner_can_refute_its_box_reservation() {
+        let e = CurrentOwnerEvidence {
+            observed: true,
+            state: TrackState::Active,
+            score: Some(0.1),
+            bounds_iou: 0.04,
+            mask_iou: 0.0,
+        };
+        assert!(current_owner_refutes_candidate(e, 0.2));
+        for uncertain in [
+            CurrentOwnerEvidence {
+                observed: false,
+                ..e
+            },
+            CurrentOwnerEvidence { score: None, ..e },
+            CurrentOwnerEvidence {
+                score: Some(0.2),
+                ..e
+            },
+            CurrentOwnerEvidence {
+                bounds_iou: 0.35,
+                ..e
+            },
+            CurrentOwnerEvidence {
+                mask_iou: 0.20,
+                ..e
+            },
+            CurrentOwnerEvidence {
+                mask_iou: f32::NAN,
+                ..e
+            },
+        ] {
+            assert!(!current_owner_refutes_candidate(uncertain, 0.2));
+        }
+    }
     #[test]
     fn timed_out_identity_does_not_use_the_active_recovery_threshold() {
         // Real mixed-privacy failure: a LOST body identity committed at .458/.20.

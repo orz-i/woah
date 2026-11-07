@@ -13,5 +13,21 @@
   "critical_first_unobserved_us": 6120000,
   "critical_hero_id": 6,
   "through_us": 6600000,
-  "captured_outcome": "Hero is unobserved at6600000 and incorrectly covered; retained as pre-fix failure evidence."
+  "captured_outcome": "Hero is unobserved at6600000 and incorrectly covered; retained as pre-fix failure evidence.",
+  "reviewed_target_detections": {
+    "6120000": 6,
+    "6160000": 6,
+    "6200000": 6,
+    "6240000": 6,
+    "6280000": 6,
+    "6320000": 5,
+    "6360000": 7,
+    "6400000": 7,
+    "6440000": 6,
+    "6480000": 5,
+    "6520000": 5,
+    "6560000": 5,
+    "6600000": 5
+  },
+  "review_scope": "All13 source frames153-165 viewed in hero-source-153-165.jpg; teal subject visible and separate from blonde neighboring subject. These are test annotations, not production position-based identity rules."
 }
