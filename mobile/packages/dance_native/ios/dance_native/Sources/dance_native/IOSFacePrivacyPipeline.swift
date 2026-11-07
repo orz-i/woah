@@ -95,6 +95,12 @@ enum IOSFacePrivacyGeometry {
 
   static func currentMaskSupport(_ region: IOSFacePrivacyEllipse, person: IOSYoloDetection,
                                  preprocess: IOSYoloPreprocessResult) -> (distinctPixels: Int, samples: Int) {
+    IOSFrameKernelFaceGeometry.support(SIMD4(region.centerX,region.centerY,region.radiusX,region.radiusY),
+      person:person,preprocess:preprocess) ?? (0,0)
+  }
+
+  private static func currentMaskSupportLegacy(_ region: IOSFacePrivacyEllipse, person: IOSYoloDetection,
+                                 preprocess: IOSYoloPreprocessResult) -> (distinctPixels: Int, samples: Int) {
     let size = IOSYoloPostprocessor.protoSize
     guard person.mask.count == size * size, preprocess.scale > 0, preprocess.inputSize > 0 else { return (0, 0) }
     var supported = 0
