@@ -14,6 +14,7 @@ pub mod geometry;
 pub mod instances;
 mod mask_transitions;
 pub mod pixels;
+pub mod privacy_class;
 pub mod protection;
 pub mod region_continuation;
 pub mod temporal_region;

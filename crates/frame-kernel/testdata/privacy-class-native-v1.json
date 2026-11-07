@@ -1,0 +1,9 @@
+{
+  "producer": "Unmodified Kotlin PrivacyClassTemporalTracker copied to test-only CanonicalPrivacyClassTemporalTracker",
+  "frames": 1024,
+  "scenarios": 16,
+  "bytes": 1526544,
+  "sha256": "d17fad6313559b4c6e3a6363ccc228901188399d1fac82bf7874ecc44eba9d92",
+  "native_source_lf_sha256": "7a73cd9307c148866b5e605e1047ff8fe60c3e4dc801eb4f314adfc0a55b4f41",
+  "fields": "All input observations/hard roots, output classes/unknown flags, immutable root flag, similarity counts, every Float32 prototype field and retained mask byte"
+}
