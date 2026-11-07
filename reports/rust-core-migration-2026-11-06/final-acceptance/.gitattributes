@@ -1,0 +1,3 @@
+# Preserve raw audit and review evidence bytes across Windows/macOS checkouts.
+*.json -text
+*.jsonl -text
