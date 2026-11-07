@@ -380,15 +380,7 @@ class FaceOnlyPrivacyFrameProcessor(
         allowUnobservedMask: Boolean = false
     ): FacePrivacyEllipse? {
         if ((!person.observedThisFrame && !allowUnobservedMask) || person.mask == null) return null
-        val estimate = BodyMaskFaceHeadEstimator.estimate(
-            mask = person.mask,
-            personBbox = person.bbox,
-            seedCenterX = region.centerX,
-            seedCenterY = region.centerY,
-            seedRadiusX = region.radiusX,
-            seedRadiusY = region.radiusY
-        ) ?: return null
-        return region.copy(centerX = estimate.x, centerY = estimate.y)
+        return FrameKernelFaceGeometry.refine(person.mask, person.bbox, region)
     }
 
     private data class FallbackGeometry(

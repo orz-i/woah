@@ -115,10 +115,15 @@ enum IOSFacePrivacyGeometry {
     return IOSFacePrivacyEllipse(centerX:region.x,centerY:region.y,radiusX:region.z,radiusY:region.w,source:.detectedFace)
   }
 
-  static func fallbackEllipse(_ detection: IOSYoloDetection) -> IOSFacePrivacyEllipse? {
-    guard let region = IOSFrameKernelFaceGeometry.fallback(detection) else { return nil }
-    return IOSFacePrivacyEllipse(centerX: region.x, centerY: region.y,
-      radiusX: region.z, radiusY: region.w, source: .yoloHeadFallback)
+  static func fallbackGeometry(_ detection:IOSYoloDetection,preprocess:IOSYoloPreprocessResult,
+      currentMask:Bool)->(region:IOSFacePrivacyEllipse,bodyMaskGuided:Bool)? {
+    if let result=IOSFrameKernelFaceGeometry.currentHead(detection,preprocess:preprocess,currentMask:currentMask) {
+      let r=result.region
+      return (IOSFacePrivacyEllipse(centerX:r.x,centerY:r.y,radiusX:r.z,radiusY:r.w,source:.yoloHeadFallback),result.maskGuided)
+    }
+    // Invalid transport must not erase the existing coarse protection seed.
+    guard let r=IOSFrameKernelFaceGeometry.fallback(detection) else{return nil}
+    return (IOSFacePrivacyEllipse(centerX:r.x,centerY:r.y,radiusX:r.z,radiusY:r.w,source:.yoloHeadFallback),false)
   }
 
 }
@@ -283,7 +288,8 @@ final class IOSFacePrivacyTemporalResolver {
          let faceIndex = assignments[person.id],
          faces.indices.contains(faceIndex) {
         raw = IOSFacePrivacyGeometry.detectedEllipse(faces[faceIndex])
-          ?? IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
+          ?? IOSFacePrivacyGeometry.fallbackGeometry(person.detection,preprocess:preprocess,
+            currentMask:!person.conservativePrivacyFallback)?.region
         if singleScene, let raw, raw.source == .detectedFace {
           singleSceneFace = TrustedFaceGeometry(centerX: raw.centerX, centerY: raw.centerY,
             radiusX: raw.radiusX, radiusY: raw.radiusY, trustedPersonDetection: person.detection,
@@ -295,7 +301,8 @@ final class IOSFacePrivacyTemporalResolver {
         // History may add privacy, never remove the current body's head
         // fallback: a newly visible/moving face must not inherit an exemption.
         regions[Self.syntheticClassFallbackBase - 200_000] = padding
-        raw = IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
+        raw = IOSFacePrivacyGeometry.fallbackGeometry(person.detection,preprocess:preprocess,
+            currentMask:!person.conservativePrivacyFallback)?.region
       } else if let trusted = stateByTrackId[person.id]?.trustedFace,
                 timestampUs >= trusted.lastTrustedTimestampUs,
                 timestampUs - trusted.lastTrustedTimestampUs <= Self.maxPredictedFaceAgeUs,
@@ -318,7 +325,8 @@ final class IOSFacePrivacyTemporalResolver {
         // generic current-body head fallback instead of drawing the stale face.
         raw = maskGuided
       } else {
-        raw = IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
+        raw = IOSFacePrivacyGeometry.fallbackGeometry(person.detection,preprocess:preprocess,
+            currentMask:!person.conservativePrivacyFallback)?.region
       }
       guard let raw else { continue }
       if raw.source == .yoloHeadFallback && coveredHeadFallbackIds.contains(person.id) { continue }
@@ -360,11 +368,13 @@ final class IOSFacePrivacyTemporalResolver {
       guard seenDetectionIndices.insert(evidence.detectionIndex).inserted,
             !evidence.residualTrackIds.isEmpty,
             evidence.residualTrackIds.allSatisfy({ faceOnlyIds.contains($0) }),
-            var region = IOSFacePrivacyGeometry.fallbackEllipse(evidence.detection) else {
+            let fallback = IOSFacePrivacyGeometry.fallbackGeometry(evidence.detection,
+              preprocess:preprocess,currentMask:true) else {
         continue
       }
 
-      var bodyMaskGuided = false
+      var region = fallback.region
+      var bodyMaskGuided = fallback.bodyMaskGuided
       let uniqueOwnerId = evidence.residualTrackIds.count == 1
         ? evidence.residualTrackIds.first
         : nil
