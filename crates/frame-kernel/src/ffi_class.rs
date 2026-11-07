@@ -166,6 +166,21 @@ pub unsafe extern "C" fn frame_kernel_class_update(
     result.len() as i32
 }
 
+/// # Safety
+/// Output points to eight disjoint writable u32 counters: hard selected/unselected,
+/// inferred selected/unselected, unknown, selected/unselected prototypes, evaluations.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_class_summary(id: u64, output: *mut u32) -> i32 {
+    if output.is_null() {
+        return -1;
+    }
+    let Some(s) = owned(id) else { return -1 };
+    let Ok(t) = s.lock() else { return -1 };
+    // SAFETY: caller guarantees eight disjoint live aligned writable integers.
+    unsafe { std::ptr::copy_nonoverlapping(t.summary.as_ptr(), output, 8) };
+    0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -30,6 +30,7 @@ internal object FrameKernel {
     }
 
     private external fun classCreateNative(values:FloatArray,misses:Int,flags:Int):Long
+    private external fun classSummaryNative(id:Long):IntArray
     private external fun classDestroyNative(id:Long)
     private external fun classResetNative(id:Long)
     private external fun classUpdateNative(id:Long,values:FloatArray,offsets:LongArray,pixels:ByteArray,roots:LongArray):IntArray
@@ -38,6 +39,7 @@ internal object FrameKernel {
         @Synchronized fun update(values:FloatArray,offsets:LongArray,pixels:ByteArray,roots:LongArray):IntArray {
             check(id!=0L);return classUpdateNative(id,values,offsets,pixels,roots)
         }
+        @Synchronized fun summary():IntArray {check(id!=0L);return classSummaryNative(id)}
         @Synchronized fun reset(){check(id!=0L);classResetNative(id)}
         @Synchronized override fun close(){if(id!=0L){classDestroyNative(id);id=0L}}
     }

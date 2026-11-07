@@ -43,8 +43,11 @@ class PrivacyClassTemporalTracker(
             val index=output[i]
             FreshPrivacyClassEvidence(PrivacySelectionClass.entries[output[i+1]],index,detections[index],emptySet(),output[i+2]!=0)
         }
+        val counters=owned().summary()
         NativeDiagnostics.eventLazy(level="INFO",component="PrivacyClassTemporalTracker",event="PRIVACY_CLASS_TEMPORAL_SUMMARY",
-            fields={mapOf("pts_us" to ptsUs,"unknown" to result.count{it.conservativeUnknown},"similarity_evaluations" to lastSimilarityEvaluationCount)})
+            fields={mapOf("pts_us" to ptsUs,"hard_selected" to counters[0],"hard_unselected" to counters[1],
+                "inferred_selected" to counters[2],"inferred_unselected" to counters[3],"unknown" to counters[4],
+                "selected_prototypes" to counters[5],"unselected_prototypes" to counters[6],"similarity_evaluations" to counters[7])})
         return result
     }
 }

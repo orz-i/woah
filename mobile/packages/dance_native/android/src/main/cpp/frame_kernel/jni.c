@@ -604,3 +604,9 @@ JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_faceOwn
  if(bad){invalid(env);return NULL;}jintArray out=(*env)->NewIntArray(env,count);
  if(out&&count)(*env)->SetIntArrayRegion(env,out,0,count,indices);return out;
 }
+
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_classSummaryNative(JNIEnv *env,jobject self,jlong id){
+ (void)self;uint32_t values[8];if(frame_kernel_class_summary((uint64_t)id,values)){invalid(env);return NULL;}
+ jint out[8];for(int i=0;i<8;i++)out[i]=(jint)values[i];jintArray result=(*env)->NewIntArray(env,8);
+ if(result)(*env)->SetIntArrayRegion(env,result,0,8,out);return result;
+}

@@ -189,6 +189,8 @@ typedef struct FrameKernelClassDecision { uint32_t index, selection, unknown; } 
 uint64_t frame_kernel_class_create(FrameKernelClassOptions options);
 int32_t frame_kernel_class_destroy(uint64_t id);
 int32_t frame_kernel_class_reset(uint64_t id);
+/* Eight counters: hard S/U, inferred S/U, unknown, prototype S/U, evaluations. */
+int32_t frame_kernel_class_summary(uint64_t id, uint32_t *output8);
 /* Capacity >= count is required before mutation. Returns decision count or -1.
    Every pointer is borrowed for this call; output/evaluations must be disjoint. */
 int32_t frame_kernel_class_update(uint64_t id, const FrameKernelTrackingObservation *observations, size_t count,

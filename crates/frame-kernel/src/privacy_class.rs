@@ -149,6 +149,7 @@ pub struct ClassTracker {
     prototypes: Vec<Prototype>,
     root_seeded: bool,
     pub last_evaluations: u32,
+    pub summary: [u32; 8],
 }
 impl ClassTracker {
     pub fn new(config: ClassConfig) -> Option<Self> {
@@ -157,12 +158,14 @@ impl ClassTracker {
             prototypes: vec![],
             root_seeded: false,
             last_evaluations: 0,
+            summary: [0; 8],
         })
     }
     pub fn reset(&mut self) {
         self.prototypes.clear();
         self.root_seeded = false;
         self.last_evaluations = 0;
+        self.summary = [0; 8];
     }
     pub fn update(
         &mut self,
@@ -182,6 +185,22 @@ impl ClassTracker {
         self.last_evaluations = 0;
         if detections.is_empty() {
             self.decay(&[]);
+            self.summary = [
+                0,
+                0,
+                0,
+                0,
+                0,
+                self.prototypes
+                    .iter()
+                    .filter(|p| p.class == SelectionClass::Selected)
+                    .count() as u32,
+                self.prototypes
+                    .iter()
+                    .filter(|p| p.class == SelectionClass::Unselected)
+                    .count() as u32,
+                0,
+            ];
             return Ok(vec![]);
         }
         let root = if !self.root_seeded && !hard.is_empty() {
@@ -303,6 +322,38 @@ impl ClassTracker {
         }
         self.decay(&updated);
         self.last_evaluations = scores.evaluations;
+        let hard_selected = classified
+            .iter()
+            .filter(|r| r.1 == SelectionClass::Selected && root.iter().any(|(i, _)| *i == r.0))
+            .count() as u32;
+        let hard_unselected = classified
+            .iter()
+            .filter(|r| r.1 == SelectionClass::Unselected && root.iter().any(|(i, _)| *i == r.0))
+            .count() as u32;
+        self.summary = [
+            hard_selected,
+            hard_unselected,
+            classified
+                .iter()
+                .filter(|r| r.1 == SelectionClass::Selected)
+                .count() as u32
+                - hard_selected,
+            classified
+                .iter()
+                .filter(|r| r.1 == SelectionClass::Unselected)
+                .count() as u32
+                - hard_unselected,
+            (detections.len() - classified.len()) as u32,
+            self.prototypes
+                .iter()
+                .filter(|p| p.class == SelectionClass::Selected)
+                .count() as u32,
+            self.prototypes
+                .iter()
+                .filter(|p| p.class == SelectionClass::Unselected)
+                .count() as u32,
+            scores.evaluations,
+        ];
         Ok(detections
             .iter()
             .enumerate()
