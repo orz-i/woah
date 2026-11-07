@@ -253,6 +253,16 @@ int32_t frame_kernel_grid_face_input(const uint8_t *rgba, size_t bytes, uint32_t
 int32_t frame_kernel_grid_face_decode(const float *boxes, size_t box_len,
  const float *scores, size_t score_len, uint32_t width, uint32_t height,
  float minimum, float overlap, float *output, size_t capacity);
+/* Observation APIs:0 success,1 no evidence,-1 invalid,-2 insufficient capacity.
+   Nonzero results leave every output unchanged. All buffers are disjoint/borrowed. */
+typedef struct FrameKernelFaceView { FrameKernelRect bounds; uint32_t view,known_owner; int64_t owner; } FrameKernelFaceView;
+int32_t frame_kernel_face_mask_support(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse region,uint32_t *output2);
+int32_t frame_kernel_face_observation_score(const float *row18,FrameKernelRect person,float *output);
+int32_t frame_kernel_face_upper_body_view(FrameKernelRect person,float *output4_xywh);
+int32_t frame_kernel_face_merge_views(const FrameKernelFaceView *input,size_t count,size_t primary,uint32_t require_owner,uint32_t *output,size_t capacity,size_t *output_count);
+int32_t frame_kernel_face_resolve_owners(const float *scores,size_t len,size_t people,size_t faces,const int32_t *preferred,int64_t hero,float margin,int32_t *output,size_t capacity);
+int32_t frame_kernel_face_unique_owner(const float *scores,size_t count,float margin,uint32_t *output);
+int32_t frame_kernel_face_occlusion_padding(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse seed,int64_t age,int64_t lease,FrameKernelEllipse *output);
 #ifdef __cplusplus
 }
 #endif
