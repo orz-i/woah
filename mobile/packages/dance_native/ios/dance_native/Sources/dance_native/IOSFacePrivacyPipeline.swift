@@ -529,6 +529,20 @@ final class IOSFacePrivacyTemporalResolver {
 
   private func uniqueCurrentOwner(face: IOSFaceCandidate, persons: [IOSPreviewPerson],
                                   unmaskedPersonId: Int?, preprocess: IOSYoloPreprocessResult) -> Int? {
+    let scores=persons.map {person -> Float in
+      if person.id != unmaskedPersonId {
+        guard let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
+          IOSFrameKernel.selectFace([face],plan:plan) != nil else {return -1}
+      }
+      return associationScore(face:face,person:person.detection,preprocess:preprocess,
+        requireMaskSupport:person.id==unmaskedPersonId) ?? -1
+    }
+    guard let index=IOSFrameKernelFaceGeometry.uniqueOwner(scores),persons.indices.contains(index) else {return nil}
+    return persons[index].id
+  }
+
+  private func uniqueCurrentOwnerLegacy(face: IOSFaceCandidate, persons: [IOSPreviewPerson],
+                                  unmaskedPersonId: Int?, preprocess: IOSYoloPreprocessResult) -> Int? {
     let ranked = persons.compactMap { person -> (Int, Float32)? in
       if person.id != unmaskedPersonId {
         guard let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
@@ -542,7 +556,36 @@ final class IOSFacePrivacyTemporalResolver {
     return first.0
   }
 
-  private func associate(
+  private func associate(faces: [IOSFaceCandidate], persons: [IOSPreviewPerson],
+    unmaskedPersonId: Int? = nil, preprocess: IOSYoloPreprocessResult? = nil) -> [Int:Int] {
+    guard !faces.isEmpty,!persons.isEmpty else {return [:]}
+    var scores=[Float](repeating:-1,count:persons.count*faces.count)
+    var preferred=[Int32](repeating:-1,count:persons.count)
+    for (personIndex,person) in persons.enumerated() {
+      var options:[Int]=[]
+      for faceIndex in faces.indices {
+        if let score=associationScore(face:faces[faceIndex],person:person.detection,
+          preprocess:preprocess,requireMaskSupport:person.id==unmaskedPersonId) {
+          scores[personIndex*faces.count+faceIndex]=score;options.append(faceIndex)
+        }
+      }
+      if person.id != unmaskedPersonId,let preprocess,
+        let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
+        let chosen=IOSFrameKernel.selectFace(options.map {faces[$0]},plan:plan) {
+        preferred[personIndex]=Int32(options[chosen])
+      }
+    }
+    let hero=unmaskedPersonId.flatMap {id in persons.firstIndex {$0.id==id}}
+    guard let choices=IOSFrameKernelFaceGeometry.resolveOwners(scores,people:persons.count,
+      faces:faces.count,preferred:preferred,hero:hero) else {return [:]}
+    var accepted:[Int:Int]=[:]
+    for (index,choice) in choices.enumerated() where choice>=0 && faces.indices.contains(Int(choice)) {
+      accepted[persons[index].id]=Int(choice)
+    }
+    return accepted
+  }
+
+  private func associateLegacy(
     faces: [IOSFaceCandidate],
     persons: [IOSPreviewPerson],
     unmaskedPersonId: Int? = nil,
