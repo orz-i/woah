@@ -1,0 +1,921 @@
+{
+  "run_id": "shared_policy_final_legacy22",
+  "scope": "All17 actual source/context/movie candidate pages inspected. All135 candidates identify teal hero6; index74 is a new partial overmask, so this run was interrupted and is not accepted final62. Raw statuses are unchanged.",
+  "reviewed_pages": [
+    {
+      "file": "candidates-00.jpg",
+      "sha256": "589877ebfb09256e8628fdf2f03e64cc97dcf4f97f4629d0b44f05b75556c1ea",
+      "first_index": 0,
+      "last_index": 7
+    },
+    {
+      "file": "candidates-01.jpg",
+      "sha256": "1948addbbac06985efa21d838c4ff3e24795d2967a3a711afe946db50a4aa7f4",
+      "first_index": 8,
+      "last_index": 15
+    },
+    {
+      "file": "candidates-02.jpg",
+      "sha256": "4d4f6ca4f008f1631d1331a23c494d5ec923a8aa9ef1d5a518c9546a4c36fa25",
+      "first_index": 16,
+      "last_index": 23
+    },
+    {
+      "file": "candidates-03.jpg",
+      "sha256": "d18eebb5b9fff838e24632c2d08e1880d3bb2a84a0580d3399038f9abf41f228",
+      "first_index": 24,
+      "last_index": 31
+    },
+    {
+      "file": "candidates-04.jpg",
+      "sha256": "78cda5a73a018983d595324953953b8932019377a9b76b76da674a5d017c2656",
+      "first_index": 32,
+      "last_index": 39
+    },
+    {
+      "file": "candidates-05.jpg",
+      "sha256": "9769f2dd2b80d927a771b1c7ea444c55baf4c6e497670cb2ae49f8f293d67d13",
+      "first_index": 40,
+      "last_index": 47
+    },
+    {
+      "file": "candidates-06.jpg",
+      "sha256": "380b46829d67d9b705ad5acab21ad949f9a4e608172c2975f2b7f2f2c5a3a0bd",
+      "first_index": 48,
+      "last_index": 55
+    },
+    {
+      "file": "candidates-07.jpg",
+      "sha256": "63c11cd0d86451ce51188ad6bbcf7b1e961e3be64b9a05b464672e84b2708e10",
+      "first_index": 56,
+      "last_index": 63
+    },
+    {
+      "file": "candidates-08.jpg",
+      "sha256": "b434a6df49d58bea7d24da1820f41193f14771ced878eadd15f5e04423d22fc3",
+      "first_index": 64,
+      "last_index": 71
+    },
+    {
+      "file": "candidates-09.jpg",
+      "sha256": "6c5ff5414d2db4127ef92b8ac38ae170ec23b7867eb03b9e62fa5dc1e4282a59",
+      "first_index": 72,
+      "last_index": 79
+    },
+    {
+      "file": "candidates-10.jpg",
+      "sha256": "58a5bdb9df540334ab1404f2016880bc1ff7433842c889d09d63bb7f7d562b33",
+      "first_index": 80,
+      "last_index": 87
+    },
+    {
+      "file": "candidates-11.jpg",
+      "sha256": "9752c0d778d377e4d13d2effc3f4e89a53f79c2b8f603d48ecfb30953cf321bb",
+      "first_index": 88,
+      "last_index": 95
+    },
+    {
+      "file": "candidates-12.jpg",
+      "sha256": "4154caacd64df22b47a49040f4c3d9bc20cfe7782c2aa4299d0f74911f2a9afe",
+      "first_index": 96,
+      "last_index": 103
+    },
+    {
+      "file": "candidates-13.jpg",
+      "sha256": "9bd2aafcf73c126eb42a6cda653b3f0feae2b2bc52fc443e520a3b24bc7b8a14",
+      "first_index": 104,
+      "last_index": 111
+    },
+    {
+      "file": "candidates-14.jpg",
+      "sha256": "56c7099c7a8f42ff0e9585622083b040688e2ff388a412112e7ab2cfc83b0be4",
+      "first_index": 112,
+      "last_index": 119
+    },
+    {
+      "file": "candidates-15.jpg",
+      "sha256": "9c6432e603b87bcc98ba7d507ca4c6139f627cfbdd2714f687314732a09e1a7c",
+      "first_index": 120,
+      "last_index": 127
+    },
+    {
+      "file": "candidates-16.jpg",
+      "sha256": "012911f26d6215340cf5df0edcf39c686252200611d25f2e809bdcaa1bde5922",
+      "first_index": 128,
+      "last_index": 134
+    }
+  ],
+  "candidate_index_sha256": "4f1468f21826bfd576bdd18701866cd22491069a69382ac273eabd9405ac7a0b",
+  "decisions": [
+    {
+      "index": 0,
+      "source_frame": 44,
+      "case": "group_face_sticker_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 1,
+      "source_frame": 45,
+      "case": "group_face_sticker_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 2,
+      "source_frame": 44,
+      "case": "group_face_solid_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 3,
+      "source_frame": 45,
+      "case": "group_face_solid_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 4,
+      "source_frame": 44,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 5,
+      "source_frame": 45,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 6,
+      "source_frame": 101,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 7,
+      "source_frame": 102,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 8,
+      "source_frame": 105,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 9,
+      "source_frame": 107,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 10,
+      "source_frame": 108,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 11,
+      "source_frame": 109,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 12,
+      "source_frame": 112,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 13,
+      "source_frame": 125,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 14,
+      "source_frame": 136,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 15,
+      "source_frame": 146,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 16,
+      "source_frame": 147,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 17,
+      "source_frame": 148,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 18,
+      "source_frame": 149,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 19,
+      "source_frame": 150,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 20,
+      "source_frame": 151,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 21,
+      "source_frame": 154,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 22,
+      "source_frame": 155,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 23,
+      "source_frame": 156,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 24,
+      "source_frame": 157,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 25,
+      "source_frame": 158,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 26,
+      "source_frame": 159,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 27,
+      "source_frame": 160,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 28,
+      "source_frame": 161,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 29,
+      "source_frame": 162,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 30,
+      "source_frame": 163,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 31,
+      "source_frame": 164,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 32,
+      "source_frame": 165,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 33,
+      "source_frame": 166,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 34,
+      "source_frame": 167,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 35,
+      "source_frame": 168,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 36,
+      "source_frame": 169,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 37,
+      "source_frame": 170,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 38,
+      "source_frame": 171,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 39,
+      "source_frame": 172,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 40,
+      "source_frame": 173,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 41,
+      "source_frame": 174,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 42,
+      "source_frame": 175,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 43,
+      "source_frame": 176,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 44,
+      "source_frame": 177,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 45,
+      "source_frame": 178,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 46,
+      "source_frame": 179,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 47,
+      "source_frame": 181,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 48,
+      "source_frame": 182,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 49,
+      "source_frame": 183,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 50,
+      "source_frame": 184,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 51,
+      "source_frame": 185,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 52,
+      "source_frame": 198,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 53,
+      "source_frame": 200,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 54,
+      "source_frame": 204,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 55,
+      "source_frame": 205,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 56,
+      "source_frame": 206,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 57,
+      "source_frame": 207,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 58,
+      "source_frame": 209,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 59,
+      "source_frame": 213,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 60,
+      "source_frame": 214,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 61,
+      "source_frame": 215,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 62,
+      "source_frame": 216,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 63,
+      "source_frame": 217,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 64,
+      "source_frame": 218,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 65,
+      "source_frame": 219,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 66,
+      "source_frame": 220,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 67,
+      "source_frame": 221,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 68,
+      "source_frame": 222,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 69,
+      "source_frame": 223,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 70,
+      "source_frame": 225,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 71,
+      "source_frame": 226,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 72,
+      "source_frame": 257,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 73,
+      "source_frame": 260,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 74,
+      "source_frame": 295,
+      "case": "group_full_length_follow",
+      "decision": "new_hero_overmask_requires_fix"
+    },
+    {
+      "index": 75,
+      "source_frame": 333,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 76,
+      "source_frame": 334,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 77,
+      "source_frame": 340,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 78,
+      "source_frame": 341,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 79,
+      "source_frame": 342,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 80,
+      "source_frame": 343,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 81,
+      "source_frame": 344,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 82,
+      "source_frame": 345,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 83,
+      "source_frame": 346,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 84,
+      "source_frame": 347,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 85,
+      "source_frame": 348,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 86,
+      "source_frame": 349,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 87,
+      "source_frame": 350,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 88,
+      "source_frame": 351,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 89,
+      "source_frame": 352,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 90,
+      "source_frame": 353,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 91,
+      "source_frame": 354,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 92,
+      "source_frame": 355,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 93,
+      "source_frame": 356,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 94,
+      "source_frame": 357,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 95,
+      "source_frame": 358,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 96,
+      "source_frame": 359,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 97,
+      "source_frame": 360,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 98,
+      "source_frame": 361,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 99,
+      "source_frame": 362,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 100,
+      "source_frame": 363,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 101,
+      "source_frame": 364,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 102,
+      "source_frame": 365,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 103,
+      "source_frame": 366,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 104,
+      "source_frame": 367,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 105,
+      "source_frame": 368,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 106,
+      "source_frame": 369,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 107,
+      "source_frame": 403,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 108,
+      "source_frame": 404,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 109,
+      "source_frame": 406,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 110,
+      "source_frame": 407,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 111,
+      "source_frame": 408,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 112,
+      "source_frame": 409,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 113,
+      "source_frame": 410,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 114,
+      "source_frame": 411,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 115,
+      "source_frame": 412,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 116,
+      "source_frame": 414,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 117,
+      "source_frame": 415,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 118,
+      "source_frame": 416,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 119,
+      "source_frame": 419,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 120,
+      "source_frame": 446,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 121,
+      "source_frame": 447,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 122,
+      "source_frame": 448,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 123,
+      "source_frame": 449,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 124,
+      "source_frame": 450,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 125,
+      "source_frame": 451,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 126,
+      "source_frame": 452,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 127,
+      "source_frame": 453,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 128,
+      "source_frame": 454,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 129,
+      "source_frame": 455,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 130,
+      "source_frame": 458,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 131,
+      "source_frame": 459,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 132,
+      "source_frame": 460,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 133,
+      "source_frame": 515,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    },
+    {
+      "index": 134,
+      "source_frame": 516,
+      "case": "group_full_length_follow",
+      "decision": "intentionally_exempt_hero6_teal"
+    }
+  ]
+}
