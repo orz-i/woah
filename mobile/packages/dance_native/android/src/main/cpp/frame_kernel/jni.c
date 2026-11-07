@@ -661,3 +661,11 @@ JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_maskH
  }
  (*env)->ReleaseByteArrayElements(env,pixels,bytes,JNI_ABORT);return result;
 }
+
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_projectFaceRegionNative(JNIEnv *env,jobject self,jfloatArray current,jfloatArray previous,jfloatArray seed,jlong age){
+ (void)self;FrameKernelRect c={0},p={0};FrameKernelEllipse trusted={0},output={0};
+ if(!read_rect(env,current,&c)||!read_rect(env,previous,&p)||!read_ellipse(env,seed,&trusted))return NULL;
+ int32_t status=frame_kernel_project_face_region(c,p,trusted,(int64_t)age,&output);
+ if(status!=FRAME_KERNEL_REGION_OK)return NULL;
+ return ellipse_output(env,output);
+}

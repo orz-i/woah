@@ -34,6 +34,12 @@ enum IOSFrameKernelFaceGeometry {
     guard status==0 else{return nil}
     return values(output)
   }
+  static func project(_ person:IOSYoloDetection,previous:IOSYoloDetection,seed:SIMD4<Float>,ageUs:Int64)->SIMD4<Float>? {
+    var output=FrameKernelEllipse()
+    let status=frame_kernel_project_face_region(rect(person),rect(previous),ellipse(seed),ageUs,&output)
+    guard status==0 else{return nil}
+    return values(output)
+  }
   static func fallback(_ person:IOSYoloDetection)->SIMD4<Float>? {
     var output=FrameKernelEllipse()
     let status=frame_kernel_head_fallback(rect(person),&output)

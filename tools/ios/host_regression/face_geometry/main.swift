@@ -38,5 +38,24 @@ for index in 0..<512 {
   precondition(head.map{[$0.x.bitPattern,$0.y.bitPattern]}==expected,"head case\(index)")
   precondition(bits(IOSFrameKernelFaceGeometry.trusted(pixels,person:current,previous:current,seed:seed,expansion:1.10,preprocess:pre))==r.region(2),"trusted case\(index)")
 }
+// Original Swift projection arithmetic retained only in this conformance test.
+let ages:[Int64]=[-1,0,1,75_000,149_999,150_000,800_000,Int64.max]
+let scales:[Float]=[0.12,0.50,0.88,1,1.12,1.5,3,10]
+for i in 0..<512 {
+  let left=Float(i%17)*31.25,top=Float(i%13)*12.5
+  let old=person(SIMD4(left,top,left+80+Float(i%109),top+240+Float(i%337)))
+  let dx=Float(i%9-4)*4.25,dy=Float(i%7-3)*5.25,scale=scales[i%8]
+  let current=person(SIMD4(old.x1+dx,old.y1+dy,old.x2+dx+(old.x2-old.x1)*(scale-1),old.y2+dy+(old.y2-old.y1)*(scale-1)))
+  let seed=SIMD4((old.x1+old.x2)*0.5,old.y1+(old.y2-old.y1)*0.14,8+Float(i%33),12+Float(i%55))
+  let age=ages[i%8]
+  let wr=max(0.1,(current.x2-current.x1)/max(1,old.x2-old.x1))
+  let hr=max(0.1,(current.y2-current.y1)/max(1,old.y2-old.y1))
+  let bounded=min(Float(1.12),max(Float(0.88),sqrt(wr*hr)))
+  let expansion=1+Float(min(Int64(150_000),max(Int64(0),age)))/150_000*Float(0.10)
+  let delta=IOSPersonBboxMotionEstimator.estimate(previous:old,current:current)
+  let expected=SIMD4(seed.x+delta.dx,seed.y+delta.dy,max(1,seed.z*bounded*expansion),max(1,seed.w*bounded*expansion))
+  precondition(bits(IOSFrameKernelFaceGeometry.project(current,previous:old,seed:seed,ageUs:age))==bits(expected),"projection case\(i)")
+}
+print("TRUSTED_REGION_PROJECTION_NATIVE=PASS cases=512")
 precondition(r.at==r.bytes.count)
 print("SHARED_FACE_GEOMETRY_NATIVE_CORPUS=PASS cases=512 sha256=\(sha)")

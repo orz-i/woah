@@ -6,6 +6,7 @@ import java.nio.ByteBuffer
 
 /** Transport adapter only; the production and JVM paths load the same Rust core. */
 internal object FrameKernel {
+    external fun projectFaceRegionNative(current:FloatArray,previous:FloatArray,seed:FloatArray,ageUs:Long):FloatArray?
     external fun faceRegionNative(row:FloatArray,view:FloatArray?,size:Float,yaw:Float):FloatArray?
     external fun headFallbackNative(person:FloatArray):FloatArray?
     external fun maskHeadNative(pixels:ByteArray,width:Int,height:Int,transform:FloatArray,person:FloatArray,seed:FloatArray,previous:FloatArray?,expansion:Float):FloatArray?
