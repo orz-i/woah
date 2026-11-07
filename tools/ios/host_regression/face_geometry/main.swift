@@ -49,7 +49,8 @@ for index in 0..<512 {
   let oldSupport=CanonicalObservationGeometry.currentMaskSupport(region,person:current,preprocess:pre)
   let productionSupport=IOSFacePrivacyGeometry.currentMaskSupport(region,person:current,preprocess:pre)
   precondition(oldSupport==productionSupport,"native support baseline case\(index)")
-  precondition(IOSFrameKernelFaceGeometry.support(seed,person:current,preprocess:pre)==oldSupport,"shared support case\(index)")
+  guard let sharedSupport=IOSFrameKernelFaceGeometry.support(seed,person:current,preprocess:pre) else {fatalError("missing shared support case\(index)")}
+  precondition(sharedSupport==oldSupport,"shared support case\(index)")
   precondition(IOSFrameKernelFaceGeometry.upperBody(current)==CanonicalObservationGeometry.upperBodyFaceSearchRegion(current),"shared search case\(index)")
   let global=IOSFaceCandidate(x1:view.x+face.x1/size*(view.z-view.x),y1:view.y+face.y1/size*(view.w-view.y),
     x2:view.x+face.x2/size*(view.z-view.x),y2:view.y+face.y2/size*(view.w-view.y),confidence:face.confidence)
