@@ -252,16 +252,25 @@ def verify_ios_replay_surface() -> None:
                   "row[best] - scores[other * faces + best] < margin", "owner.is_some() && owners[*at] == owner"):
         check(token in observation_core, f"Shared current face protection contract missing: {token}")
     observation_transport = text(SOURCES / "IOSFrameKernelFaceGeometry.swift", "shared observation transport")
-    for token in ("frame_kernel_face_mask_support(", "frame_kernel_face_observation_score(",
+    for token in ("frame_kernel_face_mask_owned(", "frame_kernel_face_mask_support(", "frame_kernel_face_observation_score(",
                   "frame_kernel_face_upper_body_view(", "frame_kernel_face_merge_views(",
                   "frame_kernel_face_unique_owner(", "frame_kernel_face_resolve_owners(", "frame_kernel_face_occlusion_padding("):
         check(token in observation_transport, f"Swift observation transport must call Rust: {token}")
-    for call in ("support(", "score(", "upperBody(", "merge(", "uniqueOwner(", "resolveOwners(", "padding("):
+    for call in ("owns(", "support(", "score(", "upperBody(", "merge(", "uniqueOwner(", "resolveOwners(", "padding("):
         check("IOSFrameKernelFaceGeometry."+call in face_pipeline, f"Native current face policy must delegate {call}")
     capture = ROOT / "tools/ios/host_regression/face_geometry/CanonicalObservationGeometry.swift"
     manifest = json.loads((ROOT / "crates/frame-kernel/testdata/observation-geometry-native-v1.json").read_text(encoding="utf-8"))
     check(hashlib.sha256(capture.read_bytes().replace(b"\r\n",b"\n")).hexdigest()==manifest["canonical_lf_sha256"],
           "Original native observation geometry reference changed; review provenance")
+    check("s[0] >= 4 && s[1] >= 12" in observation_core and "points: Vec::new()" in observation_core,
+          "Current face ownership must retain the measured-box window and 12/16 support")
+    ownership_reference = ROOT / "tools/ios/host_regression/face_geometry/CanonicalFaceOwnershipEvidence.swift"
+    ownership_binding = json.loads((ROOT / "crates/frame-kernel/testdata/face-ownership-native-v1.json").read_text(encoding="utf-8"))
+    check(hashlib.sha256(ownership_reference.read_bytes().replace(b"\r\n",b"\n")).hexdigest()==ownership_binding["canonical_lf_sha256"],
+          "Original native face ownership evidence changed; review provenance")
+    actual_hero = ROOT / "crates/frame-kernel/testdata/hero-face-ownership-295-v1.bin"
+    check(hashlib.sha256(actual_hero.read_bytes()).hexdigest()=="5579599860a105a5d005c38228817bd1e7d64e5ffe35c12bb14f37679ab9c6ea",
+          "Actual hero295 ownership input changed; review the captured source")
     grid_locator = (SOURCES / "IOSGridFaceLocator.swift").read_text(encoding="utf-8")
     for token in ("final class IOSGridFaceLocator", "frame_kernel_grid_face_input(",
                   "frame_kernel_grid_face_decode(", "FACE_MODEL_HASH_CONTRACT",

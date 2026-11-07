@@ -88,9 +88,7 @@ extension IOSFaceLocating {
 enum IOSFacePrivacyGeometry {
   static func faceOwnedByCurrentMask(_ face: IOSFaceCandidate, person: IOSYoloDetection,
                                     preprocess: IOSYoloPreprocessResult) -> Bool {
-    guard let region = detectedEllipse(face) else { return false }
-    let support = currentMaskSupport(region, person: person, preprocess: preprocess)
-    return support.distinctPixels >= 4 && support.samples >= 12
+    IOSFrameKernelFaceGeometry.owns(face,person:person,preprocess:preprocess)
   }
 
   static func currentMaskSupport(_ region: IOSFacePrivacyEllipse, person: IOSYoloDetection,
