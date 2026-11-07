@@ -1,0 +1,1450 @@
+{
+  "run_id": "shared_policy_final_legacy22",
+  "reviewed_utc": "2026-11-07T02:47:19.899818+00:00",
+  "candidate_index_sha256": "121630d58dfc025b034264310ac1bb2c29ad4a0515f78d8d0ecf8df92d5e2fc3",
+  "raw_status_unchanged": true,
+  "reviewed_pages": [
+    {
+      "file": "candidates-00.jpg",
+      "sha256": "e57e43d72669ecd81799a2c2bca59692818e00000087817e26b28d51a42ff592",
+      "first_index": 0,
+      "last_index": 7
+    },
+    {
+      "file": "candidates-01.jpg",
+      "sha256": "78bc46c37394c96fed6f3170e2a27a3fd9d220f4e5d10a688638869b5ab75262",
+      "first_index": 8,
+      "last_index": 15
+    },
+    {
+      "file": "candidates-02.jpg",
+      "sha256": "ca53d9677ac8a0f3a92a2a19aa2c417d6fd6ed98602430a5494a9b9eae7e1891",
+      "first_index": 16,
+      "last_index": 23
+    },
+    {
+      "file": "candidates-03.jpg",
+      "sha256": "e24d6b4c8290efd566cefb80d456a3496cd3e65e4522dbdbac8fc41f36da1471",
+      "first_index": 24,
+      "last_index": 31
+    },
+    {
+      "file": "candidates-04.jpg",
+      "sha256": "4daa03ae527bb87087bb9daebe9a89acba9639ddd9cc1db776b135f8111e1e91",
+      "first_index": 32,
+      "last_index": 39
+    },
+    {
+      "file": "candidates-05.jpg",
+      "sha256": "ed6fe1f6c9644bd41578f485c2daa2e93539200da267abf9aa3526b73c456419",
+      "first_index": 40,
+      "last_index": 47
+    },
+    {
+      "file": "candidates-06.jpg",
+      "sha256": "dc3046651ad6ed8ad44c90ddefc6f5306631c18bd903925bf6c7b824b9558a47",
+      "first_index": 48,
+      "last_index": 55
+    },
+    {
+      "file": "candidates-07.jpg",
+      "sha256": "1e454a6c69e099a735aba52640504be60dc37d39488c1cf3288120811a88ab5a",
+      "first_index": 56,
+      "last_index": 63
+    },
+    {
+      "file": "candidates-08.jpg",
+      "sha256": "6e9e06c9fe980111320ad11231fef98dc3ebbc1eb6d765742f5a9e51892276ee",
+      "first_index": 64,
+      "last_index": 71
+    },
+    {
+      "file": "candidates-09.jpg",
+      "sha256": "6d1f9748d334e1e20a19ad5d16e0cdcb4058b1e6f39bde4a422740803b1ca9ef",
+      "first_index": 72,
+      "last_index": 79
+    },
+    {
+      "file": "candidates-10.jpg",
+      "sha256": "916bfcc6355dd6e74eb6fa589a0eeec42dea79eee282251c3dc8017f3fc51d1a",
+      "first_index": 80,
+      "last_index": 87
+    },
+    {
+      "file": "candidates-11.jpg",
+      "sha256": "a70f84b9b1dfe7ccedc5821fcfbc4c7bff501393b79a2e4daa61d211819b58e5",
+      "first_index": 88,
+      "last_index": 95
+    },
+    {
+      "file": "candidates-12.jpg",
+      "sha256": "d98fc317f6d664c1011da954bad27e9ea75dd83de0142478a6c12d32c1cdbcce",
+      "first_index": 96,
+      "last_index": 103
+    },
+    {
+      "file": "candidates-13.jpg",
+      "sha256": "19f6840c8df85ad067ff5742efdbdaf76a9cdaa6c5ca18b59ce30ba53ff4a0e1",
+      "first_index": 104,
+      "last_index": 111
+    },
+    {
+      "file": "candidates-14.jpg",
+      "sha256": "518f33bfb5feedeba46a14c8096e0caa8a1847b18fdd573502fc2d0e7c7b5088",
+      "first_index": 112,
+      "last_index": 119
+    },
+    {
+      "file": "candidates-15.jpg",
+      "sha256": "230ee38e997b70430d0a9b0fe7aabfde510836c4769a2bcfac104e586b6b8f2d",
+      "first_index": 120,
+      "last_index": 127
+    },
+    {
+      "file": "candidates-16.jpg",
+      "sha256": "ee1a26bf59499df5d6fd8f0e65d2963482129a5889212df0c7b877ea2e479d05",
+      "first_index": 128,
+      "last_index": 135
+    },
+    {
+      "file": "candidates-17.jpg",
+      "sha256": "606a64a24e4ae1e87816629b89721829cfcc987c90feff38b9da4522ae40004e",
+      "first_index": 136,
+      "last_index": 143
+    },
+    {
+      "file": "candidates-18.jpg",
+      "sha256": "c8e868c4b9387e04a9dd3b7c0eb0b78c6e13bece197928c30aa81f9aa4718cfc",
+      "first_index": 144,
+      "last_index": 151
+    },
+    {
+      "file": "candidates-19.jpg",
+      "sha256": "ba9ebd20d22686356df7d09ff4b4c3704878e146220728076e6944973106394e",
+      "first_index": 152,
+      "last_index": 159
+    },
+    {
+      "file": "candidates-20.jpg",
+      "sha256": "58d720cc13d593829ce3a3ae1dd066c3e3d5a17565e6b8c8b532cbd04364e07a",
+      "first_index": 160,
+      "last_index": 163
+    }
+  ],
+  "detail_sha256": "1f0ae662d6c4683998f0e929e35f626788b44ae227cc4e74824be3a5b500f167",
+  "decisions": [
+    {
+      "index": 0,
+      "case": "group_face_sticker_follow",
+      "source_frame": 44,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-00.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 1,
+      "case": "group_face_sticker_follow",
+      "source_frame": 45,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-00.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 2,
+      "case": "group_face_solid_follow",
+      "source_frame": 44,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-00.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 3,
+      "case": "group_face_solid_follow",
+      "source_frame": 45,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-00.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 4,
+      "case": "group_full_length_follow",
+      "source_frame": 44,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-00.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 5,
+      "case": "group_full_length_follow",
+      "source_frame": 45,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-00.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 6,
+      "case": "group_full_length_follow",
+      "source_frame": 100,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-00.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 7,
+      "case": "group_full_length_follow",
+      "source_frame": 101,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-00.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 8,
+      "case": "group_full_length_follow",
+      "source_frame": 102,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-01.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 9,
+      "case": "group_full_length_follow",
+      "source_frame": 103,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-01.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 10,
+      "case": "group_full_length_follow",
+      "source_frame": 104,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-01.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 11,
+      "case": "group_full_length_follow",
+      "source_frame": 105,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-01.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 12,
+      "case": "group_full_length_follow",
+      "source_frame": 106,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-01.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 13,
+      "case": "group_full_length_follow",
+      "source_frame": 107,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-01.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 14,
+      "case": "group_full_length_follow",
+      "source_frame": 108,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-01.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 15,
+      "case": "group_full_length_follow",
+      "source_frame": 109,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-01.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 16,
+      "case": "group_full_length_follow",
+      "source_frame": 111,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-02.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 17,
+      "case": "group_full_length_follow",
+      "source_frame": 112,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-02.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 18,
+      "case": "group_full_length_follow",
+      "source_frame": 124,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-02.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 19,
+      "case": "group_full_length_follow",
+      "source_frame": 125,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-02.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 20,
+      "case": "group_full_length_follow",
+      "source_frame": 126,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-02.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 21,
+      "case": "group_full_length_follow",
+      "source_frame": 127,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-02.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 22,
+      "case": "group_full_length_follow",
+      "source_frame": 129,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-02.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 23,
+      "case": "group_full_length_follow",
+      "source_frame": 136,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-02.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 24,
+      "case": "group_full_length_follow",
+      "source_frame": 146,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-03.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 25,
+      "case": "group_full_length_follow",
+      "source_frame": 147,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-03.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 26,
+      "case": "group_full_length_follow",
+      "source_frame": 148,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-03.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 27,
+      "case": "group_full_length_follow",
+      "source_frame": 149,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-03.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 28,
+      "case": "group_full_length_follow",
+      "source_frame": 150,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-03.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 29,
+      "case": "group_full_length_follow",
+      "source_frame": 151,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-03.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 30,
+      "case": "group_full_length_follow",
+      "source_frame": 152,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-03.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 31,
+      "case": "group_full_length_follow",
+      "source_frame": 153,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-03.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 32,
+      "case": "group_full_length_follow",
+      "source_frame": 154,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-04.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 33,
+      "case": "group_full_length_follow",
+      "source_frame": 155,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-04.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 34,
+      "case": "group_full_length_follow",
+      "source_frame": 156,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-04.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 35,
+      "case": "group_full_length_follow",
+      "source_frame": 157,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-04.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 36,
+      "case": "group_full_length_follow",
+      "source_frame": 158,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-04.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 37,
+      "case": "group_full_length_follow",
+      "source_frame": 159,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-04.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 38,
+      "case": "group_full_length_follow",
+      "source_frame": 160,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-04.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 39,
+      "case": "group_full_length_follow",
+      "source_frame": 161,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-04.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 40,
+      "case": "group_full_length_follow",
+      "source_frame": 162,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-05.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 41,
+      "case": "group_full_length_follow",
+      "source_frame": 163,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-05.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 42,
+      "case": "group_full_length_follow",
+      "source_frame": 164,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-05.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 43,
+      "case": "group_full_length_follow",
+      "source_frame": 165,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-05.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 44,
+      "case": "group_full_length_follow",
+      "source_frame": 166,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-05.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 45,
+      "case": "group_full_length_follow",
+      "source_frame": 167,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-05.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 46,
+      "case": "group_full_length_follow",
+      "source_frame": 168,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-05.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 47,
+      "case": "group_full_length_follow",
+      "source_frame": 169,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-05.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 48,
+      "case": "group_full_length_follow",
+      "source_frame": 170,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-06.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 49,
+      "case": "group_full_length_follow",
+      "source_frame": 171,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-06.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 50,
+      "case": "group_full_length_follow",
+      "source_frame": 172,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-06.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 51,
+      "case": "group_full_length_follow",
+      "source_frame": 173,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-06.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 52,
+      "case": "group_full_length_follow",
+      "source_frame": 174,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-06.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 53,
+      "case": "group_full_length_follow",
+      "source_frame": 175,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-06.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 54,
+      "case": "group_full_length_follow",
+      "source_frame": 176,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-06.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 55,
+      "case": "group_full_length_follow",
+      "source_frame": 177,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-06.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 56,
+      "case": "group_full_length_follow",
+      "source_frame": 178,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-07.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 57,
+      "case": "group_full_length_follow",
+      "source_frame": 179,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-07.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 58,
+      "case": "group_full_length_follow",
+      "source_frame": 180,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-07.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 59,
+      "case": "group_full_length_follow",
+      "source_frame": 181,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-07.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 60,
+      "case": "group_full_length_follow",
+      "source_frame": 182,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-07.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 61,
+      "case": "group_full_length_follow",
+      "source_frame": 183,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-07.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 62,
+      "case": "group_full_length_follow",
+      "source_frame": 184,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-07.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 63,
+      "case": "group_full_length_follow",
+      "source_frame": 185,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-07.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 64,
+      "case": "group_full_length_follow",
+      "source_frame": 198,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-08.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 65,
+      "case": "group_full_length_follow",
+      "source_frame": 199,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-08.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 66,
+      "case": "group_full_length_follow",
+      "source_frame": 200,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-08.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 67,
+      "case": "group_full_length_follow",
+      "source_frame": 202,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-08.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 68,
+      "case": "group_full_length_follow",
+      "source_frame": 203,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-08.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 69,
+      "case": "group_full_length_follow",
+      "source_frame": 204,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-08.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 70,
+      "case": "group_full_length_follow",
+      "source_frame": 205,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-08.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 71,
+      "case": "group_full_length_follow",
+      "source_frame": 206,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-08.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 72,
+      "case": "group_full_length_follow",
+      "source_frame": 207,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-09.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 73,
+      "case": "group_full_length_follow",
+      "source_frame": 208,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-09.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 74,
+      "case": "group_full_length_follow",
+      "source_frame": 209,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-09.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 75,
+      "case": "group_full_length_follow",
+      "source_frame": 210,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-09.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 76,
+      "case": "group_full_length_follow",
+      "source_frame": 211,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-09.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 77,
+      "case": "group_full_length_follow",
+      "source_frame": 212,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-09.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 78,
+      "case": "group_full_length_follow",
+      "source_frame": 213,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-09.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 79,
+      "case": "group_full_length_follow",
+      "source_frame": 214,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-09.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 80,
+      "case": "group_full_length_follow",
+      "source_frame": 215,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-10.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 81,
+      "case": "group_full_length_follow",
+      "source_frame": 216,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-10.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 82,
+      "case": "group_full_length_follow",
+      "source_frame": 217,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-10.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 83,
+      "case": "group_full_length_follow",
+      "source_frame": 218,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-10.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 84,
+      "case": "group_full_length_follow",
+      "source_frame": 219,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-10.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 85,
+      "case": "group_full_length_follow",
+      "source_frame": 220,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-10.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 86,
+      "case": "group_full_length_follow",
+      "source_frame": 221,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-10.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 87,
+      "case": "group_full_length_follow",
+      "source_frame": 222,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-10.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 88,
+      "case": "group_full_length_follow",
+      "source_frame": 223,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-11.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 89,
+      "case": "group_full_length_follow",
+      "source_frame": 225,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-11.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 90,
+      "case": "group_full_length_follow",
+      "source_frame": 226,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-11.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 91,
+      "case": "group_full_length_follow",
+      "source_frame": 227,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-11.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 92,
+      "case": "group_full_length_follow",
+      "source_frame": 257,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-11.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 93,
+      "case": "group_full_length_follow",
+      "source_frame": 258,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-11.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 94,
+      "case": "group_full_length_follow",
+      "source_frame": 260,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-11.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 95,
+      "case": "group_full_length_follow",
+      "source_frame": 295,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-11.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 96,
+      "case": "group_full_length_follow",
+      "source_frame": 333,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-12.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 97,
+      "case": "group_full_length_follow",
+      "source_frame": 334,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-12.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 98,
+      "case": "group_full_length_follow",
+      "source_frame": 340,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-12.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 99,
+      "case": "group_full_length_follow",
+      "source_frame": 341,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-12.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 100,
+      "case": "group_full_length_follow",
+      "source_frame": 342,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-12.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 101,
+      "case": "group_full_length_follow",
+      "source_frame": 343,
+      "decision": "protected_features_covered_bbox_includes_hair_neck",
+      "evidence_page": "candidates-12.jpg",
+      "note": "Eyes, nose and mouth covered in enlarged source/actual-movie comparison; right-side hair and neck account for the raw bbox fraction."
+    },
+    {
+      "index": 102,
+      "case": "group_full_length_follow",
+      "source_frame": 343,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-12.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 103,
+      "case": "group_full_length_follow",
+      "source_frame": 344,
+      "decision": "protected_features_covered_bbox_includes_hair_neck",
+      "evidence_page": "candidates-12.jpg",
+      "note": "Eyes, nose and mouth covered in enlarged source/actual-movie comparison; right-side hair and neck account for the raw bbox fraction."
+    },
+    {
+      "index": 104,
+      "case": "group_full_length_follow",
+      "source_frame": 344,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-13.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 105,
+      "case": "group_full_length_follow",
+      "source_frame": 345,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-13.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 106,
+      "case": "group_full_length_follow",
+      "source_frame": 346,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-13.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 107,
+      "case": "group_full_length_follow",
+      "source_frame": 347,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-13.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 108,
+      "case": "group_full_length_follow",
+      "source_frame": 348,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-13.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 109,
+      "case": "group_full_length_follow",
+      "source_frame": 349,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-13.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 110,
+      "case": "group_full_length_follow",
+      "source_frame": 350,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-13.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 111,
+      "case": "group_full_length_follow",
+      "source_frame": 351,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-13.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 112,
+      "case": "group_full_length_follow",
+      "source_frame": 352,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-14.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 113,
+      "case": "group_full_length_follow",
+      "source_frame": 353,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-14.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 114,
+      "case": "group_full_length_follow",
+      "source_frame": 354,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-14.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 115,
+      "case": "group_full_length_follow",
+      "source_frame": 355,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-14.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 116,
+      "case": "group_full_length_follow",
+      "source_frame": 356,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-14.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 117,
+      "case": "group_full_length_follow",
+      "source_frame": 357,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-14.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 118,
+      "case": "group_full_length_follow",
+      "source_frame": 358,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-14.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 119,
+      "case": "group_full_length_follow",
+      "source_frame": 359,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-14.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 120,
+      "case": "group_full_length_follow",
+      "source_frame": 360,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-15.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 121,
+      "case": "group_full_length_follow",
+      "source_frame": 361,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-15.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 122,
+      "case": "group_full_length_follow",
+      "source_frame": 362,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-15.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 123,
+      "case": "group_full_length_follow",
+      "source_frame": 363,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-15.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 124,
+      "case": "group_full_length_follow",
+      "source_frame": 364,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-15.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 125,
+      "case": "group_full_length_follow",
+      "source_frame": 365,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-15.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 126,
+      "case": "group_full_length_follow",
+      "source_frame": 366,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-15.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 127,
+      "case": "group_full_length_follow",
+      "source_frame": 367,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-15.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 128,
+      "case": "group_full_length_follow",
+      "source_frame": 368,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-16.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 129,
+      "case": "group_full_length_follow",
+      "source_frame": 369,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-16.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 130,
+      "case": "group_full_length_follow",
+      "source_frame": 403,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-16.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 131,
+      "case": "group_full_length_follow",
+      "source_frame": 404,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-16.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 132,
+      "case": "group_full_length_follow",
+      "source_frame": 405,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-16.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 133,
+      "case": "group_full_length_follow",
+      "source_frame": 406,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-16.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 134,
+      "case": "group_full_length_follow",
+      "source_frame": 407,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-16.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 135,
+      "case": "group_full_length_follow",
+      "source_frame": 408,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-16.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 136,
+      "case": "group_full_length_follow",
+      "source_frame": 409,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-17.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 137,
+      "case": "group_full_length_follow",
+      "source_frame": 410,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-17.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 138,
+      "case": "group_full_length_follow",
+      "source_frame": 411,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-17.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 139,
+      "case": "group_full_length_follow",
+      "source_frame": 412,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-17.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 140,
+      "case": "group_full_length_follow",
+      "source_frame": 413,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-17.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 141,
+      "case": "group_full_length_follow",
+      "source_frame": 414,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-17.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 142,
+      "case": "group_full_length_follow",
+      "source_frame": 415,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-17.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 143,
+      "case": "group_full_length_follow",
+      "source_frame": 416,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-17.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 144,
+      "case": "group_full_length_follow",
+      "source_frame": 419,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-18.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 145,
+      "case": "group_full_length_follow",
+      "source_frame": 446,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-18.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 146,
+      "case": "group_full_length_follow",
+      "source_frame": 447,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-18.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 147,
+      "case": "group_full_length_follow",
+      "source_frame": 448,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-18.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 148,
+      "case": "group_full_length_follow",
+      "source_frame": 449,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-18.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 149,
+      "case": "group_full_length_follow",
+      "source_frame": 450,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-18.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 150,
+      "case": "group_full_length_follow",
+      "source_frame": 451,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-18.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 151,
+      "case": "group_full_length_follow",
+      "source_frame": 452,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-18.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 152,
+      "case": "group_full_length_follow",
+      "source_frame": 453,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-19.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 153,
+      "case": "group_full_length_follow",
+      "source_frame": 454,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-19.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 154,
+      "case": "group_full_length_follow",
+      "source_frame": 455,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-19.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 155,
+      "case": "group_full_length_follow",
+      "source_frame": 456,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-19.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 156,
+      "case": "group_full_length_follow",
+      "source_frame": 458,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-19.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 157,
+      "case": "group_full_length_follow",
+      "source_frame": 459,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-19.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 158,
+      "case": "group_full_length_follow",
+      "source_frame": 460,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-19.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 159,
+      "case": "group_full_length_follow",
+      "source_frame": 461,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-19.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 160,
+      "case": "group_full_length_follow",
+      "source_frame": 462,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-20.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 161,
+      "case": "group_full_length_follow",
+      "source_frame": 463,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-20.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 162,
+      "case": "group_full_length_follow",
+      "source_frame": 515,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-20.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    },
+    {
+      "index": 163,
+      "case": "group_full_length_follow",
+      "source_frame": 516,
+      "decision": "intentionally_exempt_hero6_teal",
+      "evidence_page": "candidates-20.jpg",
+      "note": "Source context identifies the configured teal-shirt hero. Actual face remains clear; adjacent red/sticker belongs to protected person."
+    }
+  ],
+  "scope": "All21 candidate pages actually inspected. Manual semantic review complements source-face audit; no raw failed/needs-review status is overwritten."
+}

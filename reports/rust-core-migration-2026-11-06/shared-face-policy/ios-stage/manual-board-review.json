@@ -1,0 +1,79 @@
+{
+  "run_id": "shared_geometry_first_focused13",
+  "reviewed_utc": "2026-11-07T03:02:35.267647+00:00",
+  "review_index_sha256": "f7f8718828f447ca7802ffe330e2410457b42abd12965473cc88ff29994f1149",
+  "scope": "All13 actual first/middle/last export boards and every native source/protected preview inspected. The face-solid/tail boards were inspected during the earlier enlarged alert review; remaining11 inspected now. Final62 acceptance is separate.",
+  "cases": [
+    {
+      "case": "group_4k_body_face_union",
+      "board_sha256": "79e25db3b4251b11fa87fa5e0d4ef5c975bc12d22ac222b4d9a5aca433a787f4",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_4k_body_face_union",
+      "board_sha256": "e277e6a4bbb01fd011af2e1b6ba136eb1965f84dd5dc17e2cea3a9dcf47e2e4f",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_4k_raised_arm_sticker",
+      "board_sha256": "6d1515bf95d9861ee9f777d6e5014d6750afc740f09f95637f6a3489cb02d33b",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "board_sha256": "58ab1eb231dffd551fd0cb5544675829fd0c0bc3fc5b8d8fd431aa8890746f8b",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "board_sha256": "2f7de6f62048ca8132a91c1bcb9018fd8cf2a6d94264d4ca56a28f64de6a51f9",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_hd_overlap_face",
+      "board_sha256": "537a4df46dc99a271bed10cbc156a41cbc681f67f2aa2726f20212d30514e678",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_hd_overlap_body",
+      "board_sha256": "e11d2f66e1751bd445c3c418c76a95b6c19e8e98072fe5a9296312a93e17d1e9",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_4k_face_solid",
+      "board_sha256": "3f0d12b0c3816d559a850cf7d89c33d9c4094023acaa9cf419412c014bcb6f9f",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_4k_body_solid",
+      "board_sha256": "132c493aa8ff198f2c4848ff706758a71b906614162c0e69d8f69446f7d55fa0",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_4k_tail_face",
+      "board_sha256": "ec68ec143aea7eabc043eaf90bc0f83ed79a7c2ea713a8beada201e0cdd75907",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "board_sha256": "d1861aedc7620beae79cd3ced385344921567a681eed12beab1df4cccb5abf71",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_4k_cancel_probe",
+      "board_sha256": "c48ecd981f7537faa9ba9469f1abe7c22b1ebd511e4dd3b607105350736dcfaa",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_4k_immediate_retry_probe",
+      "board_sha256": "9154739a54a89bbb09d6859ee00fde8f1c7f60426db1467379737a4d92c45fdb",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    }
+  ],
+  "observations": [
+    "Raised-arm551-559 retains known conservative large fallback/extra sticker; no precision-improvement claim.",
+    "Group tail retains conservative fallback and previously recorded lower-body overmask.",
+    "Two raw face-core alerts at source147/577 remain unchanged; actual enlarged comparisons show eyes/nose/mouth covered and bbox includes hair/ear/arm/neck.",
+    "Cancellation has no movie; native previews inspected and independent lifecycle evidence checks clean cancellation and immediate retry."
+  ]
+}

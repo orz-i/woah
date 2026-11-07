@@ -13,7 +13,7 @@ final class IOSPrivacyIdentityFrameRecorder {
   private(set) var recordingErrors = 0
 
   init?(sourceURL: URL, metadata: IOSAnalysisMetadata?, fullBodyIds: Set<Int>,
-        faceOnlyIds: Set<Int>, followId: Int?, frameWidth: Int, frameHeight: Int) {
+        faceOnlyIds: Set<Int>, followId: Int?, frameWidth: Int, frameHeight: Int, pipeline: String = "export") {
     guard ProcessInfo.processInfo.environment["WOAH_PRIVACY_TRACE"] == "1" else { return nil }
     guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
     let url = docs.appendingPathComponent("qa_privacy_identity_\(UUID().uuidString).jsonl")
@@ -22,7 +22,7 @@ final class IOSPrivacyIdentityFrameRecorder {
     file = handle
     outputURL = url
     emit([
-      "kind": "header", "schema": "woah-ios-identity-raw-v1",
+      "kind": "header", "schema": "woah-ios-identity-raw-v1", "pipeline": pipeline,
       "source_basename": sourceURL.lastPathComponent,
       "source_width": frameWidth, "source_height": frameHeight,
       "selected_full_body_ids": fullBodyIds.sorted(),
@@ -66,6 +66,16 @@ final class IOSPrivacyIdentityFrameRecorder {
       }
     ])
     recordedFrames += 1
+  }
+
+  func recordSharedSnapshot(_ snapshot: IOSSharedTrackingSnapshot, timestampUs: Int64, action: UInt32,
+      assigned: [Int], protected: Set<Int>, body: Set<Int>, face: Set<Int>) {
+    emit(["kind":"shared_snapshot", "t_us":timestampUs,"action":action,"assigned_ids":assigned,
+      "protected_ids":protected.sorted(),"body_ids":body.sorted(),"face_ids":face.sorted(),
+      "tracks":snapshot.regions.map {r -> [String:Any] in
+        ["id":r.id,"state":r.state,"observed":r.observed,"missed":r.missedFrames,
+         "bbox":[r.bounds.x,r.bounds.y,r.bounds.z,r.bounds.w],"anchor":[r.anchor.x,r.anchor.y,r.anchor.z,r.anchor.w]]
+      }])
   }
 
   func recordTracking(tracker: IOSTemporalIdentityTracker, timestampUs: Int64,

@@ -1,0 +1,610 @@
+{
+  "run_id": "hero295_fixed_probe_legacy22",
+  "reviewed_utc": "2026-11-07T02:54:52.683645+00:00",
+  "candidate_index_sha256": "c906fb2804c3f4286d9f719d231bdd0091fc6150e2bb1c0d8687cc161b59745c",
+  "raw_status_unchanged": true,
+  "reviewed_pages": [
+    {
+      "file": "candidates-00.jpg",
+      "sha256": "bd0ee363f5bf4f4b0af0da7f4d4912ff7867fa4a0592fcc2c0a54783f94beae5",
+      "first_index": 0,
+      "last_index": 7
+    },
+    {
+      "file": "candidates-01.jpg",
+      "sha256": "503e920ede722e2cad84ee9cf8228734fd5684468bfd1937bdddcece86fb839a",
+      "first_index": 8,
+      "last_index": 15
+    },
+    {
+      "file": "candidates-02.jpg",
+      "sha256": "ee7d8b5831bc7769cff527b28dc8216f0c870aaf7fe037cc93f9225e5350ceb5",
+      "first_index": 16,
+      "last_index": 23
+    },
+    {
+      "file": "candidates-03.jpg",
+      "sha256": "1e9c3451459a2b437b0a4599fdea1d98eac6d90b63673e9e13b6bf490c253a21",
+      "first_index": 24,
+      "last_index": 31
+    },
+    {
+      "file": "candidates-04.jpg",
+      "sha256": "b858291b798858e706e79f7ab6df1b7946a2d39b6ba4cc5109862bb5344d5f83",
+      "first_index": 32,
+      "last_index": 39
+    },
+    {
+      "file": "candidates-05.jpg",
+      "sha256": "c2754375a108e431ad2bbd594cbac07dea90e60fbdad7b1ab3a39d794140822e",
+      "first_index": 40,
+      "last_index": 47
+    },
+    {
+      "file": "candidates-06.jpg",
+      "sha256": "452d13c1a7bd2986b61a7ab2c91a5bcc6c0ac14216eda515140f7a7d8fbacbbd",
+      "first_index": 48,
+      "last_index": 55
+    },
+    {
+      "file": "candidates-07.jpg",
+      "sha256": "55928c0cc244b3dd26ea25b3785538fe53b5d71015cd6a2aa8a192cc4cd896d0",
+      "first_index": 56,
+      "last_index": 63
+    },
+    {
+      "file": "candidates-08.jpg",
+      "sha256": "ad41abf1177ae1d3895553300e6499cc656252bc15bf73d767a759ae7b4e30fe",
+      "first_index": 64,
+      "last_index": 71
+    },
+    {
+      "file": "candidates-09.jpg",
+      "sha256": "a910f120784ffa01f44f3c89f22c23115463677fe4b0cd8301c51a77743492ad",
+      "first_index": 72,
+      "last_index": 76
+    }
+  ],
+  "decisions": [
+    {
+      "index": 0,
+      "case": "group_full_length_follow",
+      "source_frame": 44,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 1,
+      "case": "group_full_length_follow",
+      "source_frame": 45,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 2,
+      "case": "group_full_length_follow",
+      "source_frame": 101,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 3,
+      "case": "group_full_length_follow",
+      "source_frame": 102,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 4,
+      "case": "group_full_length_follow",
+      "source_frame": 103,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 5,
+      "case": "group_full_length_follow",
+      "source_frame": 104,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 6,
+      "case": "group_full_length_follow",
+      "source_frame": 105,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 7,
+      "case": "group_full_length_follow",
+      "source_frame": 107,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 8,
+      "case": "group_full_length_follow",
+      "source_frame": 108,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 9,
+      "case": "group_full_length_follow",
+      "source_frame": 109,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 10,
+      "case": "group_full_length_follow",
+      "source_frame": 112,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 11,
+      "case": "group_full_length_follow",
+      "source_frame": 125,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 12,
+      "case": "group_full_length_follow",
+      "source_frame": 136,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 13,
+      "case": "group_full_length_follow",
+      "source_frame": 146,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 14,
+      "case": "group_full_length_follow",
+      "source_frame": 147,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 15,
+      "case": "group_full_length_follow",
+      "source_frame": 148,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 16,
+      "case": "group_full_length_follow",
+      "source_frame": 149,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 17,
+      "case": "group_full_length_follow",
+      "source_frame": 150,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 18,
+      "case": "group_full_length_follow",
+      "source_frame": 151,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 19,
+      "case": "group_full_length_follow",
+      "source_frame": 154,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 20,
+      "case": "group_full_length_follow",
+      "source_frame": 155,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 21,
+      "case": "group_full_length_follow",
+      "source_frame": 156,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 22,
+      "case": "group_full_length_follow",
+      "source_frame": 157,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 23,
+      "case": "group_full_length_follow",
+      "source_frame": 158,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 24,
+      "case": "group_full_length_follow",
+      "source_frame": 159,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 25,
+      "case": "group_full_length_follow",
+      "source_frame": 160,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 26,
+      "case": "group_full_length_follow",
+      "source_frame": 161,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 27,
+      "case": "group_full_length_follow",
+      "source_frame": 162,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 28,
+      "case": "group_full_length_follow",
+      "source_frame": 163,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 29,
+      "case": "group_full_length_follow",
+      "source_frame": 164,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 30,
+      "case": "group_full_length_follow",
+      "source_frame": 165,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 31,
+      "case": "group_full_length_follow",
+      "source_frame": 166,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 32,
+      "case": "group_full_length_follow",
+      "source_frame": 167,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 33,
+      "case": "group_full_length_follow",
+      "source_frame": 168,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 34,
+      "case": "group_full_length_follow",
+      "source_frame": 169,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 35,
+      "case": "group_full_length_follow",
+      "source_frame": 170,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 36,
+      "case": "group_full_length_follow",
+      "source_frame": 171,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 37,
+      "case": "group_full_length_follow",
+      "source_frame": 172,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 38,
+      "case": "group_full_length_follow",
+      "source_frame": 173,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 39,
+      "case": "group_full_length_follow",
+      "source_frame": 174,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 40,
+      "case": "group_full_length_follow",
+      "source_frame": 175,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 41,
+      "case": "group_full_length_follow",
+      "source_frame": 176,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 42,
+      "case": "group_full_length_follow",
+      "source_frame": 177,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 43,
+      "case": "group_full_length_follow",
+      "source_frame": 178,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 44,
+      "case": "group_full_length_follow",
+      "source_frame": 179,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 45,
+      "case": "group_full_length_follow",
+      "source_frame": 181,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 46,
+      "case": "group_full_length_follow",
+      "source_frame": 182,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 47,
+      "case": "group_full_length_follow",
+      "source_frame": 183,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 48,
+      "case": "group_full_length_follow",
+      "source_frame": 184,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 49,
+      "case": "group_full_length_follow",
+      "source_frame": 185,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 50,
+      "case": "group_full_length_follow",
+      "source_frame": 198,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 51,
+      "case": "group_full_length_follow",
+      "source_frame": 199,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 52,
+      "case": "group_full_length_follow",
+      "source_frame": 200,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 53,
+      "case": "group_full_length_follow",
+      "source_frame": 202,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 54,
+      "case": "group_full_length_follow",
+      "source_frame": 204,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 55,
+      "case": "group_full_length_follow",
+      "source_frame": 205,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 56,
+      "case": "group_full_length_follow",
+      "source_frame": 206,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 57,
+      "case": "group_full_length_follow",
+      "source_frame": 207,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 58,
+      "case": "group_full_length_follow",
+      "source_frame": 208,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 59,
+      "case": "group_full_length_follow",
+      "source_frame": 209,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 60,
+      "case": "group_full_length_follow",
+      "source_frame": 210,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 61,
+      "case": "group_full_length_follow",
+      "source_frame": 212,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 62,
+      "case": "group_full_length_follow",
+      "source_frame": 213,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 63,
+      "case": "group_full_length_follow",
+      "source_frame": 214,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 64,
+      "case": "group_full_length_follow",
+      "source_frame": 215,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 65,
+      "case": "group_full_length_follow",
+      "source_frame": 216,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 66,
+      "case": "group_full_length_follow",
+      "source_frame": 217,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 67,
+      "case": "group_full_length_follow",
+      "source_frame": 218,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 68,
+      "case": "group_full_length_follow",
+      "source_frame": 219,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 69,
+      "case": "group_full_length_follow",
+      "source_frame": 220,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 70,
+      "case": "group_full_length_follow",
+      "source_frame": 221,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 71,
+      "case": "group_full_length_follow",
+      "source_frame": 222,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 72,
+      "case": "group_full_length_follow",
+      "source_frame": 223,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 73,
+      "case": "group_full_length_follow",
+      "source_frame": 226,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 74,
+      "case": "group_full_length_follow",
+      "source_frame": 257,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 75,
+      "case": "group_full_length_follow",
+      "source_frame": 260,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    },
+    {
+      "index": 76,
+      "case": "group_full_length_follow",
+      "source_frame": 295,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Actual source/context/output inspected; teal hero face remains clear. Adjacent red belongs to protected people."
+    }
+  ],
+  "scope": "All10 actual candidate pages inspected; partial331-frame diagnosis only. Complete final62 remains in progress."
+}

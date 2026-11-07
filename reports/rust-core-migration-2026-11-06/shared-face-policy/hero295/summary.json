@@ -1,0 +1,12 @@
+{
+  "status": "331_frame_fix_verified_complete62_pending",
+  "discovery": "New partial overmask of configured teal hero6 at source295/11800000us in complete581-frame follow output. Independent manual review found it among135 raw hero candidates.",
+  "root_cause": "Landmark-centered render ellipse moved ownership sampling from original measured detector box. On actual raw face14 view7: render support[6distinct,8of16] versus measured-box support[9distinct,12of16].",
+  "fix": "Shared Rust measured-box current-mask ownership, with unchanged4distinct/12samples thresholds. All current-observation, localization, score and competition checks retained. C ABI fails closed; rendering stays landmark-centered.",
+  "actual_input_fixture": "crates/frame-kernel/testdata/hero-face-ownership-295-v1.bin",
+  "fixture_sha256": "5579599860a105a5d005c38228817bd1e7d64e5ffe35c12bb14f37679ab9c6ea",
+  "real_input_result": "Only input14 changes owner None->6; all15other observations retain owners. Cross-view merge removes only duplicate14, allotherfaces retained. Empty current mask still rejects exemption.",
+  "native_pixel_result": "Actual331-frame fixed export completed. Hero source165 and295 core red coverage0. Native6600/13200 previews reviewed; adjacent blonde face protected. All77 raw candidates manually identify intentionally exempt hero.",
+  "scope": "Partial diagnosis only, not final62. New 11800ms native preview probe added to common harness for final complete62 on both platforms. Previous interrupted evidence preserved.",
+  "reviewed_utc": "2026-11-07T03:03:13.142009+00:00"
+}

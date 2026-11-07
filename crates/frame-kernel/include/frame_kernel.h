@@ -147,6 +147,73 @@ int32_t frame_kernel_decode_instances(const float *head, size_t head_len, const 
     FrameKernelInstanceSpec spec, FrameKernelTransform transform, FrameKernelInstanceThresholds thresholds,
     FrameKernelInstanceDetection *detections, size_t detection_capacity, uint8_t *masks, size_t mask_capacity,
     FrameKernelInstanceMetrics *metrics);
+/* Independent owned identity sessions. Handles are monotonic IDs, never
+   pointers; close/reuse of an invalid handle returns an error. Calls on a
+   session serialize internally; distinct sessions can run independently. */
+typedef struct FrameKernelTrackingOptions {
+ uint32_t max_missed, grace, occlusion_max, scene_inliers;
+ float minimum_score;
+ FrameKernelAssociationWeights weights;
+ float overlap, ambiguity, scene_tolerance, maximum_shift;
+ uint32_t scene_compensation;
+ float foot_margin;
+ uint32_t erosion_radius;
+} FrameKernelTrackingOptions;
+typedef struct FrameKernelTrackingObservation {
+ FrameKernelRect bounds;
+ float confidence, foot_y;
+ uint64_t mask_offset; /* UINT64_MAX for no mask; otherwise an offset in pixels. */
+ uint32_t mask_width, mask_height;
+ FrameKernelTransform transform;
+} FrameKernelTrackingObservation;
+typedef struct FrameKernelReplayPlan {
+ uint32_t required, reset;
+ int64_t start_us, step_us;
+ uint32_t regular_count, append_target;
+ int64_t target_us;
+} FrameKernelReplayPlan;
+/* Flags: bit0 hero, bit1 named privacy targets. Scope comes from scene_scope.
+   Anchor -1 means unknown; last -1 means no live replay state. A named identity
+   cannot be replayed before its observed anchor. Zero succeeds, -1 fails closed.
+   Decode regular_count steps start_us + i*step_us, then target_us if append_target.
+   Decoders and inference remain native; every observation feeds the same session. */
+int32_t frame_kernel_replay_plan(uint32_t scope, uint32_t flags, int64_t anchor_us,
+ int64_t last_us, int64_t target_us, int64_t step_us, FrameKernelReplayPlan *output);
+FrameKernelTrackingOptions frame_kernel_tracking_defaults(void);
+/* Identity-independent class sessions. Roots/decisions use 0 selected, 1 unselected.
+   Options flags: 1 cached similarity, 2 cached mask warp, 4 count evaluations.
+   Typed handles share a monotonic allocator; stale/wrong-kind IDs are invalid. */
+typedef struct FrameKernelClassOptions { float minimum, single_minimum, margin; uint32_t maximum_misses, flags; } FrameKernelClassOptions;
+typedef struct FrameKernelClassRoot { uint32_t index, selection; } FrameKernelClassRoot;
+typedef struct FrameKernelClassDecision { uint32_t index, selection, unknown; } FrameKernelClassDecision;
+uint64_t frame_kernel_class_create(FrameKernelClassOptions options);
+int32_t frame_kernel_class_destroy(uint64_t id);
+int32_t frame_kernel_class_reset(uint64_t id);
+/* Eight counters: hard S/U, inferred S/U, unknown, prototype S/U, evaluations. */
+int32_t frame_kernel_class_summary(uint64_t id, uint32_t *output8);
+/* Capacity >= count is required before mutation. Returns decision count or -1.
+   Every pointer is borrowed for this call; output/evaluations must be disjoint. */
+int32_t frame_kernel_class_update(uint64_t id, const FrameKernelTrackingObservation *observations, size_t count,
+    const uint8_t *pixels, size_t pixels_len, const FrameKernelClassRoot *roots, size_t roots_len,
+    FrameKernelClassDecision *output, size_t capacity, uint32_t *evaluations);
+uint64_t frame_kernel_tracking_create(FrameKernelTrackingOptions options);
+int32_t frame_kernel_tracking_destroy(uint64_t session);
+/* After initialization, reserve IDs below the analysis namespace floor. */
+int32_t frame_kernel_tracking_reserve_id_floor(uint64_t session, int64_t minimum_next_id);
+int32_t frame_kernel_tracking_selection(uint64_t session,
+ const int64_t *protected_ids, size_t protected_len,
+ const int64_t *body_ids, size_t body_len, const int64_t *face_ids, size_t face_len, uint32_t dormancy);
+/* action: 0 initialize, 1 observe, 2 real miss, 3 inference skip. Inputs are
+   borrowed only for this call; the session owns any retained observations.
+   Zero succeeds; -1 rejects invalid input without replacing the old state. */
+int32_t frame_kernel_tracking_step(uint64_t session, uint32_t action, int64_t timestamp_us,
+ const FrameKernelTrackingObservation *observations, size_t count,
+ const uint8_t *pixels, size_t pixels_len, const int64_t *assigned_ids, size_t assigned_len);
+/* Snapshot v1 uses little-endian fixed-width fields, as documented in
+   tracking-session-v1.md. Null/zero queries the required size. A successful
+   copy returns its byte count; -1 invalid handle/buffer, -2 insufficient space.
+   Query/copy never advances tracking. Output must not overlap input storage. */
+int64_t frame_kernel_tracking_snapshot(uint64_t session, uint8_t *output, size_t capacity);
 uint32_t frame_kernel_protection_layers(int32_t body, int32_t face, int32_t sticker);
 int32_t frame_kernel_face_targets(const int64_t *body, size_t body_len,
     const int64_t *face, size_t face_len, int64_t *output, size_t capacity);
@@ -160,6 +227,54 @@ int32_t frame_kernel_reproject_mask(const uint8_t *mask, size_t mask_len,
 int32_t frame_kernel_project_mask(const uint8_t *mask, size_t mask_len, FrameKernelTransform transform,
     uint32_t source_width, uint32_t source_height, uint32_t width, uint32_t height,
     FrameKernelRect crop, uint8_t *output, size_t output_len);
+/* Dense face v1: NHWC RGB [-1,1], 192 square, 2304 xywh/6-keypoint anchors.
+   Output records are 17 floats: source xyxy, score, six source xy landmarks.
+   Inputs/outputs must be disjoint. Returns count, -1 invalid, -2 capacity. */
+/* Head localization records: xyxy, confidence, point count, six xy points (18 floats).
+   Plan output: source xyxy + normalized anchor xy. Select: index, -1 no owner,
+   -2 invalid. All buffers borrowed only for the call; at most 4096 candidates. */
+int32_t frame_kernel_face_head_plan(FrameKernelRect person, uint32_t width, uint32_t height, float *output6);
+int32_t frame_kernel_face_center(const float *row18, float *output2);
+int32_t frame_kernel_face_select(const float *rows18, size_t count, FrameKernelRect view,
+    float anchor_x, float anchor_y, float maximum, float separation, float *distance);
+int32_t frame_kernel_face_owned(const float *row18, FrameKernelRect source, float output_size, FrameKernelRect person);
+/* Region APIs below ALL return0 success,1 no supporting evidence,-1 invalid.
+   Nonzero results leave outputs unchanged. Inputs/outputs are borrowed per call. */
+enum { FRAME_KERNEL_REGION_OK=0, FRAME_KERNEL_REGION_NONE=1, FRAME_KERNEL_REGION_INVALID=-1 };
+typedef struct FrameKernelHeadMaskSpec { uint32_t width,height; FrameKernelTransform transform; FrameKernelRect person; } FrameKernelHeadMaskSpec;
+int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRect *view,float output_size,float yaw,FrameKernelEllipse *output);
+int32_t frame_kernel_head_fallback(FrameKernelRect person,FrameKernelEllipse *output);
+/* Complete bbox/current-mask fallback. A zero len omits current evidence; a
+   null seed selects the bbox seed. Nonzero len requires a valid current mask.
+   Status0 writes the whole output; invalid input leaves it unchanged. */
+typedef struct FrameKernelCurrentHeadRegion { FrameKernelEllipse region; uint32_t current_mask_guided; } FrameKernelCurrentHeadRegion;
+int32_t frame_kernel_current_head_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,const FrameKernelEllipse *seed,FrameKernelCurrentHeadRegion *output);
+/* Geometry only: caller enforces the observation lease before rendering. */
+int32_t frame_kernel_project_face_region(FrameKernelRect current,FrameKernelRect previous,FrameKernelEllipse trusted,int64_t age_us,FrameKernelEllipse *output);
+int32_t frame_kernel_mask_head(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse seed,float *output2);
+int32_t frame_kernel_trusted_mask_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelRect previous,FrameKernelEllipse trusted,float expansion,FrameKernelEllipse *output);
+int32_t frame_kernel_grid_face_input(const uint8_t *rgba, size_t bytes, uint32_t width,
+ uint32_t height, uint32_t stride, float *output, size_t length);
+int32_t frame_kernel_grid_face_decode(const float *boxes, size_t box_len,
+ const float *scores, size_t score_len, uint32_t width, uint32_t height,
+ float minimum, float overlap, float *output, size_t capacity);
+/* Observation APIs:0 success,1 no evidence,-1 invalid,-2 insufficient capacity.
+   Nonzero results leave every output unchanged. All buffers are disjoint/borrowed. */
+typedef struct FrameKernelFaceView { FrameKernelRect bounds; uint32_t view,known_owner; int64_t owner; } FrameKernelFaceView;
+/* Current detector bbox evidence, independent of rendered landmark padding.
+   Caller supplies a current observed mask. Output is 0/1 only after success0. */
+int32_t frame_kernel_face_mask_owned(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,const float *row18,float yaw,uint32_t *output);
+/* Current ROI/source face ownership. A nonnull view describes local ROI pixels;
+   null uses source coordinates. Zero len omits mask evidence. Status0 writes0/1;
+   invalid input leaves output unchanged. No identity or history is inferred. */
+int32_t frame_kernel_current_face_owned(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,const float *row18,const FrameKernelRect *view,float output_size,float yaw,uint32_t *output);
+int32_t frame_kernel_face_mask_support(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse region,uint32_t *output2);
+int32_t frame_kernel_face_observation_score(const float *row18,FrameKernelRect person,float *output);
+int32_t frame_kernel_face_upper_body_view(FrameKernelRect person,float *output4_xywh);
+int32_t frame_kernel_face_merge_views(const FrameKernelFaceView *input,size_t count,size_t primary,uint32_t require_owner,uint32_t *output,size_t capacity,size_t *output_count);
+int32_t frame_kernel_face_resolve_owners(const float *scores,size_t len,size_t people,size_t faces,const int32_t *preferred,int64_t hero,float margin,int32_t *output,size_t capacity);
+int32_t frame_kernel_face_unique_owner(const float *scores,size_t count,float margin,uint32_t *output);
+int32_t frame_kernel_face_occlusion_padding(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse seed,int64_t age,int64_t lease,FrameKernelEllipse *output);
 #ifdef __cplusplus
 }
 #endif

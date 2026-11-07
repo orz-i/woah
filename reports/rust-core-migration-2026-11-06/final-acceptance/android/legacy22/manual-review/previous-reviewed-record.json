@@ -1,0 +1,135 @@
+{
+  "run_id": "shared_policy_final_legacy22",
+  "reviewed_utc": "2026-11-07T02:45:06.223908+00:00",
+  "review_index_sha256": "8e7b225586dd0a636966b2039ea5c00b91fbac33084aee08f9de747f7013e766",
+  "scope": "Actual first/middle/last decoded outputs, all native source/protected previews (including the fourth 6600ms preview), and lifecycle retry movie. Separate raw face-alert review remains required.",
+  "cases": [
+    {
+      "case": "group_all_faces",
+      "board_sha256": "fa3699593d72f112a5f4a833aff9f9dda13cd8dee4046a658ff31dbf5ca4ab5a",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_face_sticker_follow",
+      "board_sha256": "8787427520f9cb3a134319ff55e539eb6247cbc0be93af8265fa4cb7a34e7d01",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_face_solid_follow",
+      "board_sha256": "f7b97f1a69ccf5b3212a41da0c650e80b868e11bc112e49b97744ac97d394e7e",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_full_solid",
+      "board_sha256": "73c107ad8ba953c6b8b1e1e468c0c59d8ede9d87fe7d451121d2d5305a1de89f",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_full_mosaic",
+      "board_sha256": "25f6438acd09eccc4a98843c1a85c94059d89eae37b009b316ad6672db18dd1e",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_full_blur",
+      "board_sha256": "7ee070b6e412c74927c0b47d8bca76eec31ceaa201beb6b1459b082189de9bf3",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_full_gradient",
+      "board_sha256": "092409418fdfa6c69c3b2eb15f03b4338ef1613a27d81ac3c96bc4e3a2e0cd8f",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_first_solid",
+      "board_sha256": "4da666c412e553d1af26d0fcc43b89b745084214c0cb8cc5ca3ba8c72f27a2e9",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_4k_full",
+      "board_sha256": "ca31a382acc90b5be6fb15c322b4b3cb559a090382b36ab06fe7aaad3be921ed",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "duo_full_solid",
+      "board_sha256": "434fcca3328b4bc80c8115c516cfdaf2c2637efc848aec5d4bc713ba7d7b76d6",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_sticker",
+      "board_sha256": "19a632ac57dfcfd26e52ea5507c2604ff56d6415929de62c19e1839300ab326f",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_mosaic",
+      "board_sha256": "453674542ff4f8f7e1648b5112ddb4df6c2b39561cd41c50638b98dceef03706",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_blur",
+      "board_sha256": "c1bbf0da2c53d2200ad49a749b710cee81ffa9751a508949dc1c0abd823a9462",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_solid",
+      "board_sha256": "e0e3a68f0df9b1471919e7c700bf6037576501880ce90e86c1aac5099c8f7f13",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_gradient",
+      "board_sha256": "3025651a538777d6a0880bf2404b9c6ffefbc183aed9500df66f2a57f07b8419",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_balanced",
+      "board_sha256": "062a3fea4c18d96df7f6e003de597f94bd28bd6ca7686a24321b671b60ecc0cc",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_speed",
+      "board_sha256": "4757d01f8a449135c2f0f1d48ba16d9fc9baa8d7c03c904b50d4aa0e925e96e5",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "solo_nonzero_trim",
+      "board_sha256": "858903241639ae25c7ed5957c92170850ce527ed66e8743cac149f0f6d7a5cee",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "solo_4k_sticker",
+      "board_sha256": "3180b0ae58a11e346f2c4753582d920bafe0c9dc05f3b1a37bb3f395d3fa773a",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_full_balanced",
+      "board_sha256": "f8d5da692c78431858ade2cc0ffa75ae60e054c795e2773605ccfe4988d3f40c",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_full_speed",
+      "board_sha256": "7729359e82727b99d000034f26c5740ed619f8f11bf2b1f71b1d0e4887b5df81",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "group_full_length_follow",
+      "board_sha256": "fc783a41ba3d503bc383886dd8208952358080d8c5e17e2cedaef006d9bacca6",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    },
+    {
+      "case": "retry_custom_sticker",
+      "board_sha256": "bea7d016a885d6f1cf05d9bd154fbada1b7c41441d5d486b516b78067ea82d59",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    }
+  ],
+  "observations": [
+    {
+      "case": "group_first_solid",
+      "frame": 39,
+      "decision": "Existing conservative unknown-current-person protection retained; selected-only protection is not assumed to exempt newly unowned people."
+    },
+    {
+      "case": "group_full_length_follow",
+      "requested_ms": 6600,
+      "decision": "Hero6 teal face remains clear and other visible face is protected in native preview."
+    }
+  ]
+}

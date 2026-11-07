@@ -1,0 +1,708 @@
+{
+  "cases": [
+    {
+      "name": "short_gap_reacquire_full_body",
+      "steps": [
+        {
+          "step": 0,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 0,
+            "observationAge": 0,
+            "privacySelected": true,
+            "id": 0,
+            "state": "ACTIVE",
+            "observed": true
+          }],
+          "frame": 0
+        },
+        {
+          "step": 1,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 1,
+            "observationAge": 1,
+            "privacySelected": true,
+            "id": 0,
+            "state": "LOST",
+            "observed": false
+          }],
+          "frame": 1
+        },
+        {
+          "step": 2,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 0,
+            "observationAge": 0,
+            "privacySelected": true,
+            "id": 0,
+            "state": "ACTIVE",
+            "observed": true
+          }],
+          "frame": 2
+        }
+      ]
+    },
+    {
+      "name": "face_only_unselected_neighbor_isolation",
+      "steps": [
+        {
+          "step": 0,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 0,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 0
+        },
+        {
+          "step": 1,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 1,
+              "observationAge": 1,
+              "privacySelected": true,
+              "id": 0,
+              "state": "LOST",
+              "observed": false
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 1
+        },
+        {
+          "step": 2,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 1,
+              "observationAge": 2,
+              "privacySelected": true,
+              "id": 0,
+              "state": "OCCLUDED",
+              "observed": false
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": false,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 2,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 2
+        }
+      ]
+    },
+    {
+      "name": "ambiguous_face_only_defers_identity_commit",
+      "steps": [
+        {
+          "step": 0,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 0,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 0
+        },
+        {
+          "step": 1,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 0,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 1,
+              "observationAge": 1,
+              "privacySelected": false,
+              "id": 1,
+              "state": "OCCLUDED",
+              "observed": false
+            }
+          ],
+          "frame": 1
+        }
+      ]
+    },
+    {
+      "name": "protected_lost_stale_anchor_isolation",
+      "steps": [
+        {
+          "step": 0,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 0,
+            "observationAge": 0,
+            "privacySelected": true,
+            "id": 0,
+            "state": "ACTIVE",
+            "observed": true
+          }],
+          "frame": 0
+        },
+        {
+          "step": 1,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 0,
+            "observationAge": 0,
+            "privacySelected": true,
+            "id": 0,
+            "state": "ACTIVE",
+            "observed": true
+          }],
+          "frame": 1
+        },
+        {
+          "step": 2,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 0,
+            "observationAge": 0,
+            "privacySelected": true,
+            "id": 0,
+            "state": "ACTIVE",
+            "observed": true
+          }],
+          "frame": 2
+        },
+        {
+          "step": 3,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 0,
+            "observationAge": 0,
+            "privacySelected": true,
+            "id": 0,
+            "state": "ACTIVE",
+            "observed": true
+          }],
+          "frame": 3
+        },
+        {
+          "step": 4,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 16,
+            "observationAge": 16,
+            "privacySelected": true,
+            "id": 0,
+            "state": "LOST",
+            "observed": false
+          }],
+          "frame": 19
+        },
+        {
+          "step": 5,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 17,
+              "observationAge": 17,
+              "privacySelected": true,
+              "id": 0,
+              "state": "LOST",
+              "observed": false
+            },
+            {
+              "identityProtected": false,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 20
+        }
+      ]
+    },
+    {
+      "name": "long_occlusion_grace_reacquires_original_id",
+      "steps": [
+        {
+          "step": 0,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 0,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": false,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 0
+        },
+        {
+          "step": 1,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 0,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": false,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 1
+        },
+        {
+          "step": 2,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 25,
+              "observationAge": 25,
+              "privacySelected": true,
+              "id": 0,
+              "state": "OCCLUDED",
+              "observed": false
+            },
+            {
+              "identityProtected": false,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 26
+        },
+        {
+          "step": 3,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 1,
+              "observationAge": 26,
+              "privacySelected": true,
+              "id": 0,
+              "state": "REACQUIRING",
+              "observed": false
+            },
+            {
+              "identityProtected": false,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 27
+        },
+        {
+          "step": 4,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 0,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": false,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 28
+        }
+      ]
+    },
+    {
+      "name": "full_body_ambiguous_root_reservation_prevents_duplicate_id",
+      "steps": [
+        {
+          "step": 0,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 0,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 0
+        },
+        {
+          "step": 1,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 0,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 1,
+              "observationAge": 1,
+              "privacySelected": true,
+              "id": 1,
+              "state": "OCCLUDED",
+              "observed": false
+            }
+          ],
+          "frame": 1
+        },
+        {
+          "step": 2,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 1,
+              "observationAge": 1,
+              "privacySelected": true,
+              "id": 0,
+              "state": "OCCLUDED",
+              "observed": false
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 2
+        }
+      ]
+    },
+    {
+      "name": "selected_root_occluded_by_unselected_hero_fails_closed",
+      "steps": [
+        {
+          "step": 0,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 0,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": false,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 0
+        },
+        {
+          "step": 1,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 90,
+              "observationAge": 90,
+              "privacySelected": true,
+              "id": 0,
+              "state": "LOST",
+              "observed": false
+            },
+            {
+              "identityProtected": false,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 90
+        },
+        {
+          "step": 2,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 91,
+              "observationAge": 91,
+              "privacySelected": true,
+              "id": 0,
+              "state": "LOST",
+              "observed": false
+            },
+            {
+              "identityProtected": false,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 91
+        }
+      ]
+    },
+    {
+      "name": "face_only_selected_root_occluded_by_unselected_hero_fails_closed",
+      "steps": [
+        {
+          "step": 0,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": true,
+              "id": 0,
+              "state": "ACTIVE",
+              "observed": true
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 0
+        },
+        {
+          "step": 1,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 90,
+              "observationAge": 90,
+              "privacySelected": true,
+              "id": 0,
+              "state": "LOST",
+              "observed": false
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 90
+        },
+        {
+          "step": 2,
+          "tracks": [
+            {
+              "identityProtected": true,
+              "missedFrames": 91,
+              "observationAge": 91,
+              "privacySelected": true,
+              "id": 0,
+              "state": "LOST",
+              "observed": false
+            },
+            {
+              "identityProtected": true,
+              "missedFrames": 0,
+              "observationAge": 0,
+              "privacySelected": false,
+              "id": 1,
+              "state": "ACTIVE",
+              "observed": true
+            }
+          ],
+          "frame": 91
+        }
+      ]
+    },
+    {
+      "name": "selected_identity_long_gap_fails_closed",
+      "steps": [
+        {
+          "step": 0,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 0,
+            "observationAge": 0,
+            "privacySelected": true,
+            "id": 0,
+            "state": "ACTIVE",
+            "observed": true
+          }],
+          "frame": 0
+        },
+        {
+          "step": 1,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 15,
+            "observationAge": 15,
+            "privacySelected": true,
+            "id": 0,
+            "state": "LOST",
+            "observed": false
+          }],
+          "frame": 15
+        },
+        {
+          "step": 2,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 16,
+            "observationAge": 16,
+            "privacySelected": true,
+            "id": 0,
+            "state": "LOST",
+            "observed": false
+          }],
+          "frame": 16
+        },
+        {
+          "step": 3,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 90,
+            "observationAge": 90,
+            "privacySelected": true,
+            "id": 0,
+            "state": "LOST",
+            "observed": false
+          }],
+          "frame": 90
+        },
+        {
+          "step": 4,
+          "tracks": [{
+            "identityProtected": true,
+            "missedFrames": 91,
+            "observationAge": 91,
+            "privacySelected": true,
+            "id": 0,
+            "state": "LOST",
+            "observed": false
+          }],
+          "frame": 91
+        }
+      ]
+    }
+  ],
+  "canonical": "Unmodified Android TrackManager"
+}

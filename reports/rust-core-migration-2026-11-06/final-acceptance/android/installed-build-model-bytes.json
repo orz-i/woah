@@ -1,0 +1,22 @@
+{
+  "compiled_source_commit": "ce25a0d38a3c2c34e0d65b3967c0b32e7e7b1e10",
+  "at_utc": "2026-11-07T03:34:32.918863+00:00",
+  "apk_sha256": "a32181e68fec0555de3e5b0aef7ecc721e5697629ee466c18a52edae7505087f",
+  "pinned_models": {
+    "yolo": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+    "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+  },
+  "actual_apk_model_entries": [
+    {
+      "entry": "assets/models/face/blaze_face_full_range.tflite",
+      "bytes": 1083786,
+      "sha256": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+    },
+    {
+      "entry": "assets/models/litert/yolo11n-seg-fp16.tflite",
+      "bytes": 11799725,
+      "sha256": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340"
+    }
+  ],
+  "status": "passed_actual_embedded_bytes"
+}

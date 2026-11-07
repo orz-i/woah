@@ -1,0 +1,34 @@
+{
+  "run_id": "hero295_fixed_probe_legacy22",
+  "cases": [
+    {
+      "case": "group_full_length_follow",
+      "status": "passed_media",
+      "sha256": "f93bb364c73aa23152552a974b84a99467e92c77b1e34338e4de9964585ca700",
+      "bytes": 6667675,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "decoded_frames": 331,
+      "expected_frames": 331,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "311ce7469a5fd46121aa6a93c829a70d1bb6c9e22cdf61f57a0a483598d0c03a"
+    }
+  ]
+}

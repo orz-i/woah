@@ -1,0 +1,283 @@
+{
+  "run_id": "shared_geometry_first_focused13",
+  "binary_sha256": "3991c22be8796b63f4074604bbacb38918974ca07cdf1da756d87970cfa2477e",
+  "source_sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+  "spec_sha256": "11d65c8dc6eadef21a91c575a0bc191cdeb66ef8f5213effdc482823b31dc42c",
+  "auditor_sha256": "7703e71e27563b8817930e1e709552ccb28e22947d052918d7cc76fe5b18b936",
+  "scope": "Known source points omitted by automatic face scan; actual opaque-red pixels only, complements media and non-solid visual audits.",
+  "probes": [
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "kind": "export",
+      "output_frame": 20,
+      "source_pts_us": 22240000,
+      "source_point": [
+        1320,
+        1180
+      ],
+      "movie_sha256": "46d5c10da08046400afc7d734a1377ab9e9ae52428d7d9e300a1baaab2d588a0",
+      "trace_sha256": "94c357225f4213bb82a32789e61a39696b43763a6d784e3da0d6d7b86eba66c9",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "kind": "export",
+      "output_frame": 21,
+      "source_pts_us": 22280000,
+      "source_point": [
+        1304,
+        1180
+      ],
+      "movie_sha256": "46d5c10da08046400afc7d734a1377ab9e9ae52428d7d9e300a1baaab2d588a0",
+      "trace_sha256": "94c357225f4213bb82a32789e61a39696b43763a6d784e3da0d6d7b86eba66c9",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "kind": "export",
+      "output_frame": 22,
+      "source_pts_us": 22320000,
+      "source_point": [
+        1288,
+        1180
+      ],
+      "movie_sha256": "46d5c10da08046400afc7d734a1377ab9e9ae52428d7d9e300a1baaab2d588a0",
+      "trace_sha256": "94c357225f4213bb82a32789e61a39696b43763a6d784e3da0d6d7b86eba66c9",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "kind": "export",
+      "output_frame": 23,
+      "source_pts_us": 22360000,
+      "source_point": [
+        1272,
+        1176
+      ],
+      "movie_sha256": "46d5c10da08046400afc7d734a1377ab9e9ae52428d7d9e300a1baaab2d588a0",
+      "trace_sha256": "94c357225f4213bb82a32789e61a39696b43763a6d784e3da0d6d7b86eba66c9",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "kind": "export",
+      "output_frame": 24,
+      "source_pts_us": 22400000,
+      "source_point": [
+        1243,
+        1173
+      ],
+      "movie_sha256": "46d5c10da08046400afc7d734a1377ab9e9ae52428d7d9e300a1baaab2d588a0",
+      "trace_sha256": "94c357225f4213bb82a32789e61a39696b43763a6d784e3da0d6d7b86eba66c9",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "kind": "export",
+      "output_frame": 25,
+      "source_pts_us": 22440000,
+      "source_point": [
+        1214,
+        1177
+      ],
+      "movie_sha256": "46d5c10da08046400afc7d734a1377ab9e9ae52428d7d9e300a1baaab2d588a0",
+      "trace_sha256": "94c357225f4213bb82a32789e61a39696b43763a6d784e3da0d6d7b86eba66c9",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "kind": "export",
+      "output_frame": 26,
+      "source_pts_us": 22480000,
+      "source_point": [
+        1187,
+        1179
+      ],
+      "movie_sha256": "46d5c10da08046400afc7d734a1377ab9e9ae52428d7d9e300a1baaab2d588a0",
+      "trace_sha256": "94c357225f4213bb82a32789e61a39696b43763a6d784e3da0d6d7b86eba66c9",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "kind": "export",
+      "output_frame": 27,
+      "source_pts_us": 22520000,
+      "source_point": [
+        1168,
+        1186
+      ],
+      "movie_sha256": "46d5c10da08046400afc7d734a1377ab9e9ae52428d7d9e300a1baaab2d588a0",
+      "trace_sha256": "94c357225f4213bb82a32789e61a39696b43763a6d784e3da0d6d7b86eba66c9",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "kind": "export",
+      "output_frame": 20,
+      "source_pts_us": 22240000,
+      "source_point": [
+        1320,
+        1180
+      ],
+      "movie_sha256": "bd832d18388c893525fd46ae3e238d4e41e2ba5314512a34d29c5fd2b860d2eb",
+      "trace_sha256": "b5c2c882802f4c9a5e89c2ddb2857962b613adcf9c6e309d655a634c8f3a39e6",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "kind": "export",
+      "output_frame": 21,
+      "source_pts_us": 22280000,
+      "source_point": [
+        1304,
+        1180
+      ],
+      "movie_sha256": "bd832d18388c893525fd46ae3e238d4e41e2ba5314512a34d29c5fd2b860d2eb",
+      "trace_sha256": "b5c2c882802f4c9a5e89c2ddb2857962b613adcf9c6e309d655a634c8f3a39e6",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "kind": "export",
+      "output_frame": 22,
+      "source_pts_us": 22320000,
+      "source_point": [
+        1288,
+        1180
+      ],
+      "movie_sha256": "bd832d18388c893525fd46ae3e238d4e41e2ba5314512a34d29c5fd2b860d2eb",
+      "trace_sha256": "b5c2c882802f4c9a5e89c2ddb2857962b613adcf9c6e309d655a634c8f3a39e6",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "kind": "export",
+      "output_frame": 23,
+      "source_pts_us": 22360000,
+      "source_point": [
+        1272,
+        1176
+      ],
+      "movie_sha256": "bd832d18388c893525fd46ae3e238d4e41e2ba5314512a34d29c5fd2b860d2eb",
+      "trace_sha256": "b5c2c882802f4c9a5e89c2ddb2857962b613adcf9c6e309d655a634c8f3a39e6",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "kind": "export",
+      "output_frame": 24,
+      "source_pts_us": 22400000,
+      "source_point": [
+        1243,
+        1173
+      ],
+      "movie_sha256": "bd832d18388c893525fd46ae3e238d4e41e2ba5314512a34d29c5fd2b860d2eb",
+      "trace_sha256": "b5c2c882802f4c9a5e89c2ddb2857962b613adcf9c6e309d655a634c8f3a39e6",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "kind": "export",
+      "output_frame": 25,
+      "source_pts_us": 22440000,
+      "source_point": [
+        1214,
+        1177
+      ],
+      "movie_sha256": "bd832d18388c893525fd46ae3e238d4e41e2ba5314512a34d29c5fd2b860d2eb",
+      "trace_sha256": "b5c2c882802f4c9a5e89c2ddb2857962b613adcf9c6e309d655a634c8f3a39e6",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "kind": "export",
+      "output_frame": 26,
+      "source_pts_us": 22480000,
+      "source_point": [
+        1187,
+        1179
+      ],
+      "movie_sha256": "bd832d18388c893525fd46ae3e238d4e41e2ba5314512a34d29c5fd2b860d2eb",
+      "trace_sha256": "b5c2c882802f4c9a5e89c2ddb2857962b613adcf9c6e309d655a634c8f3a39e6",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "kind": "export",
+      "output_frame": 27,
+      "source_pts_us": 22520000,
+      "source_point": [
+        1168,
+        1186
+      ],
+      "movie_sha256": "bd832d18388c893525fd46ae3e238d4e41e2ba5314512a34d29c5fd2b860d2eb",
+      "trace_sha256": "b5c2c882802f4c9a5e89c2ddb2857962b613adcf9c6e309d655a634c8f3a39e6",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    }
+  ],
+  "status": "passed"
+}

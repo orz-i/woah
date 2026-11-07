@@ -1,0 +1,12 @@
+{
+  "process_id": 52594,
+  "status": "passed_api_checks",
+  "flower_ids": [],
+  "flower_no_person": true,
+  "corrupt_rejected": true,
+  "corrupt_error": "PlatformException(NATIVE_OPERATION_FAILED, stage=probe; code=NATIVE_OPERATION_FAILED, null, null)",
+  "valid_reimport_person_ids": [
+    0
+  ],
+  "valid_reimport": true
+}

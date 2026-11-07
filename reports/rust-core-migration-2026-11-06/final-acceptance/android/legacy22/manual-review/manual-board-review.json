@@ -1,0 +1,198 @@
+{
+  "run_id": "shared_policy_final_v2_legacy22",
+  "reviewed_utc": "2026-11-07T03:26:37.526532+00:00",
+  "review_index_sha256": "a105423baaaff2d5eae91b1d7b44ccad991e2bc1957cd78777015b4f7aade569",
+  "previous_manual_record_sha256": "d7378dbb0ca6c6e8072d58365c491d2f719434a475d2e07e4cd5f1860e48e1a8",
+  "scope": "Native22cases and lifecycle retry actually rerun atce25 and independently audited.22case boards are byte-identical to the previously fully inspected f14 boards, so only their manual image interpretation is reused after SHA equality. Fresh full-follow board includes all5 native previews, with hero clear and blonde protected at6600/11800. Does not reuse old Native test execution or establish remaining40cases.",
+  "cases": [
+    {
+      "case": "group_all_faces",
+      "board_sha256": "fa3699593d72f112a5f4a833aff9f9dda13cd8dee4046a658ff31dbf5ca4ab5a",
+      "movie_sha256": "5a218dcd10d5760474a4978e071a6180dea7c0ff0df42d23fd8772d0deb167f9",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "fa3699593d72f112a5f4a833aff9f9dda13cd8dee4046a658ff31dbf5ca4ab5a"
+    },
+    {
+      "case": "group_face_sticker_follow",
+      "board_sha256": "8787427520f9cb3a134319ff55e539eb6247cbc0be93af8265fa4cb7a34e7d01",
+      "movie_sha256": "3aab42d71bd50b128d2b2055d434e8a09dbdb38d0df9fb779f2a1437c75702df",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "8787427520f9cb3a134319ff55e539eb6247cbc0be93af8265fa4cb7a34e7d01"
+    },
+    {
+      "case": "group_face_solid_follow",
+      "board_sha256": "f7b97f1a69ccf5b3212a41da0c650e80b868e11bc112e49b97744ac97d394e7e",
+      "movie_sha256": "d2e79ac5864dc5b585b97ac67cbbca64f2f2969be348ae6ce504452770dc8b48",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "f7b97f1a69ccf5b3212a41da0c650e80b868e11bc112e49b97744ac97d394e7e"
+    },
+    {
+      "case": "group_full_solid",
+      "board_sha256": "73c107ad8ba953c6b8b1e1e468c0c59d8ede9d87fe7d451121d2d5305a1de89f",
+      "movie_sha256": "42147014de2951d0695bb2652c233b16110d51853e88e4886ad850b095f090f5",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "73c107ad8ba953c6b8b1e1e468c0c59d8ede9d87fe7d451121d2d5305a1de89f"
+    },
+    {
+      "case": "group_full_mosaic",
+      "board_sha256": "25f6438acd09eccc4a98843c1a85c94059d89eae37b009b316ad6672db18dd1e",
+      "movie_sha256": "071966a4a089446d6d6f083b04349e96dc3594b88e86bb311ee4cf99aedb789f",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "25f6438acd09eccc4a98843c1a85c94059d89eae37b009b316ad6672db18dd1e"
+    },
+    {
+      "case": "group_full_blur",
+      "board_sha256": "7ee070b6e412c74927c0b47d8bca76eec31ceaa201beb6b1459b082189de9bf3",
+      "movie_sha256": "8a7812ba18dc7e5eb6d636242fe8871c749b7e660d1aa23c662cf12b60c256f5",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "7ee070b6e412c74927c0b47d8bca76eec31ceaa201beb6b1459b082189de9bf3"
+    },
+    {
+      "case": "group_full_gradient",
+      "board_sha256": "092409418fdfa6c69c3b2eb15f03b4338ef1613a27d81ac3c96bc4e3a2e0cd8f",
+      "movie_sha256": "7dfc83ebb805820441b28bf38c19306cc82dc51431f7f092ca370baadf5c9e3a",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "092409418fdfa6c69c3b2eb15f03b4338ef1613a27d81ac3c96bc4e3a2e0cd8f"
+    },
+    {
+      "case": "group_first_solid",
+      "board_sha256": "4da666c412e553d1af26d0fcc43b89b745084214c0cb8cc5ca3ba8c72f27a2e9",
+      "movie_sha256": "9d48bd25d98211c727603e9fdcfa6891fa5c2fa93344eeb53d7a56814b177b0c",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "4da666c412e553d1af26d0fcc43b89b745084214c0cb8cc5ca3ba8c72f27a2e9"
+    },
+    {
+      "case": "group_4k_full",
+      "board_sha256": "ca31a382acc90b5be6fb15c322b4b3cb559a090382b36ab06fe7aaad3be921ed",
+      "movie_sha256": "9c1c76d0f9243215757c2908af4c356ba6088706fb89cdb6dd6bf73f9a3d7c28",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "ca31a382acc90b5be6fb15c322b4b3cb559a090382b36ab06fe7aaad3be921ed"
+    },
+    {
+      "case": "duo_full_solid",
+      "board_sha256": "434fcca3328b4bc80c8115c516cfdaf2c2637efc848aec5d4bc713ba7d7b76d6",
+      "movie_sha256": "24ad2d6bc04a02e1caeb29cbdb688cde6c04ffcb309baa5227f63dbba73ced08",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "434fcca3328b4bc80c8115c516cfdaf2c2637efc848aec5d4bc713ba7d7b76d6"
+    },
+    {
+      "case": "solo_face_sticker",
+      "board_sha256": "19a632ac57dfcfd26e52ea5507c2604ff56d6415929de62c19e1839300ab326f",
+      "movie_sha256": "47db939923f87d3b804c3e61916764d04264d6107660dde8c51e0f302702b472",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "19a632ac57dfcfd26e52ea5507c2604ff56d6415929de62c19e1839300ab326f"
+    },
+    {
+      "case": "solo_face_mosaic",
+      "board_sha256": "453674542ff4f8f7e1648b5112ddb4df6c2b39561cd41c50638b98dceef03706",
+      "movie_sha256": "ff84819a07c09567848252ec84a1f0b5e99e84706fd11f9d17a75e0f7f5540c0",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "453674542ff4f8f7e1648b5112ddb4df6c2b39561cd41c50638b98dceef03706"
+    },
+    {
+      "case": "solo_face_blur",
+      "board_sha256": "c1bbf0da2c53d2200ad49a749b710cee81ffa9751a508949dc1c0abd823a9462",
+      "movie_sha256": "27b5468222182a5ff3f81c47899330ab272a6cbb9b995baf8048596906a2a885",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "c1bbf0da2c53d2200ad49a749b710cee81ffa9751a508949dc1c0abd823a9462"
+    },
+    {
+      "case": "solo_face_solid",
+      "board_sha256": "e0e3a68f0df9b1471919e7c700bf6037576501880ce90e86c1aac5099c8f7f13",
+      "movie_sha256": "59bc8263cc9852c7d4fbd976a8f50fd5c9b1bdeafe2adb9c5453b552e69c814e",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "e0e3a68f0df9b1471919e7c700bf6037576501880ce90e86c1aac5099c8f7f13"
+    },
+    {
+      "case": "solo_face_gradient",
+      "board_sha256": "3025651a538777d6a0880bf2404b9c6ffefbc183aed9500df66f2a57f07b8419",
+      "movie_sha256": "937324bf484c2bb64bd4c29f3d09d542da3a7b09c6a4849d134a46103d86ac92",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "3025651a538777d6a0880bf2404b9c6ffefbc183aed9500df66f2a57f07b8419"
+    },
+    {
+      "case": "solo_face_balanced",
+      "board_sha256": "062a3fea4c18d96df7f6e003de597f94bd28bd6ca7686a24321b671b60ecc0cc",
+      "movie_sha256": "63a2fe0673def22843daaae6d845bf54bc0e1a027c4576d75b6fbef5e340d185",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "062a3fea4c18d96df7f6e003de597f94bd28bd6ca7686a24321b671b60ecc0cc"
+    },
+    {
+      "case": "solo_face_speed",
+      "board_sha256": "4757d01f8a449135c2f0f1d48ba16d9fc9baa8d7c03c904b50d4aa0e925e96e5",
+      "movie_sha256": "cc62c105b15e2bb98721023f51489fe0fca0969afdb3a1b128fe923e4f6da47f",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "4757d01f8a449135c2f0f1d48ba16d9fc9baa8d7c03c904b50d4aa0e925e96e5"
+    },
+    {
+      "case": "solo_nonzero_trim",
+      "board_sha256": "858903241639ae25c7ed5957c92170850ce527ed66e8743cac149f0f6d7a5cee",
+      "movie_sha256": "b52f261d669c0f42db7e16a4e12210a5afc6930f5418367d69265b901f28937e",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "858903241639ae25c7ed5957c92170850ce527ed66e8743cac149f0f6d7a5cee"
+    },
+    {
+      "case": "solo_4k_sticker",
+      "board_sha256": "3180b0ae58a11e346f2c4753582d920bafe0c9dc05f3b1a37bb3f395d3fa773a",
+      "movie_sha256": "3fbe023e368ea66404b4756a589ac590db8d3dbe8c736cdb0729907938be66ba",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "3180b0ae58a11e346f2c4753582d920bafe0c9dc05f3b1a37bb3f395d3fa773a"
+    },
+    {
+      "case": "group_full_balanced",
+      "board_sha256": "f8d5da692c78431858ade2cc0ffa75ae60e054c795e2773605ccfe4988d3f40c",
+      "movie_sha256": "e1500cb8e47ff6fd9da7631e62e136a38cf353ef59bbf71e7cc745f9dcd2079a",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "f8d5da692c78431858ade2cc0ffa75ae60e054c795e2773605ccfe4988d3f40c"
+    },
+    {
+      "case": "group_full_speed",
+      "board_sha256": "7729359e82727b99d000034f26c5740ed619f8f11bf2b1f71b1d0e4887b5df81",
+      "movie_sha256": "bdafa84bad9d74000cbc2b16606eea49eec1acc676de19c47f234e62ff1d139f",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "7729359e82727b99d000034f26c5740ed619f8f11bf2b1f71b1d0e4887b5df81"
+    },
+    {
+      "case": "group_full_length_follow",
+      "board_sha256": "4f40dfcb9d0e32d131d3eb4740d555c4a80858874b57832e7a2bf7cba2b6e8f6",
+      "movie_sha256": "bf50522516659181aaa47b065dea432a9e901ec150c9a76f6192a844615ce79a",
+      "method": "fresh_view_all5_native_previews_and_first_middle_last",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "fc783a41ba3d503bc383886dd8208952358080d8c5e17e2cedaef006d9bacca6"
+    },
+    {
+      "case": "retry_custom_sticker",
+      "board_sha256": "bea7d016a885d6f1cf05d9bd154fbada1b7c41441d5d486b516b78067ea82d59",
+      "movie_sha256": "edcccfc11c803b3c1ba55c1c01b07c7b9594bdacf175f97e3a3cef775c7ba217",
+      "method": "reuse_actual_previously_viewed_identical_board_bytes",
+      "decision": "no_new_issue_at_reviewed_samples",
+      "previous_board_sha256": "bea7d016a885d6f1cf05d9bd154fbada1b7c41441d5d486b516b78067ea82d59"
+    }
+  ],
+  "identical_movie_bytes": 0,
+  "observations": [
+    "Previously recorded selected-root0 Unknown39 conservative protection retained.",
+    "All23 first/middle/last and every native source/protected preview covered by either byte-identical valid review or fresh manual review."
+  ]
+}

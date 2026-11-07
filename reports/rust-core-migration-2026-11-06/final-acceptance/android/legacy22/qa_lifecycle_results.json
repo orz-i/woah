@@ -1,0 +1,57 @@
+{
+  "process_id": 10756,
+  "status": "passed_api_chain",
+  "analysis_start_ms": 0,
+  "long_trim_start_ms": 0,
+  "input": "solo-portrait-7570258.mp4",
+  "target_width": 674,
+  "target_height": 1280,
+  "retry_start_ms": 1000,
+  "retry_end_ms": 2920,
+  "face_only": true,
+  "fill": "sticker",
+  "selected_ids": [
+    0
+  ],
+  "custom_sticker_asset": "/data/user/0/art.gaoge.dance.privacyqa/files/stickers/sticker_1794021768966.png",
+  "custom_sticker_exists": true,
+  "cancel_job_id": "job_86e34c23-4077-4e4a-b29b-73c180635d9a",
+  "before_cancel": {
+    "state": "processing",
+    "job_id": "job_86e34c23-4077-4e4a-b29b-73c180635d9a",
+    "current_frame": 8,
+    "total_frames": 662,
+    "progress": 0.010574018126888218,
+    "fps": 1.1869436201780414,
+    "output_uri": null,
+    "error_code": null,
+    "error_message": null
+  },
+  "after_cancel": {
+    "state": "cancelled",
+    "job_id": "job_86e34c23-4077-4e4a-b29b-73c180635d9a",
+    "current_frame": 9,
+    "total_frames": 662,
+    "progress": 0.012084592145015106,
+    "fps": 1.2601512181461776,
+    "output_uri": null,
+    "error_code": null,
+    "error_message": null
+  },
+  "cancelled_output_exists": false,
+  "cancelled_partial_files": [],
+  "cancel_passed": true,
+  "retry_status": {
+    "state": "completed",
+    "job_id": "job_f79c47a7-e1f8-40b1-84d3-60e32f4d46c5",
+    "current_frame": 48,
+    "total_frames": 48,
+    "progress": 1.0,
+    "fps": 2.012663004738144,
+    "output_uri": "/sdcard/Android/data/art.gaoge.dance.privacyqa/files/qa_ios_runs/shared_policy_final_v2_legacy22/outputs/retry_custom_sticker.mp4",
+    "error_code": null,
+    "error_message": null
+  },
+  "retry_bytes": 346954,
+  "retry_passed": true
+}

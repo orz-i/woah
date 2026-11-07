@@ -139,7 +139,7 @@ def verify_temporal_privacy() -> None:
         "case reacquiring",
         'code: "EXPORT_PRIVACY_UNRESOLVED"',
         "conservativeFallbackDetection",
-        "conservativePrivacyFallback: true",
+        "conservativePrivacyFallback: !region.observed",
     ):
         check(token in tracker, f"Phase 4 temporal privacy tracker missing: {token}")
 

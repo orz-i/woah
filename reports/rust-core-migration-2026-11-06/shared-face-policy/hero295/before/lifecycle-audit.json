@@ -1,0 +1,9 @@
+{
+  "run_id": "shared_policy_final_legacy22",
+  "status": "passed_api_chain",
+  "retry_movie": "outputs/retry_custom_sticker.mp4",
+  "retry_sha256": "4917a3e1f3a079036c26befffd280e421353a7535e88f587ab896b00910693a9",
+  "retry_bytes": 556615,
+  "negative_status": "passed_api_checks",
+  "scope": "API flow and owned file evidence. Independent media, face and visual audits remain required."
+}

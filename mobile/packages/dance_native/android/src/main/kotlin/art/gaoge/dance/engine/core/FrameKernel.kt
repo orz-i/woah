@@ -6,9 +6,66 @@ import java.nio.ByteBuffer
 
 /** Transport adapter only; the production and JVM paths load the same Rust core. */
 internal object FrameKernel {
+    external fun projectFaceRegionNative(current:FloatArray,previous:FloatArray,seed:FloatArray,ageUs:Long):FloatArray?
+    external fun faceRegionNative(row:FloatArray,view:FloatArray?,size:Float,yaw:Float):FloatArray?
+    external fun headFallbackNative(person:FloatArray):FloatArray?
+    external fun currentHeadRegionNative(pixels:ByteArray?,width:Int,height:Int,transform:FloatArray,person:FloatArray,seed:FloatArray?):FloatArray?
+    external fun maskHeadNative(pixels:ByteArray,width:Int,height:Int,transform:FloatArray,person:FloatArray,seed:FloatArray,previous:FloatArray?,expansion:Float):FloatArray?
+
+    external fun faceHeadPlanNative(person:FloatArray,width:Int,height:Int):FloatArray?
+    external fun faceCenterNative(row:FloatArray):FloatArray
+    external fun faceSelectNative(rows:FloatArray,view:FloatArray,ax:Float,ay:Float,maximum:Float,separation:Float):FloatArray?
+    external fun faceOwnedNative(rows:FloatArray,source:FloatArray,size:Float,person:FloatArray):IntArray
+    external fun currentFaceOwnedNative(rows:FloatArray,source:FloatArray,size:Float,person:FloatArray,pixels:ByteArray?,width:Int,height:Int,transform:FloatArray?):IntArray
+
+    external fun gridFaceInputNative(rgba:ByteBuffer,width:Int,height:Int,stride:Int):FloatArray
+    external fun gridFaceDecodeNative(boxes:FloatArray,scores:FloatArray,width:Int,height:Int,minimum:Float):FloatArray
+
     init {
         System.loadLibrary("frame_kernel_jni")
         check(abiVersion() == 1) { "Unsupported FrameKernel ABI" }
+    }
+
+    private external fun replayPlanNative(scope:Int,flags:Int,anchor:Long,last:Long,target:Long,step:Long):LongArray
+    data class ReplayPlan(val required:Boolean,val reset:Boolean,val startUs:Long,val stepUs:Long,val regularCount:Int,val appendTarget:Boolean,val targetUs:Long) {
+        val count:Int get()=regularCount+if(appendTarget)1 else 0
+        fun time(index:Int):Long {require(index in 0 until count);return if(index<regularCount)startUs+index*stepUs else targetUs}
+    }
+    fun replayPlan(scope:Int,hero:Boolean,namedTargets:Boolean,anchorUs:Long?,lastUs:Long?,targetUs:Long,stepUs:Long):ReplayPlan {
+        val v=replayPlanNative(scope,(if(hero)1 else 0) or (if(namedTargets)2 else 0),anchorUs?:-1L,lastUs?:-1L,targetUs,stepUs)
+        return ReplayPlan(v[0]!=0L,v[1]!=0L,v[2],v[3],v[4].toInt(),v[5]!=0L,v[6])
+    }
+
+    private external fun classCreateNative(values:FloatArray,misses:Int,flags:Int):Long
+    private external fun classSummaryNative(id:Long):IntArray
+    private external fun classDestroyNative(id:Long)
+    private external fun classResetNative(id:Long)
+    private external fun classUpdateNative(id:Long,values:FloatArray,offsets:LongArray,pixels:ByteArray,roots:LongArray):IntArray
+    class ClassSession(values:FloatArray,misses:Int,flags:Int):AutoCloseable {
+        private var id=classCreateNative(values,misses,flags)
+        @Synchronized fun update(values:FloatArray,offsets:LongArray,pixels:ByteArray,roots:LongArray):IntArray {
+            check(id!=0L);return classUpdateNative(id,values,offsets,pixels,roots)
+        }
+        @Synchronized fun summary():IntArray {check(id!=0L);return classSummaryNative(id)}
+        @Synchronized fun reset(){check(id!=0L);classResetNative(id)}
+        @Synchronized override fun close(){if(id!=0L){classDestroyNative(id);id=0L}}
+    }
+
+    private external fun trackingCreateNative(scalars:FloatArray,integers:IntArray):Long
+    private external fun trackingDestroyNative(id:Long)
+    private external fun trackingReserveNative(id:Long,minimum:Long)
+    private external fun trackingSelectionNative(id:Long,protected:LongArray,body:LongArray,face:LongArray,dormancy:Boolean)
+    private external fun trackingStepNative(id:Long,action:Int,timestampUs:Long,values:FloatArray,offsets:LongArray,pixels:ByteArray,assigned:LongArray):ByteArray
+    class TrackingSession(scalars:FloatArray,integers:IntArray):AutoCloseable {
+        private var id=trackingCreateNative(scalars,integers)
+        @Synchronized fun select(protected:LongArray,body:LongArray,face:LongArray,dormancy:Boolean) {
+            check(id!=0L);trackingSelectionNative(id,protected,body,face,dormancy)
+        }
+        @Synchronized fun step(action:Int,timestampUs:Long,values:FloatArray,offsets:LongArray,pixels:ByteArray,assigned:LongArray):ByteArray {
+            check(id!=0L);return trackingStepNative(id,action,timestampUs,values,offsets,pixels,assigned)
+        }
+        @Synchronized fun reserveNextIdentity(minimum:Long){check(id!=0L);trackingReserveNative(id,minimum)}
+        @Synchronized override fun close() {if(id!=0L){trackingDestroyNative(id);id=0L}}
     }
 
     private external fun workCanReplaceNative(state: Int): Int

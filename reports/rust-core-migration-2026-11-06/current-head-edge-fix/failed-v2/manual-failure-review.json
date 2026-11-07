@@ -1,0 +1,166 @@
+{
+  "status": "confirmed_privacy_failure_not_accepted",
+  "compiled_source_commit": "ce25a0d38a3c2c34e0d65b3967c0b32e7e7b1e10",
+  "reviewed_at_utc": "2026-11-07T06:22:51.707082+00:00",
+  "candidate_index_sha256": "7b4ddf0c03dc5789342a3d2e9bfff42ad739ec25345e416ba15b088abc509886",
+  "raw_status_unchanged": true,
+  "scope": "All four priority pages and 26 solid-mode alerts were visually inspected. Other mode alerts in the full326 alert set were not all reviewed after the genuine blocker was confirmed. This is a failure record, not final62 acceptance.",
+  "decisions": [
+    {
+      "index": 0,
+      "case": "group_4k_face_solid",
+      "source_frame": 131,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 1,
+      "case": "group_4k_face_solid",
+      "source_frame": 147,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 2,
+      "case": "group_4k_face_solid",
+      "source_frame": 181,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 3,
+      "case": "group_4k_face_solid",
+      "source_frame": 182,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 4,
+      "case": "group_4k_face_solid",
+      "source_frame": 183,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 5,
+      "case": "group_4k_face_solid",
+      "source_frame": 184,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 6,
+      "case": "group_4k_face_solid",
+      "source_frame": 185,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 7,
+      "case": "group_4k_face_solid",
+      "source_frame": 185,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 8,
+      "case": "group_4k_face_solid",
+      "source_frame": 186,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 9,
+      "case": "group_4k_face_solid",
+      "source_frame": 186,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 10,
+      "case": "group_4k_face_solid",
+      "source_frame": 188,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 11,
+      "case": "group_4k_face_solid",
+      "source_frame": 189,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 12,
+      "case": "group_4k_face_solid",
+      "source_frame": 190,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 13,
+      "case": "group_4k_face_solid",
+      "source_frame": 193,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 14,
+      "case": "group_4k_face_solid",
+      "source_frame": 194,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 15,
+      "case": "group_4k_face_solid",
+      "source_frame": 201,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 16,
+      "case": "group_4k_face_solid",
+      "source_frame": 201,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 17,
+      "case": "group_4k_face_solid",
+      "source_frame": 202,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 18,
+      "case": "group_4k_face_solid",
+      "source_frame": 203,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 19,
+      "case": "group_4k_face_solid",
+      "source_frame": 204,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 20,
+      "case": "group_4k_face_solid",
+      "source_frame": 205,
+      "decision": "identifying_nose_mouth_unmasked_at_top_edge"
+    },
+    {
+      "index": 21,
+      "case": "group_4k_face_solid",
+      "source_frame": 288,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 22,
+      "case": "group_4k_face_solid",
+      "source_frame": 304,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 23,
+      "case": "group_4k_face_solid",
+      "source_frame": 515,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 24,
+      "case": "group_4k_face_solid",
+      "source_frame": 516,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 25,
+      "case": "group_4k_face_solid",
+      "source_frame": 577,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    }
+  ]
+}

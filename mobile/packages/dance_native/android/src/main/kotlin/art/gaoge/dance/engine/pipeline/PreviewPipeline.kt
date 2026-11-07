@@ -26,24 +26,11 @@ import art.gaoge.dance.engine.storage.CacheManager
 import art.gaoge.dance.engine.tracking.TrackManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ensureActive
+import kotlin.math.roundToLong
+import art.gaoge.dance.engine.core.FrameKernel
 import java.io.File
 import java.io.FileOutputStream
-
-/**
- * Interface specification reserved for future non-zero timestamp tracking preview.
- *
- * In future phases, track states will be snapshotted every N seconds.
- * When seeking to arbitrary timestamp T, decoding will start from the closest snapshot <= T,
- * tracking forward to T to guarantee stable person IDs.
- *
- * NOTE: For V1, timeline preview is strictly pinned to timestampMs = 0 in the UI
- * to prevent single-frame Hungarian matching identity drift.
- */
-interface TrackingSnapshotCache {
-    fun saveSnapshot(timestampMs: Long, tracks: List<art.gaoge.dance.engine.tracking.TrackedPerson>)
-    fun getNearestSnapshot(timestampMs: Long): Pair<Long, List<art.gaoge.dance.engine.tracking.TrackedPerson>>?
-    fun clear()
-}
 
 class PreviewPipeline(
     private val context: Context,
@@ -51,6 +38,7 @@ class PreviewPipeline(
     private val cacheManager: CacheManager
 ) {
     private val analysisCache = PreviewAnalysisCache()
+    private val identityReplay = PreviewIdentityReplay()
 
     suspend fun renderPreview(request: PreviewRequestDto): PreviewFrameDto = withContext(Dispatchers.Default) {
         art.gaoge.dance.engine.diagnostics.NativeDiagnostics.recordPipelineLifecycle(
@@ -62,13 +50,6 @@ class PreviewPipeline(
                 "face_only_ids" to request.faceOnlyPersonIds.orEmpty().map { it.toInt() }
             )
         )
-        if (request.timestampMs != 0L) {
-            android.util.Log.w(
-                "PreviewPipeline",
-                "Non-zero timestamp preview (${request.timestampMs}ms) in V1 may exhibit identity drift. Recommended timestampMs = 0."
-            )
-        }
-
         val startTime = System.currentTimeMillis()
 
         val sourceUri = cacheManager.getVideoUri(request.analysisCacheId)
@@ -79,7 +60,17 @@ class PreviewPipeline(
 
         val videoInfo = VideoProbe.probe(context, sourceUri)
         val metadata = cacheManager.getAnalysisMetadata(request.analysisCacheId)
-        val cacheKey = "${request.analysisCacheId}_${request.timestampMs}"
+        val bodyIds=request.selectedPersonIds.map{Math.toIntExact(it)}.toSet()
+        val faceIds=request.faceOnlyPersonIds.orEmpty().map{Math.toIntExact(it)}.toSet()-bodyIds
+        val heroId=if(request.follow.enabled)request.follow.targetPersonId?.let{Math.toIntExact(it)}else null
+        val scope=FrameKernel.sceneScope(metadata?.persons.orEmpty().map{it.id}.toSet(),bodyIds,faceIds,heroId)
+        val fps=videoInfo.fps.takeIf{it.isFinite()&&it>0.0}?:30.0
+        val replayStepUs=(1_000_000.0/fps).roundToLong().coerceAtLeast(1L)
+        val policyKey="${request.analysisCacheId}_${metadata?.anchorTimestampUs}_${bodyIds.sorted()}_${faceIds.sorted()}_$heroId"
+        val needReplay=try {FrameKernel.replayPlan(scope,heroId!=null,bodyIds.isNotEmpty()||faceIds.isNotEmpty(),
+            metadata?.anchorTimestampUs,null,request.timestampMs*1000L,replayStepUs).required}
+        catch(error:IllegalArgumentException){throw DanceNativeException(DanceNativeException.RENDER_FAILED,"Preview identity requires a valid observed analysis anchor",error)}
+        val cacheKey="${request.analysisCacheId}_${request.timestampMs}_${if(needReplay)policyKey else "scene"}"
         val cachedEntry = analysisCache.copyForUse(cacheKey)
 
         val rotatedBitmap: Bitmap
@@ -105,35 +96,13 @@ class PreviewPipeline(
             val detections = segResult.persons
 
 
-            // 3. Assign stable IDs matching analysis cache
-            val tracker = TrackManager()
-            val persons = if (metadata != null && metadata.persons.isNotEmpty() && detections.isNotEmpty()) {
-                val cached = metadata.persons
-                val cachedBoxes = cached.map { person ->
-                    FloatRect((person.bbox.left * frameWidth).toFloat(), (person.bbox.top * frameHeight).toFloat(),
-                        (person.bbox.right * frameWidth).toFloat(), (person.bbox.bottom * frameHeight).toFloat())
-                }
-                val matches = art.gaoge.dance.engine.core.FrameKernel.matchRects(cachedBoxes,
-                    detections.map { it.bbox }, maxCost = 0.70f)
-                val assignedIds = IntArray(detections.size) { -1 }
-                val usedIds = mutableSetOf<Int>()
-                for (m in matches) {
-                    val cachedId = cached[m.first].id
-                    assignedIds[m.second] = cachedId
-                    usedIds.add(cachedId)
-                }
-                var nextId = (cached.maxOfOrNull { it.id } ?: -1) + 1
-                for (i in assignedIds.indices) {
-                    if (assignedIds[i] == -1) {
-                        while (usedIds.contains(nextId)) nextId++
-                        assignedIds[i] = nextId
-                        usedIds.add(nextId)
-                        nextId++
-                    }
-                }
-                tracker.initializeWithAssignedIds(detections, assignedIds.toList())
+            val persons = if(needReplay) {
+                identityReplay.resolve(context,request.analysisCacheId,policyKey,sourceUri,videoInfo.rotation.toInt(),
+                    metadata,scope,heroId,bodyIds,faceIds,request.timestampMs*1000L,replayStepUs,
+                    baseRotatedBitmap,detections,segmenter) { ensureActive() }
             } else {
-                tracker.initialize(detections)
+                TrackManager().use { tracker -> tracker.initializeWithAssignedIds(detections,
+                    PreviewIdentityReplay.assignedIds(detections,metadata,frameWidth,frameHeight)) }
             }
 
             analysisCache.put(
@@ -190,8 +159,6 @@ class PreviewPipeline(
         val requestedBodyIds = privacyModeByTrackId.filterValues { it == PersonPrivacyMode.FULL_BODY }.keys
         val requestedFaceIds = privacyModeByTrackId.filterValues { it == PersonPrivacyMode.FACE_ONLY }.keys
         val roots = metadata?.persons?.map { it.id }?.toSet().orEmpty()
-        val heroId = if (request.follow.enabled) request.follow.targetPersonId?.toInt() else null
-        val scope = art.gaoge.dance.engine.core.FrameKernel.sceneScope(roots, requestedBodyIds, requestedFaceIds, heroId)
         val allOthers = (scope and art.gaoge.dance.engine.core.FrameKernel.SCENE_OTHER_FACES) != 0
         val currentFaces = if (allOthers) {
             val observed = trackedPersons.filter { it.observedThisFrame }.map {
@@ -409,10 +376,12 @@ class PreviewPipeline(
 
     fun clearForAnalysis(cacheId: String) {
         analysisCache.clearForAnalysis(cacheId)
+        identityReplay.clearForAnalysis(cacheId)
     }
 
     fun clear() {
         analysisCache.clear()
+        identityReplay.close()
     }
 }
 

@@ -1,0 +1,94 @@
+{
+  "run_id": "edge_face_fixed_v4_original4k",
+  "auditor_sha256": "719614621c2405e82b213421cb206edc128eea0aad7659a9d4d3d6e940f56ff7",
+  "cases": [
+    {
+      "case": "group_4k_face_solid",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 0,
+          "status": "passed",
+          "best_expected_frame": 0,
+          "expected_pts_seconds": 0.0,
+          "correlation": 0.9980757805793359,
+          "control_sha256": "ceaf56c3e746fd1b893e45fb0082dde5387301de69aeea5cb67b78f928f6b312",
+          "protected_sha256": "acd3e190fa760acc81222721da25c794862b61de2996c306f54f2fcc74c08849",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 11600,
+          "status": "passed",
+          "best_expected_frame": 290,
+          "expected_pts_seconds": 11.6,
+          "correlation": 0.9983997723921167,
+          "control_sha256": "2e2c5dcdaa221ceb8f42fc7be8eeaa7c28546ccfb78cece53f5d9eacd5da6d3e",
+          "protected_sha256": "5f20a553c5792b9914346a0f364deef690d46ec35ea61dfd17cfe4df86ab1bbd",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 2,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 23200,
+          "status": "passed",
+          "best_expected_frame": 580,
+          "expected_pts_seconds": 23.2,
+          "correlation": 0.9984831434106817,
+          "control_sha256": "09048c24f7d0bf79d642247eec5761fa5d951ba039b7ddca2464b7f230d760cf",
+          "protected_sha256": "f2baf24bef9c8d2cd493ed5ec818dad7df5f8579a79f9817e6991b82ecaaccce",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 7400,
+          "status": "passed",
+          "best_expected_frame": 185,
+          "expected_pts_seconds": 7.4,
+          "correlation": 0.9981464871976581,
+          "control_sha256": "5d6e357f79f47585465c53cdbc8f229589fe820094ff8ef952227e4ac0cf0651",
+          "protected_sha256": "859886f8f65fbbdd7ffdfd22485d2238c1410112b78577c522a2658033cc2301",
+          "face_core_status": "needs_visual_review",
+          "tested_face_cores": 3,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": [
+            {
+              "source_bbox": [
+                2646.188278198242,
+                571.7729678750038,
+                2770.5135583877563,
+                696.098256111145
+              ],
+              "preview_core": [
+                889,
+                197,
+                917,
+                225
+              ],
+              "red_fraction": 0.6122448979591837
+            }
+          ]
+        },
+        {
+          "requested_ms": 8120,
+          "status": "passed",
+          "best_expected_frame": 203,
+          "expected_pts_seconds": 8.12,
+          "correlation": 0.998169920437407,
+          "control_sha256": "75d73c625ec5b975c9e552f3734391f091b3da326bbdfc52803e0b34d94bc33d",
+          "protected_sha256": "b50f960b743a3d5763cdfc946faadcd3504582993bec0c1695e881becd0dcf0a",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 4,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    }
+  ]
+}

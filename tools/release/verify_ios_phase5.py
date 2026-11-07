@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 from pathlib import Path
 
@@ -57,6 +58,27 @@ def verify_trace_contract() -> None:
     }
     names = {case.get("name") for case in cases if isinstance(case, dict)}
     check(required_cases.issubset(names), f"Golden Trace missing privacy-critical cases: {sorted(required_cases - names)}")
+
+    captured=ROOT/"crates/frame-kernel/testdata/tracking-golden-canonical-v1.json"
+    raw=captured.read_bytes()
+    check(hashlib.sha256(raw.replace(b"\r\n",b"\n")).hexdigest()=="0e410bd69b70d17c7b59de259e313825102cdb00b577d5d6d5118c08a3f5d93f",
+          "Independent native Golden capture changed; regenerate and review provenance")
+    canonical={case['name']:case for case in json.loads(raw)['cases']}
+    for case in cases:
+        reference=canonical.get(case.get('name'))
+        check(reference is not None,f"Native Golden capture missing {case.get('name')}")
+        if reference is None:continue
+        by_step={step['step']:step for step in reference['steps']}
+        for index,step in enumerate(case.get('steps',[])):
+            if not step.get('expect'):continue
+            actual={row['id']:row for row in by_step[index]['tracks']}
+            for expected in step['expect']:
+                native=actual.get(expected.get('id'))
+                check(native is not None,f"{case['name']}: expected ID not in native capture")
+                if native is None:continue
+                for key in ['state','observed','identityProtected','privacySelected','missedFrames','observationAge']:
+                    if key in expected:
+                        check(expected[key]==native[key],f"{case['name']}: native Golden mismatch {key}")
 
     allowed_states = {"ACTIVE", "OCCLUDED", "REACQUIRING", "LOST"}
     for case in cases:
@@ -122,7 +144,11 @@ def verify_trace_contract() -> None:
                     check(expectation.get("privacySelected") is True, f"{name}: fallback may only cover a selected identity")
                 grace = expectation.get("occlusionGraceRemaining")
                 if grace is not None:
-                    check(isinstance(grace, int) and 0 <= grace <= 10, f"{name}: invalid occlusion grace expectation")
+                    maximum=90 if expectation.get("state")=="OCCLUDED" else 10
+                    check(isinstance(grace,int) and 0<=grace<=maximum,f"{name}: invalid occlusion grace expectation")
+                    if expectation.get("state")=="OCCLUDED":
+                        age=expectation.get("observationAge")
+                        check(isinstance(age,int) and age+grace==90,f"{name}: occlusion lease must follow real observation age")
                 travel_ratio = expectation.get("maxPredictionTravelRatio")
                 if travel_ratio is not None:
                     check(
@@ -147,38 +173,20 @@ def verify_ios_replay_surface() -> None:
     podspec = text(ROOT / "mobile/packages/dance_native/ios/dance_native.podspec", "dance_native.podspec")
     dart = text(ROOT / "mobile/app/lib/ios_phase5_smoke_main.dart", "combined iOS smoke entrypoint")
 
-    for token in (
-        "struct IOSTemporalTrackSnapshot",
-        "func paritySnapshots()",
-        "identityProtected: identityProtectedIds.contains(track.id)",
-        "privacySelected: privacyTargetIds.contains(track.id)",
-        "track.state = .active",
-        "REACQUIRING is reserved for the interval",
-        "postOcclusionGraceFrames = 10",
-        "protectedGroupActiveMinBBoxIoU: Float32 = 0.35",
-        "protectedGroupReacquireMinBBoxIoU: Float32 = 0.45",
-        "protectedRecoveryMinBBoxIoU: Float32 = 0.50",
-        "protectedRecoveryMinMaskIoU: Float32 = 0.45",
-        "protectedUnobservedMaxCenterTravelRatio: Float32 = 0.30",
-        "protectedLostRecoveryGeometrySufficient",
-        "boundProtectedPredictionAroundLastObservation",
-        "track.occlusionGraceRemaining = postOcclusionGraceFrames",
-        "struct IOSFreshFacePrivacyClassEvidence",
-        "private let faceOnlyPrivacyIds: Set<Int>",
-        "currentFacePrivacyEvidence.removeAll(keepingCapacity: true)",
-        "var ambiguousProtectedDetections = Set<Int>()",
-        "ambiguousProtectedDetections.insert(candidate.detectionIndex)",
-        "ambiguousProtectedDetections.contains($0)",
-        "inferFacePrivacyClassEvidence(",
-        "associationAmbiguityMargin: Float32 = 0.05",
-        "possibleOwners.insert(track.id)",
-        "componentDetections.count == componentOwners.count",
-        "A 1-detection / 2-owner merge is intentionally *not* enough",
-        "componentOwners.allSatisfy({ faceOnlyPrivacyIds.contains($0) })",
-        "reservedDetections.insert(detectionIndex)",
-        "func facePrivacyClassEvidence() -> [IOSFreshFacePrivacyClassEvidence]",
-    ):
-        check(token in tracker, f"Phase 5 tracker parity surface missing: {token}")
+    adapter=text(SOURCES/"IOSSharedTrackingSession.swift","Swift tracking C ABI transport")
+    check("frame_kernel_tracking_step(" in adapter,"Swift identity transport must call Rust")
+    for token in ("struct IOSTemporalTrackSnapshot", "func paritySnapshots()",
+                  "identityProtected: identityProtectedIds.contains(track.id)",
+                  "privacySelected: privacyTargetIds.contains(track.id)",
+                  "IOSSharedTrackingSession()", "session.step(",
+                  "func facePrivacyClassEvidence() -> [IOSFreshFacePrivacyClassEvidence]"):
+        check(token in tracker,f"Shared tracker adapter missing: {token}")
+    shared="\n".join(text(ROOT/"crates/frame-kernel/src"/name,name) for name in
+        ["tracking.rs","tracking_update.rs","tracking_update_groups.rs","tracking_update_misses.rs","tracking_motion.rs","tracking_evidence.rs"])
+    for token in ("pub fn update(","pub(super) fn associate_groups(","geometry_ambiguous(",
+                  "self.face_class_evidence.push", "post_occlusion_grace_frames: 10",
+                  "occlusion_max_duration_frames: 90", "association_ambiguity_margin: 0.05"):
+        check(token in shared,f"Shared tracking policy missing: {token}")
 
     for token in (
         "IOSGoldenTraceResources.phase5TrackingURL()",
@@ -199,34 +207,18 @@ def verify_ios_replay_surface() -> None:
         check(token in smoke, f"Phase 5 Golden Trace replay missing: {token}")
 
     for token in (
-        "import Vision",
-        "VNDetectFaceRectanglesRequest()",
         "protocol IOSFaceLocating",
-        "final class IOSVisionFaceLocator",
         "enum IOSPersonBboxMotionEstimator",
         "enum IOSBodyMaskFaceHeadEstimator",
         "final class IOSFacePrivacyTemporalResolver",
-        "IOSFacePrivacyGeometry.fallbackEllipse",
+        "IOSFacePrivacyGeometry.fallbackGeometry",
         "person.conservativePrivacyFallback",
         "persons: persons.filter { !$0.conservativePrivacyFallback }",
         "unselected neighbor's",
-        "ambiguityMargin: Float32 = 0.08",
-        "containment >= 0.80",
-        "faceCenterY <= person.y1 + personHeight * 0.62",
-        "detectedRadiusXFactor: Float32 = 0.66",
-        "detectedRadiusYFactor: Float32 = 0.74",
-        "detectedCenterYShift: Float32 = -0.04",
-        "fallbackCenterYRatio: Float32 = 0.14",
-        "fallbackRadiusXFromWidth: Float32 = 0.22",
-        "fallbackRadiusYFromWidth: Float32 = 0.26",
         "maxPredictedFaceAgeUs: Int64 = 150_000",
         "trustedMaskSeedMaxAgeUs: Int64 = 800_000",
-        "minPredictedFaceScale: Float32 = 0.88",
-        "maxPredictedFaceScale: Float32 = 1.12",
-        "maxPredictedAgeExpansion: Float32 = 0.10",
         "expiredFaceMaskFallbackExpansion: Float32 = 1.10",
-        "IOSPersonBboxMotionEstimator.estimate(",
-        "IOSBodyMaskFaceHeadEstimator.estimate(",
+        "IOSFrameKernelFaceGeometry.project(",
         "source: .predictedFace",
         "timestampUs - trusted.lastTrustedTimestampUs <= Self.maxPredictedFaceAgeUs",
         "timestampUs - trusted.lastTrustedTimestampUs <= Self.trustedMaskSeedMaxAgeUs",
@@ -254,19 +246,45 @@ def verify_ios_replay_surface() -> None:
         and state_start > mask_fallback_start,
         "Phase 5E maskGuidedFallback must remain scoped inside TrustedFaceGeometry",
     )
-    vision_start = face_pipeline.find("final class IOSVisionFaceLocator")
-    geometry_start = face_pipeline.find("enum IOSFacePrivacyGeometry", vision_start + 1)
-    check(
-        vision_start >= 0
-        and geometry_start > vision_start
-        and "maskGuidedFallback" not in face_pipeline[vision_start:geometry_start],
-        "Vision locator must not own trusted-face fallback state",
-    )
+    observation_core = text(ROOT / "crates/frame-kernel/src/face_observations.rs", "shared current face observations")
+    for token in ("containment < 0.80", "cy > person.top + ph * 0.62", "pixels[index] >= 128",
+                  "support[0] >= 4 && support[1] >= 4", "scores[first] - scores[ranked[1]] < margin",
+                  "row[best] - scores[other * faces + best] < margin", "owner.is_some() && owners[*at] == owner"):
+        check(token in observation_core, f"Shared current face protection contract missing: {token}")
+    observation_transport = text(SOURCES / "IOSFrameKernelFaceGeometry.swift", "shared observation transport")
+    for token in ("frame_kernel_face_mask_owned(", "frame_kernel_face_mask_support(", "frame_kernel_face_observation_score(",
+                  "frame_kernel_face_upper_body_view(", "frame_kernel_face_merge_views(",
+                  "frame_kernel_face_unique_owner(", "frame_kernel_face_resolve_owners(", "frame_kernel_face_occlusion_padding("):
+        check(token in observation_transport, f"Swift observation transport must call Rust: {token}")
+    for call in ("owns(", "support(", "score(", "upperBody(", "merge(", "uniqueOwner(", "resolveOwners(", "padding("):
+        check("IOSFrameKernelFaceGeometry."+call in face_pipeline, f"Native current face policy must delegate {call}")
+    capture = ROOT / "tools/ios/host_regression/face_geometry/CanonicalObservationGeometry.swift"
+    manifest = json.loads((ROOT / "crates/frame-kernel/testdata/observation-geometry-native-v1.json").read_text(encoding="utf-8"))
+    check(hashlib.sha256(capture.read_bytes().replace(b"\r\n",b"\n")).hexdigest()==manifest["canonical_lf_sha256"],
+          "Original native observation geometry reference changed; review provenance")
+    check("s[0] >= 4 && s[1] >= 12" in observation_core and "points: Vec::new()" in observation_core,
+          "Current face ownership must retain the measured-box window and 12/16 support")
+    ownership_reference = ROOT / "tools/ios/host_regression/face_geometry/CanonicalFaceOwnershipEvidence.swift"
+    ownership_binding = json.loads((ROOT / "crates/frame-kernel/testdata/face-ownership-native-v1.json").read_text(encoding="utf-8"))
+    check(hashlib.sha256(ownership_reference.read_bytes().replace(b"\r\n",b"\n")).hexdigest()==ownership_binding["canonical_lf_sha256"],
+          "Original native face ownership evidence changed; review provenance")
+    actual_hero = ROOT / "crates/frame-kernel/testdata/hero-face-ownership-295-v1.bin"
+    check(hashlib.sha256(actual_hero.read_bytes()).hexdigest()=="5579599860a105a5d005c38228817bd1e7d64e5ffe35c12bb14f37679ab9c6ea",
+          "Actual hero295 ownership input changed; review the captured source")
+    grid_locator = (SOURCES / "IOSGridFaceLocator.swift").read_text(encoding="utf-8")
+    for token in ("final class IOSGridFaceLocator", "frame_kernel_grid_face_input(",
+                  "frame_kernel_grid_face_decode(", "FACE_MODEL_HASH_CONTRACT",
+                  "[1,192,192,3]", "[1,2304,16]", "[1,2304,1]"):
+        check(token in grid_locator, f"Shared face inference transport missing: {token}")
+    check("maskGuidedFallback" not in grid_locator and "TrustedFaceGeometry" not in grid_locator,
+          "Native face inference must not own trusted-face fallback state")
+    check("VNDetectFaceRectanglesRequest" not in face_pipeline + grid_locator,
+          "Production face pipeline must use the shared pinned face model")
 
     for token in (
         "IOSPhase5SequenceFaceLocator",
-        "IOSVisionFaceLocator().locateFaces(in: visionSource)",
-        "Vision FACE_ONLY runtime probe failed",
+        "IOSGridFaceLocator().locateFaces(in: faceProbeSource)",
+        "Shared FACE_ONLY runtime probe failed",
         "detectedRegion.source == .detectedFace",
         "missedRegion.source == .predictedFace",
         "translatedRegion.source == .predictedFace",
@@ -283,7 +301,9 @@ def verify_ios_replay_surface() -> None:
         "makeProtoMask(",
         "maskGuidedRegion.centerX > 34",
         "maskSeedExpiredRegion.source == .yoloHeadFallback",
-        'label: "800ms mask-seed expiry centerX"',
+        'label: "800ms seed expiry uses independent current-mask centerX"',
+        'label: "cold current-mask rectangle centerX"',
+        "coldMaskRegion.source == .yoloHeadFallback",
         "Missing current head-like mask support removed FACE_ONLY fallback privacy",
         'label: "unsupported-mask generic fallback centerX"',
         "selectedClassTracker.facePrivacyClassEvidence()",
@@ -307,7 +327,7 @@ def verify_ios_replay_surface() -> None:
         "faceRegions: [0: renderRegion]",
         "FACE_ONLY ellipse center was not covered",
         "FACE_ONLY privacy regressed to a rectangular mask",
-        '"vision_runtime_face_count"',
+        '"shared_face_runtime_face_count"',
     ):
         check(token in face_smoke, f"Phase 5C deterministic FACE_ONLY smoke missing: {token}")
     preprocess_decl = face_smoke.find("let preprocess = IOSYoloPreprocessResult(")
@@ -325,7 +345,7 @@ def verify_ios_replay_surface() -> None:
 
     for token in (
         "faceRegions: [Int: IOSFacePrivacyEllipse] = [:]",
-        "IOSFacePrivacyGeometry.fallbackEllipse(person.detection)",
+        "IOSFacePrivacyGeometry.fallbackGeometry(person.detection,preprocess:preprocess,",
         "dx * dx + dy * dy <= 1",
         "faceRect(",
         r"let renderedFaceIds = Set(facePersons.map(\.id))",
@@ -406,10 +426,10 @@ def verify_ios_replay_surface() -> None:
 
 
 def verify_android_reference_boundary() -> None:
-    android = text(
-        ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/tracking/TrackManager.kt",
-        "Android TrackManager",
-    )
+    production=text(ROOT/"mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/tracking/TrackManager.kt","Android shared tracker owner")
+    check("FrameKernel.TrackingSession(" in production and "owner.step(" in production,
+          "Android production identity updates must use shared Rust")
+    android=production+text(ROOT/"mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/tracking/CanonicalTrackManager.kt","frozen native tracker reference")
     for token in (
         "val maxMissedFrames: Int = 15",
         "val postOcclusionGraceFrames: Int = 10",
@@ -435,16 +455,28 @@ def verify_android_reference_boundary() -> None:
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyRegionResolver.kt",
         "Android FacePrivacyRegionResolver",
     )
-    for token in (
-        "private const val DETECTED_RADIUS_X_FACTOR = 0.66f",
-        "private const val DETECTED_RADIUS_Y_FACTOR = 0.74f",
-        "private const val DETECTED_CENTER_Y_SHIFT = -0.04f",
-        "private const val FALLBACK_CENTER_Y_RATIO = 0.14f",
-        "private const val FALLBACK_RADIUS_X_FROM_WIDTH = 0.22f",
-        "private const val FALLBACK_RADIUS_Y_FROM_WIDTH = 0.26f",
-        "privacy falls back to a YOLO-derived",
-    ):
-        check(token in face_geometry, f"Android FACE_ONLY geometry reference drifted: {token}")
+    check("FrameKernelFaceGeometry.resolve(" in face_geometry,
+          "Android region resolution must delegate to the shared core")
+    region_core = text(ROOT / "crates/frame-kernel/src/face_geometry.rs", "shared face geometry")
+    for token in ("radius_x: w * 0.66", "radius_y: h * 0.74", "h * (-0.04)",
+                  "person.top + h * 0.14", "(w * 0.22).max(h * 0.045)",
+                  "(w * 0.26).max(h * 0.060)", "0.30..=1.75", "d > 1.05",
+                  "b.top + h * 0.42", "rows < 2", "pixels[y * spec.width as usize + x] < 96"):
+        check(token in region_core, f"Shared face/head safety bound drifted: {token}")
+    for token in ("lease_us: 150_000", "minimum_scale: 0.88", "maximum_scale: 1.12", "age_expansion: 0.10"):
+        check(token in region_core, f"Shared projection lease/scale contract drifted: {token}")
+    corpus = ROOT / "crates/frame-kernel/testdata/face-region-native-v1.bin"
+    check(corpus.is_file() and hashlib.sha256(corpus.read_bytes()).hexdigest() ==
+          "e0e75f439552d6e7599c73f1020dd1d1d7f5323db0db26a4628bf10035b96298",
+          "Independent native face geometry corpus changed; review provenance")
+    swift_regions = text(SOURCES / "IOSFrameKernelFaceGeometry.swift", "Swift face geometry transport")
+    for token in ("frame_kernel_detected_face_region(", "frame_kernel_head_fallback(",
+                  "frame_kernel_mask_head(", "frame_kernel_trusted_mask_region(",
+                  "frame_kernel_current_head_region(", "guard status==0"):
+        check(token in swift_regions, f"Swift shared geometry transport missing: {token}")
+    for call in ("detected(", "fallback(", "currentHead(", "estimate(", "trusted(", "project("):
+        check("IOSFrameKernelFaceGeometry." + call in (SOURCES / "IOSFacePrivacyPipeline.swift").read_text(encoding="utf-8"),
+              f"iOS region consumer must use shared {call}")
 
     face_temporal = text(
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyTemporalStabilizer.kt",
@@ -470,11 +502,9 @@ def verify_android_reference_boundary() -> None:
     )
     for token in (
         "private const val MAX_PREDICTED_FACE_AGE_US = 150_000L",
-        "private const val MIN_PREDICTED_FACE_SCALE = 0.88f",
-        "private const val MAX_PREDICTED_FACE_SCALE = 1.12f",
-        "private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f",
         "source = FacePrivacyRegionSource.PREDICTED_FACE",
         "cached.project(",
+        "FrameKernelFaceGeometry.project(",
     ):
         check(token in face_processor, f"Android FACE_ONLY projection reference drifted: {token}")
 
@@ -499,16 +529,8 @@ def verify_android_reference_boundary() -> None:
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/BodyMaskFaceHeadEstimator.kt",
         "Android BodyMaskFaceHeadEstimator",
     )
-    for token in (
-        "private const val MASK_THRESHOLD = 96",
-        "private const val MIN_SUPPORT_ROWS = 2",
-        "private const val PERSON_HEAD_MAX_Y_RATIO = 0.42f",
-        "private const val MIN_RUN_WIDTH_RATIO = 0.30f",
-        "private const val MAX_RUN_WIDTH_RATIO = 1.75f",
-        "private const val MAX_RUN_CENTER_DISTANCE_RATIO = 1.05f",
-        "head-like narrow run",
-    ):
-        check(token in body_mask_estimator, f"Android body-mask face-head reference drifted: {token}")
+    check("FrameKernelFaceGeometry.estimate(" in body_mask_estimator,
+          "Android head estimator must use shared current-mask evidence")
 
     body_mask_test = text(
         ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/BodyMaskFaceHeadEstimatorTest.kt",
@@ -528,7 +550,7 @@ def verify_android_reference_boundary() -> None:
     for token in (
         "old trusted face only as a local seed",
         "stale face center is never rendered",
-        "BodyMaskFaceHeadEstimator.estimate(",
+        "FrameKernelFaceGeometry.trusted(",
     ):
         check(token in trusted_mask_fallback, f"Android trusted-mask fallback reference drifted: {token}")
     trusted_mask_test = text(

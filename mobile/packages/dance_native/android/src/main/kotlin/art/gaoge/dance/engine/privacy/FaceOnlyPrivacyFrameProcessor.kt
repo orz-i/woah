@@ -24,7 +24,6 @@ import art.gaoge.dance.engine.tracking.TrackState
 import art.gaoge.dance.engine.tracking.TrackedPerson
 import java.nio.ByteBuffer
 import java.security.MessageDigest
-import kotlin.math.sqrt
 
 data class FaceOnlyPrivacyFrameResult(
     val resolvedPrivacy: ResolvedCompositorMasks?,
@@ -91,6 +90,7 @@ class FaceOnlyPrivacyFrameProcessor(
     private val maxDetectorCallsPerFrame: Int = DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME
 ) : AutoCloseable {
 
+    private var observationCapture: AndroidFaceObservationCapture? = null
     private val pixelMotionTracker = FacePixelMotionTracker()
     private val canonicalRoiBuffer = ByteBuffer.allocateDirect(FACE_ROI_SIZE * FACE_ROI_SIZE * 4)
     private val canonicalRoiWorkspace = CanonicalFaceRoiSampler.Workspace(FACE_ROI_SIZE)
@@ -166,35 +166,9 @@ class FaceOnlyPrivacyFrameProcessor(
             trustedPersonBbox = trustedPersonBbox
         )
 
-        fun project(personBbox: FloatRect, ageUs: Long): FacePrivacyEllipse? {
-            if (personBbox.width <= 1f || personBbox.height <= 1f) return null
-
-            // Follow short-term body translation, but do not let an occlusion/
-            // merge-expanded person bbox blow the trusted face size up.  Face
-            // scale cannot legitimately double within the <=150 ms cache window.
-            val widthRatio = (personBbox.width / trustedPersonBbox.width.coerceAtLeast(1f))
-                .coerceAtLeast(0.1f)
-            val heightRatio = (personBbox.height / trustedPersonBbox.height.coerceAtLeast(1f))
-                .coerceAtLeast(0.1f)
-            val bboxScale = sqrt(widthRatio * heightRatio)
-                .coerceIn(MIN_PREDICTED_FACE_SCALE, MAX_PREDICTED_FACE_SCALE)
-            val ageExpansion = (
-                1f + (ageUs.coerceIn(0L, MAX_PREDICTED_FACE_AGE_US).toFloat() /
-                    MAX_PREDICTED_FACE_AGE_US.toFloat()) * MAX_PREDICTED_AGE_EXPANSION
-                )
-
-            val personTranslation = PersonBboxMotionEstimator.estimate(
-                previous = trustedPersonBbox,
-                current = personBbox
-            )
-            return FacePrivacyEllipse(
-                centerX = centerX + personTranslation.dx,
-                centerY = centerY + personTranslation.dy,
-                radiusX = (radiusX * bboxScale * ageExpansion).coerceAtLeast(1f),
-                radiusY = (radiusY * bboxScale * ageExpansion).coerceAtLeast(1f),
-                source = FacePrivacyRegionSource.PREDICTED_FACE
-            )
-        }
+        fun project(personBbox: FloatRect, ageUs: Long): FacePrivacyEllipse? =
+            FrameKernelFaceGeometry.project(personBbox,trustedPersonBbox,
+                floatArrayOf(centerX,centerY,radiusX,radiusY),ageUs)
 
         companion object {
             fun from(
@@ -407,15 +381,7 @@ class FaceOnlyPrivacyFrameProcessor(
         allowUnobservedMask: Boolean = false
     ): FacePrivacyEllipse? {
         if ((!person.observedThisFrame && !allowUnobservedMask) || person.mask == null) return null
-        val estimate = BodyMaskFaceHeadEstimator.estimate(
-            mask = person.mask,
-            personBbox = person.bbox,
-            seedCenterX = region.centerX,
-            seedCenterY = region.centerY,
-            seedRadiusX = region.radiusX,
-            seedRadiusY = region.radiusY
-        ) ?: return null
-        return region.copy(centerX = estimate.x, centerY = estimate.y)
+        return FrameKernelFaceGeometry.refine(person.mask, person.bbox, region)
     }
 
     private data class FallbackGeometry(
@@ -911,6 +877,7 @@ class FaceOnlyPrivacyFrameProcessor(
         }
         val dueDetectorTrackIds = detectorCandidates.take(detectorBudget).toSet()
 
+        val capturedFrame = observationCapture?.begin(ptsUs, mapper, persons)
         val faceMasks = linkedMapOf<Int, NativeMask>()
         val qaFaceRegions = if (art.gaoge.dance.engine.diagnostics.DiagnosticsBuild.metadataOnly) linkedMapOf<Int, FacePrivacyEllipse>() else null
         val detected = linkedSetOf<Int>()
@@ -1132,7 +1099,8 @@ class FaceOnlyPrivacyFrameProcessor(
                     // A broad ROI can see a neighbor even when this person's
                     // own face is in profile. Anchor proximity is not ownership.
                     val ownedFaces = FaceRoiCandidateSelector.ownedObservations(
-                        locatorResult.observations, plan, person.bbox
+                        locatorResult.observations, plan, person.bbox,
+                        currentMask = person.mask.takeIf { trackedPerson.observedThisFrame }
                     )
                     val selectedFace = if (isDormantProbe) {
                         FaceRoiCandidateSelector.select(
@@ -1161,6 +1129,7 @@ class FaceOnlyPrivacyFrameProcessor(
                             anchorY = plan.anchorY
                         )
                     }
+                    capturedFrame?.detector(trackId, plan, locatorResult.observations, selectedFace?.face)
                     emitRoiDiagnostic(
                         phase = "NORMAL",
                         trackId = trackId,
@@ -1286,7 +1255,8 @@ class FaceOnlyPrivacyFrameProcessor(
                         }
                         val selectedFace = FaceRoiCandidateSelector.select(
                             faces = FaceRoiCandidateSelector.ownedObservations(
-                                locatorResult.observations, reacquirePlan, person.bbox
+                                locatorResult.observations, reacquirePlan, person.bbox,
+                                currentMask = person.mask.takeIf { trackedPerson.observedThisFrame }
                             ),
                             roiWidth = FACE_ROI_SIZE,
                             roiHeight = FACE_ROI_SIZE,
@@ -1643,6 +1613,7 @@ class FaceOnlyPrivacyFrameProcessor(
             )
         }
 
+        capturedFrame?.finish(qaFaceRegions.orEmpty())
         return FaceOnlyPrivacyFrameResult(
             resolvedPrivacy = resolved,
             readyForRender = unresolved.isEmpty() &&
@@ -1720,9 +1691,6 @@ class FaceOnlyPrivacyFrameProcessor(
         private const val MAX_PREDICTED_FACE_AGE_US = 150_000L
         private const val MAX_LOCAL_FACE_REFRESH_AGE_US = FaceOnlyDormancyPolicy.MAX_BODY_COMPENSATION_AGE_US
         private const val MAX_LOCAL_FACE_UNOBSERVED_FRAMES = 30
-        private const val MIN_PREDICTED_FACE_SCALE = 0.88f
-        private const val MAX_PREDICTED_FACE_SCALE = 1.12f
-        private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f
         private const val EXPIRED_FACE_MASK_FALLBACK_SIZE_EXPANSION = 1.10f
         private const val LOCAL_FACE_ROI_MIN_SIDE_PX = 72f
         private const val LOCAL_FACE_ROI_DIAMETER_FACTOR = 2.8f
@@ -1747,7 +1715,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 locator = locator,
                 mapper = mapper,
                 diagnosticJobId = diagnosticJobId
-            )
+            ).apply { observationCapture = AndroidFaceObservationCapture.create(context, diagnosticJobId) }
         }
     }
 }

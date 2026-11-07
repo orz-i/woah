@@ -1,0 +1,40 @@
+{
+  "run_id": "hero295_fixed_probe_legacy22",
+  "auditor_sha256": "719614621c2405e82b213421cb206edc128eea0aad7659a9d4d3d6e940f56ff7",
+  "cases": [
+    {
+      "case": "group_full_length_follow",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 0,
+          "status": "passed",
+          "best_expected_frame": 0,
+          "expected_pts_seconds": 0.0,
+          "correlation": 0.9981241200138544,
+          "control_sha256": "2fb0109031c4b4586ce97524f8bade9c9970067dee3bf87e3e14c329c213965c",
+          "protected_sha256": "5b019cdbb2c8cf58b66b1d9aac61fecae7ffa1cbf6fb37b0ffe18f5dfe7df8c7"
+        },
+        {
+          "requested_ms": 6600,
+          "status": "passed",
+          "best_expected_frame": 165,
+          "expected_pts_seconds": 6.6,
+          "correlation": 0.998182175554229,
+          "control_sha256": "54e8a7cabd37e16e1fe1b7f958995eb42ada26ca23381cc94a3e1b533cab90e5",
+          "protected_sha256": "a2da27208ad0a2a1a0a0bc809963f9a596728d32dc1be21dfe6ef0f1c9d01b8b"
+        },
+        {
+          "requested_ms": 13200,
+          "status": "passed",
+          "best_expected_frame": 330,
+          "expected_pts_seconds": 13.2,
+          "correlation": 0.9984287137132244,
+          "control_sha256": "e49913e673153000b6c716e8fa7242fe4b8e9d14150f20d8d6dcbdfc16af8218",
+          "protected_sha256": "64c7ce3ca7515d0a0af64b38e193becfe45c5b06a36b875aa433acb2106efc48"
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    }
+  ]
+}

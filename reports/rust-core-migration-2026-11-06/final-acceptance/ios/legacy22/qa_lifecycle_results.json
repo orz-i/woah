@@ -1,0 +1,57 @@
+{
+  "process_id": 52594,
+  "status": "passed_api_chain",
+  "analysis_start_ms": 0,
+  "long_trim_start_ms": 0,
+  "input": "solo-portrait-7570258.mp4",
+  "target_width": 674,
+  "target_height": 1280,
+  "retry_start_ms": 1000,
+  "retry_end_ms": 2920,
+  "face_only": true,
+  "fill": "sticker",
+  "selected_ids": [
+    0
+  ],
+  "custom_sticker_asset": "/Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/161C0DB0-6D90-433F-A5F0-CDBD710CBD1A/Library/Application Support/stickers/sticker_1794020854657.png",
+  "custom_sticker_exists": true,
+  "cancel_job_id": "job_1794020854662_EE6B9B71",
+  "before_cancel": {
+    "state": "exporting",
+    "job_id": "job_1794020854662_EE6B9B71",
+    "current_frame": 8,
+    "total_frames": 662,
+    "progress": 0.010574018126888218,
+    "fps": 2.6853711340965236,
+    "output_uri": null,
+    "error_code": null,
+    "error_message": null
+  },
+  "after_cancel": {
+    "state": "cancelled",
+    "job_id": "job_1794020854662_EE6B9B71",
+    "current_frame": 9,
+    "total_frames": 662,
+    "progress": 0.012084592145015106,
+    "fps": 2.7461437213159323,
+    "output_uri": null,
+    "error_code": null,
+    "error_message": null
+  },
+  "cancelled_output_exists": false,
+  "cancelled_partial_files": [],
+  "cancel_passed": true,
+  "retry_status": {
+    "state": "completed",
+    "job_id": "job_1794020860120_ECD280E6",
+    "current_frame": 48,
+    "total_frames": 48,
+    "progress": 1.0,
+    "fps": 3.0661016982063733,
+    "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/161C0DB0-6D90-433F-A5F0-CDBD710CBD1A/Documents/qa_ios_runs/shared_policy_final_v2_legacy22/outputs/retry_custom_sticker.mp4",
+    "error_code": null,
+    "error_message": null
+  },
+  "retry_bytes": 556615,
+  "retry_passed": true
+}

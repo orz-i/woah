@@ -59,8 +59,14 @@ jobs:
           bash tools/ios/host_regression/run_pixels.sh
           bash tools/ios/host_regression/run_box_filter.sh
           python tools/rust/temporal_region_smoke.py crates/frame-kernel/target/release/libframe_kernel.dylib
+          python tools/rust/projection_smoke.py crates/frame-kernel/target/release/libframe_kernel.dylib
           bash tools/ios/host_regression/run_selection.sh
           bash tools/ios/host_regression/run_temporal_regions.sh
+          bash tools/ios/host_regression/run_tracking.sh
+          bash tools/ios/host_regression/run_class.sh
+          bash tools/ios/host_regression/run_face_geometry.sh
+          bash tools/ios/host_regression/run_golden.sh
+          bash tools/ios/host_regression/run_tracker.sh
           python tools/rust/run.py build --target aarch64-apple-ios
           python tools/rust/run.py build --target aarch64-apple-ios-sim
           python tools/rust/run.py build --target x86_64-apple-ios

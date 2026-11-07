@@ -1,0 +1,11 @@
+{
+  "run_id": "shared_geometry_first_focused13",
+  "cases": [
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "status": "passed_saved_original_bytes",
+      "sha256": "ef0a7191d5c1446656cd8d53e78488adbe7e0d73274cafcc05fa6d9c121ba6e4",
+      "bytes": 366478
+    }
+  ]
+}

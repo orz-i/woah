@@ -1,0 +1,59 @@
+{
+  "run_id": "shared_policy_final_v2_legacy22",
+  "compiled_source_commit": "ce25a0d38a3c2c34e0d65b3967c0b32e7e7b1e10",
+  "source_sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+  "movie_sha256": "3451b2357aba7064190c3d97a7c686538de234c470436722e67b5c79a6452268",
+  "actual_export_samples": [
+    {
+      "output_frame": 165,
+      "source_frame": 165,
+      "source_pts_us": 6600000,
+      "source_bbox": [
+        1322.3081588745117,
+        266.67189091444016,
+        1391.1694765090942,
+        335.5332112312317
+      ],
+      "output_core": [
+        334,
+        329,
+        390,
+        385
+      ],
+      "coverage_fraction": 0.0
+    },
+    {
+      "output_frame": 295,
+      "source_frame": 295,
+      "source_pts_us": 11800000,
+      "source_bbox": [
+        1399.6079635620117,
+        274.63544458150864,
+        1468.3376669883728,
+        343.3651542663574
+      ],
+      "output_core": [
+        324,
+        338,
+        380,
+        394
+      ],
+      "coverage_fraction": 0.0
+    }
+  ],
+  "actual_native_previews": [
+    {
+      "requested_ms": 6600,
+      "control_sha256": "54e8a7cabd37e16e1fe1b7f958995eb42ada26ca23381cc94a3e1b533cab90e5",
+      "protected_sha256": "a2da27208ad0a2a1a0a0bc809963f9a596728d32dc1be21dfe6ef0f1c9d01b8b",
+      "manual_decision": "teal_hero_clear_adjacent_blonde_protected"
+    },
+    {
+      "requested_ms": 11800,
+      "control_sha256": "51091794f16ab4293e67b5eda1eb678c7805fdd7762a71598d46712d7fe8b5d3",
+      "protected_sha256": "392e5455cd2e2c547a8311e6e5c3feda5f511f0a8ea0ed2abc21e8c3c7575211",
+      "manual_decision": "teal_hero_clear_adjacent_blonde_protected"
+    }
+  ],
+  "scope": "Independent face-core raw0red measurements at exact165/295 and manual actual movie/Native preview inspection. Whole581-frame media decode audit passed; this supplements, not replaces, review of remaining40 cases."
+}

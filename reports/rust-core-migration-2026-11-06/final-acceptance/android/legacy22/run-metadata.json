@@ -1,0 +1,383 @@
+{
+  "started_utc": "2026-11-07T02:52:00.440540+00:00",
+  "platform": "android",
+  "serial": "334da6a3",
+  "config": {
+    "run_id": "shared_policy_final_v2_legacy22",
+    "cases": [
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 3040,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 960,
+        "height": 540,
+        "case": "group_all_faces",
+        "expected_frames": 76
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "sticker",
+        "startMs": 0,
+        "endMs": 3040,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 720,
+        "height": 1280,
+        "case": "group_face_sticker_follow",
+        "hero": 6,
+        "expected_frames": 76
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 3040,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 720,
+        "height": 1280,
+        "case": "group_face_solid_follow",
+        "hero": 6,
+        "expected_frames": 76
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 960,
+        "height": 540,
+        "case": "group_full_solid",
+        "expected_frames": 40
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "mosaic",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 960,
+        "height": 540,
+        "case": "group_full_mosaic",
+        "expected_frames": 40
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "blur",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 960,
+        "height": 540,
+        "case": "group_full_blur",
+        "expected_frames": 40
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "gradient",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 960,
+        "height": 540,
+        "case": "group_full_gradient",
+        "expected_frames": 40
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 960,
+        "height": 540,
+        "case": "group_first_solid",
+        "select": "first",
+        "expected_frames": 40
+      },
+      {
+        "input": "group-mirror-8956295.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 960,
+        "height": 540,
+        "case": "group_4k_full",
+        "expected_frames": 40
+      },
+      {
+        "input": "duo-dance-6940536.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": false,
+        "profile": "quality",
+        "width": 960,
+        "height": 540,
+        "case": "duo_full_solid",
+        "expected_frames": 48
+      },
+      {
+        "input": "solo-hd-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_face_sticker",
+        "expected_frames": 40
+      },
+      {
+        "input": "solo-hd-7570258.mp4",
+        "fill": "mosaic",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_face_mosaic",
+        "expected_frames": 40
+      },
+      {
+        "input": "solo-hd-7570258.mp4",
+        "fill": "blur",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_face_blur",
+        "expected_frames": 40
+      },
+      {
+        "input": "solo-hd-7570258.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_face_solid",
+        "expected_frames": 40
+      },
+      {
+        "input": "solo-hd-7570258.mp4",
+        "fill": "gradient",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_face_gradient",
+        "expected_frames": 40
+      },
+      {
+        "input": "solo-hd-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": true,
+        "profile": "balanced",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_face_balanced",
+        "expected_frames": 40
+      },
+      {
+        "input": "solo-hd-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": true,
+        "profile": "speed",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_face_speed",
+        "expected_frames": 40
+      },
+      {
+        "input": "solo-hd-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 1000,
+        "endMs": 2600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_nonzero_trim",
+        "expected_frames": 40
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "sticker",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 540,
+        "height": 1024,
+        "case": "solo_4k_sticker",
+        "expected_frames": 40
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": false,
+        "profile": "balanced",
+        "width": 960,
+        "height": 540,
+        "case": "group_full_balanced",
+        "expected_frames": 40
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 1600,
+        "faceOnly": false,
+        "profile": "speed",
+        "width": 960,
+        "height": 540,
+        "case": "group_full_speed",
+        "expected_frames": 40
+      },
+      {
+        "input": "group-hd-8956295.mp4",
+        "fill": "solid",
+        "startMs": 0,
+        "endMs": 23240,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 720,
+        "height": 1280,
+        "case": "group_full_length_follow",
+        "hero": 6,
+        "expected_frames": 581
+      }
+    ],
+    "core_smokes": true,
+    "build_source_fingerprint": "aad6836a5287c0cd3e977c59e7357d244eeb04fc56d43b32c3a3945a28e538df",
+    "partial_stage_check": false,
+    "verify_previews": true,
+    "stage_export_only": false,
+    "record_tracking_inputs": false,
+    "lifecycle": true
+  },
+  "sources": {
+    "corrupt-video-1024bytes.mp4": {
+      "bytes": 1024,
+      "sha256": "630b36e85f6e26cd9371088fd201979ca82f1300b04aee24210c9e67df6e7e80"
+    },
+    "custom-sticker.png": {
+      "bytes": 806,
+      "sha256": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6"
+    },
+    "duo-dance-6940536.mp4": {
+      "bytes": 3748966,
+      "sha256": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76"
+    },
+    "group-hd-8956295.mp4": {
+      "bytes": 15726991,
+      "sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5"
+    },
+    "group-mirror-8956295.mp4": {
+      "bytes": 69505821,
+      "sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73"
+    },
+    "no-person-flower.mp4": {
+      "bytes": 1128375,
+      "sha256": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451"
+    },
+    "solo-hd-7570258.mp4": {
+      "bytes": 7454617,
+      "sha256": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0"
+    },
+    "solo-portrait-7570258.mp4": {
+      "bytes": 21156880,
+      "sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1"
+    }
+  },
+  "git_head": "ce25a0d38a3c2c34e0d65b3967c0b32e7e7b1e10",
+  "binary_sha256": "a32181e68fec0555de3e5b0aef7ecc721e5697629ee466c18a52edae7505087f",
+  "binary_path": "D:\\dance-anonymizer\\.qa-runtime\\rust-migration\\builds\\shared-policy-final-v2\\app-debug.apk",
+  "harness_sha256": "76c07d5b81d325d2adc2b1edf564efc930decdd7482d5ad3b6b9bf4c7409e83a",
+  "matrix_sha256": "cd4ced2482b53f8c439c4dcd3445d754f57312f2fc51c3fd0a2789751c3bf1f8",
+  "application_id": "art.gaoge.dance.privacyqa",
+  "device": {
+    "ro.product.model": "KB2000",
+    "ro.build.version.release": "14",
+    "ro.product.cpu.abi": "arm64-v8a"
+  },
+  "additional_crop_traces": {
+    "retry_custom_sticker.mp4": "qa_pixel_crops_35be7f3f-35e7-442e-a708-1fae5f35f441.jsonl",
+    "cancel_long_4k.mp4": "qa_pixel_crops_f929ccdf-db4e-4dcd-818a-62c7a137be6c.jsonl"
+  },
+  "crop_traces": [
+    "qa_pixel_crops_1dbd418e-5f41-4e4c-87c5-db0e5d65e43c.jsonl",
+    "qa_pixel_crops_fcc0557e-1ea0-4af5-98f9-e64fa3d674ad.jsonl",
+    "qa_pixel_crops_6ad690d9-78a6-468c-908f-a41742e8c972.jsonl",
+    "qa_pixel_crops_9aa10623-d42b-4831-b9db-5c659ba6a801.jsonl",
+    "qa_pixel_crops_0a61785b-f2d1-470b-8778-f7e64de80823.jsonl",
+    "qa_pixel_crops_9591c6e5-70a8-4252-981e-c508a294680f.jsonl",
+    "qa_pixel_crops_ce0f3f08-5b9d-4610-ac4c-ad1fd581a431.jsonl",
+    "qa_pixel_crops_77f973e2-22b8-4280-a766-ca36d1f9fd22.jsonl",
+    "qa_pixel_crops_4f703dd1-8f4b-4da4-bec2-8cb8af970160.jsonl",
+    "qa_pixel_crops_6e68fc63-c762-4992-8151-05cd25049ae8.jsonl",
+    "qa_pixel_crops_e0a30c63-4621-47e2-a1db-56b813258dbd.jsonl",
+    "qa_pixel_crops_e1f879ce-faa9-4392-9e90-7787b1fdf509.jsonl",
+    "qa_pixel_crops_10d1475b-be77-4236-9cdd-57e69810d4ae.jsonl",
+    "qa_pixel_crops_91e4ff81-95d1-4e2c-83d0-3d73b60bad6a.jsonl",
+    "qa_pixel_crops_f3fa838c-63b3-4a2f-988b-ed88b66506fd.jsonl",
+    "qa_pixel_crops_44afe4c1-8c4e-4a5c-8019-9dd82c4195f2.jsonl",
+    "qa_pixel_crops_558dd8a1-7101-49db-b68f-27ff9d0b2dae.jsonl",
+    "qa_pixel_crops_0c43f89c-a1c2-4bc1-a318-349b32f63f7c.jsonl",
+    "qa_pixel_crops_860dc57f-342b-4158-8b8c-a1519c5ab1d1.jsonl",
+    "qa_pixel_crops_2730e96f-4df2-406b-a113-4a0b23571a5a.jsonl",
+    "qa_pixel_crops_5bf63054-17a4-4f5c-aebd-ffe06273875c.jsonl",
+    "qa_pixel_crops_f59552af-d784-4792-99d5-b8c2de1eaecc.jsonl"
+  ],
+  "crop_traces_by_output": {
+    "group_full_mosaic.mp4": "qa_pixel_crops_0a61785b-f2d1-470b-8778-f7e64de80823.jsonl",
+    "solo_nonzero_trim.mp4": "qa_pixel_crops_0c43f89c-a1c2-4bc1-a318-349b32f63f7c.jsonl",
+    "solo_face_blur.mp4": "qa_pixel_crops_10d1475b-be77-4236-9cdd-57e69810d4ae.jsonl",
+    "group_all_faces.mp4": "qa_pixel_crops_1dbd418e-5f41-4e4c-87c5-db0e5d65e43c.jsonl",
+    "group_full_balanced.mp4": "qa_pixel_crops_2730e96f-4df2-406b-a113-4a0b23571a5a.jsonl",
+    "solo_face_balanced.mp4": "qa_pixel_crops_44afe4c1-8c4e-4a5c-8019-9dd82c4195f2.jsonl",
+    "group_4k_full.mp4": "qa_pixel_crops_4f703dd1-8f4b-4da4-bec2-8cb8af970160.jsonl",
+    "solo_face_speed.mp4": "qa_pixel_crops_558dd8a1-7101-49db-b68f-27ff9d0b2dae.jsonl",
+    "group_full_speed.mp4": "qa_pixel_crops_5bf63054-17a4-4f5c-aebd-ffe06273875c.jsonl",
+    "group_face_solid_follow.mp4": "qa_pixel_crops_6ad690d9-78a6-468c-908f-a41742e8c972.jsonl",
+    "duo_full_solid.mp4": "qa_pixel_crops_6e68fc63-c762-4992-8151-05cd25049ae8.jsonl",
+    "group_first_solid.mp4": "qa_pixel_crops_77f973e2-22b8-4280-a766-ca36d1f9fd22.jsonl",
+    "solo_4k_sticker.mp4": "qa_pixel_crops_860dc57f-342b-4158-8b8c-a1519c5ab1d1.jsonl",
+    "solo_face_solid.mp4": "qa_pixel_crops_91e4ff81-95d1-4e2c-83d0-3d73b60bad6a.jsonl",
+    "group_full_blur.mp4": "qa_pixel_crops_9591c6e5-70a8-4252-981e-c508a294680f.jsonl",
+    "group_full_solid.mp4": "qa_pixel_crops_9aa10623-d42b-4831-b9db-5c659ba6a801.jsonl",
+    "group_full_gradient.mp4": "qa_pixel_crops_ce0f3f08-5b9d-4610-ac4c-ad1fd581a431.jsonl",
+    "solo_face_sticker.mp4": "qa_pixel_crops_e0a30c63-4621-47e2-a1db-56b813258dbd.jsonl",
+    "solo_face_mosaic.mp4": "qa_pixel_crops_e1f879ce-faa9-4392-9e90-7787b1fdf509.jsonl",
+    "solo_face_gradient.mp4": "qa_pixel_crops_f3fa838c-63b3-4a2f-988b-ed88b66506fd.jsonl",
+    "group_full_length_follow.mp4": "qa_pixel_crops_f59552af-d784-4792-99d5-b8c2de1eaecc.jsonl",
+    "group_face_sticker_follow.mp4": "qa_pixel_crops_fcc0557e-1ea0-4af5-98f9-e64fa3d674ad.jsonl"
+  },
+  "finished_utc": "2026-11-07T03:23:31.522144+00:00"
+}

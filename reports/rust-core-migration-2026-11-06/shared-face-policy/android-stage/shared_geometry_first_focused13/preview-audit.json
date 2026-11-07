@@ -1,0 +1,520 @@
+{
+  "run_id": "shared_geometry_first_focused13",
+  "auditor_sha256": "33e84a7891297fc56fd1517733236da2dcfffeacce86aa95a0a964dd830ae111",
+  "cases": [
+    {
+      "case": "group_4k_body_face_union",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 16000,
+          "status": "passed",
+          "best_expected_frame": 400,
+          "expected_pts_seconds": 16.0,
+          "correlation": 0.9996040018426549,
+          "control_sha256": "e639f73bbefe6b93c749431db60c4d35d58dfc99332bf8345898ed913ec73630",
+          "protected_sha256": "560e1981376e636db97188ca251cd8210db1ec1da52178fc812fb124ddb32e13",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 16780,
+          "status": "passed",
+          "best_expected_frame": 420,
+          "expected_pts_seconds": 16.8,
+          "correlation": 0.9996311667234393,
+          "control_sha256": "5d42161d51ff996cf3fcd87b9d3be204a4fece49c5bbe7b778adad23e2794a93",
+          "protected_sha256": "36937e73a76c94f473e068205ea3a6214ccfea9398e33e081f90b3e4846da2b9",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 17560,
+          "status": "passed",
+          "best_expected_frame": 439,
+          "expected_pts_seconds": 17.56,
+          "correlation": 0.9997853975674273,
+          "control_sha256": "9614201ca263bc56b835243fbcaa577e1cd5561de775cd7f389a0c53b86c40f6",
+          "protected_sha256": "f94109797ef98ec334a543d4fc95a2ddd7b655604c46e08c536d67082763a70f",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_body_face_union",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 7800,
+          "status": "passed",
+          "best_expected_frame": 195,
+          "expected_pts_seconds": 7.8,
+          "correlation": 0.9983847155019738,
+          "control_sha256": "52619787bf3dba297884782fbdf8e3c201b2c0a9cff90eb0245b378ba6675c86",
+          "protected_sha256": "b98aaeb9f6b681b5c8fbad36ce1368f5a78d850522961d87e1363a6f9b29349c",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 8580,
+          "status": "passed",
+          "best_expected_frame": 215,
+          "expected_pts_seconds": 8.6,
+          "correlation": 0.9984718101263206,
+          "control_sha256": "717d3be49c94fbe027e82c8c09607830fbd726a6584af1efb06a78b2148192e5",
+          "protected_sha256": "29247c27b298f8436f09663a6949a5772fc36d06816b03cce517bd848653f31f",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 9360,
+          "status": "passed",
+          "best_expected_frame": 234,
+          "expected_pts_seconds": 9.36,
+          "correlation": 0.9984569091632093,
+          "control_sha256": "4bcf8d8a6dd418d1af7ac30b12d828d2df5595a762b442626e26b4ce03bf6553",
+          "protected_sha256": "8eb02a3922c4e12d1d8bb02b8a354c829f2d84527761ee919eb1d2088693fd00",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_raised_arm_sticker",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 21440,
+          "status": "passed",
+          "best_expected_frame": 536,
+          "expected_pts_seconds": 21.44,
+          "correlation": 0.9978468107918429,
+          "control_sha256": "3084ca3c4a1c67f8bb28d74ca129b3f938e2f79c758e43604314e92c0c40c8b9",
+          "protected_sha256": "dd7327321c7181baedd78aa7c160f31bd2c4891c767105a73d5a30a9a850027f"
+        },
+        {
+          "requested_ms": 22220,
+          "status": "passed",
+          "best_expected_frame": 556,
+          "expected_pts_seconds": 22.24,
+          "correlation": 0.9980560952447926,
+          "control_sha256": "422327ce9a04f59af424c7cb7634411c474cf9afec2bde739c87bc6baf6f4312",
+          "protected_sha256": "ee65e925ec773224eb2c3fbc13d27ee83d09b2640081a497853fbc6fd18db9e0"
+        },
+        {
+          "requested_ms": 23000,
+          "status": "passed",
+          "best_expected_frame": 575,
+          "expected_pts_seconds": 23.0,
+          "correlation": 0.998094562028625,
+          "control_sha256": "4b5215eef76e0de163cc16ba3c772f1a01c01379c5f88af6a2f65c574ff4542d",
+          "protected_sha256": "7e8e1eed664d189c8d9a88fbe374599df2913e82a6da14185f2722e6fa7dee23"
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 21440,
+          "status": "passed",
+          "best_expected_frame": 536,
+          "expected_pts_seconds": 21.44,
+          "correlation": 0.9978468107918429,
+          "control_sha256": "3084ca3c4a1c67f8bb28d74ca129b3f938e2f79c758e43604314e92c0c40c8b9",
+          "protected_sha256": "929f12bcc0d83575cea0931302f975d5f9e47ddb4ca265574bf0e381107387ae",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 22220,
+          "status": "passed",
+          "best_expected_frame": 556,
+          "expected_pts_seconds": 22.24,
+          "correlation": 0.9980560952447926,
+          "control_sha256": "422327ce9a04f59af424c7cb7634411c474cf9afec2bde739c87bc6baf6f4312",
+          "protected_sha256": "1ce28c8fed0934bd0d649930335a51b7a8668865fde39bb91b0cf2863673bd46",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 23000,
+          "status": "passed",
+          "best_expected_frame": 575,
+          "expected_pts_seconds": 23.0,
+          "correlation": 0.998094562028625,
+          "control_sha256": "4b5215eef76e0de163cc16ba3c772f1a01c01379c5f88af6a2f65c574ff4542d",
+          "protected_sha256": "e5ec77bacd0c052184ac2c04e2fcf538f15125dcebf062fae8063214d24826a3",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 21440,
+          "status": "passed",
+          "best_expected_frame": 536,
+          "expected_pts_seconds": 21.44,
+          "correlation": 0.9978468107918429,
+          "control_sha256": "3084ca3c4a1c67f8bb28d74ca129b3f938e2f79c758e43604314e92c0c40c8b9",
+          "protected_sha256": "d215cccc186ef8bda6127ad5ebfb292a52753c58fd9e27f75c07a75ba74a5906",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 22220,
+          "status": "passed",
+          "best_expected_frame": 556,
+          "expected_pts_seconds": 22.24,
+          "correlation": 0.9980560952447926,
+          "control_sha256": "422327ce9a04f59af424c7cb7634411c474cf9afec2bde739c87bc6baf6f4312",
+          "protected_sha256": "5b5d56ad1452bdf6da134500681d6ce555de2234cc383fe8bba7b947c7ee43b4",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 23000,
+          "status": "passed",
+          "best_expected_frame": 575,
+          "expected_pts_seconds": 23.0,
+          "correlation": 0.998094562028625,
+          "control_sha256": "4b5215eef76e0de163cc16ba3c772f1a01c01379c5f88af6a2f65c574ff4542d",
+          "protected_sha256": "8a39d069df9f78445582e08538df795017f6946160dbfcbe2a5f6a9a8fe44f4b",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "group_hd_overlap_face",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 13720,
+          "status": "passed",
+          "best_expected_frame": 343,
+          "expected_pts_seconds": 13.72,
+          "correlation": 0.9997713604152616,
+          "control_sha256": "ecb00833d4f453ec09d99ac4d7744222237b8deda74e61e740236899b0d0231d",
+          "protected_sha256": "7600ecd66399de58b4e8035f545a36ea5222b69b3a8be3539be9be5a05cba5bf",
+          "face_core_status": "needs_visual_review",
+          "tested_face_cores": 4,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": [
+            {
+              "source_bbox": [
+                1269.9224853515625,
+                359.35417234897614,
+                1337.5244092941284,
+                426.956090927124
+              ],
+              "preview_core": [
+                854,
+                247,
+                884,
+                277
+              ],
+              "red_fraction": 0.8655555555555555
+            }
+          ]
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "group_hd_overlap_body",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 13720,
+          "status": "passed",
+          "best_expected_frame": 343,
+          "expected_pts_seconds": 13.72,
+          "correlation": 0.9997713604152616,
+          "control_sha256": "ecb00833d4f453ec09d99ac4d7744222237b8deda74e61e740236899b0d0231d",
+          "protected_sha256": "4608a307aa3eff5fad9e6f24ea16d30bb842dedd3ad223a158dbae3dc3ebaf80",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 4,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "group_4k_face_solid",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 5600,
+          "status": "passed",
+          "best_expected_frame": 140,
+          "expected_pts_seconds": 5.6,
+          "correlation": 0.9997489366252692,
+          "control_sha256": "24c5912c3af1c615db9c1334d81c2b352befa35395ba7ad57222d173f4462bd1",
+          "protected_sha256": "d79a9f7f3967a487d18f1ccbf74224b6c8e4b4eb3742dbcd4fceefcf9a9ab0d1",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 2,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 5780,
+          "status": "passed",
+          "best_expected_frame": 145,
+          "expected_pts_seconds": 5.8,
+          "correlation": 0.9997379945605852,
+          "control_sha256": "7df92c96128738029a45e23dcbc5856c00f176a9c3aa8ece57a7ee5b486cfb87",
+          "protected_sha256": "509ac10e0439ed749973d8b4a5be9102b6ce591a55304f1e420934d2baa7f1b0",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 3,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 5960,
+          "status": "passed",
+          "best_expected_frame": 149,
+          "expected_pts_seconds": 5.96,
+          "correlation": 0.9997223822950299,
+          "control_sha256": "5a55983eef5b7d6a442eaf9a75af39e278af5a5b61bcf23d83f6702e373cb28d",
+          "protected_sha256": "8ff6732b06a3467b3bf59b534345bb25f963f08502d38741178e328e6174ad51",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 3,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "group_4k_body_solid",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 11400,
+          "status": "passed",
+          "best_expected_frame": 285,
+          "expected_pts_seconds": 11.4,
+          "correlation": 0.9998180646695694,
+          "control_sha256": "966612266a577a6e5f97a363d56d7c935907e507f9fcac05b25d5505ebe31f1e",
+          "protected_sha256": "1ba4a72d53577ddb6729bcbf59e21b2ef95adc2fa6373eb0c791a1b420e41728",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 3,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 11580,
+          "status": "passed",
+          "best_expected_frame": 290,
+          "expected_pts_seconds": 11.6,
+          "correlation": 0.9998149804551336,
+          "control_sha256": "9d8c6d892d2fbaa2bad21d90cf6e2ca6ddbfe03822ffdcf4378dbb35afb09389",
+          "protected_sha256": "d8b2a6b2f2392664b5cd1c10ac10e1d6b4a8e1f18844ef704ba17c769ae1ad19",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 2,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 11760,
+          "status": "passed",
+          "best_expected_frame": 294,
+          "expected_pts_seconds": 11.76,
+          "correlation": 0.9998073950815647,
+          "control_sha256": "05207bea3dcec9d97d6d212928f22cb7413662ad3aa0003fd1a5eaf0922c0c8e",
+          "protected_sha256": "15aab96ea273251eca3dcd2c20582df6486fd7002fb656e73a1170dc984704af",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 2,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "group_4k_tail_face",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 22840,
+          "status": "passed",
+          "best_expected_frame": 571,
+          "expected_pts_seconds": 22.84,
+          "correlation": 0.9998323897111924,
+          "control_sha256": "e166222750c34ef943f35f4373f1a475477456b7ef223619e937d7650ae9a0f4",
+          "protected_sha256": "597454f3f0805f6605f1c1a8cc74353b3ba36087a6789e32e581d4429bb57c93",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 23020,
+          "status": "passed",
+          "best_expected_frame": 576,
+          "expected_pts_seconds": 23.04,
+          "correlation": 0.9998438366485916,
+          "control_sha256": "844f0ac9548202254b1887a2bc7a5963e763939bcb2efaff2c3206797ca0085c",
+          "protected_sha256": "29cd475eb74ac44b348094e509c4d13e71ea2841f8698bc2f73cb618391e0048",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        },
+        {
+          "requested_ms": 23200,
+          "status": "passed",
+          "best_expected_frame": 580,
+          "expected_pts_seconds": 23.2,
+          "correlation": 0.9998465371348378,
+          "control_sha256": "28f867e78e2c19742133d2aa571ec201ce8b12eda26b15cb98465f53999eb270",
+          "protected_sha256": "1eafcf24a89d945e2592f5ff5e78f3122131c99c259a09a1619ad994cc129500",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 0,
+          "status": "passed",
+          "best_expected_frame": 0,
+          "expected_pts_seconds": 0.0,
+          "correlation": 0.9983877082914944,
+          "control_sha256": "120590417fd6fa171f380e29722bf07e7e9861c1cacedb7fa44086848190c029",
+          "protected_sha256": "545340af5d1a874352106bf7e8417a7f03513f4868c92acb53574ddfd58d296a"
+        },
+        {
+          "requested_ms": 300,
+          "status": "passed",
+          "best_expected_frame": 8,
+          "expected_pts_seconds": 0.32,
+          "correlation": 0.9982410790271793,
+          "control_sha256": "6b9dd1f5334db55abd590bc5b0a40473c84e49b68c42edafcdcff7d320d367f3",
+          "protected_sha256": "fc0e390e315eabb1d87569d61246941233b017f138495a6245709d3b2a3b6c4d"
+        },
+        {
+          "requested_ms": 600,
+          "status": "passed",
+          "best_expected_frame": 15,
+          "expected_pts_seconds": 0.6,
+          "correlation": 0.99843538467459,
+          "control_sha256": "5bf5dcd2accc0c89bce7b4ad4635d1735131d3b0a9e05eb949dfde683185daef",
+          "protected_sha256": "f92e2d8630618568db4c9ff05a085c94611e0d436e03a9e4e90142f6a69700dd"
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_cancel_probe",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 0,
+          "status": "passed",
+          "best_expected_frame": 0,
+          "expected_pts_seconds": 0.0,
+          "correlation": 0.9983877082914944,
+          "control_sha256": "120590417fd6fa171f380e29722bf07e7e9861c1cacedb7fa44086848190c029",
+          "protected_sha256": "94be668b0011c635f2c94770b1064dc6bdaa13d1ebf4d9146f1af405521b2667"
+        },
+        {
+          "requested_ms": 13220,
+          "status": "passed",
+          "best_expected_frame": 331,
+          "expected_pts_seconds": 13.24,
+          "correlation": 0.9987066783207974,
+          "control_sha256": "7caadf763e627af5a7417789e12f6000a6cdc7ff054d7d51b625b2fffec3b7cb",
+          "protected_sha256": "4c2e29b2a2fddc78483992400f38e62f2570a4900193534258008b3c9aa2221b"
+        },
+        {
+          "requested_ms": 26440,
+          "status": "passed",
+          "best_expected_frame": 661,
+          "expected_pts_seconds": 26.44,
+          "correlation": 0.9983277039399817,
+          "control_sha256": "0a2979d6a69a049f9dd79d8c83c5dbfae54136213d28a0ec2475e611adf41e4a",
+          "protected_sha256": "467e88d1c34cb0b442d3207e88c208f308299a991e60977268f3e8a14880b653"
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_immediate_retry_probe",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 1000,
+          "status": "passed",
+          "best_expected_frame": 25,
+          "expected_pts_seconds": 1.0,
+          "correlation": 0.9986756516334987,
+          "control_sha256": "14cc81553880fba771fa943df8f1dbb042952359e35aa79f080434fcb286a4dc",
+          "protected_sha256": "4ec1ddc8e785c9d89fbed85dd08cea6657ed5feac591b0592e910a5d18ed7831"
+        },
+        {
+          "requested_ms": 1780,
+          "status": "passed",
+          "best_expected_frame": 45,
+          "expected_pts_seconds": 1.8,
+          "correlation": 0.99842093761734,
+          "control_sha256": "e4a701ff9f3a2f576f4dfc7c35a9b7a610ecfdcacb99bec6e90b64b650b74862",
+          "protected_sha256": "4caf5a55819d6979f835f5859ab76761557778d88b413723cf5255beb69dc3de"
+        },
+        {
+          "requested_ms": 2560,
+          "status": "passed",
+          "best_expected_frame": 64,
+          "expected_pts_seconds": 2.56,
+          "correlation": 0.9984589755198332,
+          "control_sha256": "4e1668363d9560e5836a21e7ca52272e4ffc042b59f4a18b591be03105cd5ee6",
+          "protected_sha256": "8c80e8db325d852ef21b4d6a468335e48bbedc0684d81fd9c2fbe3676dbe59bb"
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    }
+  ]
+}

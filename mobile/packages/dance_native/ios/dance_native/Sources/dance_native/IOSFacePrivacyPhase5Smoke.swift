@@ -22,7 +22,7 @@ enum IOSFacePrivacyPhase5Smoke {
     let width = 64
     let height = 64
     let source = try makeSolidImage(width: width, height: height, rgba: (0, 0, 255, 255))
-    let visionSource = try makeSolidImage(width: 256, height: 256, rgba: (0, 0, 255, 255))
+    let faceProbeSource = try makeSolidImage(width: 256, height: 256, rgba: (0, 0, 255, 255))
     let preprocess = IOSYoloPreprocessResult(
       input: [],
       scale: Float32(IOSYoloPreprocessor.inputSize) / Float32(width),
@@ -32,11 +32,11 @@ enum IOSFacePrivacyPhase5Smoke {
       sourceHeight: height,
       inputSize: IOSYoloPreprocessor.inputSize
     )
-    let visionRuntimeFaces: [IOSFaceCandidate]
+    let faceRuntimeFaces: [IOSFaceCandidate]
     do {
-      visionRuntimeFaces = try IOSVisionFaceLocator().locateFaces(in: visionSource)
+      faceRuntimeFaces = try IOSGridFaceLocator().locateFaces(in: faceProbeSource)
     } catch {
-      throw smokeFailure("Vision FACE_ONLY runtime probe failed: \(error)")
+      throw smokeFailure("Shared FACE_ONLY runtime probe failed: \(error)")
     }
     let personDetection = makeDetection(x1: 8, y1: 4, x2: 56, y2: 60)
     let person = IOSPreviewPerson(id: 0, detection: personDetection)
@@ -168,11 +168,34 @@ enum IOSFacePrivacyPhase5Smoke {
           maskSeedExpiredRegion.source == .yoloHeadFallback else {
       throw smokeFailure("Expired FACE_ONLY mask seed did not return to generic YOLO head fallback.")
     }
+    // The old face seed has expired, but the CURRENT mask still places the
+    // head at the independently painted rectangle's midpoint (35 + 43) / 2.
+    // A cold resolver must reach the same center without any trusted history.
+    let coldMaskResolver = IOSFacePrivacyTemporalResolver(
+      locator: IOSPhase5SequenceFaceLocator(batches: [[]])
+    )
+    let coldMaskRegions = try coldMaskResolver.resolve(
+      image: source,
+      persons: [maskGuidedPerson],
+      faceOnlyIds: [0],
+      preprocess: preprocess,
+      timestampUs: 900_000
+    )
+    guard let coldMaskRegion = coldMaskRegions[0],
+          coldMaskRegion.source == .yoloHeadFallback else {
+      throw smokeFailure("Current mask head fallback required expired trusted face history.")
+    }
+    try assertNear(
+      coldMaskRegion.centerX,
+      39,
+      tolerance: 0.05,
+      label: "cold current-mask rectangle centerX"
+    )
     try assertNear(
       maskSeedExpiredRegion.centerX,
-      32,
+      coldMaskRegion.centerX,
       tolerance: 0.05,
-      label: "800ms mask-seed expiry centerX"
+      label: "800ms seed expiry uses independent current-mask centerX"
     )
 
     let unsupportedMaskResolver = IOSFacePrivacyTemporalResolver(
@@ -358,10 +381,18 @@ enum IOSFacePrivacyPhase5Smoke {
       makeDetection(x1: 27, y1: 4, x2: 33, y2: 60),
       makeDetection(x1: 31, y1: 4, x2: 37, y2: 60),
     ]
+    // The first ambiguous observation establishes the canonical quarantine
+    // group. Fresh class evidence requires the next real observation in that
+    // existing group; it must not be inferred only from global cardinality.
+    _ = try selectedClassTracker.update(detections: freshAmbiguousDetections,
+      preprocess: preprocess, timestampUs: 33_333)
+    guard selectedClassTracker.facePrivacyClassEvidence().isEmpty else {
+      throw smokeFailure("Class evidence was emitted before a real ambiguity group existed.")
+    }
     let selectedClassPersons = try selectedClassTracker.update(
       detections: freshAmbiguousDetections,
       preprocess: preprocess,
-      timestampUs: 33_333
+      timestampUs: 66_666
     )
     let selectedClassEvidence = selectedClassTracker.facePrivacyClassEvidence()
     guard selectedClassEvidence.count == 2,
@@ -424,6 +455,8 @@ enum IOSFacePrivacyPhase5Smoke {
       preprocess: preprocess,
       timestampUs: 33_333
     )
+    _ = try mixedClassTracker.update(detections: freshAmbiguousDetections,
+      preprocess: preprocess, timestampUs: 66_666)
     guard mixedClassTracker.facePrivacyClassEvidence().isEmpty else {
       throw smokeFailure("Ambiguous detection with an unselected possible owner received FACE_ONLY class fallback.")
     }
@@ -682,7 +715,7 @@ enum IOSFacePrivacyPhase5Smoke {
       "unique_class_radius": [uniqueSyntheticRegion.radiusX, uniqueSyntheticRegion.radiusY],
       "class_continuity_steps": [continuityFirstStep, continuitySecondStep],
       "class_continuity_translation": [translatedSecond.centerX, translatedSecond.centerY],
-      "vision_runtime_face_count": visionRuntimeFaces.count,
+      "shared_face_runtime_face_count": faceRuntimeFaces.count,
       "full_body_face_union_pixel": [bodyFacePixel.r, bodyFacePixel.g, bodyFacePixel.b, bodyFacePixel.a],
       "full_body_unselected_face_pixel": [unselectedFacePixel.r, unselectedFacePixel.g, unselectedFacePixel.b, unselectedFacePixel.a],
       "suppressed_head_pixel": [suppressedHeadPixel.r, suppressedHeadPixel.g, suppressedHeadPixel.b, suppressedHeadPixel.a],
@@ -834,7 +867,12 @@ enum IOSFacePrivacyPhase5Smoke {
   }
 
   private static func smokeFailure(_ message: String) -> PigeonError {
-    PigeonError(
+    #if DEBUG
+    // This test-only entry point must keep actionable CI assertions in the
+    // native console; product channel errors retain their sanitized envelope.
+    NSLog("WOAH_PHASE5_FACE_SMOKE_ASSERTION: %@", message)
+    #endif
+    return     PigeonError(
       code: "IOS_PHASE5_FACE_PRIVACY_SMOKE_FAILED",
       message: message,
       details: nil

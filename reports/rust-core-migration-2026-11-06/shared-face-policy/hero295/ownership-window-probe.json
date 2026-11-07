@@ -1,0 +1,325 @@
+{
+  "source_sha256": "44f14be8d06d949a3a01f429bb9b67cb394e1d087a543a309c28691884f30092",
+  "rows": [
+    {
+      "input_index": 0,
+      "view": 0,
+      "bbox": [
+        1373.2969970703125,
+        260.7889404296875,
+        1460.476318359375,
+        347.9591369628906
+      ],
+      "render_support": [
+        12,
+        16
+      ],
+      "measured_support": [
+        16,
+        16
+      ],
+      "render_owner": 6,
+      "measured_owner": 6
+    },
+    {
+      "input_index": 1,
+      "view": 0,
+      "bbox": [
+        599.5780639648438,
+        377.5593566894531,
+        682.195556640625,
+        460.1686096191406
+      ],
+      "render_support": [
+        12,
+        0
+      ],
+      "measured_support": [
+        9,
+        0
+      ],
+      "render_owner": -2295004,
+      "measured_owner": -2295004
+    },
+    {
+      "input_index": 2,
+      "view": 0,
+      "bbox": [
+        175.96466064453125,
+        171.91455078125,
+        266.7940368652344,
+        262.73291015625
+      ],
+      "render_support": [
+        16,
+        0
+      ],
+      "measured_support": [
+        12,
+        0
+      ],
+      "render_owner": -2295000,
+      "measured_owner": -2295000
+    },
+    {
+      "input_index": 3,
+      "view": 0,
+      "bbox": [
+        882.0719604492188,
+        387.55859375,
+        950.9428100585938,
+        456.4213562011719
+      ],
+      "render_support": [
+        9,
+        0
+      ],
+      "measured_support": [
+        9,
+        0
+      ],
+      "render_owner": -2295005,
+      "measured_owner": -2295005
+    },
+    {
+      "input_index": 4,
+      "view": 0,
+      "bbox": [
+        358.955078125,
+        383.2249450683594,
+        434.2348327636719,
+        458.49578857421875
+      ],
+      "render_support": [
+        6,
+        0
+      ],
+      "measured_support": [
+        6,
+        0
+      ],
+      "render_owner": null,
+      "measured_owner": null
+    },
+    {
+      "input_index": 5,
+      "view": 0,
+      "bbox": [
+        155.1298065185547,
+        205.72494506835938,
+        246.85418701171875,
+        297.43743896484375
+      ],
+      "render_support": [
+        12,
+        0
+      ],
+      "measured_support": [
+        9,
+        0
+      ],
+      "render_owner": -2295000,
+      "measured_owner": -2295000
+    },
+    {
+      "input_index": 6,
+      "view": 1,
+      "bbox": [
+        198.02598571777344,
+        178.76307678222656,
+        274.934814453125,
+        255.66758728027344
+      ],
+      "render_support": [
+        9,
+        0
+      ],
+      "measured_support": [
+        9,
+        0
+      ],
+      "render_owner": -2295000,
+      "measured_owner": -2295000
+    },
+    {
+      "input_index": 7,
+      "view": 1,
+      "bbox": [
+        633.6048583984375,
+        382.3872985839844,
+        682.350830078125,
+        431.1290588378906
+      ],
+      "render_support": [
+        4,
+        0
+      ],
+      "measured_support": [
+        4,
+        0
+      ],
+      "render_owner": -2295004,
+      "measured_owner": -2295004
+    },
+    {
+      "input_index": 8,
+      "view": 2,
+      "bbox": [
+        270.537841796875,
+        638.0352783203125,
+        291.918701171875,
+        659.4150390625
+      ],
+      "render_support": [
+        2,
+        0
+      ],
+      "measured_support": [
+        2,
+        0
+      ],
+      "render_owner": -2295001,
+      "measured_owner": -2295001
+    },
+    {
+      "input_index": 9,
+      "view": 3,
+      "bbox": [
+        449.9574890136719,
+        557.0714721679688,
+        473.0082702636719,
+        580.1195678710938
+      ],
+      "render_support": [
+        2,
+        0
+      ],
+      "measured_support": [
+        2,
+        0
+      ],
+      "render_owner": null,
+      "measured_owner": null
+    },
+    {
+      "input_index": 10,
+      "view": 4,
+      "bbox": [
+        451.42047119140625,
+        553.9022827148438,
+        473.95947265625,
+        576.4391479492188
+      ],
+      "render_support": [
+        2,
+        0
+      ],
+      "measured_support": [
+        2,
+        0
+      ],
+      "render_owner": null,
+      "measured_owner": null
+    },
+    {
+      "input_index": 11,
+      "view": 5,
+      "bbox": [
+        635.5177612304688,
+        383.8577880859375,
+        687.936767578125,
+        436.2752685546875
+      ],
+      "render_support": [
+        6,
+        0
+      ],
+      "measured_support": [
+        4,
+        0
+      ],
+      "render_owner": -2295004,
+      "measured_owner": -2295004
+    },
+    {
+      "input_index": 12,
+      "view": 5,
+      "bbox": [
+        897.1694946289062,
+        394.13739013671875,
+        937.4400024414062,
+        434.4049072265625
+      ],
+      "render_support": [
+        4,
+        0
+      ],
+      "measured_support": [
+        4,
+        0
+      ],
+      "render_owner": -2295005,
+      "measured_owner": -2295005
+    },
+    {
+      "input_index": 13,
+      "view": 6,
+      "bbox": [
+        894.8010864257812,
+        388.5573425292969,
+        939.3201904296875,
+        433.0736083984375
+      ],
+      "render_support": [
+        6,
+        0
+      ],
+      "measured_support": [
+        4,
+        0
+      ],
+      "render_owner": -2295005,
+      "measured_owner": -2295005
+    },
+    {
+      "input_index": 14,
+      "view": 7,
+      "bbox": [
+        1369.4571533203125,
+        278.45538330078125,
+        1431.1021728515625,
+        340.0987854003906
+      ],
+      "render_support": [
+        6,
+        8
+      ],
+      "measured_support": [
+        9,
+        12
+      ],
+      "render_owner": null,
+      "measured_owner": 6
+    },
+    {
+      "input_index": 15,
+      "view": 8,
+      "bbox": [
+        1372.3798828125,
+        271.8747253417969,
+        1438.864501953125,
+        338.353515625
+      ],
+      "render_support": [
+        6,
+        16
+      ],
+      "measured_support": [
+        6,
+        16
+      ],
+      "render_owner": 6,
+      "measured_owner": 6
+    }
+  ]
+}

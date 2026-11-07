@@ -1,0 +1,20 @@
+{
+  "platform": "android",
+  "suite": "legacy22",
+  "run_id": "shared_policy_final_v2_legacy22",
+  "compiled_source_commit": "ce25a0d38a3c2c34e0d65b3967c0b32e7e7b1e10",
+  "compiled_source_fingerprint": "aad6836a5287c0cd3e977c59e7357d244eeb04fc56d43b32c3a3945a28e538df",
+  "binary_sha256": "a32181e68fec0555de3e5b0aef7ecc721e5697629ee466c18a52edae7505087f",
+  "process_id": 10756,
+  "api_cases": 22,
+  "actual_movies": 23,
+  "decoded_frames": 1585,
+  "native_preview_pairs": 68,
+  "manually_resolved_topology_candidates": 0,
+  "manually_resolved_export_alerts": 164,
+  "manually_resolved_preview_alerts": 0,
+  "reviewed_case_boards": 23,
+  "status": "cohort_complete_independently_audited_and_reviewed",
+  "scope": "This cohort only. Overall62 acceptance requires all three cohorts from both platforms. Raw automatic face statuses are retained; separate manual semantic decisions are explicit.",
+  "collected_utc": "2026-11-07T05:22:11.971469+00:00"
+}

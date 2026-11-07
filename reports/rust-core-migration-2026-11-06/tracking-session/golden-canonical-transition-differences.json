@@ -1,0 +1,1337 @@
+{
+  "native_source_commit": "22c25f260f2691f1c9c95412f18ee7ba6a7bca43",
+  "canonical_capture_sha256": "0e410bd69b70d17c7b59de259e313825102cdb00b577d5d6d5118c08a3f5d93f",
+  "old_golden_sha256": "2ac92bf5de2744258c30d47c8cf0c5912e5d45769ddd7be30c956aa7e62c7687",
+  "scope": "Frozen input geometry/masks unchanged. Expected identity/state/counters come from the existing native Android implementation; output/fallback/90-frame refusal checks retained.",
+  "steps": [
+    {
+      "case": "short_gap_reacquire_full_body",
+      "frame": 0,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "short_gap_reacquire_full_body",
+      "frame": 1,
+      "before": [
+        {
+          "id": 0,
+          "state": "REACQUIRING",
+          "missedFrames": 1,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 1,
+          "privacySelected": true,
+          "id": 0,
+          "state": "LOST",
+          "observed": false,
+          "observationAge": 1,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "short_gap_reacquire_full_body",
+      "frame": 2,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "face_only_unselected_neighbor_isolation",
+      "frame": 0,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "face_only_unselected_neighbor_isolation",
+      "frame": 1,
+      "before": [
+        {
+          "id": 0,
+          "state": "REACQUIRING",
+          "missedFrames": 1,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 1,
+          "privacySelected": true,
+          "id": 0,
+          "state": "LOST",
+          "observed": false,
+          "observationAge": 1,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "face_only_unselected_neighbor_isolation",
+      "frame": 2,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 1,
+          "privacySelected": true,
+          "id": 0,
+          "state": "OCCLUDED",
+          "observed": false,
+          "observationAge": 2,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 88
+        },
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": false,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 2,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "ambiguous_face_only_defers_identity_commit",
+      "frame": 0,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "ambiguous_face_only_defers_identity_commit",
+      "frame": 1,
+      "before": [
+        {
+          "id": 0,
+          "state": "REACQUIRING",
+          "missedFrames": 1,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true
+        },
+        {
+          "id": 1,
+          "state": "REACQUIRING",
+          "missedFrames": 1,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": false,
+          "outputPresent": false,
+          "fallback": false
+        },
+        {
+          "id": 2,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": false,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": true,
+          "missedFrames": 1,
+          "privacySelected": false,
+          "id": 1,
+          "state": "OCCLUDED",
+          "observed": false,
+          "observationAge": 1,
+          "outputPresent": false,
+          "fallback": false,
+          "occlusionGraceRemaining": 89
+        }
+      ]
+    },
+    {
+      "case": "protected_lost_stale_anchor_isolation",
+      "frame": 0,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "protected_lost_stale_anchor_isolation",
+      "frame": 1,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "protected_lost_stale_anchor_isolation",
+      "frame": 2,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "protected_lost_stale_anchor_isolation",
+      "frame": 3,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "protected_lost_stale_anchor_isolation",
+      "frame": 19,
+      "before": [
+        {
+          "id": 0,
+          "state": "LOST",
+          "missedFrames": 16,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true,
+          "maxPredictionTravelRatio": 0.3
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 16,
+          "privacySelected": true,
+          "id": 0,
+          "state": "LOST",
+          "observed": false,
+          "observationAge": 16,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 0,
+          "maxPredictionTravelRatio": 0.3
+        }
+      ]
+    },
+    {
+      "case": "protected_lost_stale_anchor_isolation",
+      "frame": 20,
+      "before": [
+        {
+          "id": 0,
+          "state": "LOST",
+          "missedFrames": 17,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true,
+          "maxPredictionTravelRatio": 0.3
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": false,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 17,
+          "privacySelected": true,
+          "id": 0,
+          "state": "LOST",
+          "observed": false,
+          "observationAge": 17,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 0,
+          "maxPredictionTravelRatio": 0.3
+        },
+        {
+          "identityProtected": false,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "long_occlusion_grace_reacquires_original_id",
+      "frame": 0,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": false,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": false,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "long_occlusion_grace_reacquires_original_id",
+      "frame": 1,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": false,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": false,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "long_occlusion_grace_reacquires_original_id",
+      "frame": 26,
+      "before": [
+        {
+          "id": 0,
+          "state": "OCCLUDED",
+          "missedFrames": 25,
+          "occlusionGraceRemaining": 10,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true,
+          "maxPredictionTravelRatio": 0.3
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": false,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 25,
+          "privacySelected": true,
+          "id": 0,
+          "state": "OCCLUDED",
+          "observed": false,
+          "observationAge": 25,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 65,
+          "maxPredictionTravelRatio": 0.3
+        },
+        {
+          "identityProtected": false,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "long_occlusion_grace_reacquires_original_id",
+      "frame": 27,
+      "before": [
+        {
+          "id": 0,
+          "state": "REACQUIRING",
+          "missedFrames": 26,
+          "occlusionGraceRemaining": 9,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true,
+          "maxPredictionTravelRatio": 0.3
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": false,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 1,
+          "privacySelected": true,
+          "id": 0,
+          "state": "REACQUIRING",
+          "observed": false,
+          "observationAge": 26,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 9,
+          "maxPredictionTravelRatio": 0.3
+        },
+        {
+          "identityProtected": false,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "long_occlusion_grace_reacquires_original_id",
+      "frame": 28,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "occlusionGraceRemaining": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": false,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": false,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "full_body_ambiguous_root_reservation_prevents_duplicate_id",
+      "frame": 0,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "full_body_ambiguous_root_reservation_prevents_duplicate_id",
+      "frame": 1,
+      "before": [
+        {
+          "id": 0,
+          "state": "REACQUIRING",
+          "missedFrames": 1,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true
+        },
+        {
+          "id": 1,
+          "state": "REACQUIRING",
+          "missedFrames": 1,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": true,
+          "missedFrames": 1,
+          "privacySelected": true,
+          "id": 1,
+          "state": "OCCLUDED",
+          "observed": false,
+          "observationAge": 1,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 89
+        }
+      ]
+    },
+    {
+      "case": "full_body_ambiguous_root_reservation_prevents_duplicate_id",
+      "frame": 2,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 1,
+          "privacySelected": true,
+          "id": 0,
+          "state": "OCCLUDED",
+          "observed": false,
+          "observationAge": 1,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 89
+        },
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "selected_root_occluded_by_unselected_hero_fails_closed",
+      "frame": 0,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": false,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": false,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "selected_root_occluded_by_unselected_hero_fails_closed",
+      "frame": 90,
+      "before": [
+        {
+          "id": 0,
+          "state": "LOST",
+          "missedFrames": 90,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": false,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 90,
+          "privacySelected": true,
+          "id": 0,
+          "state": "LOST",
+          "observed": false,
+          "observationAge": 90,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": false,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "face_only_selected_root_occluded_by_unselected_hero_fails_closed",
+      "frame": 0,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "face_only_selected_root_occluded_by_unselected_hero_fails_closed",
+      "frame": 90,
+      "before": [
+        {
+          "id": 0,
+          "state": "LOST",
+          "missedFrames": 90,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true
+        },
+        {
+          "id": 1,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": false,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 90,
+          "privacySelected": true,
+          "id": 0,
+          "state": "LOST",
+          "observed": false,
+          "observationAge": 90,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 0
+        },
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": false,
+          "id": 1,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "selected_identity_long_gap_fails_closed",
+      "frame": 0,
+      "before": [
+        {
+          "id": 0,
+          "state": "ACTIVE",
+          "missedFrames": 0,
+          "observed": true,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": false
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 0,
+          "privacySelected": true,
+          "id": 0,
+          "state": "ACTIVE",
+          "observed": true,
+          "observationAge": 0,
+          "outputPresent": true,
+          "fallback": false,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "selected_identity_long_gap_fails_closed",
+      "frame": 15,
+      "before": [
+        {
+          "id": 0,
+          "state": "REACQUIRING",
+          "missedFrames": 15,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 15,
+          "privacySelected": true,
+          "id": 0,
+          "state": "LOST",
+          "observed": false,
+          "observationAge": 15,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "selected_identity_long_gap_fails_closed",
+      "frame": 16,
+      "before": [
+        {
+          "id": 0,
+          "state": "LOST",
+          "missedFrames": 16,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 16,
+          "privacySelected": true,
+          "id": 0,
+          "state": "LOST",
+          "observed": false,
+          "observationAge": 16,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    },
+    {
+      "case": "selected_identity_long_gap_fails_closed",
+      "frame": 90,
+      "before": [
+        {
+          "id": 0,
+          "state": "LOST",
+          "missedFrames": 90,
+          "observed": false,
+          "identityProtected": true,
+          "privacySelected": true,
+          "outputPresent": true,
+          "fallback": true
+        }
+      ],
+      "canonical": [
+        {
+          "identityProtected": true,
+          "missedFrames": 90,
+          "privacySelected": true,
+          "id": 0,
+          "state": "LOST",
+          "observed": false,
+          "observationAge": 90,
+          "outputPresent": true,
+          "fallback": true,
+          "occlusionGraceRemaining": 0
+        }
+      ]
+    }
+  ]
+}

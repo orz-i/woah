@@ -1,0 +1,83 @@
+{
+  "status": "targeted_privacy_repair_visually_verified_not_final62",
+  "at_utc": "2026-11-07T07:03:07.159436+00:00",
+  "index_sha256": "55c2547ff69487fcf5bd21a1f75e2e229d08705212ed39e616d5eac18ba82743",
+  "compiled_source_commit": "5158b97004d92efece0d923bdcb2688e7f05a207",
+  "scope": "All3 actual source/failed/fixed movie comparison pages inspected at all12 previously confirmed leak frames; both actual native preview times7400/8120 inspected with per-frame independent bbox mapping. Eyes/nose/mouth are now obscured at these probes. Full581 movie exported. Does not accept all62 cases or resolve media topology.",
+  "source_frames": [
+    185,
+    186,
+    188,
+    189,
+    190,
+    193,
+    194,
+    201,
+    202,
+    203,
+    204,
+    205
+  ],
+  "decisions": [
+    {
+      "source_frame": 185,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 186,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 188,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 189,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 190,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 193,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 194,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 201,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 202,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 203,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 204,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    },
+    {
+      "source_frame": 205,
+      "decision": "identifying_features_obscured_in_actual_encoded_output"
+    }
+  ],
+  "native_preview_decisions": [
+    {
+      "requested_ms": 7400,
+      "decision": "identifying_features_obscured",
+      "comparison_sha256": "3ae120799eda7882cf39eb8b1af78773a329fe013f9544cd3fb01e63c333191e"
+    },
+    {
+      "requested_ms": 8120,
+      "decision": "identifying_features_obscured",
+      "comparison_sha256": "23e5a4aaf912298a24004e6da0a7d65a80e8f61735fac62173a24c8e4a8c753f"
+    }
+  ]
+}
