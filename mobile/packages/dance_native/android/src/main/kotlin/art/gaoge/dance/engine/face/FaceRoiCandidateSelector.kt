@@ -16,11 +16,25 @@ data class FaceRoiCandidateSelection(
  * the accepted face must stay close to the target person's planned head anchor.
  */
 object FaceRoiCandidateSelector {
-    fun ownedObservations(faces: List<FaceObservation>,plan: FaceHeadRoiPlan,personBbox: FloatRect): List<FaceObservation> {
+    fun ownedObservations(faces: List<FaceObservation>,plan: FaceHeadRoiPlan,personBbox: FloatRect,
+        currentMask: art.gaoge.dance.engine.inference.NativeMask? = null): List<FaceObservation> {
         val r=plan.sourceRect
-        return art.gaoge.dance.engine.core.FrameKernel.faceOwnedNative(faces.coreRecords(),
+        var pixels:ByteArray?=null
+        var transform:FloatArray?=null
+        if(currentMask!=null) {
+            val mapper=currentMask.mapper ?: return emptyList()
+            if(currentMask.width<=1||currentMask.height<=1||currentMask.width>1024||currentMask.height>1024)return emptyList()
+            val count=Math.multiplyExact(currentMask.width,currentMask.height)
+            if(currentMask.buffer.limit()<count||currentMask.buffer.capacity()<count)return emptyList()
+            val currentPixels=ByteArray(count)
+            currentMask.buffer.duplicate().apply{position(0);limit(count);get(currentPixels)}
+            pixels=currentPixels
+            transform=floatArrayOf(mapper.scale,mapper.padLeft,mapper.padTop,mapper.srcWidth.toFloat(),mapper.srcHeight.toFloat(),mapper.modelInputSize.toFloat(),mapper.protoSize.toFloat())
+        }
+        return art.gaoge.dance.engine.core.FrameKernel.currentFaceOwnedNative(faces.coreRecords(),
             floatArrayOf(r.left,r.top,r.right,r.bottom),plan.outputSize.toFloat(),
-            floatArrayOf(personBbox.left,personBbox.top,personBbox.right,personBbox.bottom)).map { faces[it] }
+            floatArrayOf(personBbox.left,personBbox.top,personBbox.right,personBbox.bottom),
+            pixels,currentMask?.width ?: 0,currentMask?.height ?: 0,transform).map { faces[it] }
     }
     fun select(faces: List<FaceObservation>,roiWidth: Int,roiHeight: Int,anchorX: Float,anchorY: Float,
         maxAnchorDistanceRatio: Float=0.22f,minAnchorSeparationRatio: Float=0.04f): FaceRoiCandidateSelection? {

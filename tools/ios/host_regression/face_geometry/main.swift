@@ -184,3 +184,27 @@ guard let actual=regions[-2_185_002] else {fatalError("actual current protected 
 let actualCoverage=partialFaceCoverage(SIMD4(actual.centerX,actual.centerY,actual.radiusX,actual.radiusY))
 precondition(actualCoverage==1,"real-frame185 production fallback leaves visible feature core=\(actualCoverage)")
 print("CURRENT_HEAD_PRODUCTION_SCENE=PASS people=5 detail=6 partial_face_full_bbox=\(actualCoverage)")
+
+// Synthetic rectangles only: an overlapping neighbor observation cannot replace
+// the selected person's own head fallback. Original Android captures stay local.
+let ownershipPre=IOSYoloPreprocessResult(input:[],scale:1,padLeft:0,padTop:0,sourceWidth:640,sourceHeight:640,inputSize:640)
+func rectangleMask(_ left:Int,_ right:Int)->[UInt8] {
+  var pixels=[UInt8](repeating:0,count:25600)
+  for y in 4..<80 {for x in left..<right {pixels[y*160+x]=255}}
+  return pixels
+}
+let ownershipFace=IOSFaceCandidate(x1:320,y1:120,x2:420,y2:220,confidence:0.9)
+let ownershipOwn=person(SIMD4(0,0,640,640),rectangleMask(4,70))
+let ownershipNeighbor=person(SIMD4(240,0,600,640),rectangleMask(76,110))
+precondition(!IOSFrameKernelFaceGeometry.currentOwned(ownershipFace,person:ownershipOwn,preprocess:ownershipPre))
+precondition(IOSFrameKernelFaceGeometry.currentOwned(ownershipFace,person:ownershipNeighbor,preprocess:ownershipPre))
+final class SyntheticOwnershipLocator:IOSFaceLocating {
+  func locateFaces(in image:CGImage)throws->[IOSFaceCandidate] {[ownershipFace]}
+}
+let ownershipResolver=IOSFacePrivacyTemporalResolver(locator:SyntheticOwnershipLocator())
+let ownershipRegions=try ownershipResolver.resolve(image:blank,
+  persons:[IOSPreviewPerson(id:0,detection:ownershipOwn),IOSPreviewPerson(id:1,detection:ownershipNeighbor)],
+  faceOnlyIds:[0,1],preprocess:ownershipPre,timestampUs:0)
+precondition(ownershipRegions[0]?.source == .yoloHeadFallback)
+precondition(ownershipRegions[1]?.source == .detectedFace)
+print("CURRENT_FACE_OWNERSHIP_PRODUCTION_SYNTHETIC=PASS overlapping_people=2")

@@ -484,9 +484,9 @@ final class IOSFacePrivacyTemporalResolver {
 
   private func associationScore(face: IOSFaceCandidate, person: IOSYoloDetection,
     preprocess: IOSYoloPreprocessResult? = nil, requireMaskSupport: Bool = false) -> Float32? {
-    if requireMaskSupport {
-      guard let preprocess, IOSFacePrivacyGeometry.faceOwnedByCurrentMask(face,person:person,preprocess:preprocess) else {return nil}
-    }
+    if let preprocess, !person.mask.isEmpty {
+      guard IOSFrameKernelFaceGeometry.currentOwned(face,person:person,preprocess:preprocess) else {return nil}
+    } else if requireMaskSupport { return nil }
     return IOSFrameKernelFaceGeometry.score(face,person:person)
   }
 

@@ -16,6 +16,7 @@ internal object FrameKernel {
     external fun faceCenterNative(row:FloatArray):FloatArray
     external fun faceSelectNative(rows:FloatArray,view:FloatArray,ax:Float,ay:Float,maximum:Float,separation:Float):FloatArray?
     external fun faceOwnedNative(rows:FloatArray,source:FloatArray,size:Float,person:FloatArray):IntArray
+    external fun currentFaceOwnedNative(rows:FloatArray,source:FloatArray,size:Float,person:FloatArray,pixels:ByteArray?,width:Int,height:Int,transform:FloatArray?):IntArray
 
     external fun gridFaceInputNative(rgba:ByteBuffer,width:Int,height:Int,stride:Int):FloatArray
     external fun gridFaceDecodeNative(boxes:FloatArray,scores:FloatArray,width:Int,height:Int,minimum:Float):FloatArray

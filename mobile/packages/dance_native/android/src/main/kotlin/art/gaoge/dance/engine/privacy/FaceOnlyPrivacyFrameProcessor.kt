@@ -1099,7 +1099,8 @@ class FaceOnlyPrivacyFrameProcessor(
                     // A broad ROI can see a neighbor even when this person's
                     // own face is in profile. Anchor proximity is not ownership.
                     val ownedFaces = FaceRoiCandidateSelector.ownedObservations(
-                        locatorResult.observations, plan, person.bbox
+                        locatorResult.observations, plan, person.bbox,
+                        currentMask = person.mask.takeIf { trackedPerson.observedThisFrame }
                     )
                     val selectedFace = if (isDormantProbe) {
                         FaceRoiCandidateSelector.select(
@@ -1254,7 +1255,8 @@ class FaceOnlyPrivacyFrameProcessor(
                         }
                         val selectedFace = FaceRoiCandidateSelector.select(
                             faces = FaceRoiCandidateSelector.ownedObservations(
-                                locatorResult.observations, reacquirePlan, person.bbox
+                                locatorResult.observations, reacquirePlan, person.bbox,
+                                currentMask = person.mask.takeIf { trackedPerson.observedThisFrame }
                             ),
                             roiWidth = FACE_ROI_SIZE,
                             roiHeight = FACE_ROI_SIZE,

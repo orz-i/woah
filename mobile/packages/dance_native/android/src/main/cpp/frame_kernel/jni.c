@@ -605,6 +605,33 @@ JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_faceOwn
  if(out&&count)(*env)->SetIntArrayRegion(env,out,0,count,indices);return out;
 }
 
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_currentFaceOwnedNative(JNIEnv *env,jobject self,jfloatArray rows,jfloatArray source,jfloat size,jfloatArray person,jbyteArray pixels,jint width,jint height,jfloatArray transform) {
+ (void)self;FrameKernelRect view={0};FrameKernelHeadMaskSpec spec={0};
+ if(!read_rect(env,source,&view)||!read_rect(env,person,&spec.person))return NULL;
+ jsize n=rows?(*env)->GetArrayLength(env,rows):-1;
+ if(n<0||n%18||n>4096*18){invalid(env);return NULL;}
+ if(!n)return (*env)->NewIntArray(env,0);
+ jsize len=pixels?(*env)->GetArrayLength(env,pixels):0;
+ if(len){
+  if(width<=1||height<=1||width>1024||height>1024||len!=width*height){invalid(env);return NULL;}
+  spec.width=(uint32_t)width;spec.height=(uint32_t)height;
+  if(!read_transform(env,transform,&spec.transform))return NULL;
+ }
+ jfloat *v=(*env)->GetFloatArrayElements(env,rows,NULL);if(!v)return NULL;
+ jbyte *bytes=len?(*env)->GetByteArrayElements(env,pixels,NULL):NULL;
+ if(len&&!bytes){(*env)->ReleaseFloatArrayElements(env,rows,v,JNI_ABORT);return NULL;}
+ jint indices[4096];int count=0,bad=0;
+ for(int i=0;i<n/18;i++){
+  uint32_t owned=0;
+  int status=frame_kernel_current_face_owned((const uint8_t*)bytes,(size_t)len,spec,v+i*18,&view,size,0.0f,&owned);
+  if(status!=FRAME_KERNEL_REGION_OK){bad=1;break;}if(owned)indices[count++]=i;
+ }
+ if(bytes)(*env)->ReleaseByteArrayElements(env,pixels,bytes,JNI_ABORT);
+ (*env)->ReleaseFloatArrayElements(env,rows,v,JNI_ABORT);
+ if(bad){invalid(env);return NULL;}jintArray out=(*env)->NewIntArray(env,count);
+ if(out&&count)(*env)->SetIntArrayRegion(env,out,0,count,indices);return out;
+}
+
 JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_classSummaryNative(JNIEnv *env,jobject self,jlong id){
  (void)self;uint32_t values[8];if(frame_kernel_class_summary((uint64_t)id,values)){invalid(env);return NULL;}
  jint out[8];for(int i=0;i<8;i++)out[i]=(jint)values[i];jintArray result=(*env)->NewIntArray(env,8);
