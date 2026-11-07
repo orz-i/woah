@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 import CryptoKit
-import FrameKernelC
+@_implementationOnly import FrameKernelC
 #if canImport(TensorFlowLite)
 import TensorFlowLite
 #endif

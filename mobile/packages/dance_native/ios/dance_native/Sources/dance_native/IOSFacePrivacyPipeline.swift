@@ -759,8 +759,10 @@ final class IOSFacePrivacyTemporalResolver {
   private func uniqueCurrentOwner(face: IOSFaceCandidate, persons: [IOSPreviewPerson],
                                   unmaskedPersonId: Int?, preprocess: IOSYoloPreprocessResult) -> Int? {
     let ranked = persons.compactMap { person -> (Int, Float32)? in
-      guard let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
-            IOSFrameKernel.selectFace([face],plan:plan) != nil else {return nil}
+      if person.id != unmaskedPersonId {
+        guard let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
+              IOSFrameKernel.selectFace([face],plan:plan) != nil else {return nil}
+      }
       return associationScore(face: face, person: person.detection, preprocess: preprocess,
         requireMaskSupport: person.id == unmaskedPersonId).map { (person.id, $0) }
     }.sorted { $0.1 > $1.1 }
@@ -794,11 +796,20 @@ final class IOSFacePrivacyTemporalResolver {
     var accepted: [Int: Int] = [:]
     for person in persons {
       let options = candidates.filter { $0.personId == person.id }
-      guard let preprocess,
-            let plan = IOSFrameKernel.faceHeadPlan(person.detection,
-              width: preprocess.sourceWidth, height: preprocess.sourceHeight),
-            let chosen = IOSFrameKernel.selectFace(options.map { faces[$0.faceIndex] }, plan: plan) else { continue }
-      let best = options[chosen]
+      let best: MatchCandidate
+      if person.id == unmaskedPersonId {
+        // A hero exemption requires current instance pixels, not a body-box head guess.
+        // Preserve that existing stronger ownership path when raised arms widen the box.
+        let ranked=options.sorted { $0.score > $1.score }
+        guard let first=ranked.first else {continue}
+        if ranked.count>1 && first.score-ranked[1].score<ambiguityMargin {continue}
+        best=first
+      } else {
+        guard let preprocess,
+              let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
+              let chosen=IOSFrameKernel.selectFace(options.map {faces[$0.faceIndex]},plan:plan) else {continue}
+        best=options[chosen]
+      }
       let competingPersons = candidates
         .filter { $0.faceIndex == best.faceIndex && $0.personId != person.id }
         .sorted { $0.score > $1.score }

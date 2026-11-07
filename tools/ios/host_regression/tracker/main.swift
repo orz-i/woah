@@ -351,10 +351,12 @@ final class MovingFaceLocator: IOSFaceLocating {
 }
 let movingLocator=MovingFaceLocator()
 let movingResolver=IOSFacePrivacyTemporalResolver(locator:movingLocator)
-let widePerson=IOSPreviewPerson(id:0,detection:box(4,4,62,60))
+// The current body moves with the detected face; both inputs satisfy the shared head gate.
+let widePerson=IOSPreviewPerson(id:0,detection:box(4,4,32,60))
+let movedPerson=IOSPreviewPerson(id:0,detection:box(24,4,62,60))
 _=try movingResolver.resolve(image:image,persons:[widePerson],faceOnlyIds:[0],preprocess:smallPrep,timestampUs:0)
 movingLocator.faces=[faceBox(42,58)]
-let moved=try movingResolver.resolve(image:image,persons:[widePerson],faceOnlyIds:[0],preprocess:smallPrep,timestampUs:40_000)[0]!
+let moved=try movingResolver.resolve(image:image,persons:[movedPerson],faceOnlyIds:[0],preprocess:smallPrep,timestampUs:40_000)[0]!
 let currentFace=IOSFacePrivacyGeometry.detectedEllipse(movingLocator.faces[0])!
 test(abs(moved.centerX-currentFace.centerX)<0.001 && abs(moved.centerY-currentFace.centerY)<0.001,
      "current detected face was delayed by the old fallback position")
