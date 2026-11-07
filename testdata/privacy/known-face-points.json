@@ -1,0 +1,44 @@
+{
+  "source": "solo-portrait-7570258.mp4",
+  "source_sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+  "width": 2160,
+  "height": 4096,
+  "frame_period_us": 40000,
+  "radius_source_pixels": 12,
+  "minimum_red_fraction": 0.9,
+  "provenance": "Existing independently reviewed raised-arm source points, retained from temporal-region-state cold-trim regression. Vision source scans omit this partial face.",
+  "points": {
+    "556": [
+      1320,
+      1180
+    ],
+    "557": [
+      1304,
+      1180
+    ],
+    "558": [
+      1288,
+      1180
+    ],
+    "559": [
+      1272,
+      1176
+    ],
+    "560": [
+      1243,
+      1173
+    ],
+    "561": [
+      1214,
+      1177
+    ],
+    "562": [
+      1187,
+      1179
+    ],
+    "563": [
+      1168,
+      1186
+    ]
+  }
+}

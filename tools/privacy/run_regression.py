@@ -229,6 +229,8 @@ def main():
         if not path.is_file() or path.stat().st_size!=expected['bytes'] or sha(path)!=expected['sha256']:
             raise RuntimeError(f'Frozen fixture mismatch: {name}')
     selected=[s for s in matrix['suites'] if args.suite in ['all',s['id']]]
+    if not any(not args.case_filter or re.fullmatch(args.case_filter,c['case']) for suite in selected for c in suite['cases']):
+        raise ValueError('No cases match the requested suite/filter; no regression was executed')
     deadline=time.monotonic()+args.deadline_hours*3600
     adapter=Android(args) if args.platform=='android' else None
     failed=[]
