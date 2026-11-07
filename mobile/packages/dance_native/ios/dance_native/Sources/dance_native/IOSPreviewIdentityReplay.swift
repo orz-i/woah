@@ -10,11 +10,17 @@ final class IOSPreviewIdentityReplay {
   private var lastUs: Int64?
   private var session: IOSSharedTrackingSession?
   private var persons: [IOSPreviewPerson] = []
+#if DEBUG && targetEnvironment(simulator)
+  private var recorder: IOSPrivacyIdentityFrameRecorder?
+#endif
 
   func clear(cacheId: String? = nil) {
     lock.lock(); defer { lock.unlock() }
     if cacheId == nil || self.cacheId == cacheId {
       session = nil; key = nil; self.cacheId = nil; lastUs = nil; persons = []
+#if DEBUG && targetEnvironment(simulator)
+      recorder = nil
+#endif
     }
   }
   func resolve(cacheId: String, key: String, metadata: IOSAnalysisMetadata?, scope: UInt32,
@@ -34,6 +40,12 @@ final class IOSPreviewIdentityReplay {
         try created.configure(protected: required.union(credible), body: body, face: face.subtracting(body),
           dormancy: !body.isEmpty && !face.isEmpty)
         session = created
+#if DEBUG && targetEnvironment(simulator)
+        if let source=(asset as? AVURLAsset)?.url {
+          recorder=IOSPrivacyIdentityFrameRecorder(sourceURL:source,metadata:metadata,fullBodyIds:body,
+            faceOnlyIds:face,followId:hero,frameWidth:image.width,frameHeight:image.height,pipeline:"preview")
+        }
+#endif
       }
       guard plan.count > 0, let session else { return persons }
       let generator = AVAssetImageGenerator(asset: asset)
@@ -59,8 +71,16 @@ final class IOSPreviewIdentityReplay {
         }
         let assigned = lastUs == nil ? try IOSPreviewIdentityMatcher.assign(detections: current.detections,
           metadata: metadata, frameWidth: result.1, frameHeight: result.2).map(\.id) : []
+#if DEBUG && targetEnvironment(simulator)
+        recorder?.recordInput(current,timestampUs:at)
+#endif
         let snapshot = try session.step(action: lastUs == nil ? 0 : 1, timestampUs: at,
           observations: observations, assignedIds: assigned)
+#if DEBUG && targetEnvironment(simulator)
+        let credible=face.isEmpty ? Set<Int>():Set((metadata?.persons ?? []).filter{$0.confidence>=0.60}.map(\.id))
+        recorder?.recordSharedSnapshot(snapshot,timestampUs:at,action:lastUs == nil ? 0:1,assigned:assigned,
+          protected:required.union(credible),body:body,face:face.subtracting(body))
+#endif
         if lastUs == nil {
           guard required.isSubset(of: Set(snapshot.regions.map(\.id))) else {
             throw PigeonError(code: "PREVIEW_PRIVACY_UNRESOLVED",
