@@ -1,0 +1,7 @@
+{
+  "schema": "frame-kernel-native-observation-geometry-v1",
+  "source_commit": "a6316fd2",
+  "source_path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSFacePrivacyPipeline.swift",
+  "canonical_lf_sha256": "5422a07f046f8fee3e58e9e9e16a094611076b4af05ae4a00fcb1ac2b7692393",
+  "scope": "Original native current-mask support, upper-body search, cross-view merge and global face scoring; original bodies copied before production replacement. Baseline native versus test-only copies is checked on 512 cases before Rust port. Existing JNI/Swift frozen head/region corpus and fail-closed tests remain unchanged."
+}

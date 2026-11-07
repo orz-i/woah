@@ -16,6 +16,17 @@ func bits(_ value:SIMD4<Float>?)->[UInt32]? {value.map{[$0.x.bitPattern,$0.y.bit
 func person(_ box:SIMD4<Float>,_ mask:[UInt8]=[])->IOSYoloDetection {
   IOSYoloDetection(x1:box.x,y1:box.y,x2:box.z,y2:box.w,confidence:0.9,mask:mask)
 }
+func observationSamples(_ face:IOSFaceCandidate,index:Int)->[IOSFaceCandidate] {
+  let w=face.x2-face.x1,h=face.y2-face.y1
+  let offsets:[(Float,Float,Float,Int)]=[(0,0,1,0),(3*w,0,1,0),(w*0.01,h*0.01,1.1,index%4),(0,0,1,0),(3*w,w*0.01,1.05,2)]
+  return offsets.enumerated().map { i,v in
+    IOSFaceCandidate(x1:face.x1+v.0,y1:face.y1+v.1,x2:face.x1+v.0+w*v.2,y2:face.y1+v.1+h*v.2,confidence:Float(i+1)/10,observationView:v.3)
+  }
+}
+func observationOwner(_ face:IOSFaceCandidate)->Int? {face.observationView==3 ? nil:(face.confidence<0.25 ? 10:20)}
+func observationIndices(_ output:[IOSFaceCandidate],in input:[IOSFaceCandidate])->[Int] {
+  output.map { f in input.firstIndex { $0.confidence.bitPattern==f.confidence.bitPattern }! }
+}
 let data=try Data(contentsOf:URL(fileURLWithPath:"crates/frame-kernel/testdata/face-region-native-v1.bin"))
 let sha=SHA256.hash(data:data).map{String(format:"%02x",$0)}.joined()
 precondition(sha=="e0e75f439552d6e7599c73f1020dd1d1d7f5323db0db26a4628bf10035b96298")
@@ -34,6 +45,17 @@ for index in 0..<512 {
   precondition(pixels.count==25600)
   let expected=r.flag() ? [r.u(),r.u()]:nil
   let current=person(body,pixels)
+  let region=IOSFacePrivacyEllipse(centerX:seed.x,centerY:seed.y,radiusX:seed.z,radiusY:seed.w,source:.detectedFace)
+  let oldSupport=CanonicalObservationGeometry.currentMaskSupport(region,person:current,preprocess:pre)
+  let productionSupport=IOSFacePrivacyGeometry.currentMaskSupport(region,person:current,preprocess:pre)
+  precondition(oldSupport==productionSupport,"native support baseline case\(index)")
+  precondition(CanonicalObservationGeometry.upperBodyFaceSearchRegion(current)==IOSFacePrivacyGeometry.upperBodyFaceSearchRegion(current),"native search baseline case\(index)")
+  let samples=observationSamples(face,index:index)
+  let owner:((IOSFaceCandidate)->Int?)?=index%2==0 ? observationOwner:nil
+  let oldMerge=CanonicalObservationGeometry.mergeFaceObservations(Array(samples.prefix(2)),detail:Array(samples.dropFirst(2)),ownerOf:owner)
+  let productionMerge=IOSFacePrivacyGeometry.mergeFaceObservations(Array(samples.prefix(2)),detail:Array(samples.dropFirst(2)),ownerOf:owner)
+  precondition(observationIndices(oldMerge,in:samples)==observationIndices(productionMerge,in:samples),"native merge baseline case\(index)")
+
   let head=IOSFrameKernelFaceGeometry.estimate(pixels,person:current,seed:seed,preprocess:pre)
   precondition(head.map{[$0.x.bitPattern,$0.y.bitPattern]}==expected,"head case\(index)")
   precondition(bits(IOSFrameKernelFaceGeometry.trusted(pixels,person:current,previous:current,seed:seed,expansion:1.10,preprocess:pre))==r.region(2),"trusted case\(index)")
@@ -58,4 +80,5 @@ for i in 0..<512 {
 }
 print("TRUSTED_REGION_PROJECTION_NATIVE=PASS cases=512")
 precondition(r.at==r.bytes.count)
+print("OBSERVATION_GEOMETRY_NATIVE_BASELINE=PASS cases=512")
 print("SHARED_FACE_GEOMETRY_NATIVE_CORPUS=PASS cases=512 sha256=\(sha)")
