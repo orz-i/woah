@@ -4,7 +4,7 @@ use crate::{
 };
 
 // Transport record: xyxy, confidence, point count, six xy points. No pointer retained.
-fn decode(row: &[f32]) -> Option<Candidate> {
+pub(crate) fn decode(row: &[f32]) -> Option<Candidate> {
     if row.len() != 18
         || !row.iter().all(|x| x.is_finite())
         || row[5] < 0.0

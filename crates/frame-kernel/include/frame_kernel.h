@@ -238,6 +238,14 @@ int32_t frame_kernel_face_center(const float *row18, float *output2);
 int32_t frame_kernel_face_select(const float *rows18, size_t count, FrameKernelRect view,
     float anchor_x, float anchor_y, float maximum, float separation, float *distance);
 int32_t frame_kernel_face_owned(const float *row18, FrameKernelRect source, float output_size, FrameKernelRect person);
+/* Region APIs below ALL return0 success,1 no supporting evidence,-1 invalid.
+   Nonzero results leave outputs unchanged. Inputs/outputs are borrowed per call. */
+enum { FRAME_KERNEL_REGION_OK=0, FRAME_KERNEL_REGION_NONE=1, FRAME_KERNEL_REGION_INVALID=-1 };
+typedef struct FrameKernelHeadMaskSpec { uint32_t width,height; FrameKernelTransform transform; FrameKernelRect person; } FrameKernelHeadMaskSpec;
+int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRect *view,float output_size,float yaw,FrameKernelEllipse *output);
+int32_t frame_kernel_head_fallback(FrameKernelRect person,FrameKernelEllipse *output);
+int32_t frame_kernel_mask_head(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse seed,float *output2);
+int32_t frame_kernel_trusted_mask_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelRect previous,FrameKernelEllipse trusted,float expansion,FrameKernelEllipse *output);
 int32_t frame_kernel_grid_face_input(const uint8_t *rgba, size_t bytes, uint32_t width,
  uint32_t height, uint32_t stride, float *output, size_t length);
 int32_t frame_kernel_grid_face_decode(const float *boxes, size_t box_len,
