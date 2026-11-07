@@ -90,6 +90,7 @@ class FaceOnlyPrivacyFrameProcessor(
     private val maxDetectorCallsPerFrame: Int = DEFAULT_MAX_DETECTOR_CALLS_PER_FRAME
 ) : AutoCloseable {
 
+    private var observationCapture: AndroidFaceObservationCapture? = null
     private val pixelMotionTracker = FacePixelMotionTracker()
     private val canonicalRoiBuffer = ByteBuffer.allocateDirect(FACE_ROI_SIZE * FACE_ROI_SIZE * 4)
     private val canonicalRoiWorkspace = CanonicalFaceRoiSampler.Workspace(FACE_ROI_SIZE)
@@ -876,6 +877,7 @@ class FaceOnlyPrivacyFrameProcessor(
         }
         val dueDetectorTrackIds = detectorCandidates.take(detectorBudget).toSet()
 
+        val capturedFrame = observationCapture?.begin(ptsUs, mapper, persons)
         val faceMasks = linkedMapOf<Int, NativeMask>()
         val qaFaceRegions = if (art.gaoge.dance.engine.diagnostics.DiagnosticsBuild.metadataOnly) linkedMapOf<Int, FacePrivacyEllipse>() else null
         val detected = linkedSetOf<Int>()
@@ -1126,6 +1128,7 @@ class FaceOnlyPrivacyFrameProcessor(
                             anchorY = plan.anchorY
                         )
                     }
+                    capturedFrame?.detector(trackId, plan, locatorResult.observations, selectedFace?.face)
                     emitRoiDiagnostic(
                         phase = "NORMAL",
                         trackId = trackId,
@@ -1608,6 +1611,7 @@ class FaceOnlyPrivacyFrameProcessor(
             )
         }
 
+        capturedFrame?.finish(qaFaceRegions.orEmpty())
         return FaceOnlyPrivacyFrameResult(
             resolvedPrivacy = resolved,
             readyForRender = unresolved.isEmpty() &&
@@ -1709,7 +1713,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 locator = locator,
                 mapper = mapper,
                 diagnosticJobId = diagnosticJobId
-            )
+            ).apply { observationCapture = AndroidFaceObservationCapture.create(context, diagnosticJobId) }
         }
     }
 }
