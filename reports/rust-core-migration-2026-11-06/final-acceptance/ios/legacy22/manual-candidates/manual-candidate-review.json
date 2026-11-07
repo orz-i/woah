@@ -1,0 +1,1127 @@
+{
+  "run_id": "shared_policy_final_v2_legacy22",
+  "reviewed_utc": "2026-11-07T03:21:25.230317+00:00",
+  "candidate_index_sha256": "d83b6ba96091e38b20bf8fab4001bcbd517ae31d505f1d7d626490e684970d58",
+  "raw_status_unchanged": true,
+  "reviewed_pages": [
+    {
+      "file": "candidates-00.jpg",
+      "sha256": "8f687791dadd994dc3c76350b0e3af8e23c8058d040496264b331fa06ef43bec",
+      "first_index": 0,
+      "last_index": 7
+    },
+    {
+      "file": "candidates-01.jpg",
+      "sha256": "86bd40b2aac4ec7907319fd5698ac96b93bde469464d06ee9e803a7c9e992a4a",
+      "first_index": 8,
+      "last_index": 15
+    },
+    {
+      "file": "candidates-02.jpg",
+      "sha256": "6d5594e23c5159edb536aa94a629c962b1d8ad124320d36977b4db84e30a3a6e",
+      "first_index": 16,
+      "last_index": 23
+    },
+    {
+      "file": "candidates-03.jpg",
+      "sha256": "50c6668479120d1f6c356da72d01fcdd6352ab0b0400ff25e86f54527ec679ed",
+      "first_index": 24,
+      "last_index": 31
+    },
+    {
+      "file": "candidates-04.jpg",
+      "sha256": "c821a64d5cf1e157647a10c45034d0235cc16ea70353c98a31fd8dd754377e99",
+      "first_index": 32,
+      "last_index": 39
+    },
+    {
+      "file": "candidates-05.jpg",
+      "sha256": "2b0e9e451958808af644a18222be46754d9ec8c1cdbafc73e8e0d04a37ef8781",
+      "first_index": 40,
+      "last_index": 47
+    },
+    {
+      "file": "candidates-06.jpg",
+      "sha256": "4f6c85fce6f00ac17c4b1f081eadef9ce2f8d93dd7195ec3a85059e8e91dd823",
+      "first_index": 48,
+      "last_index": 55
+    },
+    {
+      "file": "candidates-07.jpg",
+      "sha256": "863bb09c7c0f9aeb4c4cc7eda72e431bc3bf88d4f79a10f46a6212fa80ff019c",
+      "first_index": 56,
+      "last_index": 63
+    },
+    {
+      "file": "candidates-08.jpg",
+      "sha256": "45db9be37eda94f509d9c8a37a1466a3371776d72fb62b22bcfbd398b0428236",
+      "first_index": 64,
+      "last_index": 71
+    },
+    {
+      "file": "candidates-09.jpg",
+      "sha256": "a9931ae87e52cc65428a7fab99eba752fe379eedf88ee84d31b8ae2eb66882d3",
+      "first_index": 72,
+      "last_index": 79
+    },
+    {
+      "file": "candidates-10.jpg",
+      "sha256": "11ebffa44c4e89713380636b440936c4923b3057513fd6cbfcf3da279cbcce2b",
+      "first_index": 80,
+      "last_index": 87
+    },
+    {
+      "file": "candidates-11.jpg",
+      "sha256": "5c45dc350a4cc3e95ef94d33f782d487882d6b61c3045296e55058ef4d653ca8",
+      "first_index": 88,
+      "last_index": 95
+    },
+    {
+      "file": "candidates-12.jpg",
+      "sha256": "dc47d8dd5b8ba86b5b81fb6984caa8377671458a68dd0357a709d72eb189f638",
+      "first_index": 96,
+      "last_index": 103
+    },
+    {
+      "file": "candidates-13.jpg",
+      "sha256": "f08a86042a664429790c8f36ac48e45297c7a7e28c7ee3b1675ca7e7117e418f",
+      "first_index": 104,
+      "last_index": 111
+    },
+    {
+      "file": "candidates-14.jpg",
+      "sha256": "f9d3be5d99e423855025622d5d90c7e415becb04d927c30bb34cfa91e9aad622",
+      "first_index": 112,
+      "last_index": 119
+    },
+    {
+      "file": "candidates-15.jpg",
+      "sha256": "f4755c7e578a2daa97c8e77eed940c0ad2a6328dab2ef0c3097cb7cc571cfd8c",
+      "first_index": 120,
+      "last_index": 127
+    },
+    {
+      "file": "candidates-16.jpg",
+      "sha256": "cc1e11506745d3bc63e77c70a24f52348eaf39cc85ab76282e0920b8e9bc8e27",
+      "first_index": 128,
+      "last_index": 135
+    },
+    {
+      "file": "candidates-17.jpg",
+      "sha256": "f97b1ab405011b7518b5b9389a0b9f49be0cd6672ee2435c1c0431d13798e5d8",
+      "first_index": 136,
+      "last_index": 143
+    }
+  ],
+  "decisions": [
+    {
+      "index": 0,
+      "case": "group_face_sticker_follow",
+      "source_frame": 44,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 1,
+      "case": "group_face_sticker_follow",
+      "source_frame": 45,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 2,
+      "case": "group_face_solid_follow",
+      "source_frame": 44,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 3,
+      "case": "group_face_solid_follow",
+      "source_frame": 45,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 4,
+      "case": "group_full_length_follow",
+      "source_frame": 44,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 5,
+      "case": "group_full_length_follow",
+      "source_frame": 45,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 6,
+      "case": "group_full_length_follow",
+      "source_frame": 101,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 7,
+      "case": "group_full_length_follow",
+      "source_frame": 102,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 8,
+      "case": "group_full_length_follow",
+      "source_frame": 103,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 9,
+      "case": "group_full_length_follow",
+      "source_frame": 104,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 10,
+      "case": "group_full_length_follow",
+      "source_frame": 105,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 11,
+      "case": "group_full_length_follow",
+      "source_frame": 107,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 12,
+      "case": "group_full_length_follow",
+      "source_frame": 108,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 13,
+      "case": "group_full_length_follow",
+      "source_frame": 109,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 14,
+      "case": "group_full_length_follow",
+      "source_frame": 112,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 15,
+      "case": "group_full_length_follow",
+      "source_frame": 125,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 16,
+      "case": "group_full_length_follow",
+      "source_frame": 136,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 17,
+      "case": "group_full_length_follow",
+      "source_frame": 146,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 18,
+      "case": "group_full_length_follow",
+      "source_frame": 147,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 19,
+      "case": "group_full_length_follow",
+      "source_frame": 148,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 20,
+      "case": "group_full_length_follow",
+      "source_frame": 149,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 21,
+      "case": "group_full_length_follow",
+      "source_frame": 150,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 22,
+      "case": "group_full_length_follow",
+      "source_frame": 151,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 23,
+      "case": "group_full_length_follow",
+      "source_frame": 154,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 24,
+      "case": "group_full_length_follow",
+      "source_frame": 155,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 25,
+      "case": "group_full_length_follow",
+      "source_frame": 156,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 26,
+      "case": "group_full_length_follow",
+      "source_frame": 157,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 27,
+      "case": "group_full_length_follow",
+      "source_frame": 158,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 28,
+      "case": "group_full_length_follow",
+      "source_frame": 159,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 29,
+      "case": "group_full_length_follow",
+      "source_frame": 160,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 30,
+      "case": "group_full_length_follow",
+      "source_frame": 161,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 31,
+      "case": "group_full_length_follow",
+      "source_frame": 162,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 32,
+      "case": "group_full_length_follow",
+      "source_frame": 163,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 33,
+      "case": "group_full_length_follow",
+      "source_frame": 164,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 34,
+      "case": "group_full_length_follow",
+      "source_frame": 165,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 35,
+      "case": "group_full_length_follow",
+      "source_frame": 166,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 36,
+      "case": "group_full_length_follow",
+      "source_frame": 167,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 37,
+      "case": "group_full_length_follow",
+      "source_frame": 168,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 38,
+      "case": "group_full_length_follow",
+      "source_frame": 169,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 39,
+      "case": "group_full_length_follow",
+      "source_frame": 170,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 40,
+      "case": "group_full_length_follow",
+      "source_frame": 171,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 41,
+      "case": "group_full_length_follow",
+      "source_frame": 172,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 42,
+      "case": "group_full_length_follow",
+      "source_frame": 173,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 43,
+      "case": "group_full_length_follow",
+      "source_frame": 174,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 44,
+      "case": "group_full_length_follow",
+      "source_frame": 175,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 45,
+      "case": "group_full_length_follow",
+      "source_frame": 176,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 46,
+      "case": "group_full_length_follow",
+      "source_frame": 177,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 47,
+      "case": "group_full_length_follow",
+      "source_frame": 178,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 48,
+      "case": "group_full_length_follow",
+      "source_frame": 179,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 49,
+      "case": "group_full_length_follow",
+      "source_frame": 181,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 50,
+      "case": "group_full_length_follow",
+      "source_frame": 182,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 51,
+      "case": "group_full_length_follow",
+      "source_frame": 183,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 52,
+      "case": "group_full_length_follow",
+      "source_frame": 184,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 53,
+      "case": "group_full_length_follow",
+      "source_frame": 185,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 54,
+      "case": "group_full_length_follow",
+      "source_frame": 198,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 55,
+      "case": "group_full_length_follow",
+      "source_frame": 199,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 56,
+      "case": "group_full_length_follow",
+      "source_frame": 200,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 57,
+      "case": "group_full_length_follow",
+      "source_frame": 202,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 58,
+      "case": "group_full_length_follow",
+      "source_frame": 204,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 59,
+      "case": "group_full_length_follow",
+      "source_frame": 205,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 60,
+      "case": "group_full_length_follow",
+      "source_frame": 206,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 61,
+      "case": "group_full_length_follow",
+      "source_frame": 207,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 62,
+      "case": "group_full_length_follow",
+      "source_frame": 208,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 63,
+      "case": "group_full_length_follow",
+      "source_frame": 209,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 64,
+      "case": "group_full_length_follow",
+      "source_frame": 210,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 65,
+      "case": "group_full_length_follow",
+      "source_frame": 212,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 66,
+      "case": "group_full_length_follow",
+      "source_frame": 213,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 67,
+      "case": "group_full_length_follow",
+      "source_frame": 214,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 68,
+      "case": "group_full_length_follow",
+      "source_frame": 215,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 69,
+      "case": "group_full_length_follow",
+      "source_frame": 216,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 70,
+      "case": "group_full_length_follow",
+      "source_frame": 217,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 71,
+      "case": "group_full_length_follow",
+      "source_frame": 218,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 72,
+      "case": "group_full_length_follow",
+      "source_frame": 219,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 73,
+      "case": "group_full_length_follow",
+      "source_frame": 220,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 74,
+      "case": "group_full_length_follow",
+      "source_frame": 221,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 75,
+      "case": "group_full_length_follow",
+      "source_frame": 222,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 76,
+      "case": "group_full_length_follow",
+      "source_frame": 223,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 77,
+      "case": "group_full_length_follow",
+      "source_frame": 226,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 78,
+      "case": "group_full_length_follow",
+      "source_frame": 257,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 79,
+      "case": "group_full_length_follow",
+      "source_frame": 260,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 80,
+      "case": "group_full_length_follow",
+      "source_frame": 295,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 81,
+      "case": "group_full_length_follow",
+      "source_frame": 333,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 82,
+      "case": "group_full_length_follow",
+      "source_frame": 334,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 83,
+      "case": "group_full_length_follow",
+      "source_frame": 340,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 84,
+      "case": "group_full_length_follow",
+      "source_frame": 341,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 85,
+      "case": "group_full_length_follow",
+      "source_frame": 342,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 86,
+      "case": "group_full_length_follow",
+      "source_frame": 343,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 87,
+      "case": "group_full_length_follow",
+      "source_frame": 344,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 88,
+      "case": "group_full_length_follow",
+      "source_frame": 345,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 89,
+      "case": "group_full_length_follow",
+      "source_frame": 346,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 90,
+      "case": "group_full_length_follow",
+      "source_frame": 347,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 91,
+      "case": "group_full_length_follow",
+      "source_frame": 348,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 92,
+      "case": "group_full_length_follow",
+      "source_frame": 349,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 93,
+      "case": "group_full_length_follow",
+      "source_frame": 350,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 94,
+      "case": "group_full_length_follow",
+      "source_frame": 351,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 95,
+      "case": "group_full_length_follow",
+      "source_frame": 352,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 96,
+      "case": "group_full_length_follow",
+      "source_frame": 353,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 97,
+      "case": "group_full_length_follow",
+      "source_frame": 354,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 98,
+      "case": "group_full_length_follow",
+      "source_frame": 355,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 99,
+      "case": "group_full_length_follow",
+      "source_frame": 356,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 100,
+      "case": "group_full_length_follow",
+      "source_frame": 357,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 101,
+      "case": "group_full_length_follow",
+      "source_frame": 358,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 102,
+      "case": "group_full_length_follow",
+      "source_frame": 359,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 103,
+      "case": "group_full_length_follow",
+      "source_frame": 360,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 104,
+      "case": "group_full_length_follow",
+      "source_frame": 361,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 105,
+      "case": "group_full_length_follow",
+      "source_frame": 362,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 106,
+      "case": "group_full_length_follow",
+      "source_frame": 363,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 107,
+      "case": "group_full_length_follow",
+      "source_frame": 364,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 108,
+      "case": "group_full_length_follow",
+      "source_frame": 365,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 109,
+      "case": "group_full_length_follow",
+      "source_frame": 366,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 110,
+      "case": "group_full_length_follow",
+      "source_frame": 367,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 111,
+      "case": "group_full_length_follow",
+      "source_frame": 368,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 112,
+      "case": "group_full_length_follow",
+      "source_frame": 369,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 113,
+      "case": "group_full_length_follow",
+      "source_frame": 403,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 114,
+      "case": "group_full_length_follow",
+      "source_frame": 404,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 115,
+      "case": "group_full_length_follow",
+      "source_frame": 405,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 116,
+      "case": "group_full_length_follow",
+      "source_frame": 406,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 117,
+      "case": "group_full_length_follow",
+      "source_frame": 407,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 118,
+      "case": "group_full_length_follow",
+      "source_frame": 408,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 119,
+      "case": "group_full_length_follow",
+      "source_frame": 409,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 120,
+      "case": "group_full_length_follow",
+      "source_frame": 410,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 121,
+      "case": "group_full_length_follow",
+      "source_frame": 411,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 122,
+      "case": "group_full_length_follow",
+      "source_frame": 412,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 123,
+      "case": "group_full_length_follow",
+      "source_frame": 414,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 124,
+      "case": "group_full_length_follow",
+      "source_frame": 415,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 125,
+      "case": "group_full_length_follow",
+      "source_frame": 416,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 126,
+      "case": "group_full_length_follow",
+      "source_frame": 419,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 127,
+      "case": "group_full_length_follow",
+      "source_frame": 446,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 128,
+      "case": "group_full_length_follow",
+      "source_frame": 447,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 129,
+      "case": "group_full_length_follow",
+      "source_frame": 448,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 130,
+      "case": "group_full_length_follow",
+      "source_frame": 449,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 131,
+      "case": "group_full_length_follow",
+      "source_frame": 450,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 132,
+      "case": "group_full_length_follow",
+      "source_frame": 451,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 133,
+      "case": "group_full_length_follow",
+      "source_frame": 452,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 134,
+      "case": "group_full_length_follow",
+      "source_frame": 453,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 135,
+      "case": "group_full_length_follow",
+      "source_frame": 454,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 136,
+      "case": "group_full_length_follow",
+      "source_frame": 455,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 137,
+      "case": "group_full_length_follow",
+      "source_frame": 458,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 138,
+      "case": "group_full_length_follow",
+      "source_frame": 459,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 139,
+      "case": "group_full_length_follow",
+      "source_frame": 460,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 140,
+      "case": "group_full_length_follow",
+      "source_frame": 461,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 141,
+      "case": "group_full_length_follow",
+      "source_frame": 462,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 142,
+      "case": "group_full_length_follow",
+      "source_frame": 515,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    },
+    {
+      "index": 143,
+      "case": "group_full_length_follow",
+      "source_frame": 516,
+      "decision": "intentionally_exempt_hero6_teal",
+      "note": "Source face/context and actual output inspected; teal hero face remains clear. Red/sticker at crop margins belongs to protected people or occluding arm."
+    }
+  ],
+  "scope": "All18 actual candidate pages viewed.144 source-bound raw candidates are configured hero6; no automatic needs-review status is rewritten."
+}
