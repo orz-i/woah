@@ -1,0 +1,12 @@
+{
+  "process_id": 10756,
+  "status": "passed_api_checks",
+  "flower_ids": [],
+  "flower_no_person": true,
+  "corrupt_rejected": true,
+  "corrupt_error": "PlatformException(VIDEO_TRACK_NOT_FOUND, stage=probe; code=VIDEO_TRACK_NOT_FOUND, null, null)",
+  "valid_reimport_person_ids": [
+    0
+  ],
+  "valid_reimport": true
+}

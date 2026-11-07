@@ -1,0 +1,59 @@
+{
+  "run_id": "shared_policy_final_v2_legacy22",
+  "compiled_source_commit": "ce25a0d38a3c2c34e0d65b3967c0b32e7e7b1e10",
+  "source_sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+  "movie_sha256": "bf50522516659181aaa47b065dea432a9e901ec150c9a76f6192a844615ce79a",
+  "actual_export_samples": [
+    {
+      "output_frame": 165,
+      "source_frame": 165,
+      "source_pts_us": 6600000,
+      "source_bbox": [
+        1322.3081588745117,
+        266.67189091444016,
+        1391.1694765090942,
+        335.5332112312317
+      ],
+      "output_core": [
+        334,
+        329,
+        390,
+        385
+      ],
+      "coverage_fraction": 0.0
+    },
+    {
+      "output_frame": 295,
+      "source_frame": 295,
+      "source_pts_us": 11800000,
+      "source_bbox": [
+        1399.6079635620117,
+        274.63544458150864,
+        1468.3376669883728,
+        343.3651542663574
+      ],
+      "output_core": [
+        324,
+        338,
+        380,
+        394
+      ],
+      "coverage_fraction": 0.0
+    }
+  ],
+  "actual_native_previews": [
+    {
+      "requested_ms": 6600,
+      "control_sha256": "38f12cc2d694e4b48f8594d28ba7ced7b5e924ec5c7a47f061630e26be033746",
+      "protected_sha256": "4e69b86709d7d3d49e111e6ec7899411ea372dd34637dc0fb81816a051dc3d54",
+      "manual_decision": "teal_hero_clear_adjacent_blonde_protected"
+    },
+    {
+      "requested_ms": 11800,
+      "control_sha256": "bb662d84c41fb672e8a5a26c8118eb4fd347f097563f6b886901e40253ca5ea6",
+      "protected_sha256": "b397bdb756f28e01d153596b067a41e288a14d284c1cc82e80c072794f5f5ce7",
+      "manual_decision": "teal_hero_clear_adjacent_blonde_protected"
+    }
+  ],
+  "scope": "Independent actual face-core raw0red at exact165/295, all5nativepreviews and full-follow board freshly inspected. Whole581-frame media audit passed; does not establish remaining40cases."
+}
