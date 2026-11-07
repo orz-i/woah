@@ -252,6 +252,70 @@ pub fn trusted_fallback(
     })
 }
 
+/// Geometry-only projection. The caller still enforces the observation lease.
+/// A stale region is never evidence that a current face belongs to an identity.
+#[derive(Clone, Copy)]
+pub struct ProjectionOptions {
+    pub lease_us: i64,
+    pub minimum_scale: f32,
+    pub maximum_scale: f32,
+    pub age_expansion: f32,
+}
+impl Default for ProjectionOptions {
+    fn default() -> Self {
+        Self {
+            lease_us: 150_000,
+            minimum_scale: 0.88,
+            maximum_scale: 1.12,
+            age_expansion: 0.10,
+        }
+    }
+}
+pub fn project_trusted(
+    current: Rect,
+    previous: Rect,
+    trusted: Ellipse,
+    age_us: i64,
+    options: ProjectionOptions,
+) -> Option<Ellipse> {
+    let width = current.right - current.left;
+    let height = current.bottom - current.top;
+    let previous_width = previous.right - previous.left;
+    let previous_height = previous.bottom - previous.top;
+    if !current.valid()
+        || !previous.valid()
+        || !valid_seed(trusted)
+        || width <= 1.0
+        || height <= 1.0
+        || previous_width <= 1.0
+        || previous_height <= 1.0
+        || options.lease_us <= 0
+        || !options.minimum_scale.is_finite()
+        || !options.maximum_scale.is_finite()
+        || !options.age_expansion.is_finite()
+        || options.minimum_scale <= 0.0
+        || options.maximum_scale < options.minimum_scale
+        || options.age_expansion < 0.0
+    {
+        return None;
+    }
+    let wr = (width / previous_width.max(1.0)).max(0.1);
+    let hr = (height / previous_height.max(1.0)).max(0.1);
+    let scale = (wr * hr)
+        .sqrt()
+        .clamp(options.minimum_scale, options.maximum_scale);
+    let expansion = 1.0
+        + (age_us.clamp(0, options.lease_us) as f32 / options.lease_us as f32)
+            * options.age_expansion;
+    let [dx, dy] = anchor_translation(previous, current)?;
+    Some(Ellipse {
+        center_x: trusted.center_x + dx,
+        center_y: trusted.center_y + dy,
+        radius_x: (trusted.radius_x * scale * expansion).max(1.0),
+        radius_y: (trusted.radius_y * scale * expansion).max(1.0),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

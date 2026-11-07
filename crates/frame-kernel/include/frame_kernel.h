@@ -244,6 +244,8 @@ enum { FRAME_KERNEL_REGION_OK=0, FRAME_KERNEL_REGION_NONE=1, FRAME_KERNEL_REGION
 typedef struct FrameKernelHeadMaskSpec { uint32_t width,height; FrameKernelTransform transform; FrameKernelRect person; } FrameKernelHeadMaskSpec;
 int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRect *view,float output_size,float yaw,FrameKernelEllipse *output);
 int32_t frame_kernel_head_fallback(FrameKernelRect person,FrameKernelEllipse *output);
+/* Geometry only: caller enforces the observation lease before rendering. */
+int32_t frame_kernel_project_face_region(FrameKernelRect current,FrameKernelRect previous,FrameKernelEllipse trusted,int64_t age_us,FrameKernelEllipse *output);
 int32_t frame_kernel_mask_head(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse seed,float *output2);
 int32_t frame_kernel_trusted_mask_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelRect previous,FrameKernelEllipse trusted,float expansion,FrameKernelEllipse *output);
 int32_t frame_kernel_grid_face_input(const uint8_t *rgba, size_t bytes, uint32_t width,

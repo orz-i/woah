@@ -118,10 +118,65 @@ pub unsafe extern "C" fn frame_kernel_trusted_mask_region(
     REGION_OK
 }
 
+/// # Safety
+/// Output points to one disjoint writable aligned ellipse. Invalid input never writes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_project_face_region(
+    current: Rect,
+    previous: Rect,
+    trusted: Ellipse,
+    age_us: i64,
+    output: *mut Ellipse,
+) -> i32 {
+    if output.is_null() {
+        return REGION_INVALID;
+    }
+    let Some(region) = face_geometry::project_trusted(
+        current,
+        previous,
+        trusted,
+        age_us,
+        face_geometry::ProjectionOptions::default(),
+    ) else {
+        return REGION_INVALID;
+    };
+    // SAFETY: caller supplies the documented disjoint aligned output.
+    unsafe { output.write(region) };
+    REGION_OK
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::geometry::Transform;
+    #[test]
+    fn projection_abi_initializes_success_and_preserves_invalid_output() {
+        let body = Rect {
+            left: 10.0,
+            top: 20.0,
+            right: 110.0,
+            bottom: 320.0,
+        };
+        let seed = Ellipse {
+            center_x: 60.0,
+            center_y: 65.0,
+            radius_x: 20.0,
+            radius_y: 30.0,
+        };
+        let mut output = Ellipse::default();
+        // SAFETY: disjoint live aligned output for this call.
+        let status =
+            unsafe { frame_kernel_project_face_region(body, body, seed, 150_000, &mut output) };
+        assert_eq!(status, REGION_OK);
+        assert_eq!(output.radius_x, 22.0);
+        let saved = output;
+        // SAFETY: live output; invalid body must leave it unchanged.
+        let status = unsafe {
+            frame_kernel_project_face_region(Rect::default(), body, seed, 0, &mut output)
+        };
+        assert_eq!(status, REGION_INVALID);
+        assert_eq!(output, saved);
+    }
     #[test]
     fn success_zero_and_nonzero_failure_have_distinct_output_contracts() {
         let body = Rect {
