@@ -1,5 +1,6 @@
 import argparse,datetime,hashlib,json,shutil
 from pathlib import Path
+from media_evidence import validate_media_reviews
 p=argparse.ArgumentParser();p.add_argument('root',type=Path);p.add_argument('report',type=Path);p.add_argument('destination',type=Path);p.add_argument('--platform',required=True,choices=['android','ios']);p.add_argument('--prefix',default='shared_policy_final_v2');p.add_argument('--suite',required=True,choices=['legacy22','original4k','focused13']);a=p.parse_args()
 def read(p):return json.loads(p.read_text(encoding='utf-8'))
 def sha(p):
@@ -24,7 +25,8 @@ for c,expected in zip(api['cases'],suite['cases']):
   assert c['file_bytes']==0 and c['partial_files']==[] and not (run/'outputs'/(c['case']+'.mp4')).exists()
  if a.suite=='original4k' and c['case']=='solo_4k_cancel':assert c['before_cancel']['current_frame']>=25
 media=read(a.report/'media-audits'/rid/'results.json');faces=read(a.report/'face-audits'/rid/'results.json');previews=read(a.report/'preview-audits'/rid/'results.json');gallery=read(a.report/'gallery-audits'/rid/'results.json');life=read(a.report/'lifecycle-audits'/rid/'results.json')
-assert all(c['status']=='passed_media' for c in media['cases']) and all(c['decoded_frames']==c['expected_frames'] for c in media['cases'])
+boards=a.report/'manual-review'/rid
+movie_rows,topology_count=validate_media_reviews(media,api,meta,a.suite,boards,a.report/'media-audits'/rid/'results.json')
 assert all(c['status']=='passed_preview_time' for c in previews['cases'])
 assert all(c['status'].startswith('passed') or (c['status'] in ['failed_face_cores','needs_hero_visual_review'] and c.get('uncovered_face_cores')) for c in faces['cases'])
 assert all(c['status'].startswith('passed') for c in gallery['cases'])
@@ -62,5 +64,5 @@ for directory in ['outputs','previews','crop-traces','gallery']:
  f=run/directory
  if f.exists():files[directory]={q.name:sha(q) for q in sorted(f.iterdir()) if q.is_file()}
 (dest/'archived-file-sha256.json').write_text(json.dumps(files,indent=2)+'\n',encoding='utf-8')
-summary={'platform':a.platform,'suite':a.suite,'run_id':rid,'compiled_source_commit':api['compiled_source_commit'],'compiled_source_fingerprint':api['compiled_source_fingerprint'],'binary_sha256':meta['binary_sha256'],'process_id':api['process_id'],'api_cases':len(api['cases']),'actual_movies':len(media['cases']),'decoded_frames':sum(c['decoded_frames'] for c in media['cases']),'native_preview_pairs':sum(len(c['previews']) for c in previews['cases']),'manually_resolved_export_alerts':len(alerts),'manually_resolved_preview_alerts':len(preview_alerts),'reviewed_case_boards':len(board_index['cases']),'status':'cohort_complete_independently_audited_and_reviewed','scope':'This cohort only. Overall62 acceptance requires all three cohorts from both platforms. Raw automatic face statuses are retained; separate manual semantic decisions are explicit.','collected_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+summary={'platform':a.platform,'suite':a.suite,'run_id':rid,'compiled_source_commit':api['compiled_source_commit'],'compiled_source_fingerprint':api['compiled_source_fingerprint'],'binary_sha256':meta['binary_sha256'],'process_id':api['process_id'],'api_cases':len(api['cases']),'actual_movies':len(movie_rows),'decoded_frames':sum(c['decoded_frames'] for c in movie_rows),'native_preview_pairs':sum(len(c['previews']) for c in previews['cases']),'manually_resolved_topology_candidates':topology_count,'manually_resolved_export_alerts':len(alerts),'manually_resolved_preview_alerts':len(preview_alerts),'reviewed_case_boards':len(board_index['cases']),'status':'cohort_complete_independently_audited_and_reviewed','scope':'This cohort only. Overall62 acceptance requires all three cohorts from both platforms. Raw automatic face statuses are retained; separate manual semantic decisions are explicit.','collected_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()}
 (dest/'cohort-summary.json').write_text(json.dumps(summary,indent=2)+'\n',encoding='utf-8');print(json.dumps(summary))

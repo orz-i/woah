@@ -6,6 +6,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from media_evidence import validate_media_reviews
 
 root = Path(sys.argv[1]).resolve()
 base = root / 'reports/rust-core-migration-2026-11-06/final-acceptance'
@@ -61,10 +62,11 @@ for platform in ['android', 'ios']:
                    'protected_features_covered_bbox_includes_hair_ear_arm_neck', 'source_detector_non_face_candidate'}
         files = read(d / 'archived-file-sha256.json')
         media = read(d / 'media-audit.json')
-        assert len(media['cases']) == summary['actual_movies']
-        assert sum(c['decoded_frames'] for c in media['cases']) == summary['decoded_frames']
-        for c in media['cases']:
-            assert c['status'] == 'passed_media'
+        movie_rows, topology_count = validate_media_reviews(media, api, meta, name, d / 'manual-review', d / 'media-audit.json')
+        assert topology_count == summary.get('manually_resolved_topology_candidates', 0)
+        assert len(movie_rows) == summary['actual_movies']
+        assert sum(c['decoded_frames'] for c in movie_rows) == summary['decoded_frames']
+        for c in movie_rows:
             assert c['decoded_frames'] == c['expected_frames']
             assert files['outputs'][c['case'] + '.mp4'] == c['sha256']
         for c, exp in zip(api['cases'], expected):
