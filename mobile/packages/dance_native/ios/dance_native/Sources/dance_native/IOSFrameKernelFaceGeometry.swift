@@ -34,6 +34,15 @@ enum IOSFrameKernelFaceGeometry {
     guard status==0 else{return nil}
     return values(output)
   }
+  static func owns(_ face:IOSFaceCandidate,person:IOSYoloDetection,preprocess:IOSYoloPreprocessResult)->Bool {
+    guard person.mask.count==IOSYoloPostprocessor.protoSize*IOSYoloPostprocessor.protoSize,
+      let metadata=spec(person,preprocess) else{return false}
+    let row=record(face);var output:UInt32=0
+    let status=person.mask.withUnsafeBufferPointer {p in row.withUnsafeBufferPointer {f in
+      frame_kernel_face_mask_owned(p.baseAddress,p.count,metadata,f.baseAddress,face.yaw,&output)
+    }}
+    return status==0&&output==1
+  }
   static func support(_ region:SIMD4<Float>,person:IOSYoloDetection,preprocess:IOSYoloPreprocessResult)->(Int,Int)? {
     guard person.mask.count==IOSYoloPostprocessor.protoSize*IOSYoloPostprocessor.protoSize,
       let metadata=spec(person,preprocess) else{return nil}

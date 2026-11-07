@@ -55,6 +55,8 @@ for index in 0..<512 {
   let global=IOSFaceCandidate(x1:view.x+face.x1/size*(view.z-view.x),y1:view.y+face.y1/size*(view.w-view.y),
     x2:view.x+face.x2/size*(view.z-view.x),y2:view.y+face.y2/size*(view.w-view.y),confidence:face.confidence)
   precondition(IOSFrameKernelFaceGeometry.score(global,person:current)?.bitPattern==CanonicalObservationGeometry.associationScore(face:global,person:current)?.bitPattern,"shared score case\(index)")
+  precondition(IOSFrameKernelFaceGeometry.owns(global,person:current,preprocess:pre)==CanonicalFaceOwnershipEvidence.owned(global,person:current,preprocess:pre),"original ownership window case\(index)")
+
   let age=Int64(index%13)*80_000
   var expectedPadding:SIMD4<Float>?
   if age<=800_000,seed.x>=current.x1,seed.x<=current.x2,seed.y>=current.y1,seed.y<=current.y2 {

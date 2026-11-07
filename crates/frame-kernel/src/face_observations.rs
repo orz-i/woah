@@ -37,6 +37,23 @@ pub fn mask_support(pixels: &[u8], spec: HeadMaskSpec, region: Ellipse) -> Optio
     }
     Some([distinct.len() as u32, supported])
 }
+/// Ownership samples the current detector's measured box. Landmark-centered
+/// render padding must not move this evidence window or change exemptions.
+/// The caller supplies a current observed person mask, never retained history.
+pub fn face_mask_owned(pixels: &[u8], spec: HeadMaskSpec, face: &Candidate, yaw: f32) -> bool {
+    if !face.confidence.is_finite() || !(0.0..=1.0).contains(&face.confidence) {
+        return false;
+    }
+    let measured = Candidate {
+        bounds: face.bounds,
+        confidence: face.confidence,
+        points: Vec::new(),
+    };
+    let Some(region) = crate::face_geometry::detected(&measured, None, yaw) else {
+        return false;
+    };
+    mask_support(pixels, spec, region).is_some_and(|s| s[0] >= 4 && s[1] >= 12)
+}
 pub fn association_score(face: &Candidate, person: Rect) -> Option<f32> {
     if !face.bounds.valid() || !person.valid() || !face.confidence.is_finite() {
         return None;
@@ -266,6 +283,70 @@ mod tests {
             right: x + 20.0,
             bottom: 30.0,
         }
+    }
+    #[test]
+    fn ownership_window_does_not_follow_landmark_render_offsets_or_other_people() {
+        let spec = HeadMaskSpec {
+            width: 160,
+            height: 160,
+            person: Rect {
+                left: 150.0,
+                top: 50.0,
+                right: 450.0,
+                bottom: 600.0,
+            },
+            transform: crate::geometry::Transform {
+                scale: 1.0,
+                pad_left: 0.0,
+                pad_top: 0.0,
+                source_width: 640,
+                source_height: 640,
+                input_size: 640,
+                proto_size: 160,
+            },
+        };
+        let face = Candidate {
+            bounds: Rect {
+                left: 200.0,
+                top: 200.0,
+                right: 300.0,
+                bottom: 300.0,
+            },
+            confidence: 0.9,
+            points: vec![
+                [210.0, 245.0],
+                [220.0, 245.0],
+                [215.0, 250.0],
+                [215.0, 255.0],
+            ],
+        };
+        let mut pixels = vec![0; 25600];
+        for y in 55..68 {
+            for x in 61..70 {
+                pixels[y * 160 + x] = 255;
+            }
+        }
+        let rendered = crate::face_geometry::detected(&face, None, 0.0).unwrap();
+        let moved = mask_support(&pixels, spec, rendered).unwrap();
+        assert!(
+            moved[1] < 12,
+            "render offsets must not define the ownership evidence window"
+        );
+        assert!(face_mask_owned(&pixels, spec, &face, 0.0));
+        assert!(!face_mask_owned(&vec![0; 25600], spec, &face, 0.0));
+        let other = Candidate {
+            bounds: Rect {
+                left: 350.0,
+                top: 200.0,
+                right: 450.0,
+                bottom: 300.0,
+            },
+            ..face
+        };
+        assert!(
+            !face_mask_owned(&pixels, spec, &other, 0.0),
+            "a broad person bbox cannot exempt another face"
+        );
     }
     #[test]
     fn views_only_merge_across_views_with_known_equal_owners_when_required() {

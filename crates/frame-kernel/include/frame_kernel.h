@@ -256,6 +256,9 @@ int32_t frame_kernel_grid_face_decode(const float *boxes, size_t box_len,
 /* Observation APIs:0 success,1 no evidence,-1 invalid,-2 insufficient capacity.
    Nonzero results leave every output unchanged. All buffers are disjoint/borrowed. */
 typedef struct FrameKernelFaceView { FrameKernelRect bounds; uint32_t view,known_owner; int64_t owner; } FrameKernelFaceView;
+/* Current detector bbox evidence, independent of rendered landmark padding.
+   Caller supplies a current observed mask. Output is 0/1 only after success0. */
+int32_t frame_kernel_face_mask_owned(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,const float *row18,float yaw,uint32_t *output);
 int32_t frame_kernel_face_mask_support(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse region,uint32_t *output2);
 int32_t frame_kernel_face_observation_score(const float *row18,FrameKernelRect person,float *output);
 int32_t frame_kernel_face_upper_body_view(FrameKernelRect person,float *output4_xywh);

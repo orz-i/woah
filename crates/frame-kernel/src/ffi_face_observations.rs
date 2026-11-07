@@ -32,6 +32,38 @@ pub unsafe extern "C" fn frame_kernel_face_mask_support(
     REGION_OK
 }
 /// # Safety
+/// Pixels is readable for len bytes, row18 for18 floats, and output is one
+/// disjoint writable aligned u32. Only REGION_OK writes the 0/1 result.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_mask_owned(
+    pixels: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    row18: *const f32,
+    yaw: f32,
+    output: *mut u32,
+) -> i32 {
+    if len > 1024 * 1024 || row18.is_null() || output.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies the documented borrowed input ranges.
+    let (Some(pixels), Some(row)) = (unsafe { borrowed(pixels, len) }, unsafe {
+        borrowed(row18, 18)
+    }) else {
+        return REGION_INVALID;
+    };
+    if !spec.valid(pixels) {
+        return REGION_INVALID;
+    }
+    let Some(face) = crate::ffi_face::decode(row) else {
+        return REGION_INVALID;
+    };
+    let owned = face_observations::face_mask_owned(pixels, spec, &face, yaw);
+    // SAFETY: caller supplies the documented disjoint writable aligned result.
+    unsafe { output.write(u32::from(owned)) };
+    REGION_OK
+}
+/// # Safety
 /// Row18 is 18 readable floats; output is one disjoint writable float.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_face_observation_score(
@@ -217,6 +249,75 @@ pub unsafe extern "C" fn frame_kernel_face_occlusion_padding(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn owned_mask_abi_writes_boolean_only_after_zero_status() {
+        let spec = HeadMaskSpec {
+            width: 160,
+            height: 160,
+            person: Rect {
+                left: 150.0,
+                top: 50.0,
+                right: 450.0,
+                bottom: 600.0,
+            },
+            transform: crate::geometry::Transform {
+                scale: 1.0,
+                pad_left: 0.0,
+                pad_top: 0.0,
+                source_width: 640,
+                source_height: 640,
+                input_size: 640,
+                proto_size: 160,
+            },
+        };
+        let row = [
+            200.0, 200.0, 300.0, 300.0, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0,
+        ];
+        let pixels = vec![255; 25600];
+        let mut output = 77;
+        // SAFETY: all input/output buffers are live, aligned and disjoint.
+        let status = unsafe {
+            frame_kernel_face_mask_owned(
+                pixels.as_ptr(),
+                pixels.len(),
+                spec,
+                row.as_ptr(),
+                0.0,
+                &mut output,
+            )
+        };
+        assert_eq!(status, REGION_OK);
+        assert_eq!(output, 1);
+        let empty = vec![0; 25600];
+        // SAFETY: all input/output buffers are live, aligned and disjoint.
+        let status = unsafe {
+            frame_kernel_face_mask_owned(
+                empty.as_ptr(),
+                empty.len(),
+                spec,
+                row.as_ptr(),
+                0.0,
+                &mut output,
+            )
+        };
+        assert_eq!(status, REGION_OK);
+        assert_eq!(output, 0);
+        output = 77;
+        // SAFETY: null pixels is an explicitly rejected invalid range.
+        let status = unsafe {
+            frame_kernel_face_mask_owned(
+                std::ptr::null(),
+                pixels.len(),
+                spec,
+                row.as_ptr(),
+                0.0,
+                &mut output,
+            )
+        };
+        assert_eq!(status, REGION_INVALID);
+        assert_eq!(output, 77);
+    }
     #[test]
     fn failed_view_merge_and_ambiguous_choice_preserve_all_outputs() {
         let view = ViewObservation {

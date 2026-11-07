@@ -1,0 +1,6 @@
+{
+  "source_commit": "fa9240917b486dd7b075cb059ac0aea328fd3c03",
+  "source_path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSFacePrivacyPipeline.swift",
+  "canonical_lf_sha256": "ad0ff8d54651f178966f7d17c2cc73c8dfdef8edcc34a5c9be1ab6d8bbebe650",
+  "scope": "Original native detector-bbox ownership evidence, before rendering began using facial landmarks. Test-only; current mask support thresholds remain4distinct and12samples. Does not use the new Rust ownership helper."
+}
