@@ -18,4 +18,4 @@ python collect-final-evidence.py REPOSITORY REPORT_ROOT DESTINATION --platform a
 python aggregate-final-evidence.py REPOSITORY
 ```
 
-校验完整的 62 + 62 用例、相同 8 项素材、相同模型字节、同一编译源码和平台内同一安装包、27 项同进程取消重试、实际解码帧数及所有人工记录的图片哈希。缺失或不匹配时拒绝写出 `acceptance-summary.json`。本目录 `.gitattributes` 保留 JSON 原始换行，避免 Windows/macOS 拉取改变证据哈希。
+校验完整的 62 + 62 用例、相同 8 项素材、相同模型字节、同一编译源码和平台内同一安装包、27 项同进程取消重试、实际解码帧数及所有人工记录的图片哈希。缺失或不匹配时拒绝写出 `acceptance-summary.json`。本目录 `.gitattributes` 保留 JSON 原始换行，避免 Windows/macOS 拉取改变证据哈希。JSON 的空白检查保留行尾空格、文件尾空行及缩进规则，并明确将 CRLF 中的 CR 视为换行。
