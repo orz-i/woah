@@ -1,6 +1,8 @@
 import Foundation
 import CoreGraphics
 import CryptoKit
+import Darwin
+setbuf(stdout,nil)
 struct Reader {
   let bytes:[UInt8];var at=0
   mutating func u()->UInt32 {let p=at;at+=4;return UInt32(bytes[p])<<24|UInt32(bytes[p+1])<<16|UInt32(bytes[p+2])<<8|UInt32(bytes[p+3])}
