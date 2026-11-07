@@ -1,0 +1,2 @@
+# Preserve exact captured scene bytes including masks for orchestration replay.
+face-edge-scene-ios-185-v1.json -text -diff
