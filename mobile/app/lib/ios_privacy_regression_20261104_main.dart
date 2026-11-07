@@ -570,6 +570,10 @@ class _QA {
             previewTimes.add(regressionMs);
           }
         }
+        // Full4K clipped faces must also be checked in the native preview path.
+        if (name == 'group_4k_face_solid' && startMs == 0 && endMs == 23240) {
+          previewTimes.addAll([7400, 8120]);
+        }
         for (final at in previewTimes) {
           final preview = await client.getPreviewFrame(
             analysisCacheId: a.analysisCacheId,
