@@ -13,6 +13,12 @@ entrants and misleading later hard labels. Rust compares all decisions, unknown
 flags, evaluation counts, root state, prototype Float32 bits and mask bytes.
 See `crates/frame-kernel/testdata/privacy-class-native-v1.json` for binding.
 
-This initial commit exposes the safe Rust algorithm only. Native consumers and
-C transport migrate separately; it does not claim completed production migration
-or final device regression acceptance.
+The C ABI uses typed opaque session handles from the shared monotonic allocator.
+Kotlin closes the session in export resource cleanup; Swift releases it on deinit.
+Both adapters transport current observations/masks and sorted detector-index roots;
+the core retains all class state. Android JNI and Swift conformance replay the
+same 1,024 frozen inputs and compare decisions/unknown flags/evaluation counts.
+The Rust oracle check additionally compares every internal prototype bit.
+
+This stage does not claim final device regression acceptance. Model execution,
+video I/O and render resource ownership remain native.

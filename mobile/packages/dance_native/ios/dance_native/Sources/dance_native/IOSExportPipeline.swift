@@ -480,7 +480,7 @@ final class IOSExportPipeline {
                 privacyClassHardRootsSent = true
               }
             }
-            freshFullBodyPrivacyEvidence = privacyClassTracker.update(
+            freshFullBodyPrivacyEvidence = try privacyClassTracker.update(
               detections: inference.detections,
               preprocess: inference.preprocess,
               hardClassByDetectionIndex: hardRoots,

@@ -180,6 +180,20 @@ typedef struct FrameKernelReplayPlan {
 int32_t frame_kernel_replay_plan(uint32_t scope, uint32_t flags, int64_t anchor_us,
  int64_t last_us, int64_t target_us, int64_t step_us, FrameKernelReplayPlan *output);
 FrameKernelTrackingOptions frame_kernel_tracking_defaults(void);
+/* Identity-independent class sessions. Roots/decisions use 0 selected, 1 unselected.
+   Options flags: 1 cached similarity, 2 cached mask warp, 4 count evaluations.
+   Typed handles share a monotonic allocator; stale/wrong-kind IDs are invalid. */
+typedef struct FrameKernelClassOptions { float minimum, single_minimum, margin; uint32_t maximum_misses, flags; } FrameKernelClassOptions;
+typedef struct FrameKernelClassRoot { uint32_t index, selection; } FrameKernelClassRoot;
+typedef struct FrameKernelClassDecision { uint32_t index, selection, unknown; } FrameKernelClassDecision;
+uint64_t frame_kernel_class_create(FrameKernelClassOptions options);
+int32_t frame_kernel_class_destroy(uint64_t id);
+int32_t frame_kernel_class_reset(uint64_t id);
+/* Capacity >= count is required before mutation. Returns decision count or -1.
+   Every pointer is borrowed for this call; output/evaluations must be disjoint. */
+int32_t frame_kernel_class_update(uint64_t id, const FrameKernelTrackingObservation *observations, size_t count,
+    const uint8_t *pixels, size_t pixels_len, const FrameKernelClassRoot *roots, size_t roots_len,
+    FrameKernelClassDecision *output, size_t capacity, uint32_t *evaluations);
 uint64_t frame_kernel_tracking_create(FrameKernelTrackingOptions options);
 int32_t frame_kernel_tracking_destroy(uint64_t session);
 /* After initialization, reserve IDs below the analysis namespace floor. */

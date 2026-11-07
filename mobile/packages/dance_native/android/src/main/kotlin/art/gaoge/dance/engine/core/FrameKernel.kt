@@ -21,6 +21,19 @@ internal object FrameKernel {
         return ReplayPlan(v[0]!=0L,v[1]!=0L,v[2],v[3],v[4].toInt(),v[5]!=0L,v[6])
     }
 
+    private external fun classCreateNative(values:FloatArray,misses:Int,flags:Int):Long
+    private external fun classDestroyNative(id:Long)
+    private external fun classResetNative(id:Long)
+    private external fun classUpdateNative(id:Long,values:FloatArray,offsets:LongArray,pixels:ByteArray,roots:LongArray):IntArray
+    class ClassSession(values:FloatArray,misses:Int,flags:Int):AutoCloseable {
+        private var id=classCreateNative(values,misses,flags)
+        @Synchronized fun update(values:FloatArray,offsets:LongArray,pixels:ByteArray,roots:LongArray):IntArray {
+            check(id!=0L);return classUpdateNative(id,values,offsets,pixels,roots)
+        }
+        @Synchronized fun reset(){check(id!=0L);classResetNative(id)}
+        @Synchronized override fun close(){if(id!=0L){classDestroyNative(id);id=0L}}
+    }
+
     private external fun trackingCreateNative(scalars:FloatArray,integers:IntArray):Long
     private external fun trackingDestroyNative(id:Long)
     private external fun trackingReserveNative(id:Long,minimum:Long)

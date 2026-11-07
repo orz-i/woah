@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import sys
+import hashlib
+import json
 from pathlib import Path
 
 
@@ -47,25 +49,13 @@ def verify_ios_surface() -> None:
     dart = text(ROOT / "mobile/app/lib/ios_phase6_smoke_main.dart", "combined iOS smoke entrypoint")
 
     for token in (
-        "enum IOSPrivacySelectionClass: String",
-        "struct IOSFreshPrivacyClassEvidence",
-        "final class IOSPrivacyClassTemporalTracker",
-        "minClassScore: Float32 = 0.42",
-        "minSingleClassScore: Float32 = 0.65",
-        "minClassMargin: Float32 = 0.12",
-        "maxPrototypeMisses: Int = 4",
-        "if !rootSeeded && !hardClassByDetectionIndex.isEmpty",
-        "rootClassByDetectionIndex = hardClassByDetectionIndex",
-        "classified[index] ?? .selected",
-        "conservativeUnknown: classified[index] == nil",
-        "prototype.reliability *= 0.72",
-        "prototype.misses > maxPrototypeMisses",
-        "bbox * 0.40 + mask * 0.40 + distanceScore * 0.20",
-        "buildWarpedMaskSupport(",
-        "reuseFrameSimilarityCache",
-        "lastSimilarityEvaluationCount",
+        "enum IOSPrivacySelectionClass: String", "struct IOSFreshPrivacyClassEvidence",
+        "final class IOSPrivacyClassTemporalTracker", "IOSSharedClassSession",
+        "frame_kernel_class_create", "frame_kernel_class_update", "frame_kernel_class_reset", "frame_kernel_class_destroy",
+        "lastSimilarityEvaluationCount", "session.update(obs,roots:roots)",
     ):
-        check(token in tracker, f"Phase 6 privacy-class tracker missing: {token}")
+        check(token in tracker, f"Shared iOS privacy-class transport missing: {token}")
+    check("private final class Prototype" not in tracker, "iOS must not keep an independent class algorithm")
 
     for token in (
         "enum IOSPrivacyClassPhase6Smoke",
@@ -118,7 +108,7 @@ def verify_ios_surface() -> None:
         "let rootPersons = try IOSPreviewIdentityMatcher.assign(",
         "hardRoots[index] = fullBodyIds.contains(rootPersons[index].id)",
         "privacyClassHardRootsSent = true",
-        "freshFullBodyPrivacyEvidence = privacyClassTracker.update(",
+        "freshFullBodyPrivacyEvidence = try privacyClassTracker.update(",
         "freshFullBodyPrivacyEvidence: freshFullBodyPrivacyEvidence",
         "preferFreshFullBodyClassPrimary: privacyClassTracker != nil",
     ):
@@ -137,20 +127,20 @@ def verify_android_reference_boundary() -> None:
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/PrivacyClassTemporalTracker.kt",
         "Android PrivacyClassTemporalTracker",
     )
-    for token in (
-        "private val minClassScore: Float = 0.42f",
-        "private val minSingleClassScore: Float = 0.65f",
-        "private val minClassMargin: Float = 0.12f",
-        "private val maxPrototypeMisses: Int = 4",
-        "if (!rootSeeded && hardClassByDetectionIndex.isNotEmpty())",
-        "classified[index] ?: PrivacySelectionClass.SELECTED",
-        "conservativeUnknown = !classified.containsKey(index)",
-        "prototype.reliability *= 0.72f",
-        "0.40f * bboxIoU + 0.40f * maskIoU + 0.20f * distanceScore",
-        "TrackManager.computeWarpedMaskIoU(",
-        "runtime TrackManager IDs are not privacy-class truth",
-    ):
-        check(token in tracker, f"Android privacy-class tracker reference drifted: {token}")
+    for token in ("FrameKernel.ClassSession", "owned().update", "override fun close", "session?.close()"):
+        check(token in tracker, f"Shared Android privacy-class transport missing: {token}")
+    check("private data class Prototype" not in tracker, "Android must not keep an independent class algorithm")
+    core=text(ROOT/"crates/frame-kernel/src/privacy_class.rs", "Shared Rust privacy-class algorithm")
+    for token in ("!self.root_seeded && !hard.is_empty()", "class.unwrap_or(SelectionClass::Selected)",
+                  "conservative_unknown: class.is_none()", "p.reliability *= 0.72", "0.40 * overlap_iou",
+                  "tracking_mask::prepare_warped_samples", "maximum_misses: 4", "minimum: 0.42", "single_minimum: 0.65", "margin: 0.12"):
+        check(token in core, f"Shared class invariant missing: {token}")
+    manifest=ROOT/"crates/frame-kernel/testdata/privacy-class-native-v1.json"
+    frozen=ROOT/"crates/frame-kernel/testdata/privacy-class-native-v1.bin"
+    binding=json.loads(manifest.read_text(encoding="utf-8"))
+    check(binding["frames"]==1024 and binding["scenarios"]==16, "Class oracle must cover every frozen native step")
+    check(frozen.stat().st_size==binding["bytes"] and hashlib.sha256(frozen.read_bytes()).hexdigest()==binding["sha256"], "Frozen native class oracle changed")
+    check(binding["sha256"]=="d17fad6313559b4c6e3a6363ccc228901188399d1fac82bf7874ecc44eba9d92", "Independent class reference binding changed")
 
     tests = text(
         ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/PrivacyClassTemporalTrackerTest.kt",

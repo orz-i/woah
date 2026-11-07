@@ -297,6 +297,7 @@ class ExportPipeline(
             var clarityAbCapture: CropClarityAbCapture? = null
             var surfaceTexture: SurfaceTexture? = null
             var sharedIdentityTracker: TrackManager? = null
+            var sharedClassTracker: art.gaoge.dance.engine.privacy.PrivacyClassTemporalTracker? = null
             var decoder: VideoDecoder? = null
             var canonicalInferenceDecoder: CanonicalYuvInferenceDecoder? = null
             var canonicalInferenceFallbackReason: String? = null
@@ -534,7 +535,7 @@ class ExportPipeline(
                         )
                     }
                 }
-                val privacyClassTemporalTracker = art.gaoge.dance.engine.privacy.PrivacyClassTemporalTracker()
+                val privacyClassTemporalTracker = art.gaoge.dance.engine.privacy.PrivacyClassTemporalTracker().also {sharedClassTracker=it}
                 val followSeed = if (request.follow.enabled) {
                     val targetId = request.follow.targetPersonId
                         ?: throw IllegalArgumentException("Follow requires an explicit target person")
@@ -2768,6 +2769,7 @@ class ExportPipeline(
                 pipelineException = e
             } finally {
                 try { sharedIdentityTracker?.close() } catch (_: Throwable) {}
+                try { sharedClassTracker?.close() } catch (_: Throwable) {}
                 try { privacyAudit?.close() } catch (_: Throwable) {}
                 try { previewScope?.cancel() } catch (_: Throwable) {}
                 try { cpuMt4ProbeSegmenter?.close() } catch (_: Throwable) {}

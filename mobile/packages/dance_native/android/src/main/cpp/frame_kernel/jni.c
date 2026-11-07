@@ -520,3 +520,33 @@ JNIEXPORT jlongArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_replay
 JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_trackingReserveNative(JNIEnv *env,jobject self,jlong id,jlong minimum) {
  (void)self;if(frame_kernel_tracking_reserve_id_floor((uint64_t)id,(int64_t)minimum))invalid(env);
 }
+
+JNIEXPORT jlong JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_classCreateNative(JNIEnv *env,jobject self,jfloatArray values,jint misses,jint flags){
+ (void)self;float f[3];if(!values||(*env)->GetArrayLength(env,values)!=3||misses<0||flags<0){invalid(env);return 0;}
+ (*env)->GetFloatArrayRegion(env,values,0,3,f);if((*env)->ExceptionCheck(env))return 0;
+ uint64_t id=frame_kernel_class_create((FrameKernelClassOptions){f[0],f[1],f[2],(uint32_t)misses,(uint32_t)flags});if(!id)invalid(env);return (jlong)id;
+}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_classDestroyNative(JNIEnv *env,jobject self,jlong id){(void)self;if(frame_kernel_class_destroy((uint64_t)id))invalid(env);}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_classResetNative(JNIEnv *env,jobject self,jlong id){(void)self;if(frame_kernel_class_reset((uint64_t)id))invalid(env);}
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_classUpdateNative(JNIEnv *env,jobject self,jlong id,jfloatArray values,jlongArray offsets,jbyteArray pixels,jlongArray roots){
+ (void)self;jintArray result=NULL;FrameKernelTrackingObservation *obs=NULL;FrameKernelClassRoot *hard=NULL;FrameKernelClassDecision *decisions=NULL;
+ jfloat *v=NULL;jbyte *pool=NULL;IdInput off={0},r={0};jint *out=NULL;
+ if(!values||!pixels||!read_ids(env,offsets,&off)||!read_ids(env,roots,&r))goto cleanup;
+ if(off.count>4096||r.count%2||r.count>8192||(*env)->GetArrayLength(env,values)!=(jlong)off.count*15)goto cleanup;
+ jsize bytes=(*env)->GetArrayLength(env,pixels);if(bytes>256*1024*1024)goto cleanup;
+ v=off.count?(*env)->GetFloatArrayElements(env,values,NULL):NULL;pool=bytes?(*env)->GetByteArrayElements(env,pixels,NULL):NULL;
+ if((off.count&&!v)||(bytes&&!pool))goto cleanup;
+ obs=off.count?calloc((size_t)off.count,sizeof(*obs)):NULL;decisions=off.count?calloc((size_t)off.count,sizeof(*decisions)):NULL;
+ hard=r.count?calloc((size_t)r.count/2,sizeof(*hard)):NULL;if((off.count&&(!obs||!decisions))||(r.count&&!hard))goto cleanup;
+ for(jsize i=0;i<off.count;i++){
+  jfloat *a=v+i*15;for(int k=6;k<8;k++)if(!(a[k]>=0&&a[k]<=65535&&isfinite(a[k])))goto cleanup;
+  if(off.values[i]!=-1){for(int k=6;k<8;k++)if(!(a[k]>=1&&a[k]<=65535))goto cleanup;for(int k=11;k<15;k++)if(!(a[k]>=1&&a[k]<=65535))goto cleanup;}
+  obs[i]=(FrameKernelTrackingObservation){{a[0],a[1],a[2],a[3]},a[4],a[5],(uint64_t)off.values[i],(uint32_t)a[6],(uint32_t)a[7],{a[8],a[9],a[10],(uint32_t)a[11],(uint32_t)a[12],(uint32_t)a[13],(uint32_t)a[14]}};
+ }
+ for(jsize i=0;i<r.count/2;i++){if(r.values[i*2]<0||r.values[i*2]>UINT32_MAX||r.values[i*2+1]<0||r.values[i*2+1]>1)goto cleanup;hard[i]=(FrameKernelClassRoot){(uint32_t)r.values[i*2],(uint32_t)r.values[i*2+1]};}
+ uint32_t evaluations=0;int count=frame_kernel_class_update((uint64_t)id,obs,off.count,(const uint8_t*)pool,bytes,hard,r.count/2,decisions,off.count,&evaluations);
+ if(count<0)goto cleanup;out=malloc(((size_t)count*3+1)*sizeof(jint));if(!out)goto cleanup;
+ out[0]=(jint)evaluations;for(int i=0;i<count;i++){out[i*3+1]=(jint)decisions[i].index;out[i*3+2]=(jint)decisions[i].selection;out[i*3+3]=(jint)decisions[i].unknown;}
+ result=(*env)->NewIntArray(env,count*3+1);if(result)(*env)->SetIntArrayRegion(env,result,0,count*3+1,out);
+ cleanup:free(out);free(decisions);free(hard);free(obs);if(v)(*env)->ReleaseFloatArrayElements(env,values,v,JNI_ABORT);if(pool)(*env)->ReleaseByteArrayElements(env,pixels,pool,JNI_ABORT);release_ids(env,&off);release_ids(env,&r);if(!result)invalid(env);return result;
+}

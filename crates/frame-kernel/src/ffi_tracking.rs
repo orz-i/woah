@@ -111,6 +111,12 @@ struct Session {
 type OwnedSession = Arc<Mutex<Session>>;
 static SESSIONS: OnceLock<Mutex<BTreeMap<u64, OwnedSession>>> = OnceLock::new();
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+pub(crate) fn next_session_id() -> Option<u64> {
+    NEXT_ID
+        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_add(1))
+        .ok()
+}
+
 fn registry() -> &'static Mutex<BTreeMap<u64, OwnedSession>> {
     SESSIONS.get_or_init(|| Mutex::new(BTreeMap::new()))
 }
@@ -132,8 +138,7 @@ pub extern "C" fn frame_kernel_tracking_create(options: TrackingOptions) -> u64 
     if sessions.len() >= 4096 {
         return 0;
     }
-    let Ok(id) = NEXT_ID.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_add(1))
-    else {
+    let Some(id) = next_session_id() else {
         return 0;
     };
     sessions.insert(
@@ -158,7 +163,7 @@ pub extern "C" fn frame_kernel_tracking_destroy(id: u64) -> i32 {
         -1
     }
 }
-unsafe fn borrowed<'a, T>(p: *const T, n: usize) -> Option<&'a [T]> {
+pub(crate) unsafe fn borrowed<'a, T>(p: *const T, n: usize) -> Option<&'a [T]> {
     if n == 0 {
         return Some(&[]);
     }
@@ -240,41 +245,9 @@ pub unsafe extern "C" fn frame_kernel_tracking_step(
     ) else {
         return -1;
     };
-    let mut detections = Vec::with_capacity(count);
-    for d in observations {
-        let mask = if d.mask_offset == u64::MAX {
-            None
-        } else {
-            let Some(n) = (d.mask_width as usize).checked_mul(d.mask_height as usize) else {
-                return -1;
-            };
-            let Ok(start) = usize::try_from(d.mask_offset) else {
-                return -1;
-            };
-            let Some(end) = start.checked_add(n) else {
-                return -1;
-            };
-            let Some(bytes) = pixels.get(start..end) else {
-                return -1;
-            };
-            Some(Mask {
-                width: d.mask_width as usize,
-                height: d.mask_height as usize,
-                pixels: Arc::from(bytes),
-                transform: d.transform,
-            })
-        };
-        let detection = Detection {
-            bounds: d.bounds,
-            confidence: d.confidence,
-            foot_y: d.foot_y,
-            mask,
-        };
-        if !detection.valid() {
-            return -1;
-        }
-        detections.push(detection);
-    }
+    let Some(detections) = decode_observations(observations, pixels) else {
+        return -1;
+    };
     let Some(owner) = session(id) else { return -1 };
     let Ok(mut s) = owner.lock() else { return -1 };
     let result = match action {
@@ -460,6 +433,43 @@ pub unsafe extern "C" fn frame_kernel_replay_plan(
     // SAFETY: The caller supplies a live writable aligned output object.
     unsafe { output.write(plan) };
     0
+}
+
+/// Checked value conversion shared by the identity and privacy-class transports.
+pub(crate) fn decode_observations(
+    observations: &[TrackingObservation],
+    pixels: &[u8],
+) -> Option<Vec<Detection>> {
+    let mut detections = Vec::with_capacity(observations.len());
+    for d in observations {
+        let mask = if d.mask_offset == u64::MAX {
+            None
+        } else {
+            let n = (d.mask_width as usize).checked_mul(d.mask_height as usize)?;
+            let Ok(start) = usize::try_from(d.mask_offset) else {
+                return None;
+            };
+            let end = start.checked_add(n)?;
+            let bytes = pixels.get(start..end)?;
+            Some(Mask {
+                width: d.mask_width as usize,
+                height: d.mask_height as usize,
+                pixels: Arc::from(bytes),
+                transform: d.transform,
+            })
+        };
+        let detection = Detection {
+            bounds: d.bounds,
+            confidence: d.confidence,
+            foot_y: d.foot_y,
+            mask,
+        };
+        if !detection.valid() {
+            return None;
+        }
+        detections.push(detection);
+    }
+    Some(detections)
 }
 
 #[cfg(test)]
