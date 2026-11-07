@@ -1,0 +1,17 @@
+{
+  "schema": "frame-kernel-native-observations-rle-v1",
+  "purpose": "Actual simulator preview inference inputs and captured shared-core outputs for diagnosing hero overmask; not an independent algorithm oracle.",
+  "source_fixture": "group-hd-8956295.mp4",
+  "source_sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+  "run_id": "integration_identity_probe_legacy22",
+  "compiled_source_commit": "1a6d046b6c072e59883c5c17f263542087cad4f8",
+  "trace_sha256": "e31a73be1ce8af35533b013e6e461efbf685dd18383e74677c920ecafdbe6844",
+  "bytes": 5206597,
+  "sha256": "19d8c3c1207d0b69f1d17ab2d0d1c4df7122b3658bc65d0996aac03d74223c5a",
+  "steps": 166,
+  "uncompressed_mask_bytes": 32537600,
+  "critical_first_unobserved_us": 6120000,
+  "critical_hero_id": 6,
+  "through_us": 6600000,
+  "captured_outcome": "Hero is unobserved at6600000 and incorrectly covered; retained as pre-fix failure evidence."
+}
