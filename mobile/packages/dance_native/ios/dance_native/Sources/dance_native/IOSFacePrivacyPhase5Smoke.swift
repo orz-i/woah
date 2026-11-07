@@ -168,11 +168,34 @@ enum IOSFacePrivacyPhase5Smoke {
           maskSeedExpiredRegion.source == .yoloHeadFallback else {
       throw smokeFailure("Expired FACE_ONLY mask seed did not return to generic YOLO head fallback.")
     }
+    // The old face seed has expired, but the CURRENT mask still places the
+    // head at the independently painted rectangle's midpoint (35 + 43) / 2.
+    // A cold resolver must reach the same center without any trusted history.
+    let coldMaskResolver = IOSFacePrivacyTemporalResolver(
+      locator: IOSPhase5SequenceFaceLocator(batches: [[]])
+    )
+    let coldMaskRegions = try coldMaskResolver.resolve(
+      image: source,
+      persons: [maskGuidedPerson],
+      faceOnlyIds: [0],
+      preprocess: preprocess,
+      timestampUs: 900_000
+    )
+    guard let coldMaskRegion = coldMaskRegions[0],
+          coldMaskRegion.source == .yoloHeadFallback else {
+      throw smokeFailure("Current mask head fallback required expired trusted face history.")
+    }
+    try assertNear(
+      coldMaskRegion.centerX,
+      39,
+      tolerance: 0.05,
+      label: "cold current-mask rectangle centerX"
+    )
     try assertNear(
       maskSeedExpiredRegion.centerX,
-      32,
+      coldMaskRegion.centerX,
       tolerance: 0.05,
-      label: "800ms mask-seed expiry centerX"
+      label: "800ms seed expiry uses independent current-mask centerX"
     )
 
     let unsupportedMaskResolver = IOSFacePrivacyTemporalResolver(
