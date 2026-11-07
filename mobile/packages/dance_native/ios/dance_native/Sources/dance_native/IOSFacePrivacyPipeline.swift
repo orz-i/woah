@@ -261,6 +261,8 @@ final class IOSFacePrivacyTemporalResolver {
         do {
           detail = try locator.locateFaceDetails(in: image, regions: searchRegions)
         } catch { localizationFailed = true }
+        IOSFaceObservationRecorder.record(primary:faces,detail:detail,persons:currentPeople,
+          hero:unmaskedPersonId,preprocess:preprocess,timestampUs:timestampUs)
         faces = IOSFacePrivacyGeometry.mergeFaceObservations(faces, detail: detail,
           ownerOf: { self.uniqueCurrentOwner(face: $0, persons: currentPeople,
             unmaskedPersonId: unmaskedPersonId, preprocess: preprocess) })
