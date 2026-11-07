@@ -380,7 +380,7 @@ let paddedRegions=try paddingResolver.resolve(image:image,persons:[armPerson],fa
   protectUnassignedFaces:true,timestampUs:400_000)
 let padded=paddedRegions.values.first{$0.source == .predictedFace}!
 test(padded.source == .predictedFace && abs(padded.centerX-18)<0.001,"raised bbox dragged the prior observed face onto an arm")
-let currentHead=IOSFacePrivacyGeometry.fallbackEllipse(armPerson.detection)!
+let currentHead=IOSFacePrivacyGeometry.fallbackGeometry(armPerson.detection,preprocess:smallPrep,currentMask:true)!.region
 let paddingDidNotRemoveCurrentHead=paddedRegions.values.contains { region in
   pow((currentHead.centerX-region.centerX)/region.radiusX,2)
     + pow((currentHead.centerY-region.centerY)/region.radiusY,2)<=1
