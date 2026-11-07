@@ -140,6 +140,14 @@ enum IOSFacePrivacyGeometry {
 
   static func mergeFaceObservations(_ primary: [IOSFaceCandidate], detail: [IOSFaceCandidate],
                                     ownerOf: ((IOSFaceCandidate) -> Int?)? = nil) -> [IOSFaceCandidate] {
+    let input=primary+detail
+    let owners=ownerOf.map {owner in input.map {owner($0)}}
+    // Retaining all observations on invalid input preserves fail-closed coverage.
+    return IOSFrameKernelFaceGeometry.merge(input,primary:primary.count,owners:owners) ?? input
+  }
+
+  private static func mergeFaceObservationsLegacy(_ primary: [IOSFaceCandidate], detail: [IOSFaceCandidate],
+                                    ownerOf: ((IOSFaceCandidate) -> Int?)? = nil) -> [IOSFaceCandidate] {
     var result = primary
     var views = primary.map { Set([$0.observationView]) }
     var owners = primary.map { ownerOf?($0) }
