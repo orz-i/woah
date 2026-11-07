@@ -844,7 +844,12 @@ enum IOSFacePrivacyPhase5Smoke {
   }
 
   private static func smokeFailure(_ message: String) -> PigeonError {
-    PigeonError(
+    #if DEBUG
+    // This test-only entry point must keep actionable CI assertions in the
+    // native console; product channel errors retain their sanitized envelope.
+    NSLog("WOAH_PHASE5_FACE_SMOKE_ASSERTION: %@", message)
+    #endif
+    return     PigeonError(
       code: "IOS_PHASE5_FACE_PRIVACY_SMOKE_FAILED",
       message: message,
       details: nil
