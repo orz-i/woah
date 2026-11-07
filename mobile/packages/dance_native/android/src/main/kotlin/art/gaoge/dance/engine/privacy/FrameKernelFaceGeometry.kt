@@ -43,6 +43,19 @@ internal object FrameKernelFaceGeometry {
         if(value.size!=5||value[4]!=1f)return null
         return FacePrivacyEllipse(value[0],value[1],value[2],value[3],seed.source)
     }
+    fun coverCurrent(mask:NativeMask?,person:FloatRect,region:FacePrivacyEllipse):FacePrivacyEllipse {
+        mask?:return region
+        val mapper=requireNotNull(mask.mapper)
+        require(mask.width in 2..1024&&mask.height in 2..1024)
+        val count=Math.multiplyExact(mask.width,mask.height)
+        require(count>0&&mask.buffer.limit()>=count)
+        val bytes=ByteArray(count)
+        mask.buffer.duplicate().apply{position(0);limit(count);get(bytes)}
+        val result=checkNotNull(FrameKernel.currentFaceRegionNative(bytes,mask.width,mask.height,
+            floatArrayOf(mapper.scale,mapper.padLeft,mapper.padTop,mapper.srcWidth.toFloat(),mapper.srcHeight.toFloat(),mapper.modelInputSize.toFloat(),mapper.protoSize.toFloat()),
+            person.values(),floatArrayOf(region.centerX,region.centerY,region.radiusX,region.radiusY)))
+        return result.region(region.source)
+    }
     fun estimate(mask:NativeMask?,person:FloatRect,cx:Float,cy:Float,rx:Float,ry:Float):FacePoint? {
         val value=head(mask,person,floatArrayOf(cx,cy,rx,ry))?:return null
         return FacePoint(value[0],value[1])

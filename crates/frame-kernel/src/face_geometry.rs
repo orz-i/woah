@@ -68,6 +68,140 @@ pub fn fallback(person: Rect) -> Option<Ellipse> {
         radius_y: (w * 0.26).max(h * 0.060),
     })
 }
+
+/// Render a current, already-owned face without discarding coherent visible
+/// head pixels when the face detector localizes only part of a profile.
+/// Ownership/identity remain separate: callers supply only the CURRENT mask.
+pub fn current_face_region(
+    pixels: Option<&[u8]>,
+    spec: HeadMaskSpec,
+    region: Ellipse,
+) -> Option<Ellipse> {
+    if !valid_seed(region) || !spec.person.valid() {
+        return None;
+    }
+    let Some(pixels) = pixels else {
+        return Some(region);
+    };
+    if !spec.valid(pixels) {
+        return None;
+    }
+    // Reverse the canonical detector padding only to bound a local mask search.
+    // The original ellipse is always retained, including any temporal padding.
+    let half_width = region.radius_x / 1.32;
+    let half_height = region.radius_y / 1.48;
+    let bounds = Rect {
+        left: region.center_x - half_width,
+        top: region.center_y - half_height,
+        right: region.center_x + half_width,
+        bottom: region.center_y + half_height,
+    };
+    let Some(support) = observed_head_support(pixels, spec, bounds) else {
+        return Some(region);
+    };
+    Some(cover_rect(region, support))
+}
+
+fn cover_rect(region: Ellipse, bounds: Rect) -> Ellipse {
+    let contained = [bounds.left, bounds.right].into_iter().all(|x| {
+        [bounds.top, bounds.bottom].into_iter().all(|y| {
+            ((x - region.center_x) / region.radius_x).powi(2)
+                + ((y - region.center_y) / region.radius_y).powi(2)
+                <= 1.0
+        })
+    });
+    if contained {
+        return region;
+    }
+    let left = bounds.left.min(region.center_x - region.radius_x);
+    let right = bounds.right.max(region.center_x + region.radius_x);
+    let top = bounds.top.min(region.center_y - region.radius_y);
+    let bottom = bounds.bottom.max(region.center_y + region.radius_y);
+    // One circumscribed ellipse contains the whole visible-support rectangle
+    // AND the complete original detector ellipse. This operation only adds cover.
+    Ellipse {
+        center_x: (left + right) * 0.5,
+        center_y: (top + bottom) * 0.5,
+        radius_x: (right - left) * std::f32::consts::FRAC_1_SQRT_2,
+        radius_y: (bottom - top) * std::f32::consts::FRAC_1_SQRT_2,
+    }
+}
+
+fn observed_head_support(pixels: &[u8], spec: HeadMaskSpec, face: Rect) -> Option<Rect> {
+    let fw = face.right - face.left;
+    let fh = face.bottom - face.top;
+    if !face.valid() || fw <= 1.0 || fh <= 1.0 {
+        return None;
+    }
+    let cell_x = spec.transform.input_size as f32 / (spec.width as f32 * spec.transform.scale);
+    let cell_y = spec.transform.input_size as f32 / (spec.height as f32 * spec.transform.scale);
+    let mx = |x: f32| {
+        (x * spec.transform.scale + spec.transform.pad_left) / spec.transform.input_size as f32
+            * spec.width as f32
+    };
+    let my = |y: f32| {
+        (y * spec.transform.scale + spec.transform.pad_top) / spec.transform.input_size as f32
+            * spec.height as f32
+    };
+    let left = mx(spec.person.left.max(0.0))
+        .floor()
+        .clamp(0.0, spec.width as f32) as usize;
+    let right = mx(spec.person.right).ceil().clamp(0.0, spec.width as f32) as usize;
+    let top = my(face.top).floor().clamp(0.0, spec.height as f32) as usize;
+    let bottom = my(face.bottom).ceil().clamp(0.0, spec.height as f32) as usize;
+    if left >= right || top >= bottom {
+        return None;
+    }
+    let center = mx((face.left + face.right) * 0.5);
+    let expected = fw / cell_x;
+    let mut current: Option<(usize, usize, usize, usize, usize)> = None;
+    let mut best = None;
+    for y in top..bottom {
+        let mut x = left;
+        let mut chosen = None;
+        let mut distance = f32::INFINITY;
+        while x < right {
+            while x < right && pixels[y * spec.width as usize + x] < 96 {
+                x += 1;
+            }
+            let start = x;
+            while x < right && pixels[y * spec.width as usize + x] >= 96 {
+                x += 1;
+            }
+            let width = (x - start) as f32;
+            let d = (((start + x) as f32 * 0.5) - center).abs() / expected;
+            if width >= 2.0
+                && (0.35..=3.0).contains(&(width / expected))
+                && d <= 0.75
+                && d < distance
+            {
+                chosen = Some((start, x));
+                distance = d;
+            }
+        }
+        current = chosen.map(|(l, r)| match current {
+            Some((a, b, t, last, n)) if last + 1 == y && l < b && r > a => {
+                (a.min(l), b.max(r), t, y, n + 1)
+            }
+            _ => (l, r, y, y, 1),
+        });
+        if let Some(run) = current
+            && best.is_none_or(|v: (usize, usize, usize, usize, usize)| run.4 > v.4)
+        {
+            best = Some(run);
+        }
+    }
+    let (l, r, t, b, n) = best?;
+    if n < 2 || (n as f32 * cell_y) < (fh * 0.3).max(2.0 * cell_y) {
+        return None;
+    }
+    Some(Rect {
+        left: (spec.proto_x(l as f32) - cell_x).max(0.0),
+        right: (spec.proto_x(r as f32) + cell_x).min(spec.transform.source_width as f32),
+        top: (spec.proto_y(t as f32) - cell_y).max(0.0),
+        bottom: (spec.proto_y((b + 1) as f32) + cell_y).min(spec.transform.source_height as f32),
+    })
+}
 /// Complete current-head refinement. Native consumers transport evidence; they
 /// must not separately reconstruct the bbox/mask fallback combination.
 #[repr(C)]

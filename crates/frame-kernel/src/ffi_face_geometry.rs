@@ -9,6 +9,37 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// A positive len requires readable pixels. Output is one disjoint writable ellipse.
+/// Current mask evidence adds coverage only, never identity or ownership.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_current_face_region(
+    pixels: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    region: Ellipse,
+    output: *mut Ellipse,
+) -> i32 {
+    if len > 1024 * 1024 || output.is_null() {
+        return REGION_INVALID;
+    }
+    let pixels = if len == 0 {
+        None
+    } else {
+        // SAFETY: caller supplies the documented readable byte range.
+        let Some(p) = (unsafe { crate::ffi_tracking::borrowed(pixels, len) }) else {
+            return REGION_INVALID;
+        };
+        Some(p)
+    };
+    let Some(region) = face_geometry::current_face_region(pixels, spec, region) else {
+        return REGION_INVALID;
+    };
+    // SAFETY: caller supplies a disjoint writable aligned ellipse.
+    unsafe { output.write(region) };
+    REGION_OK
+}
+
+/// # Safety
 /// Row is18 readable aligned floats; nonnull view is one readable Rect; output
 /// is one disjoint writable aligned ellipse. Pointers are borrowed for this call.
 #[unsafe(no_mangle)]

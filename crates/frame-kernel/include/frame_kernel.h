@@ -243,6 +243,10 @@ int32_t frame_kernel_face_owned(const float *row18, FrameKernelRect source, floa
 enum { FRAME_KERNEL_REGION_OK=0, FRAME_KERNEL_REGION_NONE=1, FRAME_KERNEL_REGION_INVALID=-1 };
 typedef struct FrameKernelHeadMaskSpec { uint32_t width,height; FrameKernelTransform transform; FrameKernelRect person; } FrameKernelHeadMaskSpec;
 int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRect *view,float output_size,float yaw,FrameKernelEllipse *output);
+  /* Current owned face rendering. Optional CURRENT mask support may enlarge
+     the detected ellipse; it never removes detector coverage or grants identity.
+     Positive len requires a valid mask/spec; invalid input leaves output intact. */
+  int32_t frame_kernel_current_face_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse region,FrameKernelEllipse *output);
 int32_t frame_kernel_head_fallback(FrameKernelRect person,FrameKernelEllipse *output);
 /* Complete bbox/current-mask fallback. A zero len omits current evidence; a
    null seed selects the bbox seed. Nonzero len requires a valid current mask.

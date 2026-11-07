@@ -348,6 +348,15 @@ final class IOSFacePrivacyTemporalResolver {
       } else {
         uniformRegionContinuation.reset()
       }
+      if region.source == .detectedFace && !person.conservativePrivacyFallback {
+        guard let covered=IOSFrameKernelFaceGeometry.coverCurrent(person.detection,
+          region:SIMD4(region.centerX,region.centerY,region.radiusX,region.radiusY),preprocess:preprocess) else {
+          throw NSError(domain:"FrameKernel",code:-1,
+            userInfo:[NSLocalizedDescriptionKey:"Invalid current face coverage input"])
+        }
+        region=IOSFacePrivacyEllipse(centerX:covered.x,centerY:covered.y,
+          radiusX:covered.z,radiusY:covered.w,source:region.source)
+      }
       regions[person.id] = region
     }
 

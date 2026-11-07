@@ -208,3 +208,29 @@ let ownershipRegions=try ownershipResolver.resolve(image:blank,
 precondition(ownershipRegions[0]?.source == .yoloHeadFallback)
 precondition(ownershipRegions[1]?.source == .detectedFace)
 print("CURRENT_FACE_OWNERSHIP_PRODUCTION_SYNTHETIC=PASS overlapping_people=2")
+
+// Current-mask rendering coverage is separate from detector/identity evidence.
+// Deliberately synthetic rectangles: no original Android inputs leave that host.
+var profileMask=[UInt8](repeating:0,count:25600)
+for y in 35..<65 {for x in 50..<100 {profileMask[y*160+x]=255}}
+let profilePerson=person(SIMD4(80,60,560,620),profileMask)
+let profileSeed=SIMD4<Float>(280,200,60,70)
+let profileCovered=IOSFrameKernelFaceGeometry.coverCurrent(profilePerson,region:profileSeed,preprocess:ownershipPre)!
+func profileContains(_ e:SIMD4<Float>,_ x:Float,_ y:Float)->Bool {
+  let dx=(x-e.x)/e.z;let dy=(y-e.y)/e.w;return dx*dx+dy*dy<=1.00001
+}
+precondition(!profileContains(profileSeed,400,200))
+precondition(profileContains(profileCovered,400,200))
+precondition(profileContains(profileCovered,220,200)&&profileContains(profileCovered,280,270))
+final class SyntheticProfileLocator:IOSFaceLocating {
+  func locateFaces(in image:CGImage)throws->[IOSFaceCandidate] {
+    [IOSFaceCandidate(x1:232,y1:152,x2:328,y2:248,confidence:0.4)]
+  }
+}
+let profileResolver=IOSFacePrivacyTemporalResolver(locator:SyntheticProfileLocator())
+let profileRegions=try profileResolver.resolve(image:blank,persons:[IOSPreviewPerson(id:0,detection:profilePerson)],
+  faceOnlyIds:[0],preprocess:ownershipPre,timestampUs:0)
+let profileOutput=profileRegions[0]!
+precondition(profileOutput.source == .detectedFace)
+precondition(profileContains(SIMD4(profileOutput.centerX,profileOutput.centerY,profileOutput.radiusX,profileOutput.radiusY),400,200))
+print("CURRENT_FACE_COVERAGE_PRODUCTION_SYNTHETIC=PASS current_profile_and_original_extent")

@@ -1427,6 +1427,9 @@ class FaceOnlyPrivacyFrameProcessor(
                     region = region.copy(centerX = continued[0], centerY = continued[1],
                         radiusX = continued[2], radiusY = continued[3])
                 }
+                if (region.source == FacePrivacyRegionSource.DETECTED_FACE && person.observedThisFrame) {
+                    region = FrameKernelFaceGeometry.coverCurrent(person.mask, person.bbox, region)
+                }
                 val maskStartNs = System.nanoTime()
                 val builtMask = FacePrivacyMaskBuilder.build(listOf(region), mapper)
                 maskBuildMs += (System.nanoTime() - maskStartNs) / 1_000_000.0

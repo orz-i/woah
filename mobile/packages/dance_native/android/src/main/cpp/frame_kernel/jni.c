@@ -668,6 +668,22 @@ JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_headF
  if(status!=FRAME_KERNEL_REGION_OK)return NULL;
  return ellipse_output(env,output);
 }
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_currentFaceRegionNative(JNIEnv *env,jobject self,jbyteArray pixels,jint width,jint height,jfloatArray transform,jfloatArray person,jfloatArray region){
+ (void)self;FrameKernelHeadMaskSpec spec={0};FrameKernelEllipse seed={0},output={0};
+ if(!read_rect(env,person,&spec.person)||!read_ellipse(env,region,&seed))return NULL;
+ jsize count=pixels?(*env)->GetArrayLength(env,pixels):0;
+ if(count){
+  if(width<=1||height<=1||width>1024||height>1024||count!=width*height){invalid(env);return NULL;}
+  spec.width=(uint32_t)width;spec.height=(uint32_t)height;
+  if(!read_transform(env,transform,&spec.transform))return NULL;
+ }
+ jbyte *bytes=count?(*env)->GetByteArrayElements(env,pixels,NULL):NULL;
+ if(count&&!bytes)return NULL;
+ int32_t status=frame_kernel_current_face_region((const uint8_t*)bytes,(size_t)count,spec,seed,&output);
+ if(bytes)(*env)->ReleaseByteArrayElements(env,pixels,bytes,JNI_ABORT);
+ if(status!=FRAME_KERNEL_REGION_OK)return NULL;
+ return ellipse_output(env,output);
+}
 JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_currentHeadRegionNative(JNIEnv *env,jobject self,jbyteArray pixels,jint width,jint height,jfloatArray transform,jfloatArray person,jfloatArray seed){
  (void)self;
  if(width<=1||height<=1||width>1024||height>1024)return NULL;
