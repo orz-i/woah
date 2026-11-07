@@ -215,9 +215,6 @@ def verify_ios_replay_surface() -> None:
         "person.conservativePrivacyFallback",
         "persons: persons.filter { !$0.conservativePrivacyFallback }",
         "unselected neighbor's",
-        "ambiguityMargin: Float32 = 0.08",
-        "containment >= 0.80",
-        "faceCenterY <= person.y1 + personHeight * 0.62",
         "maxPredictedFaceAgeUs: Int64 = 150_000",
         "trustedMaskSeedMaxAgeUs: Int64 = 800_000",
         "expiredFaceMaskFallbackExpansion: Float32 = 1.10",
@@ -249,6 +246,22 @@ def verify_ios_replay_surface() -> None:
         and state_start > mask_fallback_start,
         "Phase 5E maskGuidedFallback must remain scoped inside TrustedFaceGeometry",
     )
+    observation_core = text(ROOT / "crates/frame-kernel/src/face_observations.rs", "shared current face observations")
+    for token in ("containment < 0.80", "cy > person.top + ph * 0.62", "pixels[index] >= 128",
+                  "support[0] >= 4 && support[1] >= 4", "scores[first] - scores[ranked[1]] < margin",
+                  "row[best] - scores[other * faces + best] < margin", "owner.is_some() && owners[*at] == owner"):
+        check(token in observation_core, f"Shared current face protection contract missing: {token}")
+    observation_transport = text(SOURCES / "IOSFrameKernelFaceGeometry.swift", "shared observation transport")
+    for token in ("frame_kernel_face_mask_support(", "frame_kernel_face_observation_score(",
+                  "frame_kernel_face_upper_body_view(", "frame_kernel_face_merge_views(",
+                  "frame_kernel_face_unique_owner(", "frame_kernel_face_resolve_owners(", "frame_kernel_face_occlusion_padding("):
+        check(token in observation_transport, f"Swift observation transport must call Rust: {token}")
+    for call in ("support(", "score(", "upperBody(", "merge(", "uniqueOwner(", "resolveOwners(", "padding("):
+        check("IOSFrameKernelFaceGeometry."+call in face_pipeline, f"Native current face policy must delegate {call}")
+    capture = ROOT / "tools/ios/host_regression/face_geometry/CanonicalObservationGeometry.swift"
+    manifest = json.loads((ROOT / "crates/frame-kernel/testdata/observation-geometry-native-v1.json").read_text(encoding="utf-8"))
+    check(hashlib.sha256(capture.read_bytes().replace(b"\r\n",b"\n")).hexdigest()==manifest["canonical_lf_sha256"],
+          "Original native observation geometry reference changed; review provenance")
     grid_locator = (SOURCES / "IOSGridFaceLocator.swift").read_text(encoding="utf-8")
     for token in ("final class IOSGridFaceLocator", "frame_kernel_grid_face_input(",
                   "frame_kernel_grid_face_decode(", "FACE_MODEL_HASH_CONTRACT",

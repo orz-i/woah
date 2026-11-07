@@ -2,6 +2,8 @@
   "schema": "frame-kernel-native-observation-geometry-v1",
   "source_commit": "a6316fd2",
   "source_path": "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSFacePrivacyPipeline.swift",
-  "canonical_lf_sha256": "5422a07f046f8fee3e58e9e9e16a094611076b4af05ae4a00fcb1ac2b7692393",
-  "scope": "Original native current-mask support, upper-body search, cross-view merge and global face scoring; original bodies copied before production replacement. Baseline native versus test-only copies is checked on 512 cases before Rust port. Existing JNI/Swift frozen head/region corpus and fail-closed tests remain unchanged."
+  "canonical_lf_sha256": "eda76ea981c9b337d1edef5c6389457154a8b779d5732af8450e985c81ee92b0",
+  "scope": "Original native current-mask support, upper-body search, cross-view merge and global face scoring; original bodies copied before production replacement. Baseline native versus test-only copies is checked on 512 cases before Rust port. Existing JNI/Swift frozen head/region corpus and fail-closed tests remain unchanged.",
+  "capture_windows_crlf_sha256": "5422a07f046f8fee3e58e9e9e16a094611076b4af05ae4a00fcb1ac2b7692393",
+  "normalization": "The test-only source is unchanged; canonical_lf_sha256 normalizes Windows CRLF to LF for cross-host verification."
 }

@@ -365,7 +365,7 @@ test(moved.radiusX>=currentFace.radiusX && moved.radiusY>=currentFace.radiusY,
 let raisedArmBody=box(125.8871,403.623,1461.6781,3440.3723)
 let recoveryROI=IOSFacePrivacyGeometry.upperBodyFaceSearchRegion(raisedArmBody)
 test(recoveryROI.contains(CGPoint(x:1213,y:1177)),"raised-arm recovery ROI omitted the actual face")
-test(recoveryROI.width<IOSFacePrivacyGeometry.faceSearchRegion(raisedArmBody).width,
+test(recoveryROI.width<CGFloat(max((raisedArmBody.x2-raisedArmBody.x1)*2.50,(raisedArmBody.y2-raisedArmBody.y1)*0.80)),
      "raised-arm recovery did not restore spatial detail")
 print("CURRENT_DETECTED_FACE_NO_LAG_AND_RAISED_ARM_DETAIL=PASS")
 
