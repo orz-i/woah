@@ -1,0 +1,91 @@
+{
+  "candidate_index_sha256": "43167d278838c51939b3cda26bbd4e9ace5c2d4e696a1f2316eafde8d0af5efa",
+  "raw_status_unchanged": true,
+  "scope": "All14 remaining raw source/context/actual-output candidate crops across both pages were visually inspected. Identifying face features covered; bbox includes hair,ear,arm or neck. Filtered stage only.",
+  "decisions": [
+    {
+      "index": 0,
+      "case": "group_4k_face_solid",
+      "source_frame": 131,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 1,
+      "case": "group_4k_face_solid",
+      "source_frame": 147,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 2,
+      "case": "group_4k_face_solid",
+      "source_frame": 181,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 3,
+      "case": "group_4k_face_solid",
+      "source_frame": 182,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 4,
+      "case": "group_4k_face_solid",
+      "source_frame": 183,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 5,
+      "case": "group_4k_face_solid",
+      "source_frame": 184,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 6,
+      "case": "group_4k_face_solid",
+      "source_frame": 185,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 7,
+      "case": "group_4k_face_solid",
+      "source_frame": 186,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 8,
+      "case": "group_4k_face_solid",
+      "source_frame": 201,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 9,
+      "case": "group_4k_face_solid",
+      "source_frame": 288,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 10,
+      "case": "group_4k_face_solid",
+      "source_frame": 304,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 11,
+      "case": "group_4k_face_solid",
+      "source_frame": 515,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 12,
+      "case": "group_4k_face_solid",
+      "source_frame": 516,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    },
+    {
+      "index": 13,
+      "case": "group_4k_face_solid",
+      "source_frame": 577,
+      "decision": "protected_features_covered_bbox_includes_hair_ear_arm_neck"
+    }
+  ]
+}

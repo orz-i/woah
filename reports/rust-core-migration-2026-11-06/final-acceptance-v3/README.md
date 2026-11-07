@@ -1,3 +1,3 @@
-# FrameKernel final-v3 regression
+# FrameKernel final-v3 regression — REJECTED
 
-PENDING: no complete62 acceptance yet. Both platforms must use compiled source 81082a70b4d1e332dff15387dc1b77f88d4549d0, the same eight frozen sources, and all 62 unchanged cases. Native previews now include the two confirmed iOS partial-face failure times (186 pairs per platform). Raw failed final-v2 evidence is retained separately.
+The iOS filtered full581-frame diagnosis still exposed identifying nose/mouth features at previously confirmed frames and both7400/8120ms native previews. Source81082a70 is not accepted. The failed actual-output evidence is archived in ../current-head-edge-fix/failed-v3. Android v3 is diagnostic only; its run cannot substitute for complete regressions from the next common fixed source. No overall acceptance summary was emitted.
