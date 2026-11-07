@@ -31,10 +31,17 @@ def main():
     spec=json.loads(SPEC.read_text());meta=json.loads((run/'run-metadata.json').read_text());data=json.loads((run/'results.json').read_text())
     if meta['sources'][spec['source']]['sha256']!=spec['source_sha256']:raise ValueError('Frozen source differs')
     points={int(k)*spec['frame_period_us']:v for k,v in spec['points'].items()};rows=[];boards=[]
+    trace_by_output={}
+    for name in meta['crop_traces']:
+        path=run/'crop-traces'/name
+        with path.open() as stream:header=json.loads(stream.readline())
+        output=header['output_basename']
+        if output in trace_by_output:raise ValueError('Duplicate trace output binding')
+        trace_by_output[output]=name
     for row in data['cases']:
         if row.get('input')!=spec['source'] or row.get('fill')!='solid' or row.get('result')!='output_created':continue
         movie=run/'outputs'/(row['case']+'.mp4')
-        trace_name=meta['crop_traces_by_output'][movie.name];trace=run/'crop-traces'/trace_name
+        trace_name=trace_by_output[movie.name];trace=run/'crop-traces'/trace_name
         records=[json.loads(s) for s in trace.read_text().splitlines()];header=records[0]
         if header['source_basename']!=spec['source'] or header['output_basename']!=movie.name:raise ValueError('Trace binding differs')
         movie_sha=sha(movie);trace_sha=sha(trace)
