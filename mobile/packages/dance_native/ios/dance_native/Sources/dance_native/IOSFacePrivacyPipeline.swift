@@ -484,6 +484,18 @@ final class IOSFacePrivacyTemporalResolver {
     }
 
     func maskGuidedFallback(
+      personDetection: IOSYoloDetection, preprocess: IOSYoloPreprocessResult
+    ) -> IOSFacePrivacyEllipse? {
+      guard let region = IOSFrameKernelFaceGeometry.trusted(personDetection.mask,
+        person: personDetection, previous: trustedPersonDetection,
+        seed: SIMD4(centerX, centerY, radiusX, radiusY),
+        expansion: IOSFacePrivacyTemporalResolver.expiredFaceMaskFallbackExpansion,
+        preprocess: preprocess) else { return nil }
+      return IOSFacePrivacyEllipse(centerX: region.x, centerY: region.y,
+        radiusX: region.z, radiusY: region.w, source: .yoloHeadFallback)
+    }
+
+    private func maskGuidedFallbackLegacy(
       personDetection: IOSYoloDetection,
       preprocess: IOSYoloPreprocessResult
     ) -> IOSFacePrivacyEllipse? {
