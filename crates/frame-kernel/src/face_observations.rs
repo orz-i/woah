@@ -54,6 +54,64 @@ pub fn face_mask_owned(pixels: &[u8], spec: HeadMaskSpec, face: &Candidate, yaw:
     };
     mask_support(pixels, spec, region).is_some_and(|s| s[0] >= 4 && s[1] >= 12)
 }
+/// Combine ROI-to-scene transport, current-person bounds and current mask
+/// ownership. A nearby detected face must not replace another person's head
+/// fallback merely because the two person boxes overlap. No history is used.
+pub fn current_face_owned(
+    pixels: Option<&[u8]>,
+    spec: HeadMaskSpec,
+    face: &Candidate,
+    view: Option<(Rect, f32)>,
+    yaw: f32,
+) -> Option<bool> {
+    if !spec.person.valid()
+        || !face.bounds.valid()
+        || !face.confidence.is_finite()
+        || !(0.0..=1.0).contains(&face.confidence)
+        || !yaw.is_finite()
+        || face.points.iter().flatten().any(|v| !v.is_finite())
+    {
+        return None;
+    }
+    let mapped = if let Some((view, size)) = view {
+        if !view.valid() || !size.is_finite() || size <= 0.0 {
+            return None;
+        }
+        let x = |v| view.left + (v / size) * (view.right - view.left);
+        let y = |v| view.top + (v / size) * (view.bottom - view.top);
+        Candidate {
+            bounds: Rect {
+                left: x(face.bounds.left),
+                top: y(face.bounds.top),
+                right: x(face.bounds.right),
+                bottom: y(face.bounds.bottom),
+            },
+            confidence: face.confidence,
+            points: face.points.iter().map(|p| [x(p[0]), y(p[1])]).collect(),
+        }
+    } else {
+        face.clone()
+    };
+    if !mapped.bounds.valid() || mapped.points.iter().flatten().any(|v| !v.is_finite()) {
+        return None;
+    }
+    if let Some(pixels) = pixels
+        && !spec.valid(pixels)
+    {
+        return None;
+    }
+    let identity_view = Rect {
+        left: 0.0,
+        top: 0.0,
+        right: 1.0,
+        bottom: 1.0,
+    };
+    if !crate::face_localization::owned(&mapped, identity_view, 1.0, spec.person) {
+        return Some(false);
+    }
+    Some(pixels.is_none_or(|p| face_mask_owned(p, spec, &mapped, yaw)))
+}
+
 pub fn association_score(face: &Candidate, person: Rect) -> Option<f32> {
     if !face.bounds.valid() || !person.valid() || !face.confidence.is_finite() {
         return None;

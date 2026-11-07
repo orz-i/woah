@@ -246,6 +246,49 @@ pub unsafe extern "C" fn frame_kernel_face_occlusion_padding(
     unsafe { output.write(region) };
     REGION_OK
 }
+/// # Safety
+/// Row18 is18 readable floats. A nonnull view points to one readable aligned
+/// Rect. Pixels is readable for len bytes. Output is one disjoint writable u32.
+/// Zero len omits current-mask evidence; only REGION_OK writes0/1.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_current_face_owned(
+    pixels: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    row18: *const f32,
+    view: *const Rect,
+    output_size: f32,
+    yaw: f32,
+    output: *mut u32,
+) -> i32 {
+    if len > 1024 * 1024 || row18.is_null() || output.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies the documented borrowed input records.
+    let (Some(pixels), Some(row)) = (unsafe { borrowed(pixels, len) }, unsafe {
+        borrowed(row18, 18)
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(face) = crate::ffi_face::decode(row) else {
+        return REGION_INVALID;
+    };
+    // SAFETY: a nonnull view is a live aligned readable Rect for this call.
+    let view = unsafe { view.as_ref() }.copied().map(|r| (r, output_size));
+    let Some(owned) = face_observations::current_face_owned(
+        if len == 0 { None } else { Some(pixels) },
+        spec,
+        &face,
+        view,
+        yaw,
+    ) else {
+        return REGION_INVALID;
+    };
+    // SAFETY: caller supplies the documented disjoint writable output.
+    unsafe { output.write(u32::from(owned)) };
+    REGION_OK
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
