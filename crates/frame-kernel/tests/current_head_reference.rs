@@ -78,12 +78,12 @@ fn actual_input() -> (HeadMaskSpec, Vec<u8>, Rect) {
         independently_detected_partial_face,
     )
 }
-fn covered_core(region: Ellipse, face: Rect) -> f32 {
+fn covered_face_bbox(region: Ellipse, face: Rect) -> f32 {
     let mut covered = 0;
     for y in 0..31 {
         for x in 0..31 {
-            let sx = face.left + (face.right - face.left) * (0.15 + 0.70 * x as f32 / 30.0);
-            let sy = face.top + (face.bottom - face.top) * (0.15 + 0.70 * y as f32 / 30.0);
+            let sx = face.left + (face.right - face.left) * (x as f32 / 30.0);
+            let sy = face.top + (face.bottom - face.top) * (y as f32 / 30.0);
             let dx = (sx - region.center_x) / region.radius_x;
             let dy = (sy - region.center_y) / region.radius_y;
             covered += u32::from(dx * dx + dy * dy <= 1.0);
@@ -95,7 +95,7 @@ fn covered_core(region: Ellipse, face: Rect) -> f32 {
 fn actual_frame185_bbox_only_misses_visible_nose_and_mouth() {
     let (spec, pixels, face) = actual_input();
     let bbox_only = face_geometry::fallback(spec.person).unwrap();
-    assert_eq!(covered_core(bbox_only, face), 0.0);
+    assert_eq!(covered_face_bbox(bbox_only, face), 0.0);
     let completed = face_geometry::current_head_region(Some(&pixels), spec, None).unwrap();
     assert_eq!(completed.current_mask_guided, 1);
     let mut through_abi = frame_kernel::face_geometry::CurrentHeadRegion {
@@ -114,16 +114,16 @@ fn actual_frame185_bbox_only_misses_visible_nose_and_mouth() {
     };
     assert_eq!(status, frame_kernel::REGION_OK);
     assert_eq!(through_abi, completed);
-    assert!(covered_core(completed.region, face) >= 0.90);
+    assert_eq!(covered_face_bbox(completed.region, face), 1.0);
     let center = face_geometry::estimate(&pixels, spec, bbox_only).unwrap();
-    assert_eq!(
-        [completed.region.center_x, completed.region.center_y],
-        center
-    );
-    assert_eq!(
-        (completed.region.radius_x, completed.region.radius_y),
-        (bbox_only.radius_x, bbox_only.radius_y)
-    );
+    let previous_composition = Ellipse {
+        center_x: center[0],
+        center_y: center[1],
+        ..bbox_only
+    };
+    assert!(covered_face_bbox(previous_composition, face) < 1.0);
+    assert!(completed.region.radius_x >= bbox_only.radius_x);
+    assert!(completed.region.radius_y >= bbox_only.radius_y);
 }
 #[test]
 fn missing_empty_or_malformed_current_mask_never_invents_head_support() {
@@ -142,4 +142,62 @@ fn missing_empty_or_malformed_current_mask_never_invents_head_support() {
         ..bbox_only
     };
     assert!(face_geometry::current_head_region(Some(&pixels), spec, Some(bad)).is_none());
+}
+
+#[test]
+fn absent_edge_contact_keeps_the_existing_local_estimator() {
+    let (spec, mut pixels, _) = actual_input();
+    // Actual mask is unchanged everywhere except its three current edge rows.
+    let row = (spec.transform.pad_top / spec.transform.input_size as f32
+        * spec.transform.proto_size as f32)
+        .floor() as usize;
+    for y in row..row + 3 {
+        pixels[y * spec.width as usize..(y + 1) * spec.width as usize].fill(0);
+    }
+    let seed = face_geometry::fallback(spec.person).unwrap();
+    let center = face_geometry::estimate(&pixels, spec, seed).unwrap();
+    let result = face_geometry::current_head_region(Some(&pixels), spec, None).unwrap();
+    assert_eq!(
+        result.region,
+        Ellipse {
+            center_x: center[0],
+            center_y: center[1],
+            ..seed
+        }
+    );
+}
+
+#[test]
+fn an_isolated_edge_pixel_is_not_head_evidence() {
+    let (spec, mut pixels, _) = actual_input();
+    pixels.fill(0);
+    let row = (spec.transform.pad_top / spec.transform.input_size as f32
+        * spec.transform.proto_size as f32)
+        .floor() as usize;
+    pixels[row * spec.width as usize + 50] = 255;
+    let result = face_geometry::current_head_region(Some(&pixels), spec, None).unwrap();
+    assert_eq!(result.current_mask_guided, 0);
+    assert_eq!(result.region, face_geometry::fallback(spec.person).unwrap());
+}
+
+#[test]
+fn disconnected_edge_fragment_does_not_expand_the_head() {
+    let (spec, mut pixels, _) = actual_input();
+    let row = (spec.transform.pad_top / spec.transform.input_size as f32
+        * spec.transform.proto_size as f32)
+        .floor() as usize;
+    let width = spec.width as usize;
+    pixels[row * width..(row + 1) * width].fill(0);
+    pixels[row * width + 35..row * width + 42].fill(255);
+    let seed = face_geometry::fallback(spec.person).unwrap();
+    let center = face_geometry::estimate(&pixels, spec, seed).unwrap();
+    let result = face_geometry::current_head_region(Some(&pixels), spec, None).unwrap();
+    assert_eq!(
+        result.region,
+        Ellipse {
+            center_x: center[0],
+            center_y: center[1],
+            ..seed
+        }
+    );
 }

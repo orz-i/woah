@@ -78,7 +78,8 @@ pub struct CurrentHeadRegion {
 }
 
 /// With no current mask, retain the conservative seed. A valid current mask may
-/// recenter it, while preserving its radii and the canonical head-run limits.
+/// recenter it. Current support at the image edge additionally bounds a clipped
+/// head; its conservative envelope may enlarge the seed, never create identity.
 /// `None` seed selects the shared current-person bbox fallback.
 pub fn current_head_region(
     pixels: Option<&[u8]>,
@@ -97,6 +98,10 @@ pub fn current_head_region(
         if let Some(center) = estimate(pixels, spec, region) {
             region.center_x = center[0];
             region.center_y = center[1];
+            current_mask_guided = 1;
+        }
+        if let Some(clipped) = clipped_top_head(pixels, spec, region) {
+            region = clipped;
             current_mask_guided = 1;
         }
     }
@@ -150,6 +155,97 @@ pub(crate) fn valid_seed(e: Ellipse) -> bool {
         && e.radius_x > 0.0
         && e.radius_y > 0.0
 }
+/// A clipped head cannot be centered reliably by a body/long-hair weighted
+/// mean. Use only a coherent head-sized run touching the CURRENT image edge.
+/// This is render coverage, not a face observation or an identity exemption.
+fn clipped_top_head(pixels: &[u8], spec: HeadMaskSpec, mut region: Ellipse) -> Option<Ellipse> {
+    let cell_x = spec.transform.input_size as f32 / (spec.width as f32 * spec.transform.scale);
+    let cell_y = spec.transform.input_size as f32 / (spec.height as f32 * spec.transform.scale);
+    if !cell_x.is_finite()
+        || !cell_y.is_finite()
+        || cell_x <= 0.0
+        || cell_y <= 0.0
+        || spec.person.top > cell_y
+        || spec.person.bottom <= 0.0
+    {
+        return None;
+    }
+    let row = spec.source_y(0.0).floor();
+    if row < 0.0 || row + 3.0 > spec.height as f32 {
+        return None;
+    }
+    let row = row as usize;
+    let left = spec.source_x(spec.person.left.max(0.0)).floor().max(0.0) as usize;
+    let right = spec
+        .source_x(spec.person.right)
+        .ceil()
+        .min(spec.width as f32) as usize;
+    if left >= right || right > spec.width as usize {
+        return None;
+    }
+    let expected_width = (region.radius_x * 1.4 / cell_x).max(2.0);
+    let center = spec.source_x(region.center_x);
+    let mut bounds_left = usize::MAX;
+    let mut bounds_right = 0;
+    let mut supported_rows = 0;
+    let mut previous_run: Option<(usize, usize)> = None;
+    for y in row..row + 3 {
+        let mut x = left;
+        let mut best = None;
+        let mut distance = f32::INFINITY;
+        while x < right {
+            while x < right && pixels[y * spec.width as usize + x] < 96 {
+                x += 1;
+            }
+            let start = x;
+            while x < right && pixels[y * spec.width as usize + x] >= 96 {
+                x += 1;
+            }
+            let width = (x - start) as f32;
+            if width < 2.0 || !(0.30..=1.75).contains(&(width / expected_width)) {
+                continue;
+            }
+            if let Some((previous_left, previous_right)) = previous_run
+                && (start > previous_right || x < previous_left)
+            {
+                continue;
+            }
+            let d = (((start + x) as f32 * 0.5) - center).abs() / expected_width;
+            if d <= 1.05 && d < distance {
+                best = Some((start, x));
+                distance = d;
+            }
+        }
+        if let Some((start, end)) = best {
+            previous_run = Some((start, end));
+            bounds_left = bounds_left.min(start);
+            bounds_right = bounds_right.max(end);
+            supported_rows += 1;
+        } else if y == row {
+            // A mask that begins below the image edge is not a clipped head.
+            return None;
+        }
+    }
+    if supported_rows < 2 {
+        return None;
+    }
+    // One prototype cell bounds the raster quantization at the current edge.
+    let left = (spec.proto_x(bounds_left as f32) - cell_x).max(0.0);
+    let right =
+        (spec.proto_x(bounds_right as f32) + cell_x).min(spec.transform.source_width as f32);
+    let bottom = (spec.proto_y((row + 3) as f32) + cell_y).min(spec.transform.source_height as f32);
+    if right <= left || bottom <= 0.0 {
+        return None;
+    }
+    region.center_x = (left + right) * 0.5;
+    let dy = region.center_y.abs().max((bottom - region.center_y).abs());
+    region.radius_y = region.radius_y.max(dy * std::f32::consts::SQRT_2);
+    let normalized_y = dy / region.radius_y;
+    let radius_x = (right - left) * 0.5 / (1.0 - normalized_y * normalized_y).sqrt();
+    region.radius_x = region.radius_x.max(radius_x);
+    Some(region)
+}
+
 /// Narrow supported scanline runs near a trusted seed, preserving Android's
 /// Float32 products and mixed Float64 accumulation exactly.
 pub fn estimate(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse) -> Option<[f32; 2]> {

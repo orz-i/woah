@@ -131,25 +131,25 @@ precondition(count==25600&&edgePixels.count==count&&proto==160)
 let partial=e.box();precondition(e.at==e.bytes.count)
 let edgePerson=person(body,edgePixels)
 let edgePre=IOSYoloPreprocessResult(input:[],scale:es,padLeft:el,padTop:et,sourceWidth:ew,sourceHeight:eh,inputSize:input)
-func coreCoverage(_ region:SIMD4<Float>)->Float {
+func partialFaceCoverage(_ region:SIMD4<Float>)->Float {
   var covered=0
   for y in 0..<31 {for x in 0..<31 {
-    let sx=partial.x+(partial.z-partial.x)*(0.15+0.70*Float(x)/30)
-    let sy=partial.y+(partial.w-partial.y)*(0.15+0.70*Float(y)/30)
+    let sx=partial.x+(partial.z-partial.x)*(Float(x)/30)
+    let sy=partial.y+(partial.w-partial.y)*(Float(y)/30)
     let dx=(sx-region.x)/region.z,dy=(sy-region.y)/region.w
     if dx*dx+dy*dy<=1 {covered+=1}
   }}
   return Float(covered)/961
 }
 let oldBox=IOSFrameKernelFaceGeometry.fallback(edgePerson)!
-precondition(coreCoverage(oldBox)==0)
+precondition(partialFaceCoverage(oldBox)==0)
 let edge=IOSFrameKernelFaceGeometry.currentHead(edgePerson,preprocess:edgePre,currentMask:true)!
-precondition(edge.maskGuided&&coreCoverage(edge.region)>=0.90)
+precondition(edge.maskGuided&&partialFaceCoverage(edge.region)==1)
 let noCurrent=IOSFrameKernelFaceGeometry.currentHead(edgePerson,preprocess:edgePre,currentMask:false)!
 precondition(!noCurrent.maskGuided&&bits(noCurrent.region)==bits(oldBox))
 let malformed=IOSFrameKernelFaceGeometry.currentHead(person(body,[1,2,3]),preprocess:edgePre,currentMask:true)
 precondition(malformed==nil)
-print("CURRENT_HEAD_NATIVE=PASS frozen=512 actual_frame=185 partial_feature_core=\(coreCoverage(edge.region))")
+print("CURRENT_HEAD_NATIVE=PASS frozen=512 actual_frame=185 partial_face_full_bbox=\(partialFaceCoverage(edge.region))")
 
 // The actual production resolver must use the combined operation, not only its
 // standalone bridge. Replay every recorded person/mask and face observation.
@@ -181,6 +181,6 @@ let production=IOSFacePrivacyTemporalResolver(locator:CapturedEdgeLocator(scene)
 let regions=try production.resolve(image:blank,persons:currentPeople,faceOnlyIds:Set(currentPeople.map{ $0.id }),
   preprocess:edgePre,protectUnassignedFaces:true,timestampUs:7_400_000)
 guard let actual=regions[-2_185_002] else {fatalError("actual current protected person lost its privacy region")}
-let actualCoverage=coreCoverage(SIMD4(actual.centerX,actual.centerY,actual.radiusX,actual.radiusY))
-precondition(actualCoverage>=0.90,"real-frame185 production fallback leaves visible feature core=\(actualCoverage)")
-print("CURRENT_HEAD_PRODUCTION_SCENE=PASS people=5 detail=6 partial_feature_core=\(actualCoverage)")
+let actualCoverage=partialFaceCoverage(SIMD4(actual.centerX,actual.centerY,actual.radiusX,actual.radiusY))
+precondition(actualCoverage==1,"real-frame185 production fallback leaves visible feature core=\(actualCoverage)")
+print("CURRENT_HEAD_PRODUCTION_SCENE=PASS people=5 detail=6 partial_face_full_bbox=\(actualCoverage)")
