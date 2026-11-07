@@ -565,8 +565,10 @@ class _QA {
         final lastMs = (endMs - frameMs).clamp(startMs, endMs - 1).toInt();
         final previewRows = <Map<String, Object?>>[];
         final previewTimes = {startMs, (startMs + lastMs) ~/ 2, lastMs};
-        if (hero == 6 && startMs <= 6600 && lastMs >= 6600) {
-          previewTimes.add(6600);
+        for (final regressionMs in [6600, 11800]) {
+          if (hero == 6 && startMs <= regressionMs && lastMs >= regressionMs) {
+            previewTimes.add(regressionMs);
+          }
         }
         for (final at in previewTimes) {
           final preview = await client.getPreviewFrame(
