@@ -68,6 +68,44 @@ pub fn fallback(person: Rect) -> Option<Ellipse> {
         radius_y: (w * 0.26).max(h * 0.060),
     })
 }
+/// Complete current-head refinement. Native consumers transport evidence; they
+/// must not separately reconstruct the bbox/mask fallback combination.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CurrentHeadRegion {
+    pub region: Ellipse,
+    pub current_mask_guided: u32,
+}
+
+/// With no current mask, retain the conservative seed. A valid current mask may
+/// recenter it, while preserving its radii and the canonical head-run limits.
+/// `None` seed selects the shared current-person bbox fallback.
+pub fn current_head_region(
+    pixels: Option<&[u8]>,
+    spec: HeadMaskSpec,
+    seed: Option<Ellipse>,
+) -> Option<CurrentHeadRegion> {
+    let mut region = seed.unwrap_or(fallback(spec.person)?);
+    if !valid_seed(region) {
+        return None;
+    }
+    let mut current_mask_guided = 0;
+    if let Some(pixels) = pixels {
+        if !spec.valid(pixels) {
+            return None;
+        }
+        if let Some(center) = estimate(pixels, spec, region) {
+            region.center_x = center[0];
+            region.center_y = center[1];
+            current_mask_guided = 1;
+        }
+    }
+    Some(CurrentHeadRegion {
+        region,
+        current_mask_guided,
+    })
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct HeadMaskSpec {

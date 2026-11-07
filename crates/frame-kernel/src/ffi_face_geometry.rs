@@ -119,6 +119,44 @@ pub unsafe extern "C" fn frame_kernel_trusted_mask_region(
 }
 
 /// # Safety
+/// A positive len requires that many readable pixels. Zero len means no current
+/// mask and does not dereference pixels. A nonnull seed is one readable ellipse.
+/// Output is one disjoint writable CurrentHeadRegion. Invalid input never writes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_current_head_region(
+    pixels: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    seed: *const Ellipse,
+    output: *mut face_geometry::CurrentHeadRegion,
+) -> i32 {
+    if len > 1024 * 1024 || output.is_null() {
+        return REGION_INVALID;
+    }
+    let pixels = if len == 0 {
+        None
+    } else {
+        // SAFETY: caller supplies the documented readable byte range.
+        let Some(pixels) = (unsafe { crate::ffi_tracking::borrowed(pixels, len) }) else {
+            return REGION_INVALID;
+        };
+        Some(pixels)
+    };
+    let seed = if seed.is_null() {
+        None
+    } else {
+        // SAFETY: a nonnull seed points to one readable aligned ellipse.
+        Some(unsafe { *seed })
+    };
+    let Some(region) = face_geometry::current_head_region(pixels, spec, seed) else {
+        return REGION_INVALID;
+    };
+    // SAFETY: caller supplies the documented disjoint writable output.
+    unsafe { output.write(region) };
+    REGION_OK
+}
+
+/// # Safety
 /// Output points to one disjoint writable aligned ellipse. Invalid input never writes.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_project_face_region(
@@ -149,6 +187,67 @@ pub unsafe extern "C" fn frame_kernel_project_face_region(
 mod tests {
     use super::*;
     use crate::geometry::Transform;
+    #[test]
+    fn complete_current_head_abi_preserves_output_on_invalid_evidence() {
+        let spec = HeadMaskSpec {
+            width: 160,
+            height: 160,
+            person: Rect {
+                left: 200.0,
+                top: 0.0,
+                right: 440.0,
+                bottom: 600.0,
+            },
+            transform: Transform {
+                scale: 1.0,
+                pad_left: 0.0,
+                pad_top: 0.0,
+                source_width: 640,
+                source_height: 640,
+                input_size: 640,
+                proto_size: 160,
+            },
+        };
+        let seed = face_geometry::fallback(spec.person).unwrap();
+        let mut out = face_geometry::CurrentHeadRegion {
+            region: Ellipse::default(),
+            current_mask_guided: 99,
+        };
+        // SAFETY: absent pixels/seed are documented; the output is live and disjoint.
+        let status = unsafe {
+            frame_kernel_current_head_region(std::ptr::null(), 0, spec, std::ptr::null(), &mut out)
+        };
+        assert_eq!(status, REGION_OK);
+        assert_eq!(out.region, seed);
+        assert_eq!(out.current_mask_guided, 0);
+        let saved = out;
+        let pixels = vec![0; 25600];
+        // SAFETY: live buffers; invalid length must not write output.
+        let status = unsafe {
+            frame_kernel_current_head_region(
+                pixels.as_ptr(),
+                pixels.len() - 1,
+                spec,
+                &seed,
+                &mut out,
+            )
+        };
+        assert_eq!(status, REGION_INVALID);
+        assert_eq!(out, saved);
+        // SAFETY: null with positive length is invalid and is never dereferenced.
+        let status = unsafe {
+            frame_kernel_current_head_region(std::ptr::null(), pixels.len(), spec, &seed, &mut out)
+        };
+        assert_eq!(status, REGION_INVALID);
+        assert_eq!(out, saved);
+        // SAFETY: disjoint live input and output; zero-valued valid pixels provide no head support.
+        let status = unsafe {
+            frame_kernel_current_head_region(pixels.as_ptr(), pixels.len(), spec, &seed, &mut out)
+        };
+        assert_eq!(status, REGION_OK);
+        assert_eq!(out.current_mask_guided, 0);
+        assert_eq!(out.region, seed);
+    }
     #[test]
     fn projection_abi_initializes_success_and_preserves_invalid_output() {
         let body = Rect {

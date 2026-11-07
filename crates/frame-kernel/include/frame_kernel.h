@@ -244,6 +244,11 @@ enum { FRAME_KERNEL_REGION_OK=0, FRAME_KERNEL_REGION_NONE=1, FRAME_KERNEL_REGION
 typedef struct FrameKernelHeadMaskSpec { uint32_t width,height; FrameKernelTransform transform; FrameKernelRect person; } FrameKernelHeadMaskSpec;
 int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRect *view,float output_size,float yaw,FrameKernelEllipse *output);
 int32_t frame_kernel_head_fallback(FrameKernelRect person,FrameKernelEllipse *output);
+/* Complete bbox/current-mask fallback. A zero len omits current evidence; a
+   null seed selects the bbox seed. Nonzero len requires a valid current mask.
+   Status0 writes the whole output; invalid input leaves it unchanged. */
+typedef struct FrameKernelCurrentHeadRegion { FrameKernelEllipse region; uint32_t current_mask_guided; } FrameKernelCurrentHeadRegion;
+int32_t frame_kernel_current_head_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,const FrameKernelEllipse *seed,FrameKernelCurrentHeadRegion *output);
 /* Geometry only: caller enforces the observation lease before rendering. */
 int32_t frame_kernel_project_face_region(FrameKernelRect current,FrameKernelRect previous,FrameKernelEllipse trusted,int64_t age_us,FrameKernelEllipse *output);
 int32_t frame_kernel_mask_head(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse seed,float *output2);
