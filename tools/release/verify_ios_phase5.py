@@ -220,11 +220,8 @@ def verify_ios_replay_surface() -> None:
         "faceCenterY <= person.y1 + personHeight * 0.62",
         "maxPredictedFaceAgeUs: Int64 = 150_000",
         "trustedMaskSeedMaxAgeUs: Int64 = 800_000",
-        "minPredictedFaceScale: Float32 = 0.88",
-        "maxPredictedFaceScale: Float32 = 1.12",
-        "maxPredictedAgeExpansion: Float32 = 0.10",
         "expiredFaceMaskFallbackExpansion: Float32 = 1.10",
-        "IOSPersonBboxMotionEstimator.estimate(",
+        "IOSFrameKernelFaceGeometry.project(",
         "source: .predictedFace",
         "timestampUs - trusted.lastTrustedTimestampUs <= Self.maxPredictedFaceAgeUs",
         "timestampUs - trusted.lastTrustedTimestampUs <= Self.trustedMaskSeedMaxAgeUs",
@@ -442,6 +439,8 @@ def verify_android_reference_boundary() -> None:
                   "(w * 0.26).max(h * 0.060)", "0.30..=1.75", "d > 1.05",
                   "b.top + h * 0.42", "rows < 2", "pixels[y * spec.width as usize + x] < 96"):
         check(token in region_core, f"Shared face/head safety bound drifted: {token}")
+    for token in ("lease_us: 150_000", "minimum_scale: 0.88", "maximum_scale: 1.12", "age_expansion: 0.10"):
+        check(token in region_core, f"Shared projection lease/scale contract drifted: {token}")
     corpus = ROOT / "crates/frame-kernel/testdata/face-region-native-v1.bin"
     check(corpus.is_file() and hashlib.sha256(corpus.read_bytes()).hexdigest() ==
           "e0e75f439552d6e7599c73f1020dd1d1d7f5323db0db26a4628bf10035b96298",
@@ -450,7 +449,7 @@ def verify_android_reference_boundary() -> None:
     for token in ("frame_kernel_detected_face_region(", "frame_kernel_head_fallback(",
                   "frame_kernel_mask_head(", "frame_kernel_trusted_mask_region(", "guard status==0"):
         check(token in swift_regions, f"Swift shared geometry transport missing: {token}")
-    for call in ("detected(", "fallback(", "estimate(", "trusted("):
+    for call in ("detected(", "fallback(", "estimate(", "trusted(", "project("):
         check("IOSFrameKernelFaceGeometry." + call in (SOURCES / "IOSFacePrivacyPipeline.swift").read_text(encoding="utf-8"),
               f"iOS region consumer must use shared {call}")
 
@@ -478,11 +477,9 @@ def verify_android_reference_boundary() -> None:
     )
     for token in (
         "private const val MAX_PREDICTED_FACE_AGE_US = 150_000L",
-        "private const val MIN_PREDICTED_FACE_SCALE = 0.88f",
-        "private const val MAX_PREDICTED_FACE_SCALE = 1.12f",
-        "private const val MAX_PREDICTED_AGE_EXPANSION = 0.10f",
         "source = FacePrivacyRegionSource.PREDICTED_FACE",
         "cached.project(",
+        "FrameKernelFaceGeometry.project(",
     ):
         check(token in face_processor, f"Android FACE_ONLY projection reference drifted: {token}")
 

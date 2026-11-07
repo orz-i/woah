@@ -213,47 +213,6 @@ final class IOSFacePrivacyTemporalResolver {
         radiusX: region.z, radiusY: region.w, source: .predictedFace)
     }
 
-    private func projectLegacy(
-      personDetection: IOSYoloDetection,
-      ageUs: Int64
-    ) -> IOSFacePrivacyEllipse? {
-      let personWidth = personDetection.x2 - personDetection.x1
-      let personHeight = personDetection.y2 - personDetection.y1
-      let trustedWidth = trustedPersonDetection.x2 - trustedPersonDetection.x1
-      let trustedHeight = trustedPersonDetection.y2 - trustedPersonDetection.y1
-      guard personWidth > 1, personHeight > 1, trustedWidth > 1, trustedHeight > 1 else {
-        return nil
-      }
-
-      let widthRatio = max(0.1, personWidth / max(1, trustedWidth))
-      let heightRatio = max(0.1, personHeight / max(1, trustedHeight))
-      let bboxScale = min(
-        IOSFacePrivacyTemporalResolver.maxPredictedFaceScale,
-        max(
-          IOSFacePrivacyTemporalResolver.minPredictedFaceScale,
-          sqrt(widthRatio * heightRatio)
-        )
-      )
-      let clampedAge = min(
-        IOSFacePrivacyTemporalResolver.maxPredictedFaceAgeUs,
-        max(Int64(0), ageUs)
-      )
-      let ageProgress = Float32(clampedAge)
-        / Float32(IOSFacePrivacyTemporalResolver.maxPredictedFaceAgeUs)
-      let ageExpansion = 1 + ageProgress * IOSFacePrivacyTemporalResolver.maxPredictedAgeExpansion
-      let translation = IOSPersonBboxMotionEstimator.estimate(
-        previous: trustedPersonDetection,
-        current: personDetection
-      )
-      return IOSFacePrivacyEllipse(
-        centerX: centerX + translation.dx,
-        centerY: centerY + translation.dy,
-        radiusX: max(1, radiusX * bboxScale * ageExpansion),
-        radiusY: max(1, radiusY * bboxScale * ageExpansion),
-        source: .predictedFace
-      )
-    }
-
     func occlusionPadding(personDetection: IOSYoloDetection, preprocess: IOSYoloPreprocessResult,
                           timestampUs: Int64) -> IOSFacePrivacyEllipse? {
       guard timestampUs >= lastTrustedTimestampUs,
@@ -676,9 +635,6 @@ final class IOSFacePrivacyTemporalResolver {
 
   private static let maxPredictedFaceAgeUs: Int64 = 150_000
   private static let trustedMaskSeedMaxAgeUs: Int64 = 800_000
-  private static let minPredictedFaceScale: Float32 = 0.88
-  private static let maxPredictedFaceScale: Float32 = 1.12
-  private static let maxPredictedAgeExpansion: Float32 = 0.10
   private static let expiredFaceMaskFallbackExpansion: Float32 = 1.10
   private static let syntheticClassFallbackBase = -1_000_000
   private static let classFallbackTrustedSizeExpansion: Float32 = 1.24
