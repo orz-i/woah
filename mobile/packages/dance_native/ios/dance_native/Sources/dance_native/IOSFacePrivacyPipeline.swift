@@ -206,7 +206,14 @@ final class IOSFacePrivacyTemporalResolver {
     let trustedPersonDetection: IOSYoloDetection
     let lastTrustedTimestampUs: Int64
 
-    func project(
+    func project(personDetection: IOSYoloDetection, ageUs: Int64) -> IOSFacePrivacyEllipse? {
+      guard let region = IOSFrameKernelFaceGeometry.project(personDetection,
+        previous: trustedPersonDetection, seed: SIMD4(centerX, centerY, radiusX, radiusY), ageUs: ageUs) else { return nil }
+      return IOSFacePrivacyEllipse(centerX: region.x, centerY: region.y,
+        radiusX: region.z, radiusY: region.w, source: .predictedFace)
+    }
+
+    private func projectLegacy(
       personDetection: IOSYoloDetection,
       ageUs: Int64
     ) -> IOSFacePrivacyEllipse? {

@@ -12,6 +12,9 @@ import art.gaoge.dance.engine.inference.NativeMask
 internal object FrameKernelFaceGeometry {
     private fun FloatRect.values()=floatArrayOf(left,top,right,bottom)
     private fun FloatArray.region(source:FacePrivacyRegionSource)=FacePrivacyEllipse(this[0],this[1],this[2],this[3],source)
+    fun project(person:FloatRect,previous:FloatRect,seed:FloatArray,ageUs:Long):FacePrivacyEllipse? =
+        FrameKernel.projectFaceRegionNative(person.values(),previous.values(),seed,ageUs)
+            ?.region(FacePrivacyRegionSource.PREDICTED_FACE)
     fun resolve(person:FloatRect,plan:FaceHeadRoiPlan?,selected:FaceRoiCandidateSelection?):FacePrivacyEllipse? {
         if(person.width<=1f||person.height<=1f)return null
         if(plan!=null&&selected!=null) {

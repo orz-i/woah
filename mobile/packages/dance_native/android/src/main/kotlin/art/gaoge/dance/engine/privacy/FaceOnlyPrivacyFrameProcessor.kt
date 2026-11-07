@@ -166,7 +166,11 @@ class FaceOnlyPrivacyFrameProcessor(
             trustedPersonBbox = trustedPersonBbox
         )
 
-        fun project(personBbox: FloatRect, ageUs: Long): FacePrivacyEllipse? {
+        fun project(personBbox: FloatRect, ageUs: Long): FacePrivacyEllipse? =
+            FrameKernelFaceGeometry.project(personBbox,trustedPersonBbox,
+                floatArrayOf(centerX,centerY,radiusX,radiusY),ageUs)
+
+        private fun projectLegacy(personBbox: FloatRect, ageUs: Long): FacePrivacyEllipse? {
             if (personBbox.width <= 1f || personBbox.height <= 1f) return null
 
             // Follow short-term body translation, but do not let an occlusion/
