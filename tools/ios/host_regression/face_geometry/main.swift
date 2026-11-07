@@ -49,12 +49,30 @@ for index in 0..<512 {
   let oldSupport=CanonicalObservationGeometry.currentMaskSupport(region,person:current,preprocess:pre)
   let productionSupport=IOSFacePrivacyGeometry.currentMaskSupport(region,person:current,preprocess:pre)
   precondition(oldSupport==productionSupport,"native support baseline case\(index)")
+  precondition(IOSFrameKernelFaceGeometry.support(seed,person:current,preprocess:pre)==oldSupport,"shared support case\(index)")
+  precondition(IOSFrameKernelFaceGeometry.upperBody(current)==CanonicalObservationGeometry.upperBodyFaceSearchRegion(current),"shared search case\(index)")
+  let global=IOSFaceCandidate(x1:view.x+face.x1/size*(view.z-view.x),y1:view.y+face.y1/size*(view.w-view.y),
+    x2:view.x+face.x2/size*(view.z-view.x),y2:view.y+face.y2/size*(view.w-view.y),confidence:face.confidence)
+  precondition(IOSFrameKernelFaceGeometry.score(global,person:current)?.bitPattern==CanonicalObservationGeometry.associationScore(face:global,person:current)?.bitPattern,"shared score case\(index)")
+  let age=Int64(index%13)*80_000
+  var expectedPadding:SIMD4<Float>?
+  if age<=800_000,seed.x>=current.x1,seed.x<=current.x2,seed.y>=current.y1,seed.y<=current.y2 {
+    let progress=Float(age)/800_000
+    let padded=IOSFacePrivacyEllipse(centerX:seed.x,centerY:seed.y,radiusX:seed.z*(1+progress*0.8),radiusY:seed.w*(1+progress*0.8),source:.predictedFace)
+    let support=CanonicalObservationGeometry.currentMaskSupport(padded,person:current,preprocess:pre)
+    if support.distinctPixels>=4&&support.samples>=4 {expectedPadding=SIMD4(padded.centerX,padded.centerY,padded.radiusX,padded.radiusY)}
+  }
+  precondition(bits(IOSFrameKernelFaceGeometry.padding(current,seed:seed,age:age,lease:800_000,preprocess:pre))==bits(expectedPadding),"shared padding case\(index)")
+
   precondition(CanonicalObservationGeometry.upperBodyFaceSearchRegion(current)==IOSFacePrivacyGeometry.upperBodyFaceSearchRegion(current),"native search baseline case\(index)")
   let samples=observationSamples(face,index:index)
   let owner:((IOSFaceCandidate)->Int?)?=index%2==0 ? observationOwner:nil
   let oldMerge=CanonicalObservationGeometry.mergeFaceObservations(Array(samples.prefix(2)),detail:Array(samples.dropFirst(2)),ownerOf:owner)
   let productionMerge=IOSFacePrivacyGeometry.mergeFaceObservations(Array(samples.prefix(2)),detail:Array(samples.dropFirst(2)),ownerOf:owner)
   precondition(observationIndices(oldMerge,in:samples)==observationIndices(productionMerge,in:samples),"native merge baseline case\(index)")
+  let merged=IOSFrameKernelFaceGeometry.merge(samples,primary:2,owners:owner.map {fn in samples.map {fn($0)}})
+  precondition(merged != nil && observationIndices(merged!,in:samples)==observationIndices(oldMerge,in:samples),"shared merge case\(index)")
+
 
   let head=IOSFrameKernelFaceGeometry.estimate(pixels,person:current,seed:seed,preprocess:pre)
   precondition(head.map{[$0.x.bitPattern,$0.y.bitPattern]}==expected,"head case\(index)")
@@ -80,5 +98,10 @@ for i in 0..<512 {
 }
 print("TRUSTED_REGION_PROJECTION_NATIVE=PASS cases=512")
 precondition(r.at==r.bytes.count)
+precondition(IOSFrameKernelFaceGeometry.uniqueOwner([0.9,0.89])==nil)
+precondition(IOSFrameKernelFaceGeometry.uniqueOwner([0.9,0.1])==0)
+precondition(IOSFrameKernelFaceGeometry.resolveOwners([0.9,0.89,0.2,0.8],people:2,faces:2,preferred:[0,1],hero:0)==[-1,-1])
+precondition(IOSFrameKernelFaceGeometry.resolveOwners([0.9,0.1,0.2,0.8],people:2,faces:2,preferred:[0,1],hero:0)==[0,1])
+print("SHARED_OBSERVATION_GEOMETRY_NATIVE=PASS cases=512")
 print("OBSERVATION_GEOMETRY_NATIVE_BASELINE=PASS cases=512")
 print("SHARED_FACE_GEOMETRY_NATIVE_CORPUS=PASS cases=512 sha256=\(sha)")
