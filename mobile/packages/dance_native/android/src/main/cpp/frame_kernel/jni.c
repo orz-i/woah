@@ -610,3 +610,54 @@ JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_classSu
  jint out[8];for(int i=0;i<8;i++)out[i]=(jint)values[i];jintArray result=(*env)->NewIntArray(env,8);
  if(result)(*env)->SetIntArrayRegion(env,result,0,8,out);return result;
 }
+
+/* All new region APIs return FRAME_KERNEL_REGION_OK(0) on success.
+   Never convert output buffers for any nonzero status. */
+static jfloatArray ellipse_output(JNIEnv *env,FrameKernelEllipse r){
+ float values[4]={r.center_x,r.center_y,r.radius_x,r.radius_y};
+ jfloatArray out=(*env)->NewFloatArray(env,4);
+ if(out)(*env)->SetFloatArrayRegion(env,out,0,4,values);return out;
+}
+static int read_ellipse(JNIEnv *env,jfloatArray input,FrameKernelEllipse *out){
+ if(!input||(*env)->GetArrayLength(env,input)!=4){invalid(env);return 0;}
+ float values[4]={0};(*env)->GetFloatArrayRegion(env,input,0,4,values);
+ if((*env)->ExceptionCheck(env))return 0;
+ *out=(FrameKernelEllipse){values[0],values[1],values[2],values[3]};return 1;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_faceRegionNative(JNIEnv *env,jobject self,jfloatArray row,jfloatArray view,jfloat size,jfloat yaw){
+ (void)self;if(!row||(*env)->GetArrayLength(env,row)!=18){invalid(env);return NULL;}
+ float values[18]={0};(*env)->GetFloatArrayRegion(env,row,0,18,values);
+ if((*env)->ExceptionCheck(env))return NULL;
+ FrameKernelRect rect={0};if(view&&!read_rect(env,view,&rect))return NULL;
+ FrameKernelEllipse output={0};
+ int32_t status=frame_kernel_detected_face_region(values,view?&rect:NULL,size,yaw,&output);
+ if(status!=FRAME_KERNEL_REGION_OK)return NULL;
+ return ellipse_output(env,output);
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_headFallbackNative(JNIEnv *env,jobject self,jfloatArray person){
+ (void)self;FrameKernelRect rect={0};if(!read_rect(env,person,&rect))return NULL;
+ FrameKernelEllipse output={0};
+ int32_t status=frame_kernel_head_fallback(rect,&output);
+ if(status!=FRAME_KERNEL_REGION_OK)return NULL;
+ return ellipse_output(env,output);
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_maskHeadNative(JNIEnv *env,jobject self,jbyteArray pixels,jint width,jint height,jfloatArray transform,jfloatArray person,jfloatArray seed,jfloatArray previous,jfloat expansion){
+ (void)self;
+ if(!pixels||width<=1||height<=1||width>1024||height>1024||(*env)->GetArrayLength(env,pixels)!=width*height)return NULL;
+ FrameKernelHeadMaskSpec spec={0};FrameKernelEllipse trusted={0};FrameKernelRect prior={0};
+ spec.width=(uint32_t)width;spec.height=(uint32_t)height;
+ if(!read_transform(env,transform,&spec.transform)||!read_rect(env,person,&spec.person)||!read_ellipse(env,seed,&trusted))return NULL;
+ if(previous&&!read_rect(env,previous,&prior))return NULL;
+ jbyte *bytes=(*env)->GetByteArrayElements(env,pixels,NULL);if(!bytes)return NULL;
+ jfloatArray result=NULL;
+ if(previous){
+  FrameKernelEllipse output={0};
+  int32_t status=frame_kernel_trusted_mask_region((const uint8_t*)bytes,(size_t)width*height,spec,prior,trusted,expansion,&output);
+  if(status==FRAME_KERNEL_REGION_OK)result=ellipse_output(env,output);
+ }else{
+  float output[2]={0};
+  int32_t status=frame_kernel_mask_head((const uint8_t*)bytes,(size_t)width*height,spec,trusted,output);
+  if(status==FRAME_KERNEL_REGION_OK){result=(*env)->NewFloatArray(env,2);if(result)(*env)->SetFloatArrayRegion(env,result,0,2,output);}
+ }
+ (*env)->ReleaseByteArrayElements(env,pixels,bytes,JNI_ABORT);return result;
+}
