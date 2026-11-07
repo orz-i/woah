@@ -1,0 +1,21 @@
+{
+  "compiled_source_commit": "ce25a0d38a3c2c34e0d65b3967c0b32e7e7b1e10",
+  "at_utc": "2026-11-07T03:35:33.892852+00:00",
+  "installed_app": "/Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Bundle/Application/543D1A81-B60C-4518-B56C-B271B3B05759/Runner.app",
+  "runner_sha256": "ba572d3e5c39821795bc89ade4b770de95c472be3329fb7eed775031cd6c49ae",
+  "actual_installed_model_entries": [
+    {
+      "entry": "dance_native_models.bundle/yolo11n-seg-fp16.tflite",
+      "bytes": 11799725,
+      "sha256": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+      "contract": "yolo11n-seg-fp16.contract.json"
+    },
+    {
+      "entry": "dance_native_models.bundle/blaze_face_full_range.tflite",
+      "bytes": 1083786,
+      "sha256": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b",
+      "contract": "dense-face-v1.contract.json"
+    }
+  ],
+  "status": "passed_actual_installed_bytes"
+}
