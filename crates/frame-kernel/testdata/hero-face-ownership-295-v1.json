@@ -1,0 +1,14 @@
+{
+  "schema": "frame-kernel-native-face-ownership-v1",
+  "bytes": 9565,
+  "sha256": "5579599860a105a5d005c38228817bd1e7d64e5ffe35c12bb14f37679ab9c6ea",
+  "source_capture_sha256": "44f14be8d06d949a3a01f429bb9b67cb394e1d087a543a309c28691884f30092",
+  "compiled_source_commit": "a083a6113e21da9f9fbaead5c670db944f71fd7b",
+  "timestamp_us": 11800000,
+  "hero": 6,
+  "persons": 8,
+  "primary_faces": 6,
+  "detail_faces": 10,
+  "mask_sha256": "818ce5cba834bf1fdcf93ccb48addf1df1cc2df0f0401db1c04091cfad2f5e3d",
+  "scope": "Actual simulator input before the ownership fix; original current hero mask bytes RLE encoded without thresholding, all current person boxes, all raw face landmarks/views. Encoded by standard big-endian widths, no native-endian structs."
+}
