@@ -8,7 +8,7 @@ import art.gaoge.dance.engine.face.coreRecord
 import art.gaoge.dance.engine.inference.FloatRect
 import art.gaoge.dance.engine.inference.NativeMask
 
-/** Transport candidate. Production consumers remain unchanged until parity passes. */
+/** Native data transport for the shared, frozen-corpus-verified face geometry. */
 internal object FrameKernelFaceGeometry {
     private fun FloatRect.values()=floatArrayOf(left,top,right,bottom)
     private fun FloatArray.region(source:FacePrivacyRegionSource)=FacePrivacyEllipse(this[0],this[1],this[2],this[3],source)

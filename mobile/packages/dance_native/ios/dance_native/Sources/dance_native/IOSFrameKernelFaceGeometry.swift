@@ -2,8 +2,8 @@ import CoreGraphics
 import Foundation
 @_implementationOnly import FrameKernelC
 
-/// Unused transport candidate until the native512-case parity check passes.
-/// Every new region API returns0 on success; nonzero outputs are never consumed.
+/// Native data transport for the shared face geometry verified against 512 frozen cases.
+/// Every new region API returns 0 on success; nonzero outputs are never consumed.
 enum IOSFrameKernelFaceGeometry {
   private static func rect(_ person:IOSYoloDetection)->FrameKernelRect {
     FrameKernelRect(left:person.x1,top:person.y1,right:person.x2,bottom:person.y2)
