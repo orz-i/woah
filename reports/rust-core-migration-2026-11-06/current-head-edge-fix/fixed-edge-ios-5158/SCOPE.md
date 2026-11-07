@@ -1,0 +1,1 @@
+Targeted5158 iOS clipped-face repair only. Raw media topology remains pending semantic review. Android same5158 still has four confirmed real face leaks, so neither this stage nor5158 as a whole is final acceptance. Both62 full regressions must run after the remaining shared ownership fix.
