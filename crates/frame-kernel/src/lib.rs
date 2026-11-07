@@ -8,10 +8,13 @@ pub mod association;
 pub mod association_score;
 pub mod box_filter;
 pub mod camera;
+pub mod face_localization;
 mod ffi;
 mod ffi_class;
+mod ffi_face;
 mod ffi_tracking;
 pub mod geometry;
+pub mod grid_face;
 pub mod instances;
 mod mask_transitions;
 pub mod pixels;
@@ -34,6 +37,7 @@ pub mod yuv;
 
 pub use ffi::*;
 pub use ffi_class::*;
+pub use ffi_face::*;
 pub use ffi_tracking::*;
 
 pub const ABI_VERSION: u32 = 1;

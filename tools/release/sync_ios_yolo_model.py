@@ -92,6 +92,9 @@ def main() -> None:
 
     target = TARGET_DIR / contract["model"]
     hash_file = TARGET_DIR / f"{contract['model']}.sha256"
+    import subprocess, sys
+    subprocess.run([sys.executable, str(ROOT/'tools/release/sync_ios_face_model.py'),
+                    *(['--verify-only'] if args.verify_only else [])], check=True)
     if args.verify_only:
         verify_flatbuffer(target, expected_size, magic)
         target_hash = sha256(target)

@@ -1,7 +1,6 @@
 import CoreGraphics
-import CoreML
 import Foundation
-import Vision
+@_implementationOnly import FrameKernelC
 
 enum IOSFacePrivacyRegionSource: String {
   case detectedFace = "DETECTED_FACE"
@@ -237,6 +236,7 @@ struct IOSFaceCandidate {
   let confidence: Float32
   var yaw: Float32 = 0
   var observationView: Int = 0
+  var landmarks: [SIMD2<Float32>] = []
 }
 
 protocol IOSFaceLocating {
@@ -245,61 +245,6 @@ protocol IOSFaceLocating {
 }
 extension IOSFaceLocating {
   func locateFaceDetails(in image: CGImage, regions: [CGRect]) throws -> [IOSFaceCandidate] { [] }
-}
-
-/// Apple-only FACE_ONLY localization backend. It never assigns person identity;
-/// IOSFacePrivacyTemporalResolver accepts a Vision rectangle only after it is
-/// attached conservatively to a YOLO-owned person track.
-final class IOSVisionFaceLocator: IOSFaceLocating {
-  func locateFaceDetails(in image: CGImage, regions: [CGRect]) throws -> [IOSFaceCandidate] {
-    let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
-    var result: [IOSFaceCandidate] = []
-    for (viewIndex, region) in regions.enumerated() {
-      let rect = region.integral.intersection(bounds)
-      guard rect.width >= 32, rect.height >= 32, let crop = image.cropping(to: rect) else { continue }
-      result += try locateFaces(in: crop).map { face in
-        IOSFaceCandidate(x1: face.x1 + Float32(rect.minX), y1: face.y1 + Float32(rect.minY),
-          x2: face.x2 + Float32(rect.minX), y2: face.y2 + Float32(rect.minY), confidence: face.confidence,
-          yaw: face.yaw, observationView: viewIndex + 1)
-      }
-    }
-    return result
-  }
-
-  func locateFaces(in image: CGImage) throws -> [IOSFaceCandidate] {
-    let request = VNDetectFaceRectanglesRequest()
-#if targetEnvironment(simulator)
-    if #available(iOS 17.0, *),
-       let cpuDevice = MLComputeDevice.allComputeDevices.first(where: { device in
-         if case .cpu = device { return true }
-         return false
-       }) {
-      request.setComputeDevice(cpuDevice, for: .main)
-    }
-#endif
-    let handler = VNImageRequestHandler(cgImage: image, orientation: .up, options: [:])
-    try handler.perform([request])
-    let width = Float32(image.width)
-    let height = Float32(image.height)
-    return (request.results ?? []).compactMap { observation in
-      let box = observation.boundingBox
-      let x1 = Float32(box.minX) * width
-      let x2 = Float32(box.maxX) * width
-      // Vision normalized coordinates use a bottom-left origin while the
-      // renderer/tracker source space uses top-left coordinates.
-      let y1 = Float32(1.0 - box.maxY) * height
-      let y2 = Float32(1.0 - box.minY) * height
-      guard x2 > x1, y2 > y1 else { return nil }
-      return IOSFaceCandidate(
-        x1: x1,
-        y1: y1,
-        x2: x2,
-        y2: y2,
-        confidence: observation.confidence,
-        yaw: observation.yaw?.floatValue ?? 0
-      )
-    }
-  }
 }
 
 enum IOSFacePrivacyGeometry {
@@ -570,7 +515,7 @@ final class IOSFacePrivacyTemporalResolver {
   private var singleSceneFace: TrustedFaceGeometry?
   private let classFallbackContinuity = IOSFacePrivacyClassFallbackContinuity()
 
-  init(locator: IOSFaceLocating = IOSVisionFaceLocator()) {
+  init(locator: IOSFaceLocating = IOSGridFaceLocator()) {
     self.locator = locator
   }
 
@@ -635,7 +580,8 @@ final class IOSFacePrivacyTemporalResolver {
         // Search the hero ROI too, even when the hero already has a face: one
         // body observation is not evidence that no other visible face exists.
         var detail: [IOSFaceCandidate] = []
-        var searchRegions = currentPeople.map { IOSFacePrivacyGeometry.faceSearchRegion($0.detection) }
+        var searchRegions = currentPeople.compactMap { IOSFrameKernel.faceHeadPlan($0.detection,
+          width: preprocess.sourceWidth, height: preprocess.sourceHeight)?.rect }
         if faces.isEmpty, currentPeople.count == 1 {
           searchRegions.append(IOSFacePrivacyGeometry.upperBodyFaceSearchRegion(currentPeople[0].detection))
         }
@@ -813,7 +759,11 @@ final class IOSFacePrivacyTemporalResolver {
   private func uniqueCurrentOwner(face: IOSFaceCandidate, persons: [IOSPreviewPerson],
                                   unmaskedPersonId: Int?, preprocess: IOSYoloPreprocessResult) -> Int? {
     let ranked = persons.compactMap { person -> (Int, Float32)? in
-      associationScore(face: face, person: person.detection, preprocess: preprocess,
+      if person.id != unmaskedPersonId {
+        guard let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
+              IOSFrameKernel.selectFace([face],plan:plan) != nil else {return nil}
+      }
+      return associationScore(face: face, person: person.detection, preprocess: preprocess,
         requireMaskSupport: person.id == unmaskedPersonId).map { (person.id, $0) }
     }.sorted { $0.1 > $1.1 }
     guard let first = ranked.first else { return nil }
@@ -845,12 +795,20 @@ final class IOSFacePrivacyTemporalResolver {
 
     var accepted: [Int: Int] = [:]
     for person in persons {
-      let options = candidates
-        .filter { $0.personId == person.id }
-        .sorted { $0.score > $1.score }
-      guard let best = options.first else { continue }
-      if options.count > 1 && best.score - options[1].score < ambiguityMargin {
-        continue
+      let options = candidates.filter { $0.personId == person.id }
+      let best: MatchCandidate
+      if person.id == unmaskedPersonId {
+        // A hero exemption requires current instance pixels, not a body-box head guess.
+        // Preserve that existing stronger ownership path when raised arms widen the box.
+        let ranked=options.sorted { $0.score > $1.score }
+        guard let first=ranked.first else {continue}
+        if ranked.count>1 && first.score-ranked[1].score<ambiguityMargin {continue}
+        best=first
+      } else {
+        guard let preprocess,
+              let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
+              let chosen=IOSFrameKernel.selectFace(options.map {faces[$0.faceIndex]},plan:plan) else {continue}
+        best=options[chosen]
       }
       let competingPersons = candidates
         .filter { $0.faceIndex == best.faceIndex && $0.personId != person.id }
@@ -939,4 +897,42 @@ final class IOSFacePrivacyTemporalResolver {
   private static let expiredFaceMaskFallbackExpansion: Float32 = 1.10
   private static let syntheticClassFallbackBase = -1_000_000
   private static let classFallbackTrustedSizeExpansion: Float32 = 1.24
+}
+
+extension IOSFrameKernel {
+  struct FaceHeadPlan {
+    let rect: CGRect
+    let anchor: SIMD2<Float>
+  }
+  private static func faceRecord(_ face: IOSFaceCandidate) -> [Float] {
+    var row: [Float] = [face.x1,face.y1,face.x2,face.y2,face.confidence,Float(min(6,face.landmarks.count))]
+    for i in 0..<6 {
+      row.append(i<face.landmarks.count ? face.landmarks[i].x : 0)
+      row.append(i<face.landmarks.count ? face.landmarks[i].y : 0)
+    }
+    return row
+  }
+  static func faceHeadPlan(_ person: IOSYoloDetection, width: Int, height: Int) -> FaceHeadPlan? {
+    guard width>1,height>1,width<=65535,height<=65535 else {return nil}
+    var out=[Float](repeating:0,count:6)
+    let status=out.withUnsafeMutableBufferPointer { p in
+      frame_kernel_face_head_plan(FrameKernelRect(left:person.x1,top:person.y1,right:person.x2,bottom:person.y2),
+        UInt32(width),UInt32(height),p.baseAddress)
+    }
+    guard status==0 else {return nil}
+    return FaceHeadPlan(rect:CGRect(x:CGFloat(out[0]),y:CGFloat(out[1]),width:CGFloat(out[2]-out[0]),height:CGFloat(out[3]-out[1])),
+      anchor:SIMD2<Float>(out[4],out[5]))
+  }
+  static func selectFace(_ faces: [IOSFaceCandidate], plan: FaceHeadPlan) -> Int? {
+    let rows=faces.flatMap { faceRecord($0) }
+    let r=plan.rect
+    var distance: Float=0
+    let index=rows.withUnsafeBufferPointer { p in
+      frame_kernel_face_select(p.baseAddress,faces.count,
+        FrameKernelRect(left:Float(r.minX),top:Float(r.minY),right:Float(r.maxX),bottom:Float(r.maxY)),
+        plan.anchor.x,plan.anchor.y,0.22,0.04,&distance)
+    }
+    return index>=0 ? Int(index) : nil
+  }
+
 }

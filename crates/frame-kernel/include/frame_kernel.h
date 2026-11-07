@@ -225,6 +225,22 @@ int32_t frame_kernel_reproject_mask(const uint8_t *mask, size_t mask_len,
 int32_t frame_kernel_project_mask(const uint8_t *mask, size_t mask_len, FrameKernelTransform transform,
     uint32_t source_width, uint32_t source_height, uint32_t width, uint32_t height,
     FrameKernelRect crop, uint8_t *output, size_t output_len);
+/* Dense face v1: NHWC RGB [-1,1], 192 square, 2304 xywh/6-keypoint anchors.
+   Output records are 17 floats: source xyxy, score, six source xy landmarks.
+   Inputs/outputs must be disjoint. Returns count, -1 invalid, -2 capacity. */
+/* Head localization records: xyxy, confidence, point count, six xy points (18 floats).
+   Plan output: source xyxy + normalized anchor xy. Select: index, -1 no owner,
+   -2 invalid. All buffers borrowed only for the call; at most 4096 candidates. */
+int32_t frame_kernel_face_head_plan(FrameKernelRect person, uint32_t width, uint32_t height, float *output6);
+int32_t frame_kernel_face_center(const float *row18, float *output2);
+int32_t frame_kernel_face_select(const float *rows18, size_t count, FrameKernelRect view,
+    float anchor_x, float anchor_y, float maximum, float separation, float *distance);
+int32_t frame_kernel_face_owned(const float *row18, FrameKernelRect source, float output_size, FrameKernelRect person);
+int32_t frame_kernel_grid_face_input(const uint8_t *rgba, size_t bytes, uint32_t width,
+ uint32_t height, uint32_t stride, float *output, size_t length);
+int32_t frame_kernel_grid_face_decode(const float *boxes, size_t box_len,
+ const float *scores, size_t score_len, uint32_t width, uint32_t height,
+ float minimum, float overlap, float *output, size_t capacity);
 #ifdef __cplusplus
 }
 #endif

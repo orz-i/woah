@@ -22,7 +22,7 @@ enum IOSFacePrivacyPhase5Smoke {
     let width = 64
     let height = 64
     let source = try makeSolidImage(width: width, height: height, rgba: (0, 0, 255, 255))
-    let visionSource = try makeSolidImage(width: 256, height: 256, rgba: (0, 0, 255, 255))
+    let faceProbeSource = try makeSolidImage(width: 256, height: 256, rgba: (0, 0, 255, 255))
     let preprocess = IOSYoloPreprocessResult(
       input: [],
       scale: Float32(IOSYoloPreprocessor.inputSize) / Float32(width),
@@ -32,11 +32,11 @@ enum IOSFacePrivacyPhase5Smoke {
       sourceHeight: height,
       inputSize: IOSYoloPreprocessor.inputSize
     )
-    let visionRuntimeFaces: [IOSFaceCandidate]
+    let faceRuntimeFaces: [IOSFaceCandidate]
     do {
-      visionRuntimeFaces = try IOSVisionFaceLocator().locateFaces(in: visionSource)
+      faceRuntimeFaces = try IOSGridFaceLocator().locateFaces(in: faceProbeSource)
     } catch {
-      throw smokeFailure("Vision FACE_ONLY runtime probe failed: \(error)")
+      throw smokeFailure("Shared FACE_ONLY runtime probe failed: \(error)")
     }
     let personDetection = makeDetection(x1: 8, y1: 4, x2: 56, y2: 60)
     let person = IOSPreviewPerson(id: 0, detection: personDetection)
@@ -692,7 +692,7 @@ enum IOSFacePrivacyPhase5Smoke {
       "unique_class_radius": [uniqueSyntheticRegion.radiusX, uniqueSyntheticRegion.radiusY],
       "class_continuity_steps": [continuityFirstStep, continuitySecondStep],
       "class_continuity_translation": [translatedSecond.centerX, translatedSecond.centerY],
-      "vision_runtime_face_count": visionRuntimeFaces.count,
+      "shared_face_runtime_face_count": faceRuntimeFaces.count,
       "full_body_face_union_pixel": [bodyFacePixel.r, bodyFacePixel.g, bodyFacePixel.b, bodyFacePixel.a],
       "full_body_unselected_face_pixel": [unselectedFacePixel.r, unselectedFacePixel.g, unselectedFacePixel.b, unselectedFacePixel.a],
       "suppressed_head_pixel": [suppressedHeadPixel.r, suppressedHeadPixel.g, suppressedHeadPixel.b, suppressedHeadPixel.a],

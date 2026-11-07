@@ -9,5 +9,5 @@ trap 'rm -rf "$OUT"' EXIT
 N=mobile/packages/dance_native/ios/dance_native/Sources/dance_native
 CORE=crates/frame-kernel
 python3 tools/rust/run.py build
-/usr/bin/swiftc -I "$CORE/include" -o "$OUT/tracker_tests" "$HERE/tracker/ModelStubs.swift" "$N/IOSFrameKernel.swift" "$N/IOSSharedTrackingSession.swift" "$N/IOSOcclusionProxyStabilizer.swift" "$N/IOSPreviewIdentityMatcher.swift" "$N/IOSTemporalIdentityTracker.swift" "$N/IOSFacePrivacyPipeline.swift" "$HERE/tracker/main.swift" "$CORE/target/release/libframe_kernel.a" -liconv
+/usr/bin/swiftc -I "$CORE/include" -o "$OUT/tracker_tests" "$HERE/tracker/ModelStubs.swift" "$N/IOSFrameKernel.swift" "$N/IOSSharedTrackingSession.swift" "$N/IOSOcclusionProxyStabilizer.swift" "$N/IOSPreviewIdentityMatcher.swift" "$N/IOSTemporalIdentityTracker.swift" "$N/IOSFacePrivacyPipeline.swift" "$N/IOSGridFaceLocator.swift" "$HERE/tracker/main.swift" "$CORE/target/release/libframe_kernel.a" -liconv
 "$OUT/tracker_tests"

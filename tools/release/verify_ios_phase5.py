@@ -207,10 +207,7 @@ def verify_ios_replay_surface() -> None:
         check(token in smoke, f"Phase 5 Golden Trace replay missing: {token}")
 
     for token in (
-        "import Vision",
-        "VNDetectFaceRectanglesRequest()",
         "protocol IOSFaceLocating",
-        "final class IOSVisionFaceLocator",
         "enum IOSPersonBboxMotionEstimator",
         "enum IOSBodyMaskFaceHeadEstimator",
         "final class IOSFacePrivacyTemporalResolver",
@@ -262,19 +259,20 @@ def verify_ios_replay_surface() -> None:
         and state_start > mask_fallback_start,
         "Phase 5E maskGuidedFallback must remain scoped inside TrustedFaceGeometry",
     )
-    vision_start = face_pipeline.find("final class IOSVisionFaceLocator")
-    geometry_start = face_pipeline.find("enum IOSFacePrivacyGeometry", vision_start + 1)
-    check(
-        vision_start >= 0
-        and geometry_start > vision_start
-        and "maskGuidedFallback" not in face_pipeline[vision_start:geometry_start],
-        "Vision locator must not own trusted-face fallback state",
-    )
+    grid_locator = (SOURCES / "IOSGridFaceLocator.swift").read_text(encoding="utf-8")
+    for token in ("final class IOSGridFaceLocator", "frame_kernel_grid_face_input(",
+                  "frame_kernel_grid_face_decode(", "FACE_MODEL_HASH_CONTRACT",
+                  "[1,192,192,3]", "[1,2304,16]", "[1,2304,1]"):
+        check(token in grid_locator, f"Shared face inference transport missing: {token}")
+    check("maskGuidedFallback" not in grid_locator and "TrustedFaceGeometry" not in grid_locator,
+          "Native face inference must not own trusted-face fallback state")
+    check("VNDetectFaceRectanglesRequest" not in face_pipeline + grid_locator,
+          "Production face pipeline must use the shared pinned face model")
 
     for token in (
         "IOSPhase5SequenceFaceLocator",
-        "IOSVisionFaceLocator().locateFaces(in: visionSource)",
-        "Vision FACE_ONLY runtime probe failed",
+        "IOSGridFaceLocator().locateFaces(in: faceProbeSource)",
+        "Shared FACE_ONLY runtime probe failed",
         "detectedRegion.source == .detectedFace",
         "missedRegion.source == .predictedFace",
         "translatedRegion.source == .predictedFace",
@@ -315,7 +313,7 @@ def verify_ios_replay_surface() -> None:
         "faceRegions: [0: renderRegion]",
         "FACE_ONLY ellipse center was not covered",
         "FACE_ONLY privacy regressed to a rectangular mask",
-        '"vision_runtime_face_count"',
+        '"shared_face_runtime_face_count"',
     ):
         check(token in face_smoke, f"Phase 5C deterministic FACE_ONLY smoke missing: {token}")
     preprocess_decl = face_smoke.find("let preprocess = IOSYoloPreprocessResult(")
