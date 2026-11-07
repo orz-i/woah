@@ -19,9 +19,18 @@ an XYAH motion/covariance filter, prediction-first association metrics and
 evidence-checked reservation release, plus current-scene selection scope, canonical
 head crops and landmark-based face ownership gating.
 Detection-head dimensions, score/coefficient offsets, tensor layouts and coordinate
-units are supplied by consumers. Full stateful tracking and temporal protection
-policies remain subsequent migration work; this extraction does not claim those
-modules are complete.
+units are supplied by consumers. Owned sessions now implement full identity and
+privacy-class transitions, including current/retained masks, ambiguity groups and
+evidence-checked reservation release. Both native adapters consume the same
+session protocol and deterministic snapshots.
+
+Face geometry includes landmark-centered regions, current-mask narrow head runs,
+trusted-region projection, bounded current-supported padding, observation scoring,
+cross-view merge and conservative ownership competition. Model execution remains
+native; normalized inputs and decoded pinned-model outputs are shared Rust.
+Independent native reference corpora and actual JNI/Swift transport comparisons
+are retained. Platform decoders and model backends may produce different input
+observations; these are not evidence of a different Rust algorithm.
 
 ```rust
 use frame_kernel::geometry::{detail_views, Rect};

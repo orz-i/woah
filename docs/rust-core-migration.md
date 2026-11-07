@@ -64,3 +64,22 @@ of platform decoding and inference. Output file hashes need not match. No new
 privacy omissions, missing frames or export failures are accepted. iOS simulator
 results do not establish iPhone hardware performance. Stream 4K audits and retain
 source fixtures/failure evidence without accumulating raw full-frame dumps.
+
+## Implemented boundary (2026-11-07)
+
+| Shared FrameKernel logic | Native responsibility |
+| --- | --- |
+| Coordinate transforms, RGB/YUV sampling, normalization, segmentation and face decoding | Platform pixel buffers and inference runtime execution |
+| Tracking sessions, masks, groups, reservations, privacy classes, selection scope and follow crop | Session lifetime, native DTO transport and source decoding |
+| Head plans, candidate gating, face/head regions, projection, current-mask support, view merging and ownership competition | Acquire requested ROI pixels and execute detector calls |
+| Temporal region state and bounded conservative continuation | Cache lifetime and scheduling native work |
+| Export admission/cancel/publication transitions | Drain codec/GPU workers, clean files and publish to system galleries |
+
+The same face-model bytes and shared preprocessing/decoding replace the previous
+Vision/MediaPipe production split. The library remains neutral, MIT-licensed and
+unpublished. Native GPU rendering and inference execution require actual output
+conformance; equal source code does not imply bit-identical encoded files.
+
+Final acceptance is still pending. Stage-only 13-case and eight cold-frame runs,
+frozen input replay and host unit tests cannot substitute for both complete
+62-case device/simulator runs and media/privacy review.
