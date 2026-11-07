@@ -1,0 +1,166 @@
+{
+  "run_id": "shared_geometry_cold_focused13",
+  "auditor_sha256": "33e84a7891297fc56fd1517733236da2dcfffeacce86aa95a0a964dd830ae111",
+  "cases": [
+    {
+      "case": "solo_4k_raised_arm_trim_556",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 22240,
+          "status": "passed",
+          "best_expected_frame": 556,
+          "expected_pts_seconds": 22.24,
+          "correlation": 0.9980560952447926,
+          "control_sha256": "422327ce9a04f59af424c7cb7634411c474cf9afec2bde739c87bc6baf6f4312",
+          "protected_sha256": "1ce28c8fed0934bd0d649930335a51b7a8668865fde39bb91b0cf2863673bd46",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_557",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 22280,
+          "status": "passed",
+          "best_expected_frame": 557,
+          "expected_pts_seconds": 22.28,
+          "correlation": 0.9979888314621609,
+          "control_sha256": "157fa796cb51de88d26be5ebd20e392790e484242f5705f004ca75a18a54b330",
+          "protected_sha256": "ff24b5aed0e422621eaf56cc7c904d1fcdf325aea7e7f9ed9ef1d53aa98c818f",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_558",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 22320,
+          "status": "passed",
+          "best_expected_frame": 558,
+          "expected_pts_seconds": 22.32,
+          "correlation": 0.997913443193587,
+          "control_sha256": "047913a68040f2b4e03a5b0de84138d7338a8293c0d136cea3e6ce4409889de2",
+          "protected_sha256": "70747eba599222669d2c71a1f879d8715e72cd6bdf15e592aedd1794c5d2045e",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_559",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 22360,
+          "status": "passed",
+          "best_expected_frame": 559,
+          "expected_pts_seconds": 22.36,
+          "correlation": 0.9978748559782161,
+          "control_sha256": "b6c1d6a87abc1b3358393ded95dbc1d7a22c1d2e6b1a17b2e90f68e7c4319226",
+          "protected_sha256": "4385a0367a2c950043fdd418ba447c8eb8dfe6ae030499f61229356455437040",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_560",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 22400,
+          "status": "passed",
+          "best_expected_frame": 560,
+          "expected_pts_seconds": 22.4,
+          "correlation": 0.9978739615501433,
+          "control_sha256": "27d57c075e8652b99c08f9295b311b6968a68b2fa28aa6fa66d8ff2bd9cc9c80",
+          "protected_sha256": "79bb8b7dfb3311b1354f0907ae3ee5c1a261acca3af799454f8a901caf7ad94e",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 0,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_561",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 22440,
+          "status": "passed",
+          "best_expected_frame": 561,
+          "expected_pts_seconds": 22.44,
+          "correlation": 0.9978434378559596,
+          "control_sha256": "0ee77689ee776dcdee4ce5be64084ee38c698eaa18da58cfed2c3b94c697c2fa",
+          "protected_sha256": "96261b9fc735a34752d1aba467ac8c9bbc7ddc354ea1cfe72a2c1b980bc99e37",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_562",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 22480,
+          "status": "passed",
+          "best_expected_frame": 562,
+          "expected_pts_seconds": 22.48,
+          "correlation": 0.997830339290341,
+          "control_sha256": "aaa4f1d9503bf211f32b24512eae53b328b2790339f9e281f5e49dd36cba1240",
+          "protected_sha256": "94246a565b16cc37e52f8f5f1bbd026c4ebdcff6084f5a2ca8d76d866ecebd09",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_563",
+      "status": "passed_preview_time",
+      "previews": [
+        {
+          "requested_ms": 22520,
+          "status": "passed",
+          "best_expected_frame": 563,
+          "expected_pts_seconds": 22.52,
+          "correlation": 0.997846657128754,
+          "control_sha256": "1745c1baced69a091d42ce9849febb6f66a9db5531ee898889d5d634403d18e3",
+          "protected_sha256": "afedc98209832c46856e86533d9f1cb2332329613a0171d523ebc72da7ff37fe",
+          "face_core_status": "passed_detected_face_cores",
+          "tested_face_cores": 1,
+          "tiny_face_cores": 0,
+          "uncovered_face_candidates": []
+        }
+      ],
+      "scope": "Raw native decode controls verify time. Full-frame all-selected solid previews also scan independent source face cores; candidates and other modes require visual review."
+    }
+  ]
+}

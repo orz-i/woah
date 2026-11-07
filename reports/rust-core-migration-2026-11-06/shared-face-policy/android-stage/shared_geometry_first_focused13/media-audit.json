@@ -1,0 +1,570 @@
+{
+  "run_id": "shared_geometry_first_focused13",
+  "cases": [
+    {
+      "case": "group_4k_body_face_union",
+      "status": "passed_media",
+      "sha256": "e58d730b20edc9f213e28897cf51addd27fa96d76a62f333a5e89ab7f7e83e38",
+      "bytes": 5114400,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 1.7763568394002505e-15,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [
+        {
+          "source_frame": 411,
+          "label": "body_omitted_face_411",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        }
+      ],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "bfe8a6eb5729e99e258f9bc411339924d90ed2a063673ffbfc65b9475d984ac4"
+    },
+    {
+      "case": "solo_4k_body_face_union",
+      "status": "passed_media",
+      "sha256": "1c8991240ffb77e28cea6f889c830258ee819ee48aa57e5098009a6db4901396",
+      "bytes": 749011,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 1.1102230246251565e-15,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [
+        {
+          "source_frame": 217,
+          "label": "body_omitted_face_217",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        }
+      ],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "091a98fef71dee19b2638b920b5335a98fb0680bf3f1e006ae81495243df88b3"
+    },
+    {
+      "case": "solo_4k_raised_arm_sticker",
+      "status": "passed_media",
+      "sha256": "278009a8964edc2b5cf8e7ce4df09911f37ef806f71ee49002526625923565f7",
+      "bytes": 1075107,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 2.9976021664879227e-15,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "48d53b0e3235a7160b240bf0e309e8c2c5d8bd7c225cb0e25c4fbcdc32a89721"
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "status": "passed_media",
+      "sha256": "1f1430e555c1be1945174dcb840e55f348670bd8601bf8f8a41fca40e1c6bd20",
+      "bytes": 847731,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 2.9976021664879227e-15,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [
+        {
+          "source_frame": 556,
+          "label": "occluded_face_556",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 557,
+          "label": "occluded_face_557",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 558,
+          "label": "occluded_face_558",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 559,
+          "label": "occluded_face_559",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 560,
+          "label": "raised_arm_face_560",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 561,
+          "label": "raised_arm_face_561",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 562,
+          "label": "raised_arm_face_562",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 563,
+          "label": "raised_arm_face_563",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        }
+      ],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "760b9955ac632959f3d683ba13d9c157355e83e56a00d0527ebae4b6b1f61ace"
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "status": "passed_media",
+      "sha256": "cf35c34746f4f8070f85a74d774bfa8feb27c58625ed85df61ae7afdfdbecc3d",
+      "bytes": 800931,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 2.9976021664879227e-15,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [
+        {
+          "source_frame": 556,
+          "label": "occluded_face_556",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 557,
+          "label": "occluded_face_557",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 558,
+          "label": "occluded_face_558",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 559,
+          "label": "occluded_face_559",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 560,
+          "label": "raised_arm_face_560",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 561,
+          "label": "raised_arm_face_561",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 562,
+          "label": "raised_arm_face_562",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 563,
+          "label": "raised_arm_face_563",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        }
+      ],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "1ae5c868d04d94a7f48f9b04e2b60c2f7ae2237c8b53081ddc03fb77bfcb93fe"
+    },
+    {
+      "case": "group_hd_overlap_face",
+      "status": "passed_media",
+      "sha256": "e7d39d41b5ac4695b2206010a6d8052d34bbbff729ce130aa591932b42e80871",
+      "bytes": 43712,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "decoded_frames": 1,
+      "expected_frames": 1,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "239c10ef25cd80e26e7ef4d4a90d13707981022bd4ff4c619963502b47102a3f"
+    },
+    {
+      "case": "group_hd_overlap_body",
+      "status": "passed_media",
+      "sha256": "9997b2da9b1a1a42ac1e0b9c2e687f67d258375aee5ebfc77620444ce0a7ad9f",
+      "bytes": 38512,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "decoded_frames": 1,
+      "expected_frames": 1,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "17d32d3f451c76390bd47a26f1e15f17668c49c7cd387ad32372f969d09d1073"
+    },
+    {
+      "case": "group_4k_face_solid",
+      "status": "passed_media",
+      "sha256": "067799349b17eb32ae3e88335c8cbdbad349c4c089a2323a12cd56f083f405de",
+      "bytes": 966752,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "decoded_frames": 10,
+      "expected_frames": 10,
+      "max_pts_delta_seconds": 3.3306690738754696e-16,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [
+        {
+          "source_frame": 145,
+          "label": "side_face",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        }
+      ],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "9a842e8116f95662202a54d2468b15a46859443e169d4e18113be40a37d8aa92"
+    },
+    {
+      "case": "group_4k_body_solid",
+      "status": "passed_media",
+      "sha256": "5224a2db9e1d79aab262fd4fad57b2b86d921cf3e984d92b0ace75604f5bf643",
+      "bytes": 713216,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "decoded_frames": 10,
+      "expected_frames": 10,
+      "max_pts_delta_seconds": 8.534839501805891e-16,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [
+        {
+          "source_frame": 290,
+          "label": "mirror_face",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        }
+      ],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "83b0e8ab29fde48ddf15f054f8c4b1782a3b5d74aff4b7598e5e9a118202b7bf"
+    },
+    {
+      "case": "group_4k_tail_face",
+      "status": "passed_media",
+      "sha256": "b1d6a7978b37c5d92ee5b000935aa48f8822324e60ee43f6146b423b2512619e",
+      "bytes": 841360,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "decoded_frames": 10,
+      "expected_frames": 10,
+      "max_pts_delta_seconds": 1.8457457784393227e-15,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [
+        {
+          "source_frame": 580,
+          "label": "foreground_leg",
+          "red_pixels": 0,
+          "pixels": 576,
+          "passed": true
+        }
+      ],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "082dff822455adde5fa3128aa00739423ebb9c9ba09d98f72a59d8aa5e554e04"
+    },
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "status": "passed_media",
+      "sha256": "ef0a7191d5c1446656cd8d53e78488adbe7e0d73274cafcc05fa6d9c121ba6e4",
+      "bytes": 366478,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "decoded_frames": 16,
+      "expected_frames": 16,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "gallery_original_sha_matches": [
+        "gallery\\85f7307a-e3fe-4904-a952-b9c21dacb201.mp4"
+      ],
+      "input_binding_sha256": "022f7c6cb5953c2492557d299e69abab60a2f890a0067eae58b2f93762f40bc6"
+    },
+    {
+      "case": "solo_4k_cancel_probe",
+      "status": "passed_cancellation",
+      "cancelled_at_frame": 25,
+      "input_binding_sha256": "87e619cbef0b8084a5b00bf71bd31e9e5370e7c4d8dc097916ba4ec9b5b318a7"
+    },
+    {
+      "case": "solo_4k_immediate_retry_probe",
+      "status": "passed_media",
+      "sha256": "3c6fc2740a87f9aca4d9c0e59d935f41ac2374d22b3bb688d9975a88d41127d2",
+      "bytes": 909507,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 2.220446049250313e-16,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "32f0c5baad03b146161688fb4ef44da83a2be0602ccddb7add004d0163a8dc7a"
+    }
+  ]
+}

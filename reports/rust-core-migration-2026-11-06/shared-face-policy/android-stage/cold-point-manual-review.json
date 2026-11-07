@@ -1,0 +1,7 @@
+{
+  "scope": "All8 actual cold-trim export face crops inspected on known-faces-0.jpg. Native exact-time previews checked by16 existing opaque-red pixel probes; not a claim of manual full-preview review.",
+  "board_sha256": "38dacfb7b909a560cdd5852edeca403594d0eb438f027a8f65134cde6a342087",
+  "known_probe_report_sha256": "816434cfc59b309f1a912d34a2fca3c13d77753ae625f55da6de1f85dcfe1917",
+  "decision": "all_displayed_known_face_points_covered",
+  "reviewed_utc": "2026-11-07T03:02:15.906926+00:00"
+}
