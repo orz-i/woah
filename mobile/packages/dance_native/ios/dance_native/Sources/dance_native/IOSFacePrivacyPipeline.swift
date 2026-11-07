@@ -341,6 +341,11 @@ enum IOSFacePrivacyGeometry {
   private static let fallbackRadiusYFromHeight: Float32 = 0.060
 
   static func detectedEllipse(_ face: IOSFaceCandidate) -> IOSFacePrivacyEllipse? {
+    guard let region=IOSFrameKernelFaceGeometry.detected(face) else {return nil}
+    return IOSFacePrivacyEllipse(centerX:region.x,centerY:region.y,radiusX:region.z,radiusY:region.w,source:.detectedFace)
+  }
+
+  private static func detectedEllipseLegacy(_ face: IOSFaceCandidate) -> IOSFacePrivacyEllipse? {
     let width = face.x2 - face.x1
     let height = face.y2 - face.y1
     guard width > 1, height > 1 else { return nil }

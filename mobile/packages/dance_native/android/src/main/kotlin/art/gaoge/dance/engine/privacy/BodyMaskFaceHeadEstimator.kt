@@ -29,6 +29,11 @@ object BodyMaskFaceHeadEstimator {
     private const val MAX_RUN_CENTER_DISTANCE_RATIO = 1.05f
 
     fun estimate(
+        mask: NativeMask?, personBbox: FloatRect,
+        seedCenterX: Float, seedCenterY: Float, seedRadiusX: Float, seedRadiusY: Float
+    ): FacePoint? = FrameKernelFaceGeometry.estimate(mask, personBbox, seedCenterX, seedCenterY, seedRadiusX, seedRadiusY)
+
+    private fun estimateLegacy(
         mask: NativeMask?,
         personBbox: FloatRect,
         seedCenterX: Float,
