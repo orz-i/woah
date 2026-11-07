@@ -1,0 +1,26 @@
+{
+  "source_commit": "28594280c86aadca5ec1b17101d3a461e8301745",
+  "run_id": 42350399736,
+  "url": "https://github.com/orz-i/woah/actions/runs/42350399736",
+  "jobs": [
+    {
+      "id": 128337092468,
+      "name": "validate-and-test",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 128337092975,
+      "name": "ios / Xcode 26 / no-codesign build",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 128340679023,
+      "name": "governance / required",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "scope": "CI for compiled native source; final report-head CI must also pass before merge."
+}
