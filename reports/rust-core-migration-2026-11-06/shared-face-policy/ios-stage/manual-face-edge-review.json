@@ -1,0 +1,63 @@
+{
+  "run_id": "shared_geometry_first_focused13",
+  "raw_statuses_unchanged": true,
+  "scope": "Enlarged actual source/old/new frame147and577 comparisons plus both full case boards/native previews inspected. Separate semantic decision; raw failed_face_cores retained.",
+  "board": "geometry-f147-f577-detail.jpg",
+  "board_sha256": "447943c789154daca928201e4f5e3e9d4e6a95ce6f9506f0e8aa88171b290802",
+  "decisions": [
+    {
+      "case": "group_4k_face_solid",
+      "raw_status": "failed_face_cores",
+      "raw_alerts": [
+        {
+          "output_frame": 7,
+          "source_frame": 147,
+          "source_pts_us": 5880000,
+          "source_bbox": [
+            2660.1280975341797,
+            507.27028012275696,
+            2811.195774078369,
+            658.3379459381104
+          ],
+          "output_core": [
+            2683,
+            530,
+            2788,
+            635
+          ],
+          "coverage_fraction": 0.8076190476190476
+        }
+      ],
+      "source_sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+      "movie_sha256": "398eb87989331bdcb9982aed608defb900c160e271d96f9feee27f95c87537d6",
+      "manual_decision": "eyes_nose_mouth_covered_bbox_extent_includes_hair_ear_arm_neck"
+    },
+    {
+      "case": "group_4k_tail_face",
+      "raw_status": "failed_face_cores",
+      "raw_alerts": [
+        {
+          "output_frame": 6,
+          "source_frame": 577,
+          "source_pts_us": 23080000,
+          "source_bbox": [
+            1278.7225341796875,
+            217.3409253358841,
+            1432.3663902282715,
+            370.9847831726074
+          ],
+          "output_core": [
+            1302,
+            241,
+            1409,
+            347
+          ],
+          "coverage_fraction": 0.8836184094515959
+        }
+      ],
+      "source_sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+      "movie_sha256": "1cb12c0b3ee926a2af00ffa3a98baf29befafd6b094b3840e6bca779e113b49e",
+      "manual_decision": "eyes_nose_mouth_covered_bbox_extent_includes_hair_ear_arm_neck"
+    }
+  ]
+}

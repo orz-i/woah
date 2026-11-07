@@ -1,0 +1,17 @@
+{
+  "run_id": "hero295_fixed_probe_legacy22",
+  "reviewed_utc": "2026-11-07T02:58:11.061883+00:00",
+  "review_index_sha256": "6405f2c0c9994c7a11a643b7e6ee3eebabc620d0e8c7e2565a798f6cac0e037b",
+  "cases": [
+    {
+      "case": "group_full_length_follow",
+      "board_sha256": "d539c2ac51908dcecda5782cdaeba115f8664ce0a356d463d19cd3e15cb52e20",
+      "decision": "reviewed_no_new_issue_at_displayed_samples"
+    }
+  ],
+  "observations": [
+    "Hero face remains clear in actual movie165 and295 plus native6600/13200 previews; adjacent visible blonde face remains protected.",
+    "At source0 the hero face is occluded by the raised forearm. Conservative anonymous regions overlap that arm; all actual geometry is unchanged between f14 and repaired f3. No precise full-body exclusion is claimed."
+  ],
+  "scope": "Actual331-frame diagnosis only, first/middle/last and all3 native previews; full final62 remains in progress."
+}
