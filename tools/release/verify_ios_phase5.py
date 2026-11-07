@@ -211,7 +211,7 @@ def verify_ios_replay_surface() -> None:
         "enum IOSPersonBboxMotionEstimator",
         "enum IOSBodyMaskFaceHeadEstimator",
         "final class IOSFacePrivacyTemporalResolver",
-        "IOSFacePrivacyGeometry.fallbackEllipse",
+        "IOSFacePrivacyGeometry.fallbackGeometry",
         "person.conservativePrivacyFallback",
         "persons: persons.filter { !$0.conservativePrivacyFallback }",
         "unselected neighbor's",
@@ -301,7 +301,9 @@ def verify_ios_replay_surface() -> None:
         "makeProtoMask(",
         "maskGuidedRegion.centerX > 34",
         "maskSeedExpiredRegion.source == .yoloHeadFallback",
-        'label: "800ms mask-seed expiry centerX"',
+        'label: "800ms seed expiry uses independent current-mask centerX"',
+        'label: "cold current-mask rectangle centerX"',
+        "coldMaskRegion.source == .yoloHeadFallback",
         "Missing current head-like mask support removed FACE_ONLY fallback privacy",
         'label: "unsupported-mask generic fallback centerX"',
         "selectedClassTracker.facePrivacyClassEvidence()",
@@ -343,7 +345,7 @@ def verify_ios_replay_surface() -> None:
 
     for token in (
         "faceRegions: [Int: IOSFacePrivacyEllipse] = [:]",
-        "IOSFacePrivacyGeometry.fallbackEllipse(person.detection)",
+        "IOSFacePrivacyGeometry.fallbackGeometry(person.detection,preprocess:preprocess,",
         "dx * dx + dy * dy <= 1",
         "faceRect(",
         r"let renderedFaceIds = Set(facePersons.map(\.id))",
@@ -469,9 +471,10 @@ def verify_android_reference_boundary() -> None:
           "Independent native face geometry corpus changed; review provenance")
     swift_regions = text(SOURCES / "IOSFrameKernelFaceGeometry.swift", "Swift face geometry transport")
     for token in ("frame_kernel_detected_face_region(", "frame_kernel_head_fallback(",
-                  "frame_kernel_mask_head(", "frame_kernel_trusted_mask_region(", "guard status==0"):
+                  "frame_kernel_mask_head(", "frame_kernel_trusted_mask_region(",
+                  "frame_kernel_current_head_region(", "guard status==0"):
         check(token in swift_regions, f"Swift shared geometry transport missing: {token}")
-    for call in ("detected(", "fallback(", "estimate(", "trusted(", "project("):
+    for call in ("detected(", "fallback(", "currentHead(", "estimate(", "trusted(", "project("):
         check("IOSFrameKernelFaceGeometry." + call in (SOURCES / "IOSFacePrivacyPipeline.swift").read_text(encoding="utf-8"),
               f"iOS region consumer must use shared {call}")
 
