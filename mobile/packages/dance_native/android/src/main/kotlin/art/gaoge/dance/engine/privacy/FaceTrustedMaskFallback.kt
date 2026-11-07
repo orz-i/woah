@@ -19,6 +19,11 @@ internal data class FacePrivacyTrustedGeometry(
  */
 internal object FaceTrustedMaskFallback {
     fun resolve(
+        mask: NativeMask?, currentPersonBbox: FloatRect,
+        trusted: FacePrivacyTrustedGeometry, radiusExpansion: Float
+    ): FacePrivacyEllipse? = FrameKernelFaceGeometry.trusted(mask, currentPersonBbox, trusted, radiusExpansion)
+
+    private fun resolveLegacy(
         mask: NativeMask?,
         currentPersonBbox: FloatRect,
         trusted: FacePrivacyTrustedGeometry,

@@ -19,6 +19,16 @@ enum IOSBodyMaskFaceHeadEstimator {
   private static let maxRunCenterDistanceRatio: Float32 = 1.05
 
   static func estimate(
+    mask: [UInt8], personDetection: IOSYoloDetection,
+    seedCenterX: Float32, seedCenterY: Float32, seedRadiusX: Float32, seedRadiusY: Float32,
+    preprocess: IOSYoloPreprocessResult
+  ) -> (x: Float32, y: Float32)? {
+    guard let center = IOSFrameKernelFaceGeometry.estimate(mask, person: personDetection,
+      seed: SIMD4(seedCenterX, seedCenterY, seedRadiusX, seedRadiusY), preprocess: preprocess) else { return nil }
+    return (x: center.x, y: center.y)
+  }
+
+  private static func estimateLegacy(
     mask: [UInt8],
     personDetection: IOSYoloDetection,
     seedCenterX: Float32,
