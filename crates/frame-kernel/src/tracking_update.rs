@@ -6,8 +6,8 @@ use crate::{
     geometry::{Rect, overlap_iou},
     tracking::*,
     tracking_evidence::{
-        AssociationCache, CurrentOwnerEvidence, current_owner_refutes_candidate,
-        dormant_mixed_body, identity_evidence, motion_evidence, record_motion,
+        AssociationCache, OwnerCandidateEvidence, dormant_mixed_body, identity_evidence,
+        motion_evidence, owner_refutes_candidate, record_motion,
     },
     tracking_motion,
 };
@@ -338,9 +338,14 @@ impl Tracker {
                                             let owner_mask = f.cache.mask_iou(owner, d, di);
                                             let owner_score =
                                                 f.cache.score(self, owner_index, d, di, at);
-                                            current_owner_refutes_candidate(
-                                                CurrentOwnerEvidence {
-                                                    observed: owner.observed_this_frame,
+                                            owner_refutes_candidate(
+                                                OwnerCandidateEvidence {
+                                                    has_mask: owner
+                                                        .observed_mask
+                                                        .as_ref()
+                                                        .is_some_and(|m| {
+                                                            m.pixels.iter().any(|&v| v >= 128)
+                                                        }),
                                                     state: owner.state,
                                                     score: owner_score,
                                                     bounds_iou: owner_bounds,

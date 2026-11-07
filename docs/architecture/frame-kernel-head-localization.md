@@ -35,9 +35,12 @@ could match this candidate under the existing score/identity gates.
 
 The shared tracker now permits release of that direct reservation only for a
 strict reciprocal-best non-body match, with the existing0.50 box/0.45 mask gates,
-and only when every owner has a committed current observation and fails both the
-ordinary minimum match score and canonical identity evidence for this candidate.
-Missing or stale owners keep the reservation. No thresholds are lowered.
+and only when every owner has retained observed foreground-mask evidence and
+fails both the ordinary minimum match score and canonical identity evidence for
+this current candidate. Missing, empty or removed owners keep the reservation.
+The candidate itself must be a current observation with strong box and mask
+continuity; retained owner history alone never grants an exemption. No thresholds
+are lowered.
 
 `replay-ios-hero-v1.bin` freezes166 actual simulator inputs and pre-fix output
 states. It is failure evidence, not an independent desired-behavior oracle. All13

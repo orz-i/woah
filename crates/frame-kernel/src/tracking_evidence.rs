@@ -15,17 +15,18 @@ pub fn identity_evidence(state: TrackState, bounds_iou: f32, mask_iou: f32) -> b
     }
 }
 #[derive(Clone, Copy)]
-pub struct CurrentOwnerEvidence {
-    pub observed: bool,
+pub struct OwnerCandidateEvidence {
+    pub has_mask: bool,
     pub state: TrackState,
     pub score: Option<f32>,
     pub bounds_iou: f32,
     pub mask_iou: f32,
 }
-/// Refutation needs a different committed current observation. Missing, stale,
+/// Refutation requires retained observed mask evidence scored against this current candidate. Missing,
 /// invalid or match-capable owner evidence keeps the reservation in place.
-pub fn current_owner_refutes_candidate(e: CurrentOwnerEvidence, minimum_score: f32) -> bool {
-    e.observed
+pub fn owner_refutes_candidate(e: OwnerCandidateEvidence, minimum_score: f32) -> bool {
+    e.has_mask
+        && e.state != TrackState::Removed
         && [e.bounds_iou, e.mask_iou]
             .into_iter()
             .all(|v| v.is_finite() && (0.0..=1.0).contains(&v))
@@ -210,39 +211,43 @@ impl AssociationCache {
 mod tests {
     use super::*;
     #[test]
-    fn only_a_current_unmatchable_owner_can_refute_its_box_reservation() {
-        let e = CurrentOwnerEvidence {
-            observed: true,
+    fn only_a_known_unmatchable_owner_can_refute_its_box_reservation() {
+        let e = OwnerCandidateEvidence {
+            has_mask: true,
             state: TrackState::Active,
             score: Some(0.1),
             bounds_iou: 0.04,
             mask_iou: 0.0,
         };
-        assert!(current_owner_refutes_candidate(e, 0.2));
+        assert!(owner_refutes_candidate(e, 0.2));
         for uncertain in [
-            CurrentOwnerEvidence {
-                observed: false,
+            OwnerCandidateEvidence {
+                has_mask: false,
                 ..e
             },
-            CurrentOwnerEvidence { score: None, ..e },
-            CurrentOwnerEvidence {
+            OwnerCandidateEvidence {
+                state: TrackState::Removed,
+                ..e
+            },
+            OwnerCandidateEvidence { score: None, ..e },
+            OwnerCandidateEvidence {
                 score: Some(0.2),
                 ..e
             },
-            CurrentOwnerEvidence {
+            OwnerCandidateEvidence {
                 bounds_iou: 0.35,
                 ..e
             },
-            CurrentOwnerEvidence {
+            OwnerCandidateEvidence {
                 mask_iou: 0.20,
                 ..e
             },
-            CurrentOwnerEvidence {
+            OwnerCandidateEvidence {
                 mask_iou: f32::NAN,
                 ..e
             },
         ] {
-            assert!(!current_owner_refutes_candidate(uncertain, 0.2));
+            assert!(!owner_refutes_candidate(uncertain, 0.2));
         }
     }
     #[test]

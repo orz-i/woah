@@ -72,7 +72,7 @@ pub fn reservation_release(
 }
 /// A bounding-box edge can reserve an unrelated current observation. Only a
 /// strict non-body match may escape that direct reservation, with the existing
-/// .50 box/.45 mask evidence, and only after every owner has a different current observation and is refuted by the
+/// .50 box/.45 mask evidence, and only after every owner has retained foreground evidence and is refuted by the
 /// canonical current identity-evidence gate. Unknown owner evidence keeps it held.
 pub fn reservation_release_with_owner_evidence(
     flags: u32,
