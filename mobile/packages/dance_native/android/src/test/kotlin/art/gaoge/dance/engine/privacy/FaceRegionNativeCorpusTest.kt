@@ -8,7 +8,7 @@ import java.nio.ByteBuffer
 import java.security.MessageDigest
 import kotlin.test.*
 
-/** Verifies the unused adapter against frozen native results and existing defaults. */
+/** Verifies shared adapters against frozen independent native results and existing defaults. */
 class FaceRegionNativeCorpusTest {
     private fun DataInputStream.rect()=FloatRect(readFloat(),readFloat(),readFloat(),readFloat())
     private fun DataInputStream.region():List<Int>? {
@@ -41,6 +41,10 @@ class FaceRegionNativeCorpusTest {
                 val shared=FrameKernelFaceGeometry.estimate(mask,person,sx,sy,rx,ry)
                 assertEquals(expected,old?.let{listOf(it.x.toRawBits(),it.y.toRawBits())},"old head$i")
                 assertEquals(expected,shared?.let{listOf(it.x.toRawBits(),it.y.toRawBits())},"shared head$i")
+                val completed=FrameKernelFaceGeometry.refine(mask,person,FacePrivacyEllipse(sx,sy,rx,ry,FacePrivacyRegionSource.YOLO_HEAD_FALLBACK))
+                assertEquals(expected,completed?.let{listOf(it.centerX.toRawBits(),it.centerY.toRawBits())},"complete shared head$i")
+                completed?.let{assertEquals(rx.toRawBits(),it.radiusX.toRawBits());assertEquals(ry.toRawBits(),it.radiusY.toRawBits())}
+
                 val trusted=r.region();val seed=FacePrivacyTrustedGeometry(sx,sy,rx,ry,person)
                 assertEquals(trusted,bits(FaceTrustedMaskFallback.resolve(mask,person,seed,1.10f)),"old trusted$i")
                 assertEquals(trusted,bits(FrameKernelFaceGeometry.trusted(mask,person,seed,1.10f)),"shared trusted$i")

@@ -5,6 +5,7 @@ struct Reader {
   let bytes:[UInt8];var at=0
   mutating func u()->UInt32 {let p=at;at+=4;return UInt32(bytes[p])<<24|UInt32(bytes[p+1])<<16|UInt32(bytes[p+2])<<8|UInt32(bytes[p+3])}
   mutating func f()->Float {Float(bitPattern:u())}
+  mutating func q()->Int64 {let high=UInt64(u()),low=UInt64(u());return Int64(bitPattern:(high<<32)|low)}
   mutating func flag()->Bool {let b=bytes[at];at+=1;return b != 0}
   mutating func box()->SIMD4<Float> {SIMD4(f(),f(),f(),f())}
   mutating func region(_ kind:UInt32)->[UInt32]? {
@@ -79,6 +80,13 @@ for index in 0..<512 {
 
   let head=IOSFrameKernelFaceGeometry.estimate(pixels,person:current,seed:seed,preprocess:pre)
   precondition(head.map{[$0.x.bitPattern,$0.y.bitPattern]}==expected,"head case\(index)")
+  guard let complete=IOSFrameKernelFaceGeometry.currentHead(current,preprocess:pre,seed:seed,currentMask:true) else {fatalError("missing complete head case\(index)")}
+  precondition(complete.maskGuided==(expected != nil),"complete evidence case\(index)")
+  if let expected {
+    precondition([complete.region.x.bitPattern,complete.region.y.bitPattern]==expected,"complete head case\(index)")
+  }else {precondition(bits(complete.region)==bits(seed),"complete conservative seed case\(index)")}
+  precondition(complete.region.z.bitPattern==seed.z.bitPattern&&complete.region.w.bitPattern==seed.w.bitPattern)
+
   precondition(bits(IOSFrameKernelFaceGeometry.trusted(pixels,person:current,previous:current,seed:seed,expansion:1.10,preprocess:pre))==r.region(2),"trusted case\(index)")
 }
 // Original Swift projection arithmetic retained only in this conformance test.
@@ -108,3 +116,69 @@ precondition(IOSFrameKernelFaceGeometry.resolveOwners([0.9,0.1,0.2,0.8],people:2
 print("SHARED_OBSERVATION_GEOMETRY_NATIVE=PASS cases=512")
 print("OBSERVATION_GEOMETRY_NATIVE_BASELINE=PASS cases=512")
 print("SHARED_FACE_GEOMETRY_NATIVE_CORPUS=PASS cases=512 sha256=\(sha)")
+
+// Actual first full4K top-edge failure, frozen before the production caller switch.
+let edgeData=try Data(contentsOf:URL(fileURLWithPath:"crates/frame-kernel/testdata/face-edge-ios-185-v1.bin"))
+precondition(SHA256.hash(data:edgeData).map{String(format:"%02x",$0)}.joined()=="15158a59608780bc1a8eb0660ff60da19a3d3b1cc7bb7995b4d309cf3e45e2b7")
+var e=Reader(bytes:Array(edgeData));precondition(e.u()==0x464b4531)
+let ew=Int(e.u()),eh=Int(e.u()),input=Int(e.u()),proto=Int(e.u())
+let es=e.f(),el=e.f(),et=e.f();precondition(e.q()==7_400_000&&e.q()==(-2_185_002))
+let body=e.box(),count=Int(e.u());var edgePixels:[UInt8]=[]
+for _ in 0..<e.u(){let n=Int(e.u()),v=e.bytes[e.at];e.at+=1;edgePixels.append(contentsOf:repeatElement(v,count:n))}
+precondition(count==25600&&edgePixels.count==count&&proto==160)
+let partial=e.box();precondition(e.at==e.bytes.count)
+let edgePerson=person(body,edgePixels)
+let edgePre=IOSYoloPreprocessResult(input:[],scale:es,padLeft:el,padTop:et,sourceWidth:ew,sourceHeight:eh,inputSize:input)
+func coreCoverage(_ region:SIMD4<Float>)->Float {
+  var covered=0
+  for y in 0..<31 {for x in 0..<31 {
+    let sx=partial.x+(partial.z-partial.x)*(0.15+0.70*Float(x)/30)
+    let sy=partial.y+(partial.w-partial.y)*(0.15+0.70*Float(y)/30)
+    let dx=(sx-region.x)/region.z,dy=(sy-region.y)/region.w
+    if dx*dx+dy*dy<=1 {covered+=1}
+  }}
+  return Float(covered)/961
+}
+let oldBox=IOSFrameKernelFaceGeometry.fallback(edgePerson)!
+precondition(coreCoverage(oldBox)==0)
+let edge=IOSFrameKernelFaceGeometry.currentHead(edgePerson,preprocess:edgePre,currentMask:true)!
+precondition(edge.maskGuided&&coreCoverage(edge.region)>=0.90)
+let noCurrent=IOSFrameKernelFaceGeometry.currentHead(edgePerson,preprocess:edgePre,currentMask:false)!
+precondition(!noCurrent.maskGuided&&bits(noCurrent.region)==bits(oldBox))
+let malformed=IOSFrameKernelFaceGeometry.currentHead(person(body,[1,2,3]),preprocess:edgePre,currentMask:true)
+precondition(malformed==nil)
+print("CURRENT_HEAD_NATIVE=PASS frozen=512 actual_frame=185 partial_feature_core=\(coreCoverage(edge.region))")
+
+// The actual production resolver must use the combined operation, not only its
+// standalone bridge. Replay every recorded person/mask and face observation.
+let sceneBytes=try Data(contentsOf:URL(fileURLWithPath:"crates/frame-kernel/testdata/face-edge-scene-ios-185-v1.json"))
+precondition(SHA256.hash(data:sceneBytes).map{String(format:"%02x",$0)}.joined()=="45d2071b31c55da0cbecdbeddf1268f058dc04318db49976bebc463b5ed4c235")
+let scene=try JSONSerialization.jsonObject(with:sceneBytes) as! [String:Any]
+func sceneFace(_ row:[String:Any])->IOSFaceCandidate {
+  let b=(row["bbox"] as! [NSNumber]).map{$0.floatValue}
+  let points=(row["landmarks"] as! [[NSNumber]]).map{SIMD2($0[0].floatValue,$0[1].floatValue)}
+  return IOSFaceCandidate(x1:b[0],y1:b[1],x2:b[2],y2:b[3],confidence:(row["confidence"] as! NSNumber).floatValue,
+    yaw:(row["yaw"] as! NSNumber).floatValue,observationView:(row["view"] as! NSNumber).intValue,landmarks:points)
+}
+final class CapturedEdgeLocator:IOSFaceLocating {
+  let primary:[IOSFaceCandidate],detail:[IOSFaceCandidate]
+  init(_ input:[String:Any]) {primary=(input["primary"] as! [[String:Any]]).map(sceneFace);detail=(input["detail"] as! [[String:Any]]).map(sceneFace)}
+  func locateFaces(in image:CGImage)throws->[IOSFaceCandidate] {primary}
+  func locateFaceDetails(in image:CGImage,regions:[CGRect])throws->[IOSFaceCandidate] {detail}
+}
+let currentPeople=(scene["persons"] as! [[String:Any]]).map {row->IOSPreviewPerson in
+  let b=(row["bbox"] as! [NSNumber]).map{$0.floatValue}
+  let mask=Array(Data(base64Encoded:row["mask_base64"] as! String)!)
+  // Confidence is not consumed by this resolver and was not part of its capture.
+  return IOSPreviewPerson(id:(row["id"] as! NSNumber).intValue,
+    detection:IOSYoloDetection(x1:b[0],y1:b[1],x2:b[2],y2:b[3],confidence:0.9,mask:mask))
+}
+let blank=CGContext(data:nil,width:1,height:1,bitsPerComponent:8,bytesPerRow:4,
+  space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.noneSkipLast.rawValue)!.makeImage()!
+let production=IOSFacePrivacyTemporalResolver(locator:CapturedEdgeLocator(scene))
+let regions=try production.resolve(image:blank,persons:currentPeople,faceOnlyIds:Set(currentPeople.map{ $0.id }),
+  preprocess:edgePre,protectUnassignedFaces:true,timestampUs:7_400_000)
+guard let actual=regions[-2_185_002] else {fatalError("actual current protected person lost its privacy region")}
+let actualCoverage=coreCoverage(SIMD4(actual.centerX,actual.centerY,actual.radiusX,actual.radiusY))
+precondition(actualCoverage>=0.90,"real-frame185 production fallback leaves visible feature core=\(actualCoverage)")
+print("CURRENT_HEAD_PRODUCTION_SCENE=PASS people=5 detail=6 partial_feature_core=\(actualCoverage)")

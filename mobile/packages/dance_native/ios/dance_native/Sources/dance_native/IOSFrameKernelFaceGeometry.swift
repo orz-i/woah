@@ -115,6 +115,21 @@ enum IOSFrameKernelFaceGeometry {
     guard status==0 else{return nil}
     return values(output)
   }
+  static func currentHead(_ person:IOSYoloDetection,preprocess:IOSYoloPreprocessResult,
+      seed:SIMD4<Float>?=nil,currentMask:Bool)->(region:SIMD4<Float>,maskGuided:Bool)? {
+    guard let metadata=spec(person,preprocess) else{return nil}
+    var output=FrameKernelCurrentHeadRegion()
+    func invoke(_ pixels:UnsafePointer<UInt8>?,_ count:Int)->Int32 {
+      if let seed {
+        var input=ellipse(seed)
+        return frame_kernel_current_head_region(pixels,count,metadata,&input,&output)
+      }
+      return frame_kernel_current_head_region(pixels,count,metadata,nil,&output)
+    }
+    let status=currentMask ? person.mask.withUnsafeBufferPointer {p in invoke(p.baseAddress,p.count)}:invoke(nil,0)
+    guard status==0 else{return nil}
+    return (values(output.region),output.current_mask_guided==1)
+  }
   private static func spec(_ person:IOSYoloDetection,_ preprocess:IOSYoloPreprocessResult)->FrameKernelHeadMaskSpec? {
     guard preprocess.sourceWidth>0,preprocess.sourceHeight>0,preprocess.inputSize>0,
       preprocess.sourceWidth<=65535,preprocess.sourceHeight<=65535,preprocess.inputSize<=65535 else{return nil}

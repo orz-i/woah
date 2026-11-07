@@ -23,7 +23,7 @@ internal object FrameKernelFaceGeometry {
         }
         return FrameKernel.headFallbackNative(person.values())?.region(FacePrivacyRegionSource.YOLO_HEAD_FALLBACK)
     }
-    private fun head(mask:NativeMask?,person:FloatRect,seed:FloatArray,previous:FloatRect?=null,expansion:Float=1f):FloatArray? {
+    private fun head(mask:NativeMask?,person:FloatRect,seed:FloatArray,previous:FloatRect?=null,expansion:Float=1f,complete:Boolean=false):FloatArray? {
         mask?:return null
         val mapper=mask.mapper?:return null
         if(mask.width<=1||mask.height<=1||mask.width>1024||mask.height>1024)return null
@@ -31,9 +31,17 @@ internal object FrameKernelFaceGeometry {
         if(mask.buffer.capacity()<count||mask.buffer.limit()<count)return null
         val bytes=ByteArray(count)
         mask.buffer.duplicate().apply{position(0);limit(count);get(bytes)}
+        if(complete)return FrameKernel.currentHeadRegionNative(bytes,mask.width,mask.height,
+            floatArrayOf(mapper.scale,mapper.padLeft,mapper.padTop,mapper.srcWidth.toFloat(),mapper.srcHeight.toFloat(),mapper.modelInputSize.toFloat(),mapper.protoSize.toFloat()),
+            person.values(),seed)
         return FrameKernel.maskHeadNative(bytes,mask.width,mask.height,
             floatArrayOf(mapper.scale,mapper.padLeft,mapper.padTop,mapper.srcWidth.toFloat(),mapper.srcHeight.toFloat(),mapper.modelInputSize.toFloat(),mapper.protoSize.toFloat()),
             person.values(),seed,previous?.values(),expansion)
+    }
+    fun refine(mask:NativeMask?,person:FloatRect,seed:FacePrivacyEllipse):FacePrivacyEllipse? {
+        val value=head(mask,person,floatArrayOf(seed.centerX,seed.centerY,seed.radiusX,seed.radiusY),complete=true)?:return null
+        if(value.size!=5||value[4]!=1f)return null
+        return FacePrivacyEllipse(value[0],value[1],value[2],value[3],seed.source)
     }
     fun estimate(mask:NativeMask?,person:FloatRect,cx:Float,cy:Float,rx:Float,ry:Float):FacePoint? {
         val value=head(mask,person,floatArrayOf(cx,cy,rx,ry))?:return null

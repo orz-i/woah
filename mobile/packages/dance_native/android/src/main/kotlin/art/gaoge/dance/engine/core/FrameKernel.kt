@@ -9,6 +9,7 @@ internal object FrameKernel {
     external fun projectFaceRegionNative(current:FloatArray,previous:FloatArray,seed:FloatArray,ageUs:Long):FloatArray?
     external fun faceRegionNative(row:FloatArray,view:FloatArray?,size:Float,yaw:Float):FloatArray?
     external fun headFallbackNative(person:FloatArray):FloatArray?
+    external fun currentHeadRegionNative(pixels:ByteArray?,width:Int,height:Int,transform:FloatArray,person:FloatArray,seed:FloatArray?):FloatArray?
     external fun maskHeadNative(pixels:ByteArray,width:Int,height:Int,transform:FloatArray,person:FloatArray,seed:FloatArray,previous:FloatArray?,expansion:Float):FloatArray?
 
     external fun faceHeadPlanNative(person:FloatArray,width:Int,height:Int):FloatArray?
