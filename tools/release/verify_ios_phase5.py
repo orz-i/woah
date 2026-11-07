@@ -218,12 +218,6 @@ def verify_ios_replay_surface() -> None:
         "ambiguityMargin: Float32 = 0.08",
         "containment >= 0.80",
         "faceCenterY <= person.y1 + personHeight * 0.62",
-        "detectedRadiusXFactor: Float32 = 0.66",
-        "detectedRadiusYFactor: Float32 = 0.74",
-        "detectedCenterYShift: Float32 = -0.04",
-        "fallbackCenterYRatio: Float32 = 0.14",
-        "fallbackRadiusXFromWidth: Float32 = 0.22",
-        "fallbackRadiusYFromWidth: Float32 = 0.26",
         "maxPredictedFaceAgeUs: Int64 = 150_000",
         "trustedMaskSeedMaxAgeUs: Int64 = 800_000",
         "minPredictedFaceScale: Float32 = 0.88",
@@ -231,7 +225,6 @@ def verify_ios_replay_surface() -> None:
         "maxPredictedAgeExpansion: Float32 = 0.10",
         "expiredFaceMaskFallbackExpansion: Float32 = 1.10",
         "IOSPersonBboxMotionEstimator.estimate(",
-        "IOSBodyMaskFaceHeadEstimator.estimate(",
         "source: .predictedFace",
         "timestampUs - trusted.lastTrustedTimestampUs <= Self.maxPredictedFaceAgeUs",
         "timestampUs - trusted.lastTrustedTimestampUs <= Self.trustedMaskSeedMaxAgeUs",
@@ -441,16 +434,25 @@ def verify_android_reference_boundary() -> None:
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyRegionResolver.kt",
         "Android FacePrivacyRegionResolver",
     )
-    for token in (
-        "private const val DETECTED_RADIUS_X_FACTOR = 0.66f",
-        "private const val DETECTED_RADIUS_Y_FACTOR = 0.74f",
-        "private const val DETECTED_CENTER_Y_SHIFT = -0.04f",
-        "private const val FALLBACK_CENTER_Y_RATIO = 0.14f",
-        "private const val FALLBACK_RADIUS_X_FROM_WIDTH = 0.22f",
-        "private const val FALLBACK_RADIUS_Y_FROM_WIDTH = 0.26f",
-        "privacy falls back to a YOLO-derived",
-    ):
-        check(token in face_geometry, f"Android FACE_ONLY geometry reference drifted: {token}")
+    check("FrameKernelFaceGeometry.resolve(" in face_geometry,
+          "Android region resolution must delegate to the shared core")
+    region_core = text(ROOT / "crates/frame-kernel/src/face_geometry.rs", "shared face geometry")
+    for token in ("radius_x: w * 0.66", "radius_y: h * 0.74", "h * (-0.04)",
+                  "person.top + h * 0.14", "(w * 0.22).max(h * 0.045)",
+                  "(w * 0.26).max(h * 0.060)", "0.30..=1.75", "d > 1.05",
+                  "b.top + h * 0.42", "rows < 2", "pixels[y * spec.width as usize + x] < 96"):
+        check(token in region_core, f"Shared face/head safety bound drifted: {token}")
+    corpus = ROOT / "crates/frame-kernel/testdata/face-region-native-v1.bin"
+    check(corpus.is_file() and hashlib.sha256(corpus.read_bytes()).hexdigest() ==
+          "e0e75f439552d6e7599c73f1020dd1d1d7f5323db0db26a4628bf10035b96298",
+          "Independent native face geometry corpus changed; review provenance")
+    swift_regions = text(SOURCES / "IOSFrameKernelFaceGeometry.swift", "Swift face geometry transport")
+    for token in ("frame_kernel_detected_face_region(", "frame_kernel_head_fallback(",
+                  "frame_kernel_mask_head(", "frame_kernel_trusted_mask_region(", "guard status==0"):
+        check(token in swift_regions, f"Swift shared geometry transport missing: {token}")
+    for call in ("detected(", "fallback(", "estimate(", "trusted("):
+        check("IOSFrameKernelFaceGeometry." + call in (SOURCES / "IOSFacePrivacyPipeline.swift").read_text(encoding="utf-8"),
+              f"iOS region consumer must use shared {call}")
 
     face_temporal = text(
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyTemporalStabilizer.kt",
@@ -505,16 +507,8 @@ def verify_android_reference_boundary() -> None:
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/BodyMaskFaceHeadEstimator.kt",
         "Android BodyMaskFaceHeadEstimator",
     )
-    for token in (
-        "private const val MASK_THRESHOLD = 96",
-        "private const val MIN_SUPPORT_ROWS = 2",
-        "private const val PERSON_HEAD_MAX_Y_RATIO = 0.42f",
-        "private const val MIN_RUN_WIDTH_RATIO = 0.30f",
-        "private const val MAX_RUN_WIDTH_RATIO = 1.75f",
-        "private const val MAX_RUN_CENTER_DISTANCE_RATIO = 1.05f",
-        "head-like narrow run",
-    ):
-        check(token in body_mask_estimator, f"Android body-mask face-head reference drifted: {token}")
+    check("FrameKernelFaceGeometry.estimate(" in body_mask_estimator,
+          "Android head estimator must use shared current-mask evidence")
 
     body_mask_test = text(
         ROOT / "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/privacy/BodyMaskFaceHeadEstimatorTest.kt",
@@ -534,7 +528,7 @@ def verify_android_reference_boundary() -> None:
     for token in (
         "old trusted face only as a local seed",
         "stale face center is never rendered",
-        "BodyMaskFaceHeadEstimator.estimate(",
+        "FrameKernelFaceGeometry.trusted(",
     ):
         check(token in trusted_mask_fallback, f"Android trusted-mask fallback reference drifted: {token}")
     trusted_mask_test = text(

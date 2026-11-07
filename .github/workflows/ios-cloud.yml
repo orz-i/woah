@@ -63,6 +63,7 @@ jobs:
           bash tools/ios/host_regression/run_temporal_regions.sh
           bash tools/ios/host_regression/run_tracking.sh
           bash tools/ios/host_regression/run_class.sh
+          bash tools/ios/host_regression/run_face_geometry.sh
           bash tools/ios/host_regression/run_golden.sh
           bash tools/ios/host_regression/run_tracker.sh
           python tools/rust/run.py build --target aarch64-apple-ios

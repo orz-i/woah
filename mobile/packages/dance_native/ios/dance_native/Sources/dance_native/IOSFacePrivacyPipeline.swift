@@ -9,15 +9,6 @@ enum IOSFacePrivacyRegionSource: String {
 }
 
 enum IOSBodyMaskFaceHeadEstimator {
-  private static let maskThreshold: UInt8 = 96
-  private static let minSupportRows = 2
-  private static let personSideMarginRatio: Float32 = 0.08
-  private static let personTopMarginRatio: Float32 = 0.10
-  private static let personHeadMaxYRatio: Float32 = 0.42
-  private static let minRunWidthRatio: Float32 = 0.30
-  private static let maxRunWidthRatio: Float32 = 1.75
-  private static let maxRunCenterDistanceRatio: Float32 = 1.05
-
   static func estimate(
     mask: [UInt8], personDetection: IOSYoloDetection,
     seedCenterX: Float32, seedCenterY: Float32, seedRadiusX: Float32, seedRadiusY: Float32,
@@ -28,169 +19,6 @@ enum IOSBodyMaskFaceHeadEstimator {
     return (x: center.x, y: center.y)
   }
 
-  private static func estimateLegacy(
-    mask: [UInt8],
-    personDetection: IOSYoloDetection,
-    seedCenterX: Float32,
-    seedCenterY: Float32,
-    seedRadiusX: Float32,
-    seedRadiusY: Float32,
-    preprocess: IOSYoloPreprocessResult
-  ) -> (x: Float32, y: Float32)? {
-    let proto = IOSYoloPostprocessor.protoSize
-    guard mask.count == proto * proto,
-          personDetection.x2 - personDetection.x1 > 1,
-          personDetection.y2 - personDetection.y1 > 1,
-          preprocess.scale > 0,
-          preprocess.inputSize > 0 else {
-      return nil
-    }
-
-    let personWidth = personDetection.x2 - personDetection.x1
-    let personHeight = personDetection.y2 - personDetection.y1
-    let searchHalfWidth = max(max(seedRadiusX * 2.2, personWidth * 0.34), 24)
-    let searchHalfHeight = max(max(seedRadiusY * 2.0, personHeight * 0.15), 24)
-    let minSourceX = max(
-      personDetection.x1 - personWidth * personSideMarginRatio,
-      seedCenterX - searchHalfWidth
-    )
-    let maxSourceX = min(
-      personDetection.x2 + personWidth * personSideMarginRatio,
-      seedCenterX + searchHalfWidth
-    )
-    let minSourceY = max(
-      personDetection.y1 - personHeight * personTopMarginRatio,
-      seedCenterY - searchHalfHeight
-    )
-    let maxSourceY = min(
-      personDetection.y1 + personHeight * personHeadMaxYRatio,
-      seedCenterY + searchHalfHeight
-    )
-    guard maxSourceX > minSourceX, maxSourceY > minSourceY else { return nil }
-
-    let minX = clampProtoIndex(
-      Int(floor(Double(sourceToProtoX(minSourceX, preprocess: preprocess)))),
-      proto: proto
-    )
-    let maxX = clampProtoIndex(
-      Int(ceil(Double(sourceToProtoX(maxSourceX, preprocess: preprocess)))),
-      proto: proto
-    )
-    let minY = clampProtoIndex(
-      Int(floor(Double(sourceToProtoY(minSourceY, preprocess: preprocess)))),
-      proto: proto
-    )
-    let maxY = clampProtoIndex(
-      Int(ceil(Double(sourceToProtoY(maxSourceY, preprocess: preprocess)))),
-      proto: proto
-    )
-    guard maxX >= minX, maxY >= minY else { return nil }
-
-    let seedProtoX = sourceToProtoX(seedCenterX, preprocess: preprocess)
-    let seedProtoY = sourceToProtoY(seedCenterY, preprocess: preprocess)
-    let expectedRunWidth = max(
-      abs(
-        sourceToProtoX(seedCenterX + seedRadiusX * 0.70, preprocess: preprocess)
-          - sourceToProtoX(seedCenterX - seedRadiusX * 0.70, preprocess: preprocess)
-      ),
-      2
-    )
-    let expectedHeadHalfHeight = max(
-      abs(
-        sourceToProtoY(seedCenterY + seedRadiusY * 0.72, preprocess: preprocess)
-          - seedProtoY
-      ),
-      2
-    )
-
-    var weightedX: Float32 = 0
-    var weightedY: Float32 = 0
-    var weightSum: Float32 = 0
-    var supportRows = 0
-    for y in minY...maxY {
-      var bestCenterX: Float32?
-      var bestWidth: Float32 = 0
-      var bestDistance = Float32.greatestFiniteMagnitude
-      var x = minX
-      while x <= maxX {
-        while x <= maxX && mask[y * proto + x] < maskThreshold { x += 1 }
-        if x > maxX { break }
-        let runStart = x
-        while x <= maxX && mask[y * proto + x] >= maskThreshold { x += 1 }
-        let runEndExclusive = x
-        let runWidth = Float32(runEndExclusive - runStart)
-        let widthRatio = runWidth / expectedRunWidth
-        if widthRatio < minRunWidthRatio || widthRatio > maxRunWidthRatio { continue }
-
-        let runCenterX = Float32(runStart + runEndExclusive) * 0.5
-        let centerDistance = abs(runCenterX - seedProtoX) / expectedRunWidth
-        if centerDistance > maxRunCenterDistanceRatio { continue }
-        if centerDistance < bestDistance {
-          bestDistance = centerDistance
-          bestCenterX = runCenterX
-          bestWidth = runWidth
-        }
-      }
-
-      guard let rowCenterX = bestCenterX else { continue }
-      let yDistance = abs((Float32(y) + 0.5) - seedProtoY) / expectedHeadHalfHeight
-      if yDistance > 1.75 { continue }
-      let widthError = abs(bestWidth - expectedRunWidth) / expectedRunWidth
-      let rowWeight: Float32 = 1 / (
-        1 + bestDistance * 2.2 + yDistance * 0.55 + widthError * 0.75
-      )
-      weightedX += rowCenterX * rowWeight
-      weightedY += (Float32(y) + 0.5) * rowWeight
-      weightSum += rowWeight
-      supportRows += 1
-    }
-    guard supportRows >= minSupportRows, weightSum > 0.50 else { return nil }
-
-    let centerSourceX = protoToSourceX(weightedX / weightSum, preprocess: preprocess)
-    let centerSourceY = protoToSourceY(weightedY / weightSum, preprocess: preprocess)
-    let maxShiftX = max(seedRadiusX * 0.80, personWidth * 0.10)
-    let maxShiftY = max(seedRadiusY * 0.70, personHeight * 0.055)
-    return (
-      min(seedCenterX + maxShiftX, max(seedCenterX - maxShiftX, centerSourceX)),
-      min(seedCenterY + maxShiftY, max(seedCenterY - maxShiftY, centerSourceY))
-    )
-  }
-
-  private static func sourceToProtoX(
-    _ sourceX: Float32,
-    preprocess: IOSYoloPreprocessResult
-  ) -> Float32 {
-    let modelX = sourceX * preprocess.scale + preprocess.padLeft
-    return modelX / Float32(preprocess.inputSize) * Float32(IOSYoloPostprocessor.protoSize)
-  }
-
-  private static func sourceToProtoY(
-    _ sourceY: Float32,
-    preprocess: IOSYoloPreprocessResult
-  ) -> Float32 {
-    let modelY = sourceY * preprocess.scale + preprocess.padTop
-    return modelY / Float32(preprocess.inputSize) * Float32(IOSYoloPostprocessor.protoSize)
-  }
-
-  private static func protoToSourceX(
-    _ protoX: Float32,
-    preprocess: IOSYoloPreprocessResult
-  ) -> Float32 {
-    let modelX = protoX / Float32(IOSYoloPostprocessor.protoSize) * Float32(preprocess.inputSize)
-    return (modelX - preprocess.padLeft) / preprocess.scale
-  }
-
-  private static func protoToSourceY(
-    _ protoY: Float32,
-    preprocess: IOSYoloPreprocessResult
-  ) -> Float32 {
-    let modelY = protoY / Float32(IOSYoloPostprocessor.protoSize) * Float32(preprocess.inputSize)
-    return (modelY - preprocess.padTop) / preprocess.scale
-  }
-
-  private static func clampProtoIndex(_ value: Int, proto: Int) -> Int {
-    min(proto - 1, max(0, value))
-  }
 }
 
 enum IOSPersonBboxMotionEstimator {
@@ -339,38 +167,10 @@ enum IOSFacePrivacyGeometry {
     return result
   }
 
-  // Mirrors Android FacePrivacyRegionResolver. The face detector refines
-  // localization only; fallback is always derived from the current YOLO body.
-  private static let detectedRadiusXFactor: Float32 = 0.66
-  private static let detectedRadiusYFactor: Float32 = 0.74
-  private static let detectedCenterYShift: Float32 = -0.04
-  private static let fallbackCenterYRatio: Float32 = 0.14
-  private static let fallbackRadiusXFromWidth: Float32 = 0.22
-  private static let fallbackRadiusXFromHeight: Float32 = 0.045
-  private static let fallbackRadiusYFromWidth: Float32 = 0.26
-  private static let fallbackRadiusYFromHeight: Float32 = 0.060
-
+  // All detector and current-body regions are computed in FrameKernel.
   static func detectedEllipse(_ face: IOSFaceCandidate) -> IOSFacePrivacyEllipse? {
     guard let region=IOSFrameKernelFaceGeometry.detected(face) else {return nil}
     return IOSFacePrivacyEllipse(centerX:region.x,centerY:region.y,radiusX:region.z,radiusY:region.w,source:.detectedFace)
-  }
-
-  private static func detectedEllipseLegacy(_ face: IOSFaceCandidate) -> IOSFacePrivacyEllipse? {
-    let width = face.x2 - face.x1
-    let height = face.y2 - face.y1
-    guard width > 1, height > 1 else { return nil }
-    // Vision's profile rectangle can enclose only the frontal features. Use
-    // the current measured yaw to include the cheek/chin behind that plane;
-    // never borrow another person's face or an old body's predicted head.
-    let yaw = face.yaw.isFinite ? max(-Float32.pi / 2, min(Float32.pi / 2, face.yaw)) : 0
-    let profileScale = min(Float32(1.75), 1 / max(Float32(1.0 / 1.75), cos(yaw)))
-    return IOSFacePrivacyEllipse(
-      centerX: (face.x1 + face.x2) * 0.5 - sin(yaw) * width * 0.5,
-      centerY: (face.y1 + face.y2) * 0.5 + height * detectedCenterYShift + (profileScale - 1) * height * 0.5,
-      radiusX: width * detectedRadiusXFactor * profileScale,
-      radiusY: height * detectedRadiusYFactor * profileScale,
-      source: .detectedFace
-    )
   }
 
   static func fallbackEllipse(_ detection: IOSYoloDetection) -> IOSFacePrivacyEllipse? {
@@ -379,24 +179,6 @@ enum IOSFacePrivacyGeometry {
       radiusX: region.z, radiusY: region.w, source: .yoloHeadFallback)
   }
 
-  private static func fallbackEllipseLegacy(_ detection: IOSYoloDetection) -> IOSFacePrivacyEllipse? {
-    let width = detection.x2 - detection.x1
-    let height = detection.y2 - detection.y1
-    guard width > 1, height > 1 else { return nil }
-    return IOSFacePrivacyEllipse(
-      centerX: (detection.x1 + detection.x2) * 0.5,
-      centerY: detection.y1 + height * fallbackCenterYRatio,
-      radiusX: max(
-        width * fallbackRadiusXFromWidth,
-        height * fallbackRadiusXFromHeight
-      ),
-      radiusY: max(
-        width * fallbackRadiusYFromWidth,
-        height * fallbackRadiusYFromHeight
-      ),
-      source: .yoloHeadFallback
-    )
-  }
 }
 
 /// Privacy-first FACE_ONLY resolver for Phase 5C.
@@ -495,43 +277,6 @@ final class IOSFacePrivacyTemporalResolver {
         radiusX: region.z, radiusY: region.w, source: .yoloHeadFallback)
     }
 
-    private func maskGuidedFallbackLegacy(
-      personDetection: IOSYoloDetection,
-      preprocess: IOSYoloPreprocessResult
-    ) -> IOSFacePrivacyEllipse? {
-      let translation = IOSPersonBboxMotionEstimator.estimate(
-        previous: trustedPersonDetection,
-        current: personDetection
-      )
-      let radiusX = max(
-        1,
-        self.radiusX * IOSFacePrivacyTemporalResolver.expiredFaceMaskFallbackExpansion
-      )
-      let radiusY = max(
-        1,
-        self.radiusY * IOSFacePrivacyTemporalResolver.expiredFaceMaskFallbackExpansion
-      )
-      let seedCenterX = centerX + translation.dx
-      let seedCenterY = centerY + translation.dy
-      guard let currentHead = IOSBodyMaskFaceHeadEstimator.estimate(
-        mask: personDetection.mask,
-        personDetection: personDetection,
-        seedCenterX: seedCenterX,
-        seedCenterY: seedCenterY,
-        seedRadiusX: radiusX,
-        seedRadiusY: radiusY,
-        preprocess: preprocess
-      ) else {
-        return nil
-      }
-      return IOSFacePrivacyEllipse(
-        centerX: currentHead.x,
-        centerY: currentHead.y,
-        radiusX: radiusX,
-        radiusY: radiusY,
-        source: .yoloHeadFallback
-      )
-    }
   }
 
   private struct State {
