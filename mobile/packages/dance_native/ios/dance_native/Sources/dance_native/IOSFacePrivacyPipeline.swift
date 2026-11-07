@@ -129,7 +129,11 @@ enum IOSFacePrivacyGeometry {
                   y: Double(d.y1 - height * 0.25), width: Double(side), height: Double(side))
   }
 
-  static func upperBodyFaceSearchRegion(_ d: IOSYoloDetection) -> CGRect {
+  static func upperBodyFaceSearchRegion(_ detection: IOSYoloDetection) -> CGRect {
+    IOSFrameKernelFaceGeometry.upperBody(detection) ?? .zero
+  }
+
+  private static func upperBodyFaceSearchRegionLegacy(_ d: IOSYoloDetection) -> CGRect {
     // Raised arms move the bbox top far above the face. A smaller upper-body
     // view restores face detail without assuming topmost body pixels are a head.
     let width = max(1, d.x2 - d.x1), height = max(1, d.y2 - d.y1)
@@ -228,6 +232,15 @@ final class IOSFacePrivacyTemporalResolver {
     }
 
     func occlusionPadding(personDetection: IOSYoloDetection, preprocess: IOSYoloPreprocessResult,
+                          timestampUs: Int64) -> IOSFacePrivacyEllipse? {
+      guard timestampUs >= lastTrustedTimestampUs,
+        let region=IOSFrameKernelFaceGeometry.padding(personDetection,
+          seed:SIMD4(centerX,centerY,radiusX,radiusY),age:timestampUs-lastTrustedTimestampUs,
+          lease:IOSFacePrivacyTemporalResolver.trustedMaskSeedMaxAgeUs,preprocess:preprocess) else {return nil}
+      return IOSFacePrivacyEllipse(centerX:region.x,centerY:region.y,radiusX:region.z,radiusY:region.w,source:.predictedFace)
+    }
+
+    private func occlusionPaddingLegacy(personDetection: IOSYoloDetection, preprocess: IOSYoloPreprocessResult,
                           timestampUs: Int64) -> IOSFacePrivacyEllipse? {
       guard timestampUs >= lastTrustedTimestampUs,
             timestampUs - lastTrustedTimestampUs <= IOSFacePrivacyTemporalResolver.trustedMaskSeedMaxAgeUs,
