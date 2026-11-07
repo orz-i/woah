@@ -54,13 +54,7 @@ object FacePrivacyRegionResolver {
         roiPlan: FaceHeadRoiPlan?,
         selectedFace: FaceRoiCandidateSelection?
     ): FacePrivacyEllipse? {
-        if (personBbox.width <= 1f || personBbox.height <= 1f) return null
-
-        if (roiPlan != null && selectedFace != null) {
-            detectedEllipse(roiPlan, selectedFace)?.let { return it }
-        }
-
-        return fallbackEllipse(personBbox)
+        return FrameKernelFaceGeometry.resolve(personBbox, roiPlan, selectedFace)
     }
 
     private fun detectedEllipse(
