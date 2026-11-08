@@ -81,6 +81,7 @@ class ExportController extends StateNotifier<ExportState> {
         (statusDto.errorMessage?.isNotEmpty ?? false) ||
         (statusDto.errorCode?.isNotEmpty ?? false);
     state = state.copyWith(
+      jobId: statusDto.jobId,
       status: ExportJobState.fromString(statusDto.state),
       progress: statusDto.progress,
       currentFrame: statusDto.currentFrame,
@@ -244,15 +245,27 @@ class ExportController extends StateNotifier<ExportState> {
     try {
       if (operation.submitted) await operation.startSettled.future;
       final jobId = operation.jobId;
-      if (jobId != null) await _repository.cancelJob(jobId);
-      operation.phase = _ExportPhase.terminal;
-      operation.deferredTerminal = null;
-      if (_owns(operation)) {
-        state = state.copyWith(
-          status: ExportJobState.cancelled,
-          clearErrorMessage: true,
-          clearCurrentPreviewPath: true,
-        );
+      if (jobId != null) {
+        await _repository.cancelJob(jobId);
+        // Native cancellation drains the runtime before returning. A completed
+        // publication is sealed by FrameKernel and cannot become cancelled.
+        final terminal = await _repository.getJobStatus(jobId);
+        if (terminal.jobId != jobId || !_isTerminal(terminal.state)) {
+          throw StateError('EXPORT_CANCEL_TERMINAL_UNCONFIRMED');
+        }
+        operation.deferredTerminal = null;
+        if (_owns(operation)) _applyProgress(operation, terminal);
+        operation.phase = _ExportPhase.terminal;
+      } else {
+        operation.phase = _ExportPhase.terminal;
+        operation.deferredTerminal = null;
+        if (_owns(operation)) {
+          state = state.copyWith(
+            status: ExportJobState.cancelled,
+            clearErrorMessage: true,
+            clearCurrentPreviewPath: true,
+          );
+        }
       }
     } catch (_) {
       operation.cancellation = null;

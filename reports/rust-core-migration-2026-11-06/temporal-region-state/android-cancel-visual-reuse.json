@@ -1,0 +1,8 @@
+{
+  "result": "Every decoded RGB pixel in all 12 completed movies and all 35 native source/protected preview pairs is identical to the previously reviewed fec72da3 cohort.",
+  "comparison": "android-cancel-pixel-comparison.json",
+  "comparison_sha256": "685a524b3ffc46bf71e3197be6d7328deee681db46294c2da337032895fcff75",
+  "prior_manual_review": "android-current-review/manual-review.json",
+  "automatic_candidate": "The source-frame 343 hair/neck candidate remains in the raw failed_face_cores audit; pixel equality preserves the prior bound eyes/nose/mouth manual resolution.",
+  "scope": "Reuse of unchanged visual evidence, not a claim of final 62-case completion."
+}

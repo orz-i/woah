@@ -1,0 +1,32 @@
+{
+  "native_source_commit": "0d1192753f63aeb5fc3e88b3e0448d1ae2efcc11",
+  "qa_guard_commit": "ab85241d83a21f0d2dce2efdcad434b9d03862c4",
+  "jvm": {
+    "tests": 595,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "python_ci": {
+    "tests": 92,
+    "result": "OK"
+  },
+  "logs": {
+    "jvm": {
+      "name": "cancel-scale-jvm.log",
+      "sha256": "6c8057d30e13302619dc8a67b489df3365f49205d82ff8e79897c3c93fd68f7a"
+    },
+    "python": {
+      "name": "cancel-scale-python-final.log",
+      "sha256": "0e554ad6b8e37d1c28ffc8fff9b3571cc6afd1cf44a29c1a0d2b4fa6e4d17c67"
+    },
+    "android_media": {
+      "name": "cancel-scale-audit.log",
+      "sha256": "e24fcbef25464b0b85c99182c6485cc01991468bab32f842f910e6ca50512552"
+    },
+    "android_focused": {
+      "name": "cancel-scale-focused13-audit.log",
+      "sha256": "ea836d4a94753e84ccf5d082430f61ae50b3e4af8d56024367d39a73a52bf212"
+    }
+  }
+}

@@ -116,7 +116,7 @@ void main() {
       expect(repo.cancelled, ['job-2']);
       expect(repo.activeJobs, isEmpty);
       expect(controller.state.status, ExportJobState.cancelled);
-      expect(controller.state.jobId, isNull);
+      expect(controller.state.jobId, 'job-2');
     },
   );
 
@@ -328,7 +328,7 @@ void main() {
   );
 
   test(
-    'job publication cancellation defers buffered terminal until RPC settles',
+    'job publication cancellation preserves committed output after RPC settles',
     () async {
       repo.startBarrier = Completer<String>();
       repo.cancelBarrier = Completer<void>();
@@ -349,7 +349,75 @@ void main() {
       expect(controller.state.outputUri, isNull);
       repo.cancelBarrier!.complete();
       await Future.wait([start, cancel!]);
+      expect(controller.state.status, ExportJobState.completed);
+      expect(controller.state.outputUri, '/synthetic-output.mp4');
+      expect(controller.state.jobId, 'late-job');
+    },
+  );
+
+  for (final terminal in ['completed', 'failed']) {
+    test('cancel preserves native $terminal committed during RPC', () async {
+      await controller.startExport(project(), 'out.mp4');
+      repo.cancelBarrier = Completer<void>();
+      final cancel = controller.cancelExport();
+      await tick();
+      repo.emit('job-1', terminal);
+      await tick();
+      expect(
+        controller.state.status,
+        isNot(ExportJobState.fromString(terminal)),
+      );
+      repo.cancelBarrier!.complete();
+      await cancel;
+      expect(controller.state.status, ExportJobState.fromString(terminal));
+      expect(
+        controller.state.outputUri,
+        terminal == 'completed' ? '/synthetic-output.mp4' : null,
+      );
+      repo.emit('job-1', 'processing');
+      await tick();
+      expect(controller.state.status, ExportJobState.fromString(terminal));
+    });
+  }
+
+  for (final wrongJob in [false, true]) {
+    test('cancel rejects unconfirmed terminal (wrong ID: $wrongJob)', () async {
+      await controller.startExport(project(), 'out.mp4');
+      repo.cancelBarrier = Completer<void>();
+      repo.queriedStatus = JobStatusDto(
+        jobId: wrongJob ? 'other-job' : 'job-1',
+        state: wrongJob ? 'completed' : 'processing',
+        currentFrame: 8,
+        totalFrames: 100,
+        fps: 10,
+        progress: .08,
+      );
+      final check = expectLater(controller.cancelExport(), throwsStateError);
+      await tick();
+      // Keep the transport response under test independent of an event.
+      repo.publishCancelEvent = false;
+      repo.cancelBarrier!.complete();
+      await check;
+      expect(controller.state.isCompleted, isFalse);
+      expect(controller.state.status, isNot(ExportJobState.cancelled));
+      repo.queriedStatus = null;
+      await controller.cancelExport();
       expect(controller.state.status, ExportJobState.cancelled);
+    });
+  }
+
+  test(
+    'status query failure remains retryable without inventing cancellation',
+    () async {
+      await controller.startExport(project(), 'out.mp4');
+      repo.publishCancelEvent = false;
+      repo.queryFails = true;
+      await expectLater(controller.cancelExport(), throwsStateError);
+      expect(controller.state.status, isNot(ExportJobState.cancelled));
+      repo.queryFails = false;
+      await controller.cancelExport();
+      expect(controller.state.status, ExportJobState.cancelled);
+      expect(repo.cancelled, ['job-1', 'job-1']);
     },
   );
 
@@ -476,6 +544,10 @@ class _Repository implements NativeProcessingRepository {
   final cancelled = <String>[];
   final activeJobs = <String>{};
   final terminalJobs = <String>{};
+  final statuses = <String, JobStatusDto>{};
+  JobStatusDto? queriedStatus;
+  bool queryFails = false;
+  bool publishCancelEvent = true;
   Completer<NativeCapabilitiesDto>? capabilityBarrier;
   Completer<String>? startBarrier;
   Completer<void>? cancelBarrier;
@@ -522,7 +594,28 @@ class _Repository implements NativeProcessingRepository {
       throw StateError('cancel rejected');
     }
     await cancelBarrier?.future;
-    activeJobs.remove(jobId);
+    if (!terminalJobs.contains(jobId)) {
+      if (publishCancelEvent) {
+        emit(jobId, 'cancelled');
+      } else {
+        statuses[jobId] = JobStatusDto(
+          jobId: jobId,
+          state: 'cancelled',
+          currentFrame: 8,
+          totalFrames: 100,
+          fps: 10,
+          progress: .08,
+        );
+        terminalJobs.add(jobId);
+        activeJobs.remove(jobId);
+      }
+    }
+  }
+
+  @override
+  Future<JobStatusDto> getJobStatus(String jobId) async {
+    if (queryFails) throw StateError('status unavailable');
+    return queriedStatus ?? statuses[jobId]!;
   }
 
   @override
@@ -535,19 +628,26 @@ class _Repository implements NativeProcessingRepository {
       terminalJobs.add(jobId);
       activeJobs.remove(jobId);
     }
-    events.add(
-      JobStatusDto(
-        jobId: jobId,
-        state: state,
-        currentFrame: 8,
-        totalFrames: 100,
-        fps: 10,
-        progress: 0.08,
-        currentPreviewPath: '/synthetic-preview.jpg',
-        outputUri: state == 'completed' ? '/synthetic-output.mp4' : null,
-        errorMessage: state == 'failed' ? 'encoder rejected' : null,
-      ),
+    final status = JobStatusDto(
+      jobId: jobId,
+      state: state,
+      currentFrame: 8,
+      totalFrames: 100,
+      fps: 10,
+      progress: 0.08,
+      currentPreviewPath: '/synthetic-preview.jpg',
+      outputUri: state == 'completed' ? '/synthetic-output.mp4' : null,
+      errorMessage: state == 'failed' ? 'encoder rejected' : null,
     );
+    if (!statuses.containsKey(jobId) ||
+        ![
+          'failed',
+          'completed',
+          'cancelled',
+        ].contains(statuses[jobId]!.state)) {
+      statuses[jobId] = status;
+    }
+    events.add(status);
   }
 
   @override

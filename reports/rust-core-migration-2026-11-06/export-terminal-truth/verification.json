@@ -1,0 +1,37 @@
+{
+  "scope": "Flutter cancellation terminal-state rendering; not final 62-case device acceptance",
+  "full_app_tests": 277,
+  "result": "passed",
+  "checks": {
+    "ui-terminal-flutter-test.log": {
+      "sha256": "9169883d8733ec84088d8caef9cc72b7edfd96407a555211dbc4c859d9c0656b",
+      "bytes": 3674,
+      "tail": [
+        "00:00 +21: old job events cannot change retry before or after new ID",
+        "00:00 +22: pending-start cancellation error exposes new job and allows retry",
+        "00:00 +23: cancel error replays deferred terminal; success suppresses late events",
+        "00:00 +24: dispose shares pending cancel and removes subscription exactly once",
+        "00:00 +25: All tests passed!"
+      ]
+    },
+    "ui-terminal-flutter-all-fixed.log": {
+      "sha256": "fc40675962f48cabb2c29dd4d2e4cd7907cf91078e9a025ded802df61e31f3da",
+      "bytes": 65370,
+      "tail": [
+        "[PersonSelectionController] VIDEO_ANALYSIS_REQUEST",
+        "[PersonSelectionController] VIDEO_ANALYSIS_REQUEST",
+        "00:34 +276: D:/dance-anonymizer/.qa-runtime/rust-migration/ui-terminal-truth/mobile/app/test/features/protection_editor_test.dart: single next action goes directly to export",
+        "[PersonSelectionController] VIDEO_ANALYSIS_REQUEST",
+        "00:34 +277: All tests passed!"
+      ]
+    },
+    "ui-terminal-flutter-analyze.log": {
+      "sha256": "84c4f04a6c0fab35e11d89f5c41a627c948edb1ba43b12afbe7010f19421093b",
+      "bytes": 98,
+      "tail": [
+        "Analyzing app...                                                ",
+        "No issues found! (ran in 4.7s)"
+      ]
+    }
+  }
+}

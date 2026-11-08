@@ -2525,6 +2525,16 @@ class _CancelRoundTripRepository extends _FakeProtectionRepository {
     return immediateCancel ? Future<void>.value() : _cancelGate.future;
   }
 
+  @override
+  Future<JobStatusDto> getJobStatus(String jobId) async => JobStatusDto(
+    jobId: jobId,
+    state: 'cancelled',
+    currentFrame: 4,
+    totalFrames: 100,
+    fps: 30,
+    progress: .04,
+  );
+
   void emitFailureAfterCancel() {
     _progress.add(
       JobStatusDto(

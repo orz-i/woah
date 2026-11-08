@@ -1,0 +1,56 @@
+{
+  "run_id": "cancel_scale_0d119275_legacy22",
+  "scope": "Manual first/middle/last decoded movie and every native source/protected preview; complements full decode, source-face cores and known-point probes.",
+  "cases": [
+    {
+      "case": "solo_face_solid",
+      "movie_sha256": "a0351e543701d45b48479b1721f7cc29d1a25c0385b045b97a20215ed1380d39",
+      "movie_frame_indices": [
+        0,
+        20,
+        39
+      ],
+      "previews": [
+        {
+          "requested_ms": 0,
+          "source_sha256": "c77ee61a8bd70ac1c3d067ae786e65e7d31b4f32375c5e3fc1f99d04dc26354a",
+          "protected_sha256": "68f5b1feb0c784834fcdcec429ddff9c6180b33818eaa089b6947518727467c1"
+        },
+        {
+          "requested_ms": 780,
+          "source_sha256": "ff1b7d04fa19e7d17014bee10fa839691748d88a07b24dcfecab5f5e7d0dbb15",
+          "protected_sha256": "009f9ffff4263078f1aae7537dc1448d1267e5927343b8f3a565c5a5a7c3f95e"
+        },
+        {
+          "requested_ms": 1560,
+          "source_sha256": "40fc7881d9b0fedce413a1a962a6423e591e72e948e52f771f013837df54f178",
+          "protected_sha256": "85ad373f4f0355e6a14d9bdd62c278cb7421ae09bb28ae1669decad1669d176e"
+        }
+      ],
+      "board": "solo_face_solid.jpg",
+      "board_sha256": "09cedab8565f9a5109f09b94263464e541f20674ed2dceacfe827780afe39041"
+    },
+    {
+      "case": "retry_custom_sticker",
+      "movie_sha256": "b03aa46c99aba7c3960dd56ab49573ad7baae9fdf321fceba575e410f88cd2b0",
+      "movie_frame_indices": [
+        0,
+        24,
+        47
+      ],
+      "previews": [
+        {
+          "source_frame_indices": [
+            25,
+            49,
+            72
+          ],
+          "source_sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+          "scope": "Frozen source movie decoded sequentially for extra lifecycle retry."
+        }
+      ],
+      "board": "retry_custom_sticker.jpg",
+      "board_sha256": "ccfc0b2efe76c1f0e6a1edec7296de9dc1de9a96719c8ae795569e849bfb018c"
+    }
+  ]
+}
