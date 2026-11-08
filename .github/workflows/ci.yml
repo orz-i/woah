@@ -43,6 +43,7 @@ jobs:
 
       - name: Verify Python Tools
         run: |
+          uv run --locked python -m unittest tools.privacy.test_observation_replay -v
           uv run --locked python tools/evaluate_tracking.py
           uv run --locked python tools/verify_video.py
 

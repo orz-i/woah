@@ -10,6 +10,7 @@ import java.nio.ByteBuffer
 
 /** Native inference transport. Tensor preparation, anchors, decode and NMS are Rust. */
 internal class GridFaceLocator(context:Context, preferGpu:Boolean):FaceLocator {
+    private val replay by lazy { art.gaoge.dance.engine.diagnostics.QaObservationReplay.open(context) }
     private val runner=LiteRtModelRunner.fromAsset(context,MODEL,"dense-face-v1",
         if(preferGpu)LiteRtRunnerPolicy.GPU_WITH_CPU_FALLBACK else LiteRtRunnerPolicy.STRICT_CPU)
     init {
@@ -31,10 +32,23 @@ internal class GridFaceLocator(context:Context, preferGpu:Boolean):FaceLocator {
         require(width>1&&height>1&&rgba.isDirect&&rgba.limit().toLong()>=width.toLong()*height*4)
         val start=System.nanoTime()
         val input=FrameKernel.gridFaceInputNative(rgba,width,height,width*4)
-        runner.getInputBuffers().single().writeFloat(input)
-        runner.runInference()
-        val outputs=runner.getOutputBuffers()
-        val values=FrameKernel.gridFaceDecodeNative(outputs[0].readFloat(),outputs[1].readFloat(),width,height,0.35f)
+        val cache=replay
+        val key=cache?.key("grid-face", "$width,$height|${runner.effectiveAccelerator}|threads=${runner.runtimeInfo?.cpuNumThreads}",input)
+        val cached=key?.let {cache.read(it)}
+        val decoded=cached?.let {runCatching {art.gaoge.dance.engine.diagnostics.QaObservationCodec.floats(it)}.getOrNull()}
+        val values=if(decoded != null) {
+            cache.hit(key,cached)
+            decoded
+        } else {
+            if(cached != null) cache.reject(key)
+            val before=runner.effectiveAccelerator
+            runner.getInputBuffers().single().writeFloat(input)
+            runner.runInference()
+            val outputs=runner.getOutputBuffers()
+            val result=FrameKernel.gridFaceDecodeNative(outputs[0].readFloat(),outputs[1].readFloat(),width,height,0.35f)
+            if(key != null && before==runner.effectiveAccelerator) cache.record(key,art.gaoge.dance.engine.diagnostics.QaObservationCodec.floats(result))
+            result
+        }
         return FaceLocatorResult(values.asList().chunked(17).map {row->
             FaceObservation(FloatRect(row[0],row[1],row[2],row[3]),row[4],
                 (0 until 6).map{k->FacePoint(row[5+k*2],row[6+k*2])})

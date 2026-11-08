@@ -57,6 +57,11 @@ final class IOSGridFaceLocator: IOSFaceLocating {
     }}
     guard status==0 else {throw failure("FACE_PREPROCESS_FAILED")}
     let data=input.withUnsafeBytes{Data($0)}
+    let replay=IOSQaObservationReplay.open()
+    let replayKey=replay?.key(kind:"grid-face",dimensions:"\(w),\(h)|xnnpack|threads=2",input:data)
+    if let replay,let key=replayKey,let stored=replay.read(key,as:IOSQaFaceObservation.self,validate:{$0.values() != nil}),let values=stored.values() {
+      return candidates(values)
+    }
     try model.copy(data,toInputAt:0);try model.invoke()
     func floats(_ data:Data) throws -> [Float] {
       guard data.count % 4 == 0 else {throw failure("FACE_TENSOR_INVALID")}
@@ -72,14 +77,19 @@ final class IOSGridFaceLocator: IOSFaceLocating {
       }
     }}
     guard count>=0 else {throw failure("FACE_POSTPROCESS_FAILED")}
-    return (0..<Int(count)).map {index in
+    let values=Array(output.prefix(Int(count)*17))
+    if let key=replayKey {replay?.record(key,IOSQaFaceObservation(values))}
+    return candidates(values)
+#else
+    throw failure("FACE_RUNTIME_UNAVAILABLE")
+#endif
+  }
+  private func candidates(_ output:[Float])->[IOSFaceCandidate] {
+    (0..<(output.count/17)).map {index in
       let i=index*17
       return IOSFaceCandidate(x1:output[i],y1:output[i+1],x2:output[i+2],y2:output[i+3],confidence:output[i+4],
         landmarks:(0..<6).map { SIMD2<Float>(output[i+5+$0*2],output[i+6+$0*2]) })
     }
-#else
-    throw failure("FACE_RUNTIME_UNAVAILABLE")
-#endif
   }
   private func failure(_ code:String) -> PigeonError {
     PigeonError(code:code,message:"Shared face inference did not complete.",details:nil)

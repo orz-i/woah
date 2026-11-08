@@ -67,6 +67,7 @@ jobs:
           bash tools/ios/host_regression/run_face_geometry.sh
           bash tools/ios/host_regression/run_golden.sh
           bash tools/ios/host_regression/run_tracker.sh
+            bash tools/ios/host_regression/run_observation_replay.sh
           python tools/rust/run.py build --target aarch64-apple-ios
           python tools/rust/run.py build --target aarch64-apple-ios-sim
           python tools/rust/run.py build --target x86_64-apple-ios

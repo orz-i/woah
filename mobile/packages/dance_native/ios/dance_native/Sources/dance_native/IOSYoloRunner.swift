@@ -117,6 +117,16 @@ final class IOSYoloRunner {
           throw runtimeError("YOLO interpreter was not initialized.")
         }
         let inputData = Self.data(from: preprocess.input)
+        let replay = IOSQaObservationReplay.open()
+        let replayKey = replay?.key(kind: "yolo",
+          dimensions: "\(preprocess.sourceWidth),\(preprocess.sourceHeight),\(preprocess.inputSize)|\(backend.rawValue)|\(confidenceThreshold.bitPattern)|threads=\(min(4,max(1,ProcessInfo.processInfo.processorCount)))|\(outputShapes)", input: inputData)
+        if let replay, let key = replayKey,
+          let stored = replay.read(key, as: IOSQaYoloObservation.self, validate: {$0.detections() != nil}), let detections = stored.detections() {
+          let info = IOSYoloRuntimeInfo(effectiveBackend: backend, initializationMs: initializationMs,
+            inferenceMs: 0, fallbackReasons: fallbackReasons, inputShape: [1,3,640,640], outputShapes: outputShapes)
+          lastRuntimeInfo = info
+          return IOSYoloInferenceResult(detections: detections, runtime: info, preprocess: preprocess)
+        }
         try interpreter.copy(inputData, toInputAt: 0)
         let start = CFAbsoluteTimeGetCurrent()
         try interpreter.invoke()
@@ -142,6 +152,7 @@ final class IOSYoloRunner {
           outputShapes: outputShapes
         )
         lastRuntimeInfo = info
+        if let key = replayKey { replay?.record(key, IOSQaYoloObservation(detections)) }
         return IOSYoloInferenceResult(
           detections: detections,
           runtime: info,
