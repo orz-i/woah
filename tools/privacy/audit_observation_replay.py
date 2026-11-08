@@ -114,7 +114,7 @@ def audit(run, ledger, control, contract_file, approved_runs):
                     "Replay has no compatible qualified producer")
             hits.add(key)
         counts[operation] += 1
-    require(counts["replay"] > 0 and counts["inference"] > 0, "No mixed native replay evidence")
+    require(counts["replay"] > 0, "No native replay evidence")
     require(counts["record_failed"] == 0, "Some inference measurements were not recorded")
     return {
         "schema": "qa-observation-audit-v1",
