@@ -1,0 +1,1128 @@
+{
+  "status": "complete_ios_62",
+  "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+  "created_utc": "2026-11-08T03:49:53.577527+00:00",
+  "source_materials": {
+    "corrupt-video-1024bytes.mp4": "630b36e85f6e26cd9371088fd201979ca82f1300b04aee24210c9e67df6e7e80",
+    "custom-sticker.png": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6",
+    "duo-dance-6940536.mp4": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76",
+    "group-hd-8956295.mp4": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+    "group-mirror-8956295.mp4": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+    "no-person-flower.mp4": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451",
+    "solo-hd-7570258.mp4": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0",
+    "solo-portrait-7570258.mp4": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1"
+  },
+  "model_bytes": {
+    "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340": 11799725,
+    "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b": 1083786
+  },
+  "scope": "API, media, preview timing, gallery, lifecycle and manual semantics on the frozen eight-source matrix. Raw automatic face statuses are retained. Does not assert every pixel in every possible media file or iPhone hardware performance.",
+  "platforms": {
+    "ios": {
+      "matrix_cases": 62,
+      "movies_including_lifecycle_retry": 61,
+      "fully_decoded_frames": 17491,
+      "native_preview_pairs": 186,
+      "binary_sha256": "a6402edd70b72be5967a6cb466e371e39e08c4135e89025dcd3fcb345da0d3d3",
+      "source_fingerprint": "0433a49686da103b95348ed648d48185a232cfb9c422550aa72050b334e2c209",
+      "cohorts": [
+        {
+          "platform": "ios",
+          "suite": "legacy22",
+          "run_id": "shared_policy_final_v9_legacy22",
+          "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+          "compiled_source_fingerprint": "0433a49686da103b95348ed648d48185a232cfb9c422550aa72050b334e2c209",
+          "binary_sha256": "a6402edd70b72be5967a6cb466e371e39e08c4135e89025dcd3fcb345da0d3d3",
+          "process_id": 1429,
+          "api_cases": 22,
+          "actual_movies": 23,
+          "decoded_frames": 1585,
+          "native_preview_pairs": 68,
+          "manually_resolved_topology_candidates": 2,
+          "manually_resolved_export_alerts": 144,
+          "manually_resolved_preview_alerts": 0,
+          "reviewed_case_boards": 23,
+          "status": "cohort_complete_independently_audited_and_reviewed",
+          "scope": "This cohort only. Overall62 acceptance requires all three cohorts from both platforms. Raw automatic face statuses are retained; separate manual semantic decisions are explicit.",
+          "collected_utc": "2026-11-08T02:12:31.418775+00:00",
+          "observation_replay": {
+            "schema": "qa-observation-audit-v1",
+            "platform": "ios",
+            "run_id": "shared_policy_final_v9_legacy22",
+            "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+            "binary_sha256": "a6402edd70b72be5967a6cb466e371e39e08c4135e89025dcd3fcb345da0d3d3",
+            "contract_sha256": "743a70592e17bc9c0b0ecbee285245ec693a24bb7daf4a5edabea4e3945411fc",
+            "results_sha256": "2dc98ba027d952c6bbd85d8f1288adc699441849fc55be9a4499f0c5eae02848",
+            "event_snapshot_sha256": "e7eb5838236e9fe8cdb942ea64483e328fe9a677adeb6eb4785e5113e772798c",
+            "approved_producers": [
+              {
+                "compiled_source_commit": "3ec329c6ff84b2ce41468e47e6265e21db4bdd1d",
+                "approved_entries": 155,
+                "approval_sha256": "8658da48568725eed77bbeaa53449171295becaa8d70535d557987bd4ff3a9b5"
+              },
+              {
+                "compiled_source_commit": "3ec329c6ff84b2ce41468e47e6265e21db4bdd1d",
+                "approved_entries": 9422,
+                "approval_sha256": "8faeb7727e64ab1181850e7e59ce02402fea52998038327b32129ddf06d0d1c0"
+              },
+              {
+                "compiled_source_commit": "c314769cad654e724f3e3d5109fda2db4df06d97",
+                "approved_entries": 8563,
+                "approval_sha256": "caec3664c94b7f50bcd5d7d2871b8ea5e04d58d44a58cc7df2d091a461b3f054"
+              }
+            ],
+            "approved_entries": 18140,
+            "replayed_calls": 17559,
+            "unique_replayed_entries": 9334,
+            "fresh_calls_recorded": 13,
+            "conflict_events": 4,
+            "quarantined_entries": 2,
+            "rejected_reads": 0
+          },
+          "observation_replay_audit_sha256": "de0edf8544f7aa6b65cd27c3f962984ad0325c9c566f606a167c64104d056452"
+        },
+        {
+          "platform": "ios",
+          "suite": "original4k",
+          "run_id": "shared_policy_final_v9_original4k",
+          "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+          "compiled_source_fingerprint": "0433a49686da103b95348ed648d48185a232cfb9c422550aa72050b334e2c209",
+          "binary_sha256": "a6402edd70b72be5967a6cb466e371e39e08c4135e89025dcd3fcb345da0d3d3",
+          "process_id": 3815,
+          "api_cases": 27,
+          "actual_movies": 26,
+          "decoded_frames": 15618,
+          "native_preview_pairs": 83,
+          "manually_resolved_topology_candidates": 1,
+          "manually_resolved_export_alerts": 21,
+          "manually_resolved_preview_alerts": 0,
+          "reviewed_case_boards": 27,
+          "status": "cohort_complete_independently_audited_and_reviewed",
+          "scope": "This cohort only. Overall62 acceptance requires all three cohorts from both platforms. Raw automatic face statuses are retained; separate manual semantic decisions are explicit.",
+          "collected_utc": "2026-11-08T03:49:12.487089+00:00",
+          "observation_replay": {
+            "schema": "qa-observation-audit-v1",
+            "platform": "ios",
+            "run_id": "shared_policy_final_v9_original4k",
+            "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+            "binary_sha256": "a6402edd70b72be5967a6cb466e371e39e08c4135e89025dcd3fcb345da0d3d3",
+            "contract_sha256": "743a70592e17bc9c0b0ecbee285245ec693a24bb7daf4a5edabea4e3945411fc",
+            "results_sha256": "f2d408315e3ecb658125ab5bdf879fdd42767282bfd4bb2179be83937af5f93a",
+            "event_snapshot_sha256": "5fbe7e4370b84d488d9e0fe10593468042b0f743e537171648d8e3bc6839f8eb",
+            "approved_producers": [
+              {
+                "compiled_source_commit": "3ec329c6ff84b2ce41468e47e6265e21db4bdd1d",
+                "approved_entries": 155,
+                "approval_sha256": "8658da48568725eed77bbeaa53449171295becaa8d70535d557987bd4ff3a9b5"
+              },
+              {
+                "compiled_source_commit": "3ec329c6ff84b2ce41468e47e6265e21db4bdd1d",
+                "approved_entries": 9422,
+                "approval_sha256": "8faeb7727e64ab1181850e7e59ce02402fea52998038327b32129ddf06d0d1c0"
+              },
+              {
+                "compiled_source_commit": "c314769cad654e724f3e3d5109fda2db4df06d97",
+                "approved_entries": 8563,
+                "approval_sha256": "caec3664c94b7f50bcd5d7d2871b8ea5e04d58d44a58cc7df2d091a461b3f054"
+              }
+            ],
+            "approved_entries": 18140,
+            "replayed_calls": 115892,
+            "unique_replayed_entries": 9494,
+            "fresh_calls_recorded": 21,
+            "conflict_events": 0,
+            "quarantined_entries": 0,
+            "rejected_reads": 0
+          },
+          "observation_replay_audit_sha256": "9ccc263abab1a0c1da69e04af130cf815de18f5fc096cf1992bc167f4c18d7b5"
+        },
+        {
+          "platform": "ios",
+          "suite": "focused13",
+          "run_id": "shared_policy_final_v9_focused13",
+          "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+          "compiled_source_fingerprint": "0433a49686da103b95348ed648d48185a232cfb9c422550aa72050b334e2c209",
+          "binary_sha256": "a6402edd70b72be5967a6cb466e371e39e08c4135e89025dcd3fcb345da0d3d3",
+          "process_id": 58151,
+          "api_cases": 13,
+          "actual_movies": 12,
+          "decoded_frames": 288,
+          "native_preview_pairs": 35,
+          "manually_resolved_topology_candidates": 0,
+          "manually_resolved_export_alerts": 0,
+          "manually_resolved_preview_alerts": 0,
+          "reviewed_case_boards": 13,
+          "status": "cohort_complete_independently_audited_and_reviewed",
+          "scope": "This cohort only. Overall62 acceptance requires all three cohorts from both platforms. Raw automatic face statuses are retained; separate manual semantic decisions are explicit.",
+          "collected_utc": "2026-11-08T03:49:53.467703+00:00",
+          "observation_replay": {
+            "schema": "qa-observation-audit-v1",
+            "platform": "ios",
+            "run_id": "shared_policy_final_v9_focused13",
+            "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+            "binary_sha256": "a6402edd70b72be5967a6cb466e371e39e08c4135e89025dcd3fcb345da0d3d3",
+            "contract_sha256": "743a70592e17bc9c0b0ecbee285245ec693a24bb7daf4a5edabea4e3945411fc",
+            "results_sha256": "bc0307ecaf1497920b67b7c63723dcc3eaae3c8a51804645b72b9f71cef934b7",
+            "event_snapshot_sha256": "a34c515ce4b5af2e831e5be039c1bbc7f0b6fc2331cebb895dc6af48efe09cf5",
+            "approved_producers": [
+              {
+                "compiled_source_commit": "3ec329c6ff84b2ce41468e47e6265e21db4bdd1d",
+                "approved_entries": 155,
+                "approval_sha256": "8658da48568725eed77bbeaa53449171295becaa8d70535d557987bd4ff3a9b5"
+              },
+              {
+                "compiled_source_commit": "3ec329c6ff84b2ce41468e47e6265e21db4bdd1d",
+                "approved_entries": 9422,
+                "approval_sha256": "8faeb7727e64ab1181850e7e59ce02402fea52998038327b32129ddf06d0d1c0"
+              },
+              {
+                "compiled_source_commit": "c314769cad654e724f3e3d5109fda2db4df06d97",
+                "approved_entries": 8563,
+                "approval_sha256": "caec3664c94b7f50bcd5d7d2871b8ea5e04d58d44a58cc7df2d091a461b3f054"
+              }
+            ],
+            "approved_entries": 18140,
+            "replayed_calls": 1682,
+            "unique_replayed_entries": 1348,
+            "fresh_calls_recorded": 411,
+            "conflict_events": 5,
+            "quarantined_entries": 4,
+            "rejected_reads": 0
+          },
+          "observation_replay_audit_sha256": "704ee0b7cfd8fb61dc75ca5955e43487936efba80c00721066e3e4c348683084"
+        }
+      ],
+      "supplemental_reviews": {
+        "known_non_solid_pairs": 88,
+        "known_non_solid_modes": 11,
+        "known_effect_index_sha256": "d64bd4a0f9effcd3e8159a0c9b222dcd9c5809e988a526ea02d25637f7d9b6d5",
+        "known_effect_review_sha256": "444ec6798e874be46e021ebcc44e4e7d1dbc309a67c5161e619f77ecf3368f91",
+        "continuous_risk_pairs": 1092,
+        "continuous_risk_modes": 12,
+        "continuous_risk_review_hashes": {
+          "group_4k_body_blur": {
+            "index_sha256": "c03d3d4ab179744e7c9802f67ac6803dce4b00a56f11ff2ef3f0a70c83698a86",
+            "manual_review_sha256": "0d29e56c4911d62d8497cb8a599ba0795ee82d8d71480eaa2df6e98141b6bb55"
+          },
+          "group_4k_body_gradient": {
+            "index_sha256": "1a57c449bde095faa89a6a7e794621c0ade8109a5e0d3a05056a53e1fb1acace",
+            "manual_review_sha256": "99b3c25ba754052d62fc7969077cb3d1eff7567c302e0a1f5dc904721ed46ad8"
+          },
+          "group_4k_body_mosaic": {
+            "index_sha256": "3563b94aae6a144ed8f465623ae59e7ceb3d695aa0b263b2f571b8bf410fa9b6",
+            "manual_review_sha256": "bf032db44d7cd978c4b7643bf2294b516e8a3a2b78780e4c058d755bdc9b91b7"
+          },
+          "group_4k_body_mosaic_balanced": {
+            "index_sha256": "a6f6c761dcc11efd41bc663ed61427f7fb24166dce0d736b31aa6a7730441fe0",
+            "manual_review_sha256": "c99c5972dd5024400acc676a92a9fb9f3380bd91c2b5134f7b400f479b97e01c"
+          },
+          "group_4k_body_mosaic_speed": {
+            "index_sha256": "422cb7ba5bab82d0d9685c876ed8193e14d2a2873ef0dc58673e311456113196",
+            "manual_review_sha256": "783a26010b933ceb4642bccda1b7df203922055c2926b157c3680616965bf7f9"
+          },
+          "group_4k_body_solid": {
+            "index_sha256": "184575cb85a04dd1eaaa78f333b4398f6a9f4f37de921733febb207a50854d85",
+            "manual_review_sha256": "a30ead10313377ad8561ce2441e63a45d6b80f3085953fcfd92d2b3e3cc566ff"
+          },
+          "group_4k_face_blur": {
+            "index_sha256": "5523d99bd1b255a56694d39811cbb85f9e0f6334c45aa6bea7ec2effe31fcf79",
+            "manual_review_sha256": "eb645f756083aa4a52bf84e8e032aefefa9386ee72ec8d830b4a07fa617139f6"
+          },
+          "group_4k_face_custom_sticker_gallery": {
+            "index_sha256": "77e1949974538a26af99a55ba0793bca3697f29289ca84528b6b8c1504f0cec1",
+            "manual_review_sha256": "93755d72cb395791fb8f5f42441d48de93771d07181b4874a73e9589db22f7f7"
+          },
+          "group_4k_face_gradient": {
+            "index_sha256": "167d5cca2069417f9875622571897e2e00a76db5b6968819ee732f6f18dc51f1",
+            "manual_review_sha256": "c087c49bda12dcb18cef4a42617a8e618d0a366050fc999ba793c61354abf158"
+          },
+          "group_4k_face_mosaic": {
+            "index_sha256": "e772cb96bd55b4e4258d8e76308836f28f14e2a14d7b389be485002ffad9bab0",
+            "manual_review_sha256": "97dfe4edbffa8d63ccf40681207bc1cd5eb03a585085bf3e5bba3689b7c601b9"
+          },
+          "group_4k_face_solid": {
+            "index_sha256": "4a186973f0ba38d2a15e7fe9593610de9c66307122249a82e59989b96f71d01d",
+            "manual_review_sha256": "ed91f1817bfe48c2cea389c76bce7d3cb6a8b5dc2bc1d1dc633772619a98e3fa"
+          },
+          "group_4k_face_sticker": {
+            "index_sha256": "15bff5b2c20c4d152b3daa2dc8053516f13fa5379ebb5eba6c3bcdd176d3fca5",
+            "manual_review_sha256": "6cbd6200022294715b765453473d8086ea2af48ac82c805d13a0d33db912b4dc"
+          }
+        },
+        "enlarged_native_preview_pairs": 2,
+        "enlarged_native_preview_index_sha256": "cd5efd1bc58ee9b8b226132d2c201e0cc17f1480e2ec9269fef0b32efa429a78",
+        "enlarged_native_preview_review_sha256": "46db6a75f32d59709ffa279fddeec90008b74e7d2bd5cfd85d99144118ceb716"
+      }
+    }
+  },
+  "cases": [
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_all_faces",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        960,
+        540
+      ],
+      "expected_frames": 76,
+      "elapsed_seconds": 10.16,
+      "output_sha256": "3b0f0bdcdaef0f37d3981f54b5937751082b5bc93991e60ab83807e72472655d"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_face_sticker_follow",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "expected_frames": 76,
+      "elapsed_seconds": 15.599,
+      "output_sha256": "3a114e3a0a803e55153a1dbf13367e69ad38f1cb441684ae6b72f5299c56eb6e"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_face_solid_follow",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "expected_frames": 76,
+      "elapsed_seconds": 15.736,
+      "output_sha256": "d25854aa8f2c871bcaec71810b13ab7cd038f9d8cbc71c84d3f2d039c429976c"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_full_solid",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        960,
+        540
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 6.28,
+      "output_sha256": "e0b0625633b8c72081a4e883277520e20682000cc553dd3ac761411d98ee663e"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_full_mosaic",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        960,
+        540
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 5.78,
+      "output_sha256": "14de046a934539f58e2de02055bc9f9ff085f1913c6d21b35cdf26a38c648267"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_full_blur",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        960,
+        540
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 5.601,
+      "output_sha256": "91def615457e5e47d7f29abe1f762221c7763b969903e853b0714a5c873ecbdf"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_full_gradient",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        960,
+        540
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 6.336,
+      "output_sha256": "6b9a2fb6762e61596c2430c8a18246fd97f88ed2ff3daf618673fac772119028"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_first_solid",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        960,
+        540
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 5.989,
+      "output_sha256": "3ba20713cd38c46b2cb91fe2bc6327c45dd9eb8036757dceb4ab3ababdb49807"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_4k_full",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        960,
+        540
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 11.518,
+      "output_sha256": "405f8c0dd10c293ce8b0a7635437749a5146729f36c8bc43a80bd627d65a1c75"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "duo_full_solid",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        960,
+        540
+      ],
+      "expected_frames": 48,
+      "elapsed_seconds": 5.907,
+      "output_sha256": "70cbd0b9c6a2dd3bd21380a9d0f21dbe52889173322e529c0a070eac44f675a7"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "solo_face_sticker",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 6.184,
+      "output_sha256": "dac36fc26b8cb8a34e0c90f92783d06916d4d615310d3d3dbc46217316d1dd7f"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "solo_face_mosaic",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 5.947,
+      "output_sha256": "54ad2c1f9d581b356e6086e9b00d2b4dc728d2200d80873e3bd7fe140f9cae1f"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "solo_face_blur",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 6.103,
+      "output_sha256": "f078dcbd280695da6c349757ff7d46c83f2ddc22c360a9367c3cf9951554389b"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "solo_face_solid",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 5.867,
+      "output_sha256": "566e3ce649728ab6a12ac89fd530cc446aee08a7e9cec6a4d62fb8ccf3dd1da5"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "solo_face_gradient",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 6.669,
+      "output_sha256": "8e39be62f8428edde19d624af3cb0684d3c7f7a37fa72665e824ada41e0ea462"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "solo_face_balanced",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 5.896,
+      "output_sha256": "0f815f382c074377f0c4f6696cfd0d6c01ad5dc4b4f3808348e5af7f3ce88511"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "solo_face_speed",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 6.185,
+      "output_sha256": "eee39c513834455126a8e191f4ea998c6f4d04e89f4150b22ee24b9d3f9d7263"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "solo_nonzero_trim",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 6.391,
+      "output_sha256": "8638b7f2249e115312675b62602f042aa239e5b4ab1e04df3b9dd20d58078cdd"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "solo_4k_sticker",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 12.512,
+      "output_sha256": "cb7443e4753e1138dcce361d19c3473567b3343ef285d0fbcfa48ae4fdc8b235"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_full_balanced",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        960,
+        540
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 6.066,
+      "output_sha256": "d4dbebc45df2fdafe4214f9bdaca1ac69ff767be6b2d0a2c81617b3c44e5647c"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_full_speed",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        960,
+        540
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 5.542,
+      "output_sha256": "1d9213b3fe25482d2286191be711c557aca8069a5db67a3ff5c5a9d432fed2c1"
+    },
+    {
+      "platform": "ios",
+      "suite": "legacy22",
+      "case": "group_full_length_follow",
+      "result": "output_created",
+      "pid": 1429,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 125.255,
+      "output_sha256": "4c13bc8c0bdc3c471720d1f58361954e73f99fe34618b96bd62890e801483acd"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_body_solid",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 183.141,
+      "output_sha256": "bfb599680048a5980d9630ac711face2470bf53eb7f57c0dab2db29a0cf1bfc4"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_body_solid",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 220.588,
+      "output_sha256": "bfe728ee438c6ce7c01024a4ca17690dfeb02f2ecdc382d352928b37658528bb"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_nonzero_trim",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 18.134,
+      "output_sha256": "1272082af2b791f9bbe05f1d30f3b6560a910f68d4ea650ffb12a0ef5eb2f826"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_cancel",
+      "result": "cancelled_cleanly",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 0,
+      "elapsed_seconds": 12.124,
+      "output_sha256": null
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_retry_sticker",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 221.246,
+      "output_sha256": "78967eb49784e48b4dc1cd9519846ad40291ae75c9b2a8027da2800052526308"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_face_solid",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 174.658,
+      "output_sha256": "8ab4c43b6f07dcc61d9cbc849f62426b487359e024dabf76af031bae192731c9"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_face_sticker",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 235.591,
+      "output_sha256": "23271aa735716df92cc33bcd8820aac96573af1328cf4e611c98bfd7bf3dec26"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_body_mosaic",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 185.657,
+      "output_sha256": "18fb3adccd1c299095bbdd74990f33d684afc99abb4f2f99f4694ceec433d056"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_body_blur",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 178.594,
+      "output_sha256": "97d8a17586876928ecad6130669756be830ca61d6f6b7a8ce04c784133046aea"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_body_gradient",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 176.035,
+      "output_sha256": "f7e6a345814eee8f4777ebbeee535933b86b39a8172ea4ddac5818af3c807009"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_face_mosaic",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 175.33,
+      "output_sha256": "ad672bb2e47ddc2352298a293b7c3375fb874dda53626eac6b515237ef843f96"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_face_blur",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 178.604,
+      "output_sha256": "31f95ffc71fe2a66f971dd462086bff94f2e548c5e829549ad3b4b3a4b0ada7a"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_face_gradient",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 172.759,
+      "output_sha256": "fde8071c11d9ec0c0e959307774167fb3839e4dff0387f8e25f81a7e32062825"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_face_sticker",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 173.579,
+      "output_sha256": "f834aef784dde66b510de3fea463a553bcea41f60986d6bae2362f0479b1be12"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_body_mosaic",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 215.111,
+      "output_sha256": "817b85c40d3a52acf948394aae2f1df6186d9b342985b2eb804a691394be369b"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_body_blur",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 221.649,
+      "output_sha256": "3a7a61f8aaf254c5be7f25887c6d81bef78bfd891a05c77f2f07ca8740db2ebd"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_body_gradient",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 223.165,
+      "output_sha256": "2dcbf51cbc48a52fff46b5cee802f6bb5aea171cc6dd2bc6f54ab2db332ace97"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_face_solid",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 222.761,
+      "output_sha256": "cc675a4fd3b75d39e83782673b6948b136c6c0aeee327bd5dcd7f5fbf7f05b2e"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_face_mosaic",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 229.351,
+      "output_sha256": "9d24d2e30703ce864574d90540fc0240da97746cdae051e031d7c151d1d5c9f0"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_face_blur",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 246.142,
+      "output_sha256": "e99cc65c0b129923ea1709291d71724f56d73045d960bd706da93588c1c960f0"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_face_gradient",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 228.391,
+      "output_sha256": "2ceee69c829aa78be0e3705fe26b68758dae5b4ff6566aed334d5b34dd92b8bd"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_body_mosaic_balanced",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 242.715,
+      "output_sha256": "b0b0030df9e84e67a7faca62271e03250c9a2a78ed4e82ae04e031536425d4b1"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_face_sticker_balanced",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 229.488,
+      "output_sha256": "42969206b07c07096e1606d6e175e11421a8f1b76b9477860211c8296a3336d0"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_body_mosaic_speed",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 177.94,
+      "output_sha256": "4265a33fb6675411464cf604dbb6134b1c18096b163e8f9bfc07653c44f566aa"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_face_sticker_speed",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 223.172,
+      "output_sha256": "2515cc2c16393e0085a88d160197d903bcb5f31e98f8cdcbf5a728c6dbaffe6e"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "group_4k_face_custom_sticker_gallery",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 581,
+      "elapsed_seconds": 178.525,
+      "output_sha256": "f9dbccb95ffb0a7a77517bccbaf2283ed4f691dc809256c808621da3224d5218"
+    },
+    {
+      "platform": "ios",
+      "suite": "original4k",
+      "case": "solo_4k_face_custom_sticker_gallery",
+      "result": "output_created",
+      "pid": 3815,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 662,
+      "elapsed_seconds": 226.889,
+      "output_sha256": "93e31ec156865e7e868e9018691e5e88dd9697648de02c720ec1c502f0faf26d"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "group_4k_body_face_union",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 22.56,
+      "output_sha256": "020adf1ba99564ccda50d24d74b4c58362176665d19abab1b1e6f16b37ed0f0a"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "solo_4k_body_face_union",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 19.275,
+      "output_sha256": "c13e9018b4259d658eda7f0556c388bf2c15461dab51edd17e00da2eeb8325c0"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "solo_4k_raised_arm_sticker",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 17.544,
+      "output_sha256": "3d7faf386d17768fecace7415f84b999aafe13a63d2d700fb6dd1639b65b1c3b"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "solo_4k_raised_arm_solid",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 18.458,
+      "output_sha256": "ee2ab15201dccb0e82d63545e5dad1a5d8e6606fbdbc0d27aa98de91652d2e43"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "solo_4k_raised_arm_body",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 18.109,
+      "output_sha256": "ce96f3f45e38d127bef1fea39b9e49b8bf2273a0eea21e41bec6f210a6ed1750"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "group_hd_overlap_face",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "expected_frames": 1,
+      "elapsed_seconds": 1.506,
+      "output_sha256": "e814b601639b8bde091ad9e5fd150896cef379a2ed34d9b43dd0c00ae68b1712"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "group_hd_overlap_body",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "expected_frames": 1,
+      "elapsed_seconds": 1.313,
+      "output_sha256": "899d60fde816df9016d899bbd39929e6a533c8f3f973bad709eb4ff8c0384ee3"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "group_4k_face_solid",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 10,
+      "elapsed_seconds": 10.778,
+      "output_sha256": "03c07bd9a527867507000a698334258d83bb8c7f5ac4c05c024f1db8e17f5e8f"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "group_4k_body_solid",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 10,
+      "elapsed_seconds": 9.529,
+      "output_sha256": "3b02e230161a589079f27c40dcb0f3a2df59c90fe3d17a83942494725d5a92ab"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "group_4k_tail_face",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "expected_frames": 10,
+      "elapsed_seconds": 9.181,
+      "output_sha256": "5e14ad2131f1943dc6615e22a2a663eac2bd595a5af5651fe98b5c4bb936289f"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "solo_4k_custom_gallery_probe",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 16,
+      "elapsed_seconds": 8.873,
+      "output_sha256": "03e142e6d9760dbaaf4d937493b68cc6045c42d34b699b4f0148cb6ea533432d"
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "solo_4k_cancel_probe",
+      "result": "cancelled_cleanly",
+      "pid": 58151,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 0,
+      "elapsed_seconds": 12.052,
+      "output_sha256": null
+    },
+    {
+      "platform": "ios",
+      "suite": "focused13",
+      "case": "solo_4k_immediate_retry_probe",
+      "result": "output_created",
+      "pid": 58151,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "expected_frames": 40,
+      "elapsed_seconds": 17.634,
+      "output_sha256": "210a27484744ad48d6eb2baa565677a2042ada5b0e4231a63e497e853140c2b9"
+    }
+  ]
+}

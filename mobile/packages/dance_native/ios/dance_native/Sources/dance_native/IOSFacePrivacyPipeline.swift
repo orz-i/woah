@@ -1,7 +1,6 @@
 import CoreGraphics
-import CoreML
 import Foundation
-import Vision
+@_implementationOnly import FrameKernelC
 
 enum IOSFacePrivacyRegionSource: String {
   case detectedFace = "DETECTED_FACE"
@@ -10,178 +9,16 @@ enum IOSFacePrivacyRegionSource: String {
 }
 
 enum IOSBodyMaskFaceHeadEstimator {
-  private static let maskThreshold: UInt8 = 96
-  private static let minSupportRows = 2
-  private static let personSideMarginRatio: Float32 = 0.08
-  private static let personTopMarginRatio: Float32 = 0.10
-  private static let personHeadMaxYRatio: Float32 = 0.42
-  private static let minRunWidthRatio: Float32 = 0.30
-  private static let maxRunWidthRatio: Float32 = 1.75
-  private static let maxRunCenterDistanceRatio: Float32 = 1.05
-
   static func estimate(
-    mask: [UInt8],
-    personDetection: IOSYoloDetection,
-    seedCenterX: Float32,
-    seedCenterY: Float32,
-    seedRadiusX: Float32,
-    seedRadiusY: Float32,
+    mask: [UInt8], personDetection: IOSYoloDetection,
+    seedCenterX: Float32, seedCenterY: Float32, seedRadiusX: Float32, seedRadiusY: Float32,
     preprocess: IOSYoloPreprocessResult
   ) -> (x: Float32, y: Float32)? {
-    let proto = IOSYoloPostprocessor.protoSize
-    guard mask.count == proto * proto,
-          personDetection.x2 - personDetection.x1 > 1,
-          personDetection.y2 - personDetection.y1 > 1,
-          preprocess.scale > 0,
-          preprocess.inputSize > 0 else {
-      return nil
-    }
-
-    let personWidth = personDetection.x2 - personDetection.x1
-    let personHeight = personDetection.y2 - personDetection.y1
-    let searchHalfWidth = max(max(seedRadiusX * 2.2, personWidth * 0.34), 24)
-    let searchHalfHeight = max(max(seedRadiusY * 2.0, personHeight * 0.15), 24)
-    let minSourceX = max(
-      personDetection.x1 - personWidth * personSideMarginRatio,
-      seedCenterX - searchHalfWidth
-    )
-    let maxSourceX = min(
-      personDetection.x2 + personWidth * personSideMarginRatio,
-      seedCenterX + searchHalfWidth
-    )
-    let minSourceY = max(
-      personDetection.y1 - personHeight * personTopMarginRatio,
-      seedCenterY - searchHalfHeight
-    )
-    let maxSourceY = min(
-      personDetection.y1 + personHeight * personHeadMaxYRatio,
-      seedCenterY + searchHalfHeight
-    )
-    guard maxSourceX > minSourceX, maxSourceY > minSourceY else { return nil }
-
-    let minX = clampProtoIndex(
-      Int(floor(Double(sourceToProtoX(minSourceX, preprocess: preprocess)))),
-      proto: proto
-    )
-    let maxX = clampProtoIndex(
-      Int(ceil(Double(sourceToProtoX(maxSourceX, preprocess: preprocess)))),
-      proto: proto
-    )
-    let minY = clampProtoIndex(
-      Int(floor(Double(sourceToProtoY(minSourceY, preprocess: preprocess)))),
-      proto: proto
-    )
-    let maxY = clampProtoIndex(
-      Int(ceil(Double(sourceToProtoY(maxSourceY, preprocess: preprocess)))),
-      proto: proto
-    )
-    guard maxX >= minX, maxY >= minY else { return nil }
-
-    let seedProtoX = sourceToProtoX(seedCenterX, preprocess: preprocess)
-    let seedProtoY = sourceToProtoY(seedCenterY, preprocess: preprocess)
-    let expectedRunWidth = max(
-      abs(
-        sourceToProtoX(seedCenterX + seedRadiusX * 0.70, preprocess: preprocess)
-          - sourceToProtoX(seedCenterX - seedRadiusX * 0.70, preprocess: preprocess)
-      ),
-      2
-    )
-    let expectedHeadHalfHeight = max(
-      abs(
-        sourceToProtoY(seedCenterY + seedRadiusY * 0.72, preprocess: preprocess)
-          - seedProtoY
-      ),
-      2
-    )
-
-    var weightedX: Float32 = 0
-    var weightedY: Float32 = 0
-    var weightSum: Float32 = 0
-    var supportRows = 0
-    for y in minY...maxY {
-      var bestCenterX: Float32?
-      var bestWidth: Float32 = 0
-      var bestDistance = Float32.greatestFiniteMagnitude
-      var x = minX
-      while x <= maxX {
-        while x <= maxX && mask[y * proto + x] < maskThreshold { x += 1 }
-        if x > maxX { break }
-        let runStart = x
-        while x <= maxX && mask[y * proto + x] >= maskThreshold { x += 1 }
-        let runEndExclusive = x
-        let runWidth = Float32(runEndExclusive - runStart)
-        let widthRatio = runWidth / expectedRunWidth
-        if widthRatio < minRunWidthRatio || widthRatio > maxRunWidthRatio { continue }
-
-        let runCenterX = Float32(runStart + runEndExclusive) * 0.5
-        let centerDistance = abs(runCenterX - seedProtoX) / expectedRunWidth
-        if centerDistance > maxRunCenterDistanceRatio { continue }
-        if centerDistance < bestDistance {
-          bestDistance = centerDistance
-          bestCenterX = runCenterX
-          bestWidth = runWidth
-        }
-      }
-
-      guard let rowCenterX = bestCenterX else { continue }
-      let yDistance = abs((Float32(y) + 0.5) - seedProtoY) / expectedHeadHalfHeight
-      if yDistance > 1.75 { continue }
-      let widthError = abs(bestWidth - expectedRunWidth) / expectedRunWidth
-      let rowWeight: Float32 = 1 / (
-        1 + bestDistance * 2.2 + yDistance * 0.55 + widthError * 0.75
-      )
-      weightedX += rowCenterX * rowWeight
-      weightedY += (Float32(y) + 0.5) * rowWeight
-      weightSum += rowWeight
-      supportRows += 1
-    }
-    guard supportRows >= minSupportRows, weightSum > 0.50 else { return nil }
-
-    let centerSourceX = protoToSourceX(weightedX / weightSum, preprocess: preprocess)
-    let centerSourceY = protoToSourceY(weightedY / weightSum, preprocess: preprocess)
-    let maxShiftX = max(seedRadiusX * 0.80, personWidth * 0.10)
-    let maxShiftY = max(seedRadiusY * 0.70, personHeight * 0.055)
-    return (
-      min(seedCenterX + maxShiftX, max(seedCenterX - maxShiftX, centerSourceX)),
-      min(seedCenterY + maxShiftY, max(seedCenterY - maxShiftY, centerSourceY))
-    )
+    guard let center = IOSFrameKernelFaceGeometry.estimate(mask, person: personDetection,
+      seed: SIMD4(seedCenterX, seedCenterY, seedRadiusX, seedRadiusY), preprocess: preprocess) else { return nil }
+    return (x: center.x, y: center.y)
   }
 
-  private static func sourceToProtoX(
-    _ sourceX: Float32,
-    preprocess: IOSYoloPreprocessResult
-  ) -> Float32 {
-    let modelX = sourceX * preprocess.scale + preprocess.padLeft
-    return modelX / Float32(preprocess.inputSize) * Float32(IOSYoloPostprocessor.protoSize)
-  }
-
-  private static func sourceToProtoY(
-    _ sourceY: Float32,
-    preprocess: IOSYoloPreprocessResult
-  ) -> Float32 {
-    let modelY = sourceY * preprocess.scale + preprocess.padTop
-    return modelY / Float32(preprocess.inputSize) * Float32(IOSYoloPostprocessor.protoSize)
-  }
-
-  private static func protoToSourceX(
-    _ protoX: Float32,
-    preprocess: IOSYoloPreprocessResult
-  ) -> Float32 {
-    let modelX = protoX / Float32(IOSYoloPostprocessor.protoSize) * Float32(preprocess.inputSize)
-    return (modelX - preprocess.padLeft) / preprocess.scale
-  }
-
-  private static func protoToSourceY(
-    _ protoY: Float32,
-    preprocess: IOSYoloPreprocessResult
-  ) -> Float32 {
-    let modelY = protoY / Float32(IOSYoloPostprocessor.protoSize) * Float32(preprocess.inputSize)
-    return (modelY - preprocess.padTop) / preprocess.scale
-  }
-
-  private static func clampProtoIndex(_ value: Int, proto: Int) -> Int {
-    min(proto - 1, max(0, value))
-  }
 }
 
 enum IOSPersonBboxMotionEstimator {
@@ -237,6 +74,7 @@ struct IOSFaceCandidate {
   let confidence: Float32
   var yaw: Float32 = 0
   var observationView: Int = 0
+  var landmarks: [SIMD2<Float32>] = []
 }
 
 protocol IOSFaceLocating {
@@ -247,190 +85,47 @@ extension IOSFaceLocating {
   func locateFaceDetails(in image: CGImage, regions: [CGRect]) throws -> [IOSFaceCandidate] { [] }
 }
 
-/// Apple-only FACE_ONLY localization backend. It never assigns person identity;
-/// IOSFacePrivacyTemporalResolver accepts a Vision rectangle only after it is
-/// attached conservatively to a YOLO-owned person track.
-final class IOSVisionFaceLocator: IOSFaceLocating {
-  func locateFaceDetails(in image: CGImage, regions: [CGRect]) throws -> [IOSFaceCandidate] {
-    let bounds = CGRect(x: 0, y: 0, width: image.width, height: image.height)
-    var result: [IOSFaceCandidate] = []
-    for (viewIndex, region) in regions.enumerated() {
-      let rect = region.integral.intersection(bounds)
-      guard rect.width >= 32, rect.height >= 32, let crop = image.cropping(to: rect) else { continue }
-      result += try locateFaces(in: crop).map { face in
-        IOSFaceCandidate(x1: face.x1 + Float32(rect.minX), y1: face.y1 + Float32(rect.minY),
-          x2: face.x2 + Float32(rect.minX), y2: face.y2 + Float32(rect.minY), confidence: face.confidence,
-          yaw: face.yaw, observationView: viewIndex + 1)
-      }
-    }
-    return result
-  }
-
-  func locateFaces(in image: CGImage) throws -> [IOSFaceCandidate] {
-    let request = VNDetectFaceRectanglesRequest()
-#if targetEnvironment(simulator)
-    if #available(iOS 17.0, *),
-       let cpuDevice = MLComputeDevice.allComputeDevices.first(where: { device in
-         if case .cpu = device { return true }
-         return false
-       }) {
-      request.setComputeDevice(cpuDevice, for: .main)
-    }
-#endif
-    let handler = VNImageRequestHandler(cgImage: image, orientation: .up, options: [:])
-    try handler.perform([request])
-    let width = Float32(image.width)
-    let height = Float32(image.height)
-    return (request.results ?? []).compactMap { observation in
-      let box = observation.boundingBox
-      let x1 = Float32(box.minX) * width
-      let x2 = Float32(box.maxX) * width
-      // Vision normalized coordinates use a bottom-left origin while the
-      // renderer/tracker source space uses top-left coordinates.
-      let y1 = Float32(1.0 - box.maxY) * height
-      let y2 = Float32(1.0 - box.minY) * height
-      guard x2 > x1, y2 > y1 else { return nil }
-      return IOSFaceCandidate(
-        x1: x1,
-        y1: y1,
-        x2: x2,
-        y2: y2,
-        confidence: observation.confidence,
-        yaw: observation.yaw?.floatValue ?? 0
-      )
-    }
-  }
-}
-
 enum IOSFacePrivacyGeometry {
   static func faceOwnedByCurrentMask(_ face: IOSFaceCandidate, person: IOSYoloDetection,
                                     preprocess: IOSYoloPreprocessResult) -> Bool {
-    guard let region = detectedEllipse(face) else { return false }
-    let support = currentMaskSupport(region, person: person, preprocess: preprocess)
-    return support.distinctPixels >= 4 && support.samples >= 12
+    IOSFrameKernelFaceGeometry.owns(face,person:person,preprocess:preprocess)
   }
 
   static func currentMaskSupport(_ region: IOSFacePrivacyEllipse, person: IOSYoloDetection,
                                  preprocess: IOSYoloPreprocessResult) -> (distinctPixels: Int, samples: Int) {
-    let size = IOSYoloPostprocessor.protoSize
-    guard person.mask.count == size * size, preprocess.scale > 0, preprocess.inputSize > 0 else { return (0, 0) }
-    var supported = 0
-    var pixels = Set<Int>()
-    for y in 0..<4 {
-      for x in 0..<4 {
-        let sx = region.centerX + (Float32(x) - 1.5) * 0.15 * region.radiusX
-        let sy = region.centerY + (Float32(y) - 1.5) * 0.15 * region.radiusY
-        let px = Int(floor((sx * preprocess.scale + preprocess.padLeft) / Float32(preprocess.inputSize) * Float32(size)))
-        let py = Int(floor((sy * preprocess.scale + preprocess.padTop) / Float32(preprocess.inputSize) * Float32(size)))
-        guard px >= 0, px < size, py >= 0, py < size else { continue }
-        let index = py * size + px
-        pixels.insert(index)
-        if person.mask[index] >= 128 { supported += 1 }
-      }
-    }
-    return (pixels.count, supported)
+    IOSFrameKernelFaceGeometry.support(SIMD4(region.centerX,region.centerY,region.radiusX,region.radiusY),
+      person:person,preprocess:preprocess) ?? (0,0)
   }
 
-  static func faceSearchRegion(_ d: IOSYoloDetection) -> CGRect {
-    let width = max(1, d.x2 - d.x1), height = max(1, d.y2 - d.y1)
-    // Include space above the current body bbox: raised arms and partial
-    // occlusion can put the visible head outside the generic bbox head guess.
-    let side = max(width * 2.50, height * 0.80)
-    return CGRect(x: Double((d.x1 + d.x2) * 0.5 - side * 0.5),
-                  y: Double(d.y1 - height * 0.25), width: Double(side), height: Double(side))
-  }
-
-  static func upperBodyFaceSearchRegion(_ d: IOSYoloDetection) -> CGRect {
-    // Raised arms move the bbox top far above the face. A smaller upper-body
-    // view restores face detail without assuming topmost body pixels are a head.
-    let width = max(1, d.x2 - d.x1), height = max(1, d.y2 - d.y1)
-    let side = max(width * 1.10, height * 0.45)
-    return CGRect(x: Double((d.x1 + d.x2 - side) * 0.5), y: Double(d.y1),
-                  width: Double(side), height: Double(side))
+  static func upperBodyFaceSearchRegion(_ detection: IOSYoloDetection) -> CGRect {
+    IOSFrameKernelFaceGeometry.upperBody(detection) ?? .zero
   }
 
   static func mergeFaceObservations(_ primary: [IOSFaceCandidate], detail: [IOSFaceCandidate],
                                     ownerOf: ((IOSFaceCandidate) -> Int?)? = nil) -> [IOSFaceCandidate] {
-    var result = primary
-    var views = primary.map { Set([$0.observationView]) }
-    var owners = primary.map { ownerOf?($0) }
-    for face in detail {
-      let owner = ownerOf?(face)
-      let duplicate = result.indices.first { index in
-        let other = result[index]
-        guard !views[index].contains(face.observationView) else { return false }
-        if ownerOf != nil && (owner == nil || owners[index] != owner) { return false }
-        let intersection = max(0, min(face.x2, other.x2) - max(face.x1, other.x1))
-          * max(0, min(face.y2, other.y2) - max(face.y1, other.y1))
-        let a = max(1, (face.x2-face.x1)*(face.y2-face.y1))
-        let b = max(1, (other.x2-other.x1)*(other.y2-other.y1))
-        let dx = (face.x1+face.x2-other.x1-other.x2) * 0.5
-        let dy = (face.y1+face.y2-other.y1-other.y2) * 0.5
-        let span = min(max(face.x2-face.x1, face.y2-face.y1), max(other.x2-other.x1, other.y2-other.y1))
-        return intersection / max(1, a+b-intersection) >= 0.20 && dx*dx+dy*dy <= span*span*0.25
-      }
-      if let index = duplicate {
-        views[index].insert(face.observationView)
-        let other = result[index]
-        // Preserve the complete observation; a smaller ROI feature box must
-        // never shrink an already observed face or create a second hero face.
-        if (face.x2-face.x1)*(face.y2-face.y1) > (other.x2-other.x1)*(other.y2-other.y1) {
-          result[index] = face
-        }
-      } else {
-        result.append(face); views.append([face.observationView]); owners.append(owner)
-      }
-    }
-    return result
+    let input=primary+detail
+    let owners=ownerOf.map {owner in input.map {owner($0)}}
+    // Retaining all observations on invalid input preserves fail-closed coverage.
+    return IOSFrameKernelFaceGeometry.merge(input,primary:primary.count,owners:owners) ?? input
   }
 
-  // Mirrors Android FacePrivacyRegionResolver. The face detector refines
-  // localization only; fallback is always derived from the current YOLO body.
-  private static let detectedRadiusXFactor: Float32 = 0.66
-  private static let detectedRadiusYFactor: Float32 = 0.74
-  private static let detectedCenterYShift: Float32 = -0.04
-  private static let fallbackCenterYRatio: Float32 = 0.14
-  private static let fallbackRadiusXFromWidth: Float32 = 0.22
-  private static let fallbackRadiusXFromHeight: Float32 = 0.045
-  private static let fallbackRadiusYFromWidth: Float32 = 0.26
-  private static let fallbackRadiusYFromHeight: Float32 = 0.060
-
+  // All detector and current-body regions are computed in FrameKernel.
   static func detectedEllipse(_ face: IOSFaceCandidate) -> IOSFacePrivacyEllipse? {
-    let width = face.x2 - face.x1
-    let height = face.y2 - face.y1
-    guard width > 1, height > 1 else { return nil }
-    // Vision's profile rectangle can enclose only the frontal features. Use
-    // the current measured yaw to include the cheek/chin behind that plane;
-    // never borrow another person's face or an old body's predicted head.
-    let yaw = face.yaw.isFinite ? max(-Float32.pi / 2, min(Float32.pi / 2, face.yaw)) : 0
-    let profileScale = min(Float32(1.75), 1 / max(Float32(1.0 / 1.75), cos(yaw)))
-    return IOSFacePrivacyEllipse(
-      centerX: (face.x1 + face.x2) * 0.5 - sin(yaw) * width * 0.5,
-      centerY: (face.y1 + face.y2) * 0.5 + height * detectedCenterYShift + (profileScale - 1) * height * 0.5,
-      radiusX: width * detectedRadiusXFactor * profileScale,
-      radiusY: height * detectedRadiusYFactor * profileScale,
-      source: .detectedFace
-    )
+    guard let region=IOSFrameKernelFaceGeometry.detected(face) else {return nil}
+    return IOSFacePrivacyEllipse(centerX:region.x,centerY:region.y,radiusX:region.z,radiusY:region.w,source:.detectedFace)
   }
 
-  static func fallbackEllipse(_ detection: IOSYoloDetection) -> IOSFacePrivacyEllipse? {
-    let width = detection.x2 - detection.x1
-    let height = detection.y2 - detection.y1
-    guard width > 1, height > 1 else { return nil }
-    return IOSFacePrivacyEllipse(
-      centerX: (detection.x1 + detection.x2) * 0.5,
-      centerY: detection.y1 + height * fallbackCenterYRatio,
-      radiusX: max(
-        width * fallbackRadiusXFromWidth,
-        height * fallbackRadiusXFromHeight
-      ),
-      radiusY: max(
-        width * fallbackRadiusYFromWidth,
-        height * fallbackRadiusYFromHeight
-      ),
-      source: .yoloHeadFallback
-    )
+  static func fallbackGeometry(_ detection:IOSYoloDetection,preprocess:IOSYoloPreprocessResult,
+      currentMask:Bool)->(region:IOSFacePrivacyEllipse,bodyMaskGuided:Bool)? {
+    if let result=IOSFrameKernelFaceGeometry.currentHead(detection,preprocess:preprocess,currentMask:currentMask) {
+      let r=result.region
+      return (IOSFacePrivacyEllipse(centerX:r.x,centerY:r.y,radiusX:r.z,radiusY:r.w,source:.yoloHeadFallback),result.maskGuided)
+    }
+    // Invalid transport must not erase the existing coarse protection seed.
+    guard let r=IOSFrameKernelFaceGeometry.fallback(detection) else{return nil}
+    return (IOSFacePrivacyEllipse(centerX:r.x,centerY:r.y,radiusX:r.z,radiusY:r.w,source:.yoloHeadFallback),false)
   }
+
 }
 
 /// Privacy-first FACE_ONLY resolver for Phase 5C.
@@ -444,12 +139,6 @@ enum IOSFacePrivacyGeometry {
 ///   bounds so detector/fallback transitions do not create large sticker jumps.
 final class IOSFacePrivacyTemporalResolver {
   private(set) var localizationFailed = false
-  private struct MatchCandidate {
-    let personId: Int
-    let faceIndex: Int
-    let score: Float32
-  }
-
   private struct TrustedFaceGeometry {
     let centerX: Float32
     let centerY: Float32
@@ -458,102 +147,34 @@ final class IOSFacePrivacyTemporalResolver {
     let trustedPersonDetection: IOSYoloDetection
     let lastTrustedTimestampUs: Int64
 
-    func project(
-      personDetection: IOSYoloDetection,
-      ageUs: Int64
-    ) -> IOSFacePrivacyEllipse? {
-      let personWidth = personDetection.x2 - personDetection.x1
-      let personHeight = personDetection.y2 - personDetection.y1
-      let trustedWidth = trustedPersonDetection.x2 - trustedPersonDetection.x1
-      let trustedHeight = trustedPersonDetection.y2 - trustedPersonDetection.y1
-      guard personWidth > 1, personHeight > 1, trustedWidth > 1, trustedHeight > 1 else {
-        return nil
-      }
-
-      let widthRatio = max(0.1, personWidth / max(1, trustedWidth))
-      let heightRatio = max(0.1, personHeight / max(1, trustedHeight))
-      let bboxScale = min(
-        IOSFacePrivacyTemporalResolver.maxPredictedFaceScale,
-        max(
-          IOSFacePrivacyTemporalResolver.minPredictedFaceScale,
-          sqrt(widthRatio * heightRatio)
-        )
-      )
-      let clampedAge = min(
-        IOSFacePrivacyTemporalResolver.maxPredictedFaceAgeUs,
-        max(Int64(0), ageUs)
-      )
-      let ageProgress = Float32(clampedAge)
-        / Float32(IOSFacePrivacyTemporalResolver.maxPredictedFaceAgeUs)
-      let ageExpansion = 1 + ageProgress * IOSFacePrivacyTemporalResolver.maxPredictedAgeExpansion
-      let translation = IOSPersonBboxMotionEstimator.estimate(
-        previous: trustedPersonDetection,
-        current: personDetection
-      )
-      return IOSFacePrivacyEllipse(
-        centerX: centerX + translation.dx,
-        centerY: centerY + translation.dy,
-        radiusX: max(1, radiusX * bboxScale * ageExpansion),
-        radiusY: max(1, radiusY * bboxScale * ageExpansion),
-        source: .predictedFace
-      )
+    func project(personDetection: IOSYoloDetection, ageUs: Int64) -> IOSFacePrivacyEllipse? {
+      guard let region = IOSFrameKernelFaceGeometry.project(personDetection,
+        previous: trustedPersonDetection, seed: SIMD4(centerX, centerY, radiusX, radiusY), ageUs: ageUs) else { return nil }
+      return IOSFacePrivacyEllipse(centerX: region.x, centerY: region.y,
+        radiusX: region.z, radiusY: region.w, source: .predictedFace)
     }
 
     func occlusionPadding(personDetection: IOSYoloDetection, preprocess: IOSYoloPreprocessResult,
                           timestampUs: Int64) -> IOSFacePrivacyEllipse? {
       guard timestampUs >= lastTrustedTimestampUs,
-            timestampUs - lastTrustedTimestampUs <= IOSFacePrivacyTemporalResolver.trustedMaskSeedMaxAgeUs,
-            centerX >= personDetection.x1, centerX <= personDetection.x2,
-            centerY >= personDetection.y1, centerY <= personDetection.y2 else { return nil }
-      // Do not translate a known face by a raised arm's expanding bbox. Keep
-      // bounded conservative padding around the last actual face observation,
-      // only while current instance pixels still support that region.
-      let age = Float32(timestampUs - lastTrustedTimestampUs)
-        / Float32(IOSFacePrivacyTemporalResolver.trustedMaskSeedMaxAgeUs)
-      let region = IOSFacePrivacyEllipse(centerX: centerX, centerY: centerY,
-        radiusX: radiusX * (1 + age * 0.8), radiusY: radiusY * (1 + age * 0.8), source: .predictedFace)
-      let support = IOSFacePrivacyGeometry.currentMaskSupport(region, person: personDetection, preprocess: preprocess)
-      guard support.distinctPixels >= 4, support.samples >= 4 else { return nil }
-      return region
+        let region=IOSFrameKernelFaceGeometry.padding(personDetection,
+          seed:SIMD4(centerX,centerY,radiusX,radiusY),age:timestampUs-lastTrustedTimestampUs,
+          lease:IOSFacePrivacyTemporalResolver.trustedMaskSeedMaxAgeUs,preprocess:preprocess) else {return nil}
+      return IOSFacePrivacyEllipse(centerX:region.x,centerY:region.y,radiusX:region.z,radiusY:region.w,source:.predictedFace)
     }
 
     func maskGuidedFallback(
-      personDetection: IOSYoloDetection,
-      preprocess: IOSYoloPreprocessResult
+      personDetection: IOSYoloDetection, preprocess: IOSYoloPreprocessResult
     ) -> IOSFacePrivacyEllipse? {
-      let translation = IOSPersonBboxMotionEstimator.estimate(
-        previous: trustedPersonDetection,
-        current: personDetection
-      )
-      let radiusX = max(
-        1,
-        self.radiusX * IOSFacePrivacyTemporalResolver.expiredFaceMaskFallbackExpansion
-      )
-      let radiusY = max(
-        1,
-        self.radiusY * IOSFacePrivacyTemporalResolver.expiredFaceMaskFallbackExpansion
-      )
-      let seedCenterX = centerX + translation.dx
-      let seedCenterY = centerY + translation.dy
-      guard let currentHead = IOSBodyMaskFaceHeadEstimator.estimate(
-        mask: personDetection.mask,
-        personDetection: personDetection,
-        seedCenterX: seedCenterX,
-        seedCenterY: seedCenterY,
-        seedRadiusX: radiusX,
-        seedRadiusY: radiusY,
-        preprocess: preprocess
-      ) else {
-        return nil
-      }
-      return IOSFacePrivacyEllipse(
-        centerX: currentHead.x,
-        centerY: currentHead.y,
-        radiusX: radiusX,
-        radiusY: radiusY,
-        source: .yoloHeadFallback
-      )
+      guard let region = IOSFrameKernelFaceGeometry.trusted(personDetection.mask,
+        person: personDetection, previous: trustedPersonDetection,
+        seed: SIMD4(centerX, centerY, radiusX, radiusY),
+        expansion: IOSFacePrivacyTemporalResolver.expiredFaceMaskFallbackExpansion,
+        preprocess: preprocess) else { return nil }
+      return IOSFacePrivacyEllipse(centerX: region.x, centerY: region.y,
+        radiusX: region.z, radiusY: region.w, source: .yoloHeadFallback)
     }
+
   }
 
   private struct State {
@@ -570,7 +191,7 @@ final class IOSFacePrivacyTemporalResolver {
   private var singleSceneFace: TrustedFaceGeometry?
   private let classFallbackContinuity = IOSFacePrivacyClassFallbackContinuity()
 
-  init(locator: IOSFaceLocating = IOSVisionFaceLocator()) {
+  init(locator: IOSFaceLocating = IOSGridFaceLocator()) {
     self.locator = locator
   }
 
@@ -635,13 +256,16 @@ final class IOSFacePrivacyTemporalResolver {
         // Search the hero ROI too, even when the hero already has a face: one
         // body observation is not evidence that no other visible face exists.
         var detail: [IOSFaceCandidate] = []
-        var searchRegions = currentPeople.map { IOSFacePrivacyGeometry.faceSearchRegion($0.detection) }
+        var searchRegions = currentPeople.compactMap { IOSFrameKernel.faceHeadPlan($0.detection,
+          width: preprocess.sourceWidth, height: preprocess.sourceHeight)?.rect }
         if faces.isEmpty, currentPeople.count == 1 {
           searchRegions.append(IOSFacePrivacyGeometry.upperBodyFaceSearchRegion(currentPeople[0].detection))
         }
         do {
           detail = try locator.locateFaceDetails(in: image, regions: searchRegions)
         } catch { localizationFailed = true }
+        IOSFaceObservationRecorder.record(primary:faces,detail:detail,persons:currentPeople,
+          hero:unmaskedPersonId,preprocess:preprocess,timestampUs:timestampUs)
         faces = IOSFacePrivacyGeometry.mergeFaceObservations(faces, detail: detail,
           ownerOf: { self.uniqueCurrentOwner(face: $0, persons: currentPeople,
             unmaskedPersonId: unmaskedPersonId, preprocess: preprocess) })
@@ -664,7 +288,8 @@ final class IOSFacePrivacyTemporalResolver {
          let faceIndex = assignments[person.id],
          faces.indices.contains(faceIndex) {
         raw = IOSFacePrivacyGeometry.detectedEllipse(faces[faceIndex])
-          ?? IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
+          ?? IOSFacePrivacyGeometry.fallbackGeometry(person.detection,preprocess:preprocess,
+            currentMask:!person.conservativePrivacyFallback)?.region
         if singleScene, let raw, raw.source == .detectedFace {
           singleSceneFace = TrustedFaceGeometry(centerX: raw.centerX, centerY: raw.centerY,
             radiusX: raw.radiusX, radiusY: raw.radiusY, trustedPersonDetection: person.detection,
@@ -676,7 +301,8 @@ final class IOSFacePrivacyTemporalResolver {
         // History may add privacy, never remove the current body's head
         // fallback: a newly visible/moving face must not inherit an exemption.
         regions[Self.syntheticClassFallbackBase - 200_000] = padding
-        raw = IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
+        raw = IOSFacePrivacyGeometry.fallbackGeometry(person.detection,preprocess:preprocess,
+            currentMask:!person.conservativePrivacyFallback)?.region
       } else if let trusted = stateByTrackId[person.id]?.trustedFace,
                 timestampUs >= trusted.lastTrustedTimestampUs,
                 timestampUs - trusted.lastTrustedTimestampUs <= Self.maxPredictedFaceAgeUs,
@@ -699,7 +325,8 @@ final class IOSFacePrivacyTemporalResolver {
         // generic current-body head fallback instead of drawing the stale face.
         raw = maskGuided
       } else {
-        raw = IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
+        raw = IOSFacePrivacyGeometry.fallbackGeometry(person.detection,preprocess:preprocess,
+            currentMask:!person.conservativePrivacyFallback)?.region
       }
       guard let raw else { continue }
       if raw.source == .yoloHeadFallback && coveredHeadFallbackIds.contains(person.id) { continue }
@@ -721,6 +348,15 @@ final class IOSFacePrivacyTemporalResolver {
       } else {
         uniformRegionContinuation.reset()
       }
+      if region.source == .detectedFace && !person.conservativePrivacyFallback {
+        guard let covered=IOSFrameKernelFaceGeometry.coverCurrent(person.detection,
+          region:SIMD4(region.centerX,region.centerY,region.radiusX,region.radiusY),preprocess:preprocess) else {
+          throw NSError(domain:"FrameKernel",code:-1,
+            userInfo:[NSLocalizedDescriptionKey:"Invalid current face coverage input"])
+        }
+        region=IOSFacePrivacyEllipse(centerX:covered.x,centerY:covered.y,
+          radiusX:covered.z,radiusY:covered.w,source:region.source)
+      }
       regions[person.id] = region
     }
 
@@ -741,11 +377,13 @@ final class IOSFacePrivacyTemporalResolver {
       guard seenDetectionIndices.insert(evidence.detectionIndex).inserted,
             !evidence.residualTrackIds.isEmpty,
             evidence.residualTrackIds.allSatisfy({ faceOnlyIds.contains($0) }),
-            var region = IOSFacePrivacyGeometry.fallbackEllipse(evidence.detection) else {
+            let fallback = IOSFacePrivacyGeometry.fallbackGeometry(evidence.detection,
+              preprocess:preprocess,currentMask:true) else {
         continue
       }
 
-      var bodyMaskGuided = false
+      var region = fallback.region
+      var bodyMaskGuided = fallback.bodyMaskGuided
       let uniqueOwnerId = evidence.residualTrackIds.count == 1
         ? evidence.residualTrackIds.first
         : nil
@@ -803,7 +441,14 @@ final class IOSFacePrivacyTemporalResolver {
         // A visible face with no certain person owner remains protected. No
         // identity is assigned and no guessed hero bbox can exempt this face.
         if let region = IOSFacePrivacyGeometry.detectedEllipse(face) {
-          regions[Self.syntheticClassFallbackBase - 100_000 - index] = region
+          guard let covered=IOSFrameKernelFaceGeometry.coverStandalone(
+            region:SIMD4(region.centerX,region.centerY,region.radiusX,region.radiusY),
+            preprocess:preprocess) else {
+            throw NSError(domain:"FrameKernel",code:-1,
+              userInfo:[NSLocalizedDescriptionKey:"Invalid standalone face coverage input"])
+          }
+          regions[Self.syntheticClassFallbackBase - 100_000 - index] = IOSFacePrivacyEllipse(
+            centerX:covered.x,centerY:covered.y,radiusX:covered.z,radiusY:covered.w,source:region.source)
         }
       }
     }
@@ -812,105 +457,53 @@ final class IOSFacePrivacyTemporalResolver {
 
   private func uniqueCurrentOwner(face: IOSFaceCandidate, persons: [IOSPreviewPerson],
                                   unmaskedPersonId: Int?, preprocess: IOSYoloPreprocessResult) -> Int? {
-    let ranked = persons.compactMap { person -> (Int, Float32)? in
-      associationScore(face: face, person: person.detection, preprocess: preprocess,
-        requireMaskSupport: person.id == unmaskedPersonId).map { (person.id, $0) }
-    }.sorted { $0.1 > $1.1 }
-    guard let first = ranked.first else { return nil }
-    if ranked.count > 1 && first.1 - ranked[1].1 < 0.08 { return nil }
-    return first.0
+    let scores=persons.map {person -> Float in
+      if person.id != unmaskedPersonId {
+        guard let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
+          IOSFrameKernel.selectFace([face],plan:plan) != nil else {return -1}
+      }
+      return associationScore(face:face,person:person.detection,preprocess:preprocess,
+        requireMaskSupport:person.id==unmaskedPersonId) ?? -1
+    }
+    guard let index=IOSFrameKernelFaceGeometry.uniqueOwner(scores),persons.indices.contains(index) else {return nil}
+    return persons[index].id
   }
 
-  private func associate(
-    faces: [IOSFaceCandidate],
-    persons: [IOSPreviewPerson],
-    unmaskedPersonId: Int? = nil,
-    preprocess: IOSYoloPreprocessResult? = nil
-  ) -> [Int: Int] {
-    guard !faces.isEmpty, !persons.isEmpty else { return [:] }
-    let ambiguityMargin: Float32 = 0.08
-    var candidates: [MatchCandidate] = []
-    for person in persons {
+  private func associate(faces: [IOSFaceCandidate], persons: [IOSPreviewPerson],
+    unmaskedPersonId: Int? = nil, preprocess: IOSYoloPreprocessResult? = nil) -> [Int:Int] {
+    guard !faces.isEmpty,!persons.isEmpty else {return [:]}
+    var scores=[Float](repeating:-1,count:persons.count*faces.count)
+    var preferred=[Int32](repeating:-1,count:persons.count)
+    for (personIndex,person) in persons.enumerated() {
+      var options:[Int]=[]
       for faceIndex in faces.indices {
-        if let score = associationScore(face: faces[faceIndex], person: person.detection,
-          preprocess: preprocess, requireMaskSupport: person.id == unmaskedPersonId) {
-          candidates.append(MatchCandidate(
-            personId: person.id,
-            faceIndex: faceIndex,
-            score: score
-          ))
+        if let score=associationScore(face:faces[faceIndex],person:person.detection,
+          preprocess:preprocess,requireMaskSupport:person.id==unmaskedPersonId) {
+          scores[personIndex*faces.count+faceIndex]=score;options.append(faceIndex)
         }
       }
+      if person.id != unmaskedPersonId,let preprocess,
+        let plan=IOSFrameKernel.faceHeadPlan(person.detection,width:preprocess.sourceWidth,height:preprocess.sourceHeight),
+        let chosen=IOSFrameKernel.selectFace(options.map {faces[$0]},plan:plan) {
+        preferred[personIndex]=Int32(options[chosen])
+      }
     }
-
-    var accepted: [Int: Int] = [:]
-    for person in persons {
-      let options = candidates
-        .filter { $0.personId == person.id }
-        .sorted { $0.score > $1.score }
-      guard let best = options.first else { continue }
-      if options.count > 1 && best.score - options[1].score < ambiguityMargin {
-        continue
-      }
-      let competingPersons = candidates
-        .filter { $0.faceIndex == best.faceIndex && $0.personId != person.id }
-        .sorted { $0.score > $1.score }
-      if let competitor = competingPersons.first,
-         best.score - competitor.score < ambiguityMargin {
-        continue
-      }
-      accepted[person.id] = best.faceIndex
+    let hero=unmaskedPersonId.flatMap {id in persons.firstIndex {$0.id==id}}
+    guard let choices=IOSFrameKernelFaceGeometry.resolveOwners(scores,people:persons.count,
+      faces:faces.count,preferred:preferred,hero:hero) else {return [:]}
+    var accepted:[Int:Int]=[:]
+    for (index,choice) in choices.enumerated() where choice>=0 && faces.indices.contains(Int(choice)) {
+      accepted[persons[index].id]=Int(choice)
     }
     return accepted
   }
 
-  private func associationScore(
-    face: IOSFaceCandidate,
-    person: IOSYoloDetection,
-    preprocess: IOSYoloPreprocessResult? = nil,
-    requireMaskSupport: Bool = false
-  ) -> Float32? {
-    if requireMaskSupport {
-      guard let preprocess, IOSFacePrivacyGeometry.faceOwnedByCurrentMask(face, person: person, preprocess: preprocess) else { return nil }
-    }
-    let faceWidth = face.x2 - face.x1
-    let faceHeight = face.y2 - face.y1
-    let personWidth = person.x2 - person.x1
-    let personHeight = person.y2 - person.y1
-    guard faceWidth > 1, faceHeight > 1, personWidth > 1, personHeight > 1 else {
-      return nil
-    }
-    let faceWidthRatio = faceWidth / personWidth
-    let faceHeightRatio = faceHeight / personHeight
-    guard faceWidthRatio >= 0.06, faceWidthRatio <= 0.85,
-          faceHeightRatio >= 0.035, faceHeightRatio <= 0.45 else {
-      return nil
-    }
-
-    let intersectionLeft = max(face.x1, person.x1)
-    let intersectionTop = max(face.y1, person.y1)
-    let intersectionRight = min(face.x2, person.x2)
-    let intersectionBottom = min(face.y2, person.y2)
-    let intersection = max(0, intersectionRight - intersectionLeft)
-      * max(0, intersectionBottom - intersectionTop)
-    let faceArea = faceWidth * faceHeight
-    let containment = intersection / max(1, faceArea)
-    guard containment >= 0.80 else { return nil }
-
-    let faceCenterX = (face.x1 + face.x2) * 0.5
-    let faceCenterY = (face.y1 + face.y2) * 0.5
-    guard faceCenterY <= person.y1 + personHeight * 0.62 else { return nil }
-    let expectedHeadX = (person.x1 + person.x2) * 0.5
-    let expectedHeadY = person.y1 + personHeight * 0.18
-    let dx = faceCenterX - expectedHeadX
-    let dy = faceCenterY - expectedHeadY
-    let distance = sqrt(dx * dx + dy * dy)
-    let reference = max(12, max(personWidth, personHeight * 0.35))
-    let proximity = max(0, 1 - distance / (reference * 1.25))
-    guard proximity > 0 else { return nil }
-    return containment * 0.45
-      + proximity * 0.45
-      + max(0, min(1, face.confidence)) * 0.10
+  private func associationScore(face: IOSFaceCandidate, person: IOSYoloDetection,
+    preprocess: IOSYoloPreprocessResult? = nil, requireMaskSupport: Bool = false) -> Float32? {
+    if let preprocess, !person.mask.isEmpty {
+      guard IOSFrameKernelFaceGeometry.currentOwned(face,person:person,preprocess:preprocess) else {return nil}
+    } else if requireMaskSupport { return nil }
+    return IOSFrameKernelFaceGeometry.score(face,person:person)
   }
 
   private func stabilize(trackId: Int, rawRegion: IOSFacePrivacyEllipse,
@@ -933,10 +526,45 @@ final class IOSFacePrivacyTemporalResolver {
 
   private static let maxPredictedFaceAgeUs: Int64 = 150_000
   private static let trustedMaskSeedMaxAgeUs: Int64 = 800_000
-  private static let minPredictedFaceScale: Float32 = 0.88
-  private static let maxPredictedFaceScale: Float32 = 1.12
-  private static let maxPredictedAgeExpansion: Float32 = 0.10
   private static let expiredFaceMaskFallbackExpansion: Float32 = 1.10
   private static let syntheticClassFallbackBase = -1_000_000
   private static let classFallbackTrustedSizeExpansion: Float32 = 1.24
+}
+
+extension IOSFrameKernel {
+  struct FaceHeadPlan {
+    let rect: CGRect
+    let anchor: SIMD2<Float>
+  }
+  private static func faceRecord(_ face: IOSFaceCandidate) -> [Float] {
+    var row: [Float] = [face.x1,face.y1,face.x2,face.y2,face.confidence,Float(min(6,face.landmarks.count))]
+    for i in 0..<6 {
+      row.append(i<face.landmarks.count ? face.landmarks[i].x : 0)
+      row.append(i<face.landmarks.count ? face.landmarks[i].y : 0)
+    }
+    return row
+  }
+  static func faceHeadPlan(_ person: IOSYoloDetection, width: Int, height: Int) -> FaceHeadPlan? {
+    guard width>1,height>1,width<=65535,height<=65535 else {return nil}
+    var out=[Float](repeating:0,count:6)
+    let status=out.withUnsafeMutableBufferPointer { p in
+      frame_kernel_face_head_plan(FrameKernelRect(left:person.x1,top:person.y1,right:person.x2,bottom:person.y2),
+        UInt32(width),UInt32(height),p.baseAddress)
+    }
+    guard status==0 else {return nil}
+    return FaceHeadPlan(rect:CGRect(x:CGFloat(out[0]),y:CGFloat(out[1]),width:CGFloat(out[2]-out[0]),height:CGFloat(out[3]-out[1])),
+      anchor:SIMD2<Float>(out[4],out[5]))
+  }
+  static func selectFace(_ faces: [IOSFaceCandidate], plan: FaceHeadPlan) -> Int? {
+    let rows=faces.flatMap { faceRecord($0) }
+    let r=plan.rect
+    var distance: Float=0
+    let index=rows.withUnsafeBufferPointer { p in
+      frame_kernel_face_select(p.baseAddress,faces.count,
+        FrameKernelRect(left:Float(r.minX),top:Float(r.minY),right:Float(r.maxX),bottom:Float(r.maxY)),
+        plan.anchor.x,plan.anchor.y,0.22,0.04,&distance)
+    }
+    return index>=0 ? Int(index) : nil
+  }
+
 }

@@ -527,7 +527,8 @@ final class IOSMetalPreviewRenderer {
     regionsToRender.reserveCapacity(facePersons.count + faceRegions.count)
     for person in facePersons {
       let region = faceRegions[person.id]
-        ?? IOSFacePrivacyGeometry.fallbackEllipse(person.detection)
+        ?? IOSFacePrivacyGeometry.fallbackGeometry(person.detection,preprocess:preprocess,
+          currentMask:!person.conservativePrivacyFallback)?.region
       guard let region else { continue }
       regionsToRender.append(region)
     }

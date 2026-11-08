@@ -210,10 +210,13 @@ def main():
     p.add_argument('--install',action='store_true')
     p.add_argument('--case-filter',help='Explicit partial stage check; final acceptance omits this option')
     p.add_argument('--stage-export-only',action='store_true',help='Export diagnosis only; requires --case-filter and never qualifies as full acceptance')
+    p.add_argument('--stage-record-tracking',action='store_true',help='Simulator-only raw inputs/snapshots for a filtered diagnosis')
     p.add_argument('--stage-lifecycle',action='store_true',help='Include lifecycle diagnosis in a filtered legacy22 stage; never full acceptance')
     p.add_argument('--build-manifest',type=Path)
     p.add_argument('--deadline-hours',type=float,default=16)
     args=p.parse_args()
+    if args.stage_record_tracking and (args.platform!='ios' or not args.case_filter):
+        p.error('Tracking capture requires an iOS --case-filter diagnosis')
     if args.stage_export_only and not args.case_filter:
         p.error('Export-only diagnosis requires an explicit --case-filter; final acceptance must include previews')
     if args.stage_lifecycle and (not args.case_filter or args.suite!='legacy22' or args.stage_export_only):
@@ -229,6 +232,8 @@ def main():
         if not path.is_file() or path.stat().st_size!=expected['bytes'] or sha(path)!=expected['sha256']:
             raise RuntimeError(f'Frozen fixture mismatch: {name}')
     selected=[s for s in matrix['suites'] if args.suite in ['all',s['id']]]
+    if not any(not args.case_filter or re.fullmatch(args.case_filter,c['case']) for suite in selected for c in suite['cases']):
+        raise ValueError('No cases match the requested suite/filter; no regression was executed')
     deadline=time.monotonic()+args.deadline_hours*3600
     adapter=Android(args) if args.platform=='android' else None
     failed=[]
@@ -245,6 +250,7 @@ def main():
                     'build_source_fingerprint':build['source_fingerprint'],
                     'partial_stage_check':args.case_filter is not None,
                     'verify_previews':not args.stage_export_only,'stage_export_only':args.stage_export_only,
+                    'record_tracking_inputs':args.stage_record_tracking,
                     'lifecycle':suite['id']=='legacy22' and (args.case_filter is None or args.stage_lifecycle)}
             shutil.copyfile(build_path,dest/'build-manifest.json')
             if len({c['case'] for c in config['cases']})!=len(config['cases']): raise ValueError('Duplicate output names in a suite')

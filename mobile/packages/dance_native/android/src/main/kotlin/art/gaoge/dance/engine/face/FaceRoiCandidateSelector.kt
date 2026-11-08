@@ -1,7 +1,6 @@
 package art.gaoge.dance.engine.face
 
 import art.gaoge.dance.engine.inference.FloatRect
-import kotlin.math.sqrt
 
 data class FaceRoiCandidateSelection(
     val faceIndex: Int,
@@ -17,71 +16,33 @@ data class FaceRoiCandidateSelection(
  * the accepted face must stay close to the target person's planned head anchor.
  */
 object FaceRoiCandidateSelector {
-    private const val MAX_ANCHOR_DISTANCE_RATIO = 0.22f
-    private const val MIN_ANCHOR_SEPARATION_RATIO = 0.04f
-
-    fun ownedObservations(
-        faces: List<FaceObservation>,
-        plan: FaceHeadRoiPlan,
-        personBbox: FloatRect
-    ): List<FaceObservation> {
-        val marginX = personBbox.width * 0.08f
-        val marginY = personBbox.height * 0.08f
-        return faces.filter { face ->
-            val center = face.localizationCenter()
-            val sourceX = plan.sourceRect.left + center.x / plan.outputSize * plan.sourceRect.width
-            val sourceY = plan.sourceRect.top + center.y / plan.outputSize * plan.sourceRect.height
-            sourceX in (personBbox.left - marginX)..(personBbox.right + marginX) &&
-                sourceY in (personBbox.top - marginY)..(personBbox.top + personBbox.height * 0.60f)
+    fun ownedObservations(faces: List<FaceObservation>,plan: FaceHeadRoiPlan,personBbox: FloatRect,
+        currentMask: art.gaoge.dance.engine.inference.NativeMask? = null): List<FaceObservation> {
+        val r=plan.sourceRect
+        var pixels:ByteArray?=null
+        var transform:FloatArray?=null
+        if(currentMask!=null) {
+            val mapper=currentMask.mapper ?: return emptyList()
+            if(currentMask.width<=1||currentMask.height<=1||currentMask.width>1024||currentMask.height>1024)return emptyList()
+            val count=Math.multiplyExact(currentMask.width,currentMask.height)
+            if(currentMask.buffer.limit()<count||currentMask.buffer.capacity()<count)return emptyList()
+            val currentPixels=ByteArray(count)
+            currentMask.buffer.duplicate().apply{position(0);limit(count);get(currentPixels)}
+            pixels=currentPixels
+            transform=floatArrayOf(mapper.scale,mapper.padLeft,mapper.padTop,mapper.srcWidth.toFloat(),mapper.srcHeight.toFloat(),mapper.modelInputSize.toFloat(),mapper.protoSize.toFloat())
         }
+        return art.gaoge.dance.engine.core.FrameKernel.currentFaceOwnedNative(faces.coreRecords(),
+            floatArrayOf(r.left,r.top,r.right,r.bottom),plan.outputSize.toFloat(),
+            floatArrayOf(personBbox.left,personBbox.top,personBbox.right,personBbox.bottom),
+            pixels,currentMask?.width ?: 0,currentMask?.height ?: 0,transform).map { faces[it] }
     }
-
-    fun select(
-        faces: List<FaceObservation>,
-        roiWidth: Int,
-        roiHeight: Int,
-        anchorX: Float,
-        anchorY: Float,
-        maxAnchorDistanceRatio: Float = MAX_ANCHOR_DISTANCE_RATIO,
-        minAnchorSeparationRatio: Float = MIN_ANCHOR_SEPARATION_RATIO
-    ): FaceRoiCandidateSelection? {
-        if (faces.isEmpty() || roiWidth <= 1 || roiHeight <= 1) return null
-
-        val anchorPxX = anchorX.coerceIn(0f, 1f) * roiWidth
-        val anchorPxY = anchorY.coerceIn(0f, 1f) * roiHeight
-        val reference = minOf(roiWidth, roiHeight).toFloat().coerceAtLeast(1f)
-
-        val candidates = faces.mapIndexedNotNull { index, face ->
-            val localizationCenter = face.localizationCenter()
-            val dx = localizationCenter.x - anchorPxX
-            val dy = localizationCenter.y - anchorPxY
-            val distanceRatio = sqrt(dx * dx + dy * dy) / reference
-            if (distanceRatio > maxAnchorDistanceRatio) {
-                null
-            } else {
-                FaceRoiCandidateSelection(
-                    faceIndex = index,
-                    face = face,
-                    anchorDistanceRatio = distanceRatio
-                )
-            }
-        }
-
-        val ranked = candidates.sortedWith(
-            compareBy<FaceRoiCandidateSelection> { it.anchorDistanceRatio }
-                .thenByDescending { it.face.confidence }
-        )
-        val best = ranked.firstOrNull() ?: return null
-        val second = ranked.getOrNull(1)
-        if (
-            second != null &&
-            second.anchorDistanceRatio - best.anchorDistanceRatio < minAnchorSeparationRatio
-        ) {
-            // Two plausible faces are too close to the same YOLO-owned head
-            // anchor. Do not let detector confidence guess identity; the caller
-            // must fall back to the conservative YOLO head privacy region.
-            return null
-        }
-        return best
+    fun select(faces: List<FaceObservation>,roiWidth: Int,roiHeight: Int,anchorX: Float,anchorY: Float,
+        maxAnchorDistanceRatio: Float=0.22f,minAnchorSeparationRatio: Float=0.04f): FaceRoiCandidateSelection? {
+        if(faces.isEmpty() || roiWidth<=1 || roiHeight<=1) return null
+        val value=art.gaoge.dance.engine.core.FrameKernel.faceSelectNative(faces.coreRecords(),
+            floatArrayOf(0f,0f,roiWidth.toFloat(),roiHeight.toFloat()),anchorX,anchorY,
+            maxAnchorDistanceRatio,minAnchorSeparationRatio) ?: return null
+        val index=value[0].toInt()
+        return FaceRoiCandidateSelection(index,faces[index],value[1])
     }
 }

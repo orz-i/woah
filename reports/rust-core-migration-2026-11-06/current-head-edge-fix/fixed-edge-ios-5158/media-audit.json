@@ -1,0 +1,84 @@
+{
+  "run_id": "edge_face_fixed_v4_original4k",
+  "cases": [
+    {
+      "case": "group_4k_face_solid",
+      "status": "needs_topology_review",
+      "sha256": "42d8cf047ff97a87acb6f930b0ab9f0b8cdfb77a93d75072f97af91a49f8824e",
+      "bytes": 78624222,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "decoded_frames": 581,
+      "expected_frames": 581,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [
+        {
+          "source_frame": 145,
+          "label": "side_face",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 290,
+          "label": "mirror_face",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 411,
+          "label": "body_omitted_face_411",
+          "red_pixels": 576,
+          "pixels": 576,
+          "passed": true
+        },
+        {
+          "source_frame": 580,
+          "label": "foreground_leg",
+          "red_pixels": 0,
+          "pixels": 576,
+          "passed": true
+        }
+      ],
+      "topology_candidates": [
+        {
+          "frame": 120,
+          "interior_pixels": 6,
+          "bbox": [
+            616,
+            937,
+            5,
+            6
+          ]
+        },
+        {
+          "frame": 471,
+          "interior_pixels": 10,
+          "bbox": [
+            1065,
+            816,
+            6,
+            7
+          ]
+        }
+      ],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "1d8572e073a742bf63294bb51e1c9f99c762f91db9152efdaa1985adb8ca95d9"
+    }
+  ]
+}

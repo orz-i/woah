@@ -70,6 +70,26 @@ pub fn reservation_release(
             && (owner_groups >= 2 || (flags & 4 == 0 && bbox_iou >= 0.50 && mask_iou >= 0.45)),
     )
 }
+/// A bounding-box edge can reserve an unrelated current observation. Only a
+/// strict non-body match may escape that direct reservation, with the existing
+/// .50 box/.45 mask evidence, and only after every owner has retained foreground evidence and is refuted by the
+/// canonical current identity-evidence gate. Unknown owner evidence keeps it held.
+pub fn reservation_release_with_owner_evidence(
+    flags: u32,
+    owner_groups: u32,
+    bbox_iou: f32,
+    mask_iou: f32,
+    all_owners_refuted: bool,
+) -> Option<bool> {
+    let ordinary = reservation_release(flags, owner_groups, bbox_iou, mask_iou)?;
+    Some(
+        ordinary
+            || (all_owners_refuted
+                && flags & 4 != 0
+                && reservation_release(flags & !4, owner_groups, bbox_iou, mask_iou)?),
+    )
+}
+
 pub fn score(e: AssociationEvidence, c: AssociationWeights) -> Option<f32> {
     let rect_finite = |r: Rect| {
         [r.left, r.top, r.right, r.bottom]
@@ -201,5 +221,44 @@ mod tests {
         assert_eq!(score(e, AssociationWeights::default()), Some(0.0));
         e.history_age_us = 500_001;
         assert!(score(e, AssociationWeights::default()).unwrap() > 0.9);
+    }
+}
+
+#[cfg(test)]
+mod owner_evidence_tests {
+    use super::*;
+    #[test]
+    fn direct_box_touch_does_not_override_an_independent_strong_current_mask() {
+        assert_eq!(
+            reservation_release(7, 1, 0.7882628, 0.76811594),
+            Some(false)
+        );
+        assert_eq!(
+            reservation_release_with_owner_evidence(7, 1, 0.7882628, 0.76811594, true),
+            Some(true)
+        );
+        assert_eq!(
+            reservation_release_with_owner_evidence(7, 1, 0.7882628, 0.76811594, false),
+            Some(false)
+        );
+    }
+    #[test]
+    fn owner_refutation_never_weakens_identity_or_body_selection_gates() {
+        for (flags, groups, bounds, mask) in [
+            (7, 1, 0.49, 0.9),
+            (7, 1, 0.9, 0.44),
+            (5, 1, 0.9, 0.9),
+            (6, 1, 0.9, 0.9),
+            (7, 0, 0.9, 0.9),
+        ] {
+            assert_eq!(
+                reservation_release_with_owner_evidence(flags, groups, bounds, mask, true),
+                Some(false)
+            );
+        }
+        assert_eq!(
+            reservation_release_with_owner_evidence(7, 1, f32::NAN, 0.9, true),
+            None
+        );
     }
 }

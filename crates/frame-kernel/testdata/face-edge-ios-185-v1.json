@@ -1,0 +1,43 @@
+{
+  "schema": "frame-kernel-current-head-edge-v1",
+  "capture_schema": "frame-kernel-face-observation-capture-v1",
+  "compiled_source_commit": "ce25a0d38a3c2c34e0d65b3967c0b32e7e7b1e10",
+  "source": "group-mirror-8956295.mp4",
+  "source_sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73",
+  "source_frame": 185,
+  "source_pts_us": 7400000,
+  "source_width": 3840,
+  "source_height": 2160,
+  "raw_capture_sha256": "45d2071b31c55da0cbecdbeddf1268f058dc04318db49976bebc463b5ed4c235",
+  "source_face_cache_sha256": "bb2ac34038dc4256f44c0cff04a154727f4c16513aaa69005e230a45e7d6a3dc",
+  "independent_source_face_bbox": [
+    1328.9086532592773,
+    3.1583333015441895,
+    1498.228554725647,
+    172.47822761535645
+  ],
+  "target_current_person_id": -2185002,
+  "bbox": [
+    519.9794311523438,
+    2.16668701171875,
+    1599.060546875,
+    2125.875732421875
+  ],
+  "mask_bytes": 25600,
+  "mask_sha256": "6cbeb6406365d7e54a6e6aff61d20da0994408ca2e0bc3a5738119d4947fdf8d",
+  "mask_encoding": "Exact original byte runs; no thresholding or invented pixels",
+  "fixture_bytes": 12113,
+  "fixture_sha256": "15158a59608780bc1a8eb0660ff60da19a3d3b1cc7bb7995b4d309cf3e45e2b7",
+  "provenance": "Actual simulator native observations at the first full4K clipped-face failure. Primary face detections empty; detail had no clipped target. Current YOLO body/mask captured before policy. Face bbox comes from the pre-existing independent source-only Vision cache.",
+  "diagnostic_old_bbox_seed": [
+    1059.52001953125,
+    299.4859313964844,
+    237.3978271484375,
+    280.5610656738281
+  ],
+  "existing_rust_current_mask_center": [
+    1242.2823486328125,
+    103.09318542480469
+  ],
+  "scope": "Raw failure input and independent visible-feature geometry, not a generated desired tracking state or platform model oracle."
+}

@@ -8,6 +8,10 @@ enum IOSModelResources {
   static let cropClarityModelFileName = "crop-clarity-span-x2"
   static let cropClarityModelExtension = "tflite"
 
+  static func gridFaceModelURL() -> URL? {
+    resourceURL(fileName:"blaze_face_full_range",fileExtension:"tflite")
+  }
+
   static func yoloModelURL() -> URL? {
     resourceURL(
       fileName: yoloModelFileName,

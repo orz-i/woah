@@ -12,6 +12,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "mobile/app"
 METAL_ROOT = Path(os.environ.get("RUNNER_TEMP", ROOT / "tmp")) / "woah-phase6-metal"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from tools.privacy.build_qa import verify_ios_model
+
 
 
 def annotation_escape(value: str) -> str:
@@ -77,6 +81,10 @@ def main() -> int:
             str(METAL_ROOT / sdk),
         ])
 
+    # CocoaPods expands resource inputs during dependency resolution. Stage the
+    # pinned YOLO and face binaries before that graph is generated on clean CI.
+    run([sys.executable, "tools/release/sync_ios_yolo_model.py"])
+    run([sys.executable, "tools/release/sync_ios_yolo_model.py", "--verify-only"])
     run(["flutter", "config", "--enable-swift-package-manager"], cwd=APP)
     run([sys.executable, "tools/ci/resolve_ios_dependencies.py"])
     run([
@@ -88,6 +96,9 @@ def main() -> int:
         "--target",
         "lib/ios_phase6_smoke_main.dart",
     ], cwd=APP, timeout=1800)
+    # Use the same byte/size verifier as the device regression builder. The
+    # compiled app, not only the source asset directory, must contain both models.
+    verify_ios_model(APP / "build/ios/iphonesimulator/Runner.app/dance_native_models.bundle")
     run([
         sys.executable,
         "tools/ios/run_phase4_simulator_smoke.py",

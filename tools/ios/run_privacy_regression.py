@@ -85,6 +85,7 @@ def main():
     results = live / 'results.json'
     crop_started = time.time()
     launch_env = dict(ENV, SIMCTL_CHILD_WOAH_PIXEL_CROP_AUDIT='1')
+    if config.get('record_tracking_inputs'):launch_env['SIMCTL_CHILD_WOAH_PRIVACY_TRACE']='1'
     with (dest / 'console.log').open('w') as log:
         process = subprocess.Popen(['xcrun','simctl','launch','--terminate-running-process','--console',
             args.udid,BUNDLE],env=launch_env,stdout=log,stderr=subprocess.STDOUT)
@@ -151,6 +152,11 @@ def main():
                         (dest/'crop-traces').mkdir(exist_ok=True)
                         for trace in traces: shutil.copyfile(trace,dest/'crop-traces'/trace.name)
                         meta['crop_traces']=[p.name for p in traces]
+                        if config.get('record_tracking_inputs'):
+                            raw_dir=dest/'identity-traces';raw_dir.mkdir(exist_ok=True)
+                            raw=[p for p in docs.glob('qa_privacy_identity_*.jsonl') if p.stat().st_mtime>=crop_started]
+                            for path in raw:shutil.copyfile(path,raw_dir/path.name)
+                            meta['identity_traces']=[p.name for p in raw]
                         meta['resources']={'samples':len(resources),'peak_rss_kib':max((s.get('rss_kib',0) for s in resources),default=0),'minimum_free_disk_bytes':min((s['disk_free_bytes'] for s in resources),default=0),'peak_system_swap_used_bytes':max((s.get('system_swap_used_bytes',0) for s in resources),default=0)}
                         meta['finished_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat()
                         atomic(dest/'run-metadata.json',meta)

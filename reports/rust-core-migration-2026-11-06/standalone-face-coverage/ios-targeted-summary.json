@@ -1,0 +1,36 @@
+{
+  "schema": "native-standalone-face-tail-v1",
+  "status": "reviewed_targeted_diagnostic_only",
+  "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+  "results_sha256": "97f92fa7ff1234adf2c4eca1db16f18a4bd48122d20021029e0a02795fe55e30",
+  "movie_sha256": "0ce23b4744ab6a6db48ca8897f576c57007f40261d371d59ed1d21e0316df2da",
+  "actual_dimensions": [
+    3840,
+    2160
+  ],
+  "decoded_frames": 581,
+  "preview_pairs": 5,
+  "resolved_face_box_alerts": 1,
+  "resolved_topology_alerts": 1,
+  "reviewed_consecutive_source_frames": [
+    575,
+    576,
+    577,
+    578,
+    579,
+    580
+  ],
+  "old_failure_reproduced_pixel_exact_in_separate_export": true,
+  "review": "New mask covers the complete visible chin at Source578, including the previous exposed contour. Source184 candidate includes ear/neck; Source233 topology candidate is an arm seam between masks. No face features in these two automatic alerts.",
+  "audit_sha256": {
+    "results_media-audits": "a808fe6db388ff11f6f9509ad1149ead87ea63ff5c641232e89d3b8ef70e908b",
+    "results_face-audits": "1b90e643a84553cf173cb1bc8fe70facf3a2d4362ecb226ddd451cfd5d051288",
+    "results_preview-audits": "1877c8fa263f513e2b51cb65499b9ca999e21dce4e22a5387ef6ae5a1eb3a08f"
+  },
+  "review_image_sha256": {
+    "tail-actual-0.jpg": "ce9b9d0f0f5aaae6814dc6fa7b9396a8403db769158fd15e45ebdbdb9bd47e28",
+    "tail-actual-1.jpg": "3725389a9a62ceeb5c07ef858db8a68a55c58f49e75737f0b4ebf296f70bd493",
+    "source578-after-detail.jpg": "6de10fb2242fc6bf19fcda025e7216fa6ce41d8e7d97098fb9884c95bb1bcfad"
+  },
+  "reviewed_utc": "2026-11-08T02:04:42.270155+00:00"
+}

@@ -1,0 +1,102 @@
+{
+  "started_at_utc": "2026-11-07T02:43:17.931424Z",
+  "process_id": 45187,
+  "mode": "matrix",
+  "platform": "ios",
+  "verify_previews": true,
+  "compiled_source_fingerprint": "ff3e0b959d0bf0fe441ed876b5c68faaf1fb979fbab28af413fa79c91f9b9d54",
+  "compiled_source_commit": "f3f6c2ea16463a6776c8c7746bef847e86cf6825",
+  "capabilities": "NativeCapabilitiesDto(platform: ios, osVersion: 17.0.1, gpuSupported: true, h264Encoder: false, hevcEncoder: false, maxEncodeWidth: 0, maxEncodeHeight: 0, cpuCores: 10, recommendedProfile: balanced, supportedProfiles: [], inferenceBackends: [tflite_metal, tflite_xnnpack])",
+  "cases": [
+    {
+      "input": "group-hd-8956295.mp4",
+      "fill": "solid",
+      "startMs": 0,
+      "endMs": 13240,
+      "faceOnly": true,
+      "profile": "quality",
+      "width": 720,
+      "height": 1280,
+      "case": "group_full_length_follow",
+      "hero": 6,
+      "expected_frames": 331,
+      "start_ms": 0,
+      "end_ms": 13240,
+      "face_only": true,
+      "output_width": 720,
+      "output_height": 1280,
+      "result": "output_created",
+      "pid": 45187,
+      "detected_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "selected_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "hero_id": 6,
+      "previews": [
+        {
+          "requested_ms": 0,
+          "dto_timestamp_ms": 0,
+          "control_file": "group_full_length_follow-0-source.png",
+          "control_bytes": 204978,
+          "control_width": 1280,
+          "control_height": 720,
+          "width": 594,
+          "height": 1056,
+          "bytes": 131212,
+          "file": "group_full_length_follow-0.png"
+        },
+        {
+          "requested_ms": 6600,
+          "dto_timestamp_ms": 6600,
+          "control_file": "group_full_length_follow-6600-source.png",
+          "control_bytes": 212642,
+          "control_width": 1280,
+          "control_height": 720,
+          "width": 594,
+          "height": 1056,
+          "bytes": 122510,
+          "file": "group_full_length_follow-6600.png"
+        },
+        {
+          "requested_ms": 13200,
+          "dto_timestamp_ms": 13200,
+          "control_file": "group_full_length_follow-13200-source.png",
+          "control_bytes": 205329,
+          "control_width": 1280,
+          "control_height": 720,
+          "width": 594,
+          "height": 1056,
+          "bytes": 126966,
+          "file": "group_full_length_follow-13200.png"
+        }
+      ],
+      "job_id": "job_1794019450756_C161F58B",
+      "state": "completed",
+      "current_frame": 331,
+      "total_frames": 331,
+      "progress": 1.0,
+      "fps": 1.6400776547029792,
+      "output_uri": "file:///Users/mini/Library/Developer/CoreSimulator/Devices/EE228BE6-0F7F-48E1-9892-313B7CFFBB63/data/Containers/Data/Application/B97DF94C-D81C-4B0B-B826-17D7426B0470/Documents/qa_ios_runs/hero295_fixed_probe_legacy22/outputs/group_full_length_follow.mp4",
+      "error_code": null,
+      "error_message": null,
+      "file_bytes": 6667675,
+      "partial_files": [],
+      "elapsed_seconds": 258.102
+    }
+  ],
+  "status": "finished",
+  "finished_at_utc": "2026-11-07T02:47:36.045517Z"
+}

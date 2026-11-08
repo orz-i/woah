@@ -10,7 +10,7 @@ enum IOSPrivacyClassPhase6Smoke {
       makeDetection(x1: 100, y1: 100, x2: 260, y2: 300, preprocess: preprocess),
       makeDetection(x1: 380, y1: 100, x2: 540, y2: 300, preprocess: preprocess),
     ]
-    let seeded = rootTracker.update(
+    let seeded = try rootTracker.update(
       detections: rootFrame,
       preprocess: preprocess,
       hardClassByDetectionIndex: [0: .selected, 1: .unselected],
@@ -23,7 +23,7 @@ enum IOSPrivacyClassPhase6Smoke {
       makeDetection(x1: 130, y1: 100, x2: 290, y2: 300, preprocess: preprocess),
       makeDetection(x1: 350, y1: 100, x2: 510, y2: 300, preprocess: preprocess),
     ]
-    let poisonedRuntimeLabels = rootTracker.update(
+    let poisonedRuntimeLabels = try rootTracker.update(
       detections: shiftedFrame,
       preprocess: preprocess,
       // Runtime identity-derived labels must never overwrite immutable roots.
@@ -49,7 +49,7 @@ enum IOSPrivacyClassPhase6Smoke {
     ]
     var crossingTimestamp: Int64 = 33_334
     for frame in crossingFrames {
-      let evidence = rootTracker.update(
+      let evidence = try rootTracker.update(
         detections: frame,
         preprocess: preprocess,
         hardClassByDetectionIndex: [:],
@@ -61,7 +61,7 @@ enum IOSPrivacyClassPhase6Smoke {
     }
 
     let unknownTracker = IOSPrivacyClassTemporalTracker(minClassMargin: 0.20)
-    _ = unknownTracker.update(
+    _ = try unknownTracker.update(
       detections: [
         makeDetection(x1: 100, y1: 100, x2: 260, y2: 300, preprocess: preprocess),
         makeDetection(x1: 300, y1: 100, x2: 460, y2: 300, preprocess: preprocess),
@@ -70,7 +70,7 @@ enum IOSPrivacyClassPhase6Smoke {
       hardClassByDetectionIndex: [0: .selected, 1: .unselected],
       timestampUs: 0
     )
-    let merged = unknownTracker.update(
+    let merged = try unknownTracker.update(
       detections: [
         makeDetection(x1: 200, y1: 100, x2: 360, y2: 300, preprocess: preprocess),
       ],
@@ -81,7 +81,7 @@ enum IOSPrivacyClassPhase6Smoke {
     try requireClass(merged, index: 0, selectionClass: .selected, unknown: true)
 
     let entrantTracker = IOSPrivacyClassTemporalTracker()
-    _ = entrantTracker.update(
+    _ = try entrantTracker.update(
       detections: [
         makeDetection(x1: 100, y1: 100, x2: 260, y2: 300, preprocess: preprocess),
       ],
@@ -89,7 +89,7 @@ enum IOSPrivacyClassPhase6Smoke {
       hardClassByDetectionIndex: [0: .selected],
       timestampUs: 0
     )
-    let entrant = entrantTracker.update(
+    let entrant = try entrantTracker.update(
       detections: [
         makeDetection(x1: 500, y1: 20, x2: 620, y2: 180, preprocess: preprocess),
       ],
@@ -100,19 +100,19 @@ enum IOSPrivacyClassPhase6Smoke {
     try requireClass(entrant, index: 0, selectionClass: .selected, unknown: true)
 
     let occlusionTracker = IOSPrivacyClassTemporalTracker()
-    _ = occlusionTracker.update(
+    _ = try occlusionTracker.update(
       detections: rootFrame,
       preprocess: preprocess,
       hardClassByDetectionIndex: [0: .selected, 1: .unselected],
       timestampUs: 0
     )
-    _ = occlusionTracker.update(
+    _ = try occlusionTracker.update(
       detections: shiftedFrame,
       preprocess: preprocess,
       hardClassByDetectionIndex: [:],
       timestampUs: 16_667
     )
-    _ = occlusionTracker.update(
+    _ = try occlusionTracker.update(
       detections: [
         makeDetection(x1: 160, y1: 100, x2: 320, y2: 300, preprocess: preprocess),
       ],
@@ -120,7 +120,7 @@ enum IOSPrivacyClassPhase6Smoke {
       hardClassByDetectionIndex: [:],
       timestampUs: 33_334
     )
-    let returned = occlusionTracker.update(
+    let returned = try occlusionTracker.update(
       detections: [
         makeDetection(x1: 190, y1: 100, x2: 350, y2: 300, preprocess: preprocess),
         makeDetection(x1: 290, y1: 100, x2: 450, y2: 300, preprocess: preprocess),
@@ -158,13 +158,13 @@ enum IOSPrivacyClassPhase6Smoke {
       let hard: [Int: IOSPrivacySelectionClass] = index == 0
         ? [0: .selected, 1: .unselected]
         : [:]
-      let cachedResult = cachedTracker.update(
+      let cachedResult = try cachedTracker.update(
         detections: frame,
         preprocess: preprocess,
         hardClassByDetectionIndex: hard,
         timestampUs: Int64(index) * 16_667
       )
-      let uncachedResult = uncachedTracker.update(
+      let uncachedResult = try uncachedTracker.update(
         detections: frame,
         preprocess: preprocess,
         hardClassByDetectionIndex: hard,

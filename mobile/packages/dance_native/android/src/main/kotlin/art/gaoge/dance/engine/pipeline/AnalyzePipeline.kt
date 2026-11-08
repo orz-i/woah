@@ -258,9 +258,10 @@ class AnalyzePipeline(
         cacheManager.saveAnalysisMetadata(
             cacheId = cacheId,
             metadata = art.gaoge.dance.engine.storage.AnalysisMetadata(
-                schemaVersion = 1,
+                schemaVersion = 2,
                 sourceUri = request.videoUri,
-                persons = cachedPersons
+                persons = cachedPersons,
+                anchorTimestampUs = analysisPtsUs
             )
         )
 

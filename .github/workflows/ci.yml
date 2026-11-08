@@ -43,6 +43,7 @@ jobs:
 
       - name: Verify Python Tools
         run: |
+          uv run --locked python -m unittest tools.privacy.test_observation_replay -v
           uv run --locked python tools/evaluate_tracking.py
           uv run --locked python tools/verify_video.py
 
@@ -61,6 +62,7 @@ jobs:
           python tools/rust/selection_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
           python tools/rust/association_score_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
           python tools/rust/temporal_region_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
+          python tools/rust/projection_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
           python tools/rust/verify_matrix.py
 
       - name: Verify Android namespace contract

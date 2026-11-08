@@ -1,0 +1,188 @@
+{
+  "started_utc": "2026-11-07T01:31:55.102853+00:00",
+  "platform": "android",
+  "serial": "334da6a3",
+  "config": {
+    "run_id": "shared_geometry_cold_focused13",
+    "cases": [
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22240,
+        "endMs": 22280,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_556",
+        "bitrate": 28753920,
+        "expected_frames": 1
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22280,
+        "endMs": 22320,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_557",
+        "bitrate": 28753920,
+        "expected_frames": 1
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22320,
+        "endMs": 22360,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_558",
+        "bitrate": 28753920,
+        "expected_frames": 1
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22360,
+        "endMs": 22400,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_559",
+        "bitrate": 28753920,
+        "expected_frames": 1
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22400,
+        "endMs": 22440,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_560",
+        "bitrate": 28753920,
+        "expected_frames": 1
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22440,
+        "endMs": 22480,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_561",
+        "bitrate": 28753920,
+        "expected_frames": 1
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22480,
+        "endMs": 22520,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_562",
+        "bitrate": 28753920,
+        "expected_frames": 1
+      },
+      {
+        "input": "solo-portrait-7570258.mp4",
+        "fill": "solid",
+        "startMs": 22520,
+        "endMs": 22560,
+        "faceOnly": true,
+        "profile": "quality",
+        "width": 2160,
+        "height": 4096,
+        "case": "solo_4k_raised_arm_trim_563",
+        "bitrate": 28753920,
+        "expected_frames": 1
+      }
+    ],
+    "core_smokes": true,
+    "build_source_fingerprint": "942cace8ed3c0dfb9e969ee1f64459e029ab3cf4a399d80ed60b17ef4ab452ad",
+    "partial_stage_check": false,
+    "verify_previews": true,
+    "stage_export_only": false,
+    "record_tracking_inputs": false,
+    "lifecycle": false
+  },
+  "sources": {
+    "corrupt-video-1024bytes.mp4": {
+      "bytes": 1024,
+      "sha256": "630b36e85f6e26cd9371088fd201979ca82f1300b04aee24210c9e67df6e7e80"
+    },
+    "custom-sticker.png": {
+      "bytes": 806,
+      "sha256": "9cfc5ad34e89b6eebddcd5ec715c224a86c99ea5b9fad999407dee7e32f681b6"
+    },
+    "duo-dance-6940536.mp4": {
+      "bytes": 3748966,
+      "sha256": "9a8553ea9eb07a4d5e11e6ea8059ca7bf302df703fe804ea5ba604ef08235a76"
+    },
+    "group-hd-8956295.mp4": {
+      "bytes": 15726991,
+      "sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5"
+    },
+    "group-mirror-8956295.mp4": {
+      "bytes": 69505821,
+      "sha256": "376c2ae73c92c23dceb042d27450aaa45ba2f44a3d7b0a5f3c26e9bea6c2dd73"
+    },
+    "no-person-flower.mp4": {
+      "bytes": 1128375,
+      "sha256": "0cd83d944a6ca7822b4a8306cecc60a36e859b041f6702c6a1ad9ead78924451"
+    },
+    "solo-hd-7570258.mp4": {
+      "bytes": 7454617,
+      "sha256": "21e0b8319470426718502c31bdabf43c2889b3013cda760c4c1ce8ee69decce0"
+    },
+    "solo-portrait-7570258.mp4": {
+      "bytes": 21156880,
+      "sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1"
+    }
+  },
+  "git_head": "e3abee02652a99eb803ff5e933f3a446159c99ba",
+  "binary_sha256": "b3768924b18ac21034bb13ec854e6836b8098db9d3aa06496cd55f6a0f57ae7c",
+  "binary_path": "D:\\dance-anonymizer\\.qa-runtime\\rust-migration\\builds\\shared-geometry-stage\\app-debug.apk",
+  "harness_sha256": "dc8dce197955d45d0b064fb25dd95bd31ca360db06a038dcc467a5aa7925a928",
+  "matrix_sha256": "e7a6fcc46513dd91734c82fddedc5ffb9ebfdafb73a545fefdfba0b33e249abb",
+  "application_id": "art.gaoge.dance.privacyqa",
+  "device": {
+    "ro.product.model": "KB2000",
+    "ro.build.version.release": "14",
+    "ro.product.cpu.abi": "arm64-v8a"
+  },
+  "additional_crop_traces": {},
+  "crop_traces": [
+    "qa_pixel_crops_63bf1c3d-98b2-4cdf-befc-74ecdc9f4f74.jsonl",
+    "qa_pixel_crops_3f2ae0d3-2abd-4853-aa46-3785fa4f0875.jsonl",
+    "qa_pixel_crops_e84b7fd7-b33a-4e6b-b3b3-e0c4f5e0df1f.jsonl",
+    "qa_pixel_crops_8559994b-6692-4e02-b592-fa4cebe89381.jsonl",
+    "qa_pixel_crops_6e3f7eb1-c47c-46b0-90bc-2537188d2f90.jsonl",
+    "qa_pixel_crops_6c1cd13f-df28-4987-9397-3d9b8ddb6be9.jsonl",
+    "qa_pixel_crops_1d3a92d9-f96a-45ce-bb01-bc5b6f95e2c6.jsonl",
+    "qa_pixel_crops_b46c719e-e914-4c15-968f-4e1668148e2e.jsonl"
+  ],
+  "crop_traces_by_output": {
+    "solo_4k_raised_arm_trim_562.mp4": "qa_pixel_crops_1d3a92d9-f96a-45ce-bb01-bc5b6f95e2c6.jsonl",
+    "solo_4k_raised_arm_trim_557.mp4": "qa_pixel_crops_3f2ae0d3-2abd-4853-aa46-3785fa4f0875.jsonl",
+    "solo_4k_raised_arm_trim_556.mp4": "qa_pixel_crops_63bf1c3d-98b2-4cdf-befc-74ecdc9f4f74.jsonl",
+    "solo_4k_raised_arm_trim_561.mp4": "qa_pixel_crops_6c1cd13f-df28-4987-9397-3d9b8ddb6be9.jsonl",
+    "solo_4k_raised_arm_trim_560.mp4": "qa_pixel_crops_6e3f7eb1-c47c-46b0-90bc-2537188d2f90.jsonl",
+    "solo_4k_raised_arm_trim_559.mp4": "qa_pixel_crops_8559994b-6692-4e02-b592-fa4cebe89381.jsonl",
+    "solo_4k_raised_arm_trim_563.mp4": "qa_pixel_crops_b46c719e-e914-4c15-968f-4e1668148e2e.jsonl",
+    "solo_4k_raised_arm_trim_558.mp4": "qa_pixel_crops_e84b7fd7-b33a-4e6b-b3b3-e0c4f5e0df1f.jsonl"
+  },
+  "finished_utc": "2026-11-07T01:33:49.104174+00:00"
+}

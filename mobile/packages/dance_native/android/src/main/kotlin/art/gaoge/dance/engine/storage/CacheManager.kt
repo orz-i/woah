@@ -73,6 +73,7 @@ class CacheManager(private val context: Context) {
         val file = cacheFile(cacheId, "analysis.json", create = true)
         val root = org.json.JSONObject().apply {
             put("schemaVersion", metadata.schemaVersion)
+            metadata.anchorTimestampUs?.let { put("anchorTimestampUs", it) }
             put("sourceUri", metadata.sourceUri)
             val arr = org.json.JSONArray()
             for (p in metadata.persons) {
@@ -116,7 +117,8 @@ class CacheManager(private val context: Context) {
                 )
                 persons.add(CachedPerson(id, bbox, conf))
             }
-            AnalysisMetadata(schemaVersion, sourceUri, persons)
+            AnalysisMetadata(schemaVersion, sourceUri, persons,
+                if(root.has("anchorTimestampUs")&&!root.isNull("anchorTimestampUs")) root.getLong("anchorTimestampUs") else null)
         } catch (e: Exception) {
             android.util.Log.w("CacheManager", "ANALYSIS_CACHE_PARSE_FAILED")
             null
@@ -158,5 +160,6 @@ data class CachedPerson(
 data class AnalysisMetadata(
     val schemaVersion: Int = 1,
     val sourceUri: String,
-    val persons: List<CachedPerson>
+    val persons: List<CachedPerson>,
+    val anchorTimestampUs: Long? = null
 )

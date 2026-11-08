@@ -40,20 +40,20 @@ let amb=try full.update(detections:[det(130,shared)],preprocess:preprocess,times
 let IDs=Set(full.paritySnapshots().map(\.id))
 print("FULL_BODY_AMBIGUOUS_IDS=\(IDs.sorted()) STATE=\(snapshot(full))")
 test(IDs==[0,1],"full body ambiguous detection spawned a duplicate track")
-test(amb.filter(\.conservativePrivacyFallback).count==2,"both selected roots need conservative coverage")
+test(Set(amb.map(\.id))==[0,1] && amb.allSatisfy{$0.detection.mask.contains(255)},"both selected roots need nonempty privacy coverage")
+for person in amb {test(person.conservativePrivacyFallback == !(full.paritySnapshots().first{$0.id==person.id}!.observedThisFrame),"fallback flag must agree with the canonical observation") }
 let recovered=try full.update(detections:[det(100,shared),det(160,shared)],preprocess:preprocess,timestampUs:80000)
 test(Set(full.paritySnapshots().map(\.id))==[0,1],"post-ambiguity ID churn")
-test(recovered.filter { !$0.conservativePrivacyFallback }.count==2,"two roots did not reacquire separately")
+test(Set(recovered.map(\.id))==[0,1] && recovered.allSatisfy{$0.detection.mask.contains(255)},"named roots lost their privacy coverage during separate observations")
 print("FULL_BODY_REACQUIRE=PASS")
 
-// FACE_ONLY parity remains unchanged and strict protected identities must not
-// be upgraded based only on anonymous class data.
+// Shared canonical FACE_ONLY ownership never transfers IDs from class evidence.
 let face=makeTracker([],[0])
 _ = try face.update(detections:[det(100,shared),det(160,shared)],preprocess:preprocess,timestampUs:0)
 _ = try face.update(detections:[det(130,shared)],preprocess:preprocess,timestampUs:40000)
 let faceIDs=Set(face.paritySnapshots().map(\.id))
 print("FACE_ONLY_IDS=\(faceIDs.sorted()) STATE=\(snapshot(face))")
-test(faceIDs==[0,1,2],"face-only golden reservation semantics changed")
+test(faceIDs==[0,1],"canonical face-only overlap introduced a duplicate identity")
 
 // A non-confusable entrant on the far side must still be materialized as a
 // fresh track; the fix cannot silently ignore all unmatched detections.
@@ -100,7 +100,7 @@ for frame in 1...91 {
     )
     if frame == 90 {
       let roots=heroOnly.paritySnapshots()
-      test(roots.first(where: { $0.id==0 })?.missedFrames == 90,
+      test(roots.first(where: { $0.id==0 })?.observationAge == 90,
            "selected root deadline was reset by hero observation")
       test(observed.contains(where: { $0.id==0 && $0.conservativePrivacyFallback }),
            "lost selected root fallback was silently omitted")
@@ -136,7 +136,7 @@ for frame in 1...91 {
     )
     if frame == 90 {
       let snapshots = faceLost.paritySnapshots()
-      test(snapshots.first(where: { $0.id == 0 })?.missedFrames == 90,
+      test(snapshots.first(where: { $0.id == 0 })?.observationAge == 90,
            "FACE_ONLY protected target missing deadline was reset by visible hero")
       test(observed.contains(where: { $0.id == 0 && $0.conservativePrivacyFallback }),
            "FACE_ONLY missing protected root fallback was not returned")
@@ -220,18 +220,18 @@ for frame in 1...100 {
   _ = try sceneTracker.update(detections:[det(160,heroMask)],preprocess:preprocess,timestampUs:Int64(frame)*40000)
 }
 let lostSceneRoot=sceneTracker.paritySnapshots().first{$0.id==0}!
-test(!lostSceneRoot.observedThisFrame && lostSceneRoot.missedFrames==100 && lostSceneRoot.state == .lost,
+test(!lostSceneRoot.observedThisFrame && lostSceneRoot.observationAge==100 && lostSceneRoot.state == .lost,
      "scene coverage fabricated protected identity recovery")
 test(sceneTracker.paritySnapshots().first{$0.id==1}?.observedThisFrame==true,"scene hero identity changed")
 let entrantScene=try sceneTracker.update(detections:[det(160,heroMask),det(400,mask(2,45))],preprocess:preprocess,timestampUs:4040000)
 test(entrantScene.contains{$0.id==2},"new entrant was renamed to the lost selected root")
-let current=IOSPrivacySelectionScope.currentPersons(detections:[det(160,heroMask),det(400,mask(2,45))],
+let current=try IOSPrivacySelectionScope.currentPersons(detections:[det(160,heroMask),det(400,mask(2,45))],
   heroId:1,observedHeroBounds:sceneTracker.observedBounds(for:1),frameIndex:101)
 test(current[0].id==1 && current[1].id<0,"current scene exemption or anonymous entrant")
-let missingHero=IOSPrivacySelectionScope.currentPersons(detections:[det(400,mask(2,45))],
+let missingHero=try IOSPrivacySelectionScope.currentPersons(detections:[det(400,mask(2,45))],
   heroId:1,observedHeroBounds:nil,frameIndex:102)
 test(missingHero.allSatisfy{$0.id<0},"missing hero gained a proxy exemption")
-let duplicateHero=IOSPrivacySelectionScope.currentPersons(detections:[det(160,heroMask),det(160,heroMask)],
+let duplicateHero=try IOSPrivacySelectionScope.currentPersons(detections:[det(160,heroMask),det(160,heroMask)],
   heroId:1,observedHeroBounds:SIMD4<Float>(160,100,220,300),frameIndex:103)
 test(duplicateHero.allSatisfy{$0.id<0},"ambiguous hero observation granted an exemption")
 print("ALL_OTHER_FACES_NO_ID_REBIND_OR_PROXY_EXEMPTION=PASS")
@@ -254,23 +254,23 @@ func faceBox(_ x1:Float32,_ x2:Float32)->IOSFaceCandidate {
 }
 let left=IOSPreviewPerson(id:0,detection:box(8,4,28,60))
 let heroPerson=IOSPreviewPerson(id:1,detection:box(44,4,62,60))
-let faceRegions=IOSFacePrivacyTemporalResolver(locator:TestFaceLocator([faceBox(14,22),faceBox(32,40),faceBox(50,58)]))
+let faceRegions=try IOSFacePrivacyTemporalResolver(locator:TestFaceLocator([faceBox(14,22),faceBox(32,40),faceBox(50,58)]))
   .resolve(image:image,persons:[left,heroPerson],faceOnlyIds:[0],preprocess:smallPrep,
            protectUnassignedFaces:true,unmaskedPersonId:1,timestampUs:0)
 test(faceRegions.values.contains{abs($0.centerX-36)<0.1 && $0.source == .detectedFace},"unowned visible face was exposed")
 test(!faceRegions.values.contains{abs($0.centerX-54)<0.1},"clear current hero face was masked")
 let overlapping=IOSPreviewPerson(id:0,detection:box(20,4,44,60))
 let overlappingHero=IOSPreviewPerson(id:1,detection:overlapping.detection)
-let ambiguousRegions=IOSFacePrivacyTemporalResolver(locator:TestFaceLocator([faceBox(27,37)]))
+let ambiguousRegions=try IOSFacePrivacyTemporalResolver(locator:TestFaceLocator([faceBox(27,37)]))
   .resolve(image:image,persons:[overlapping,overlappingHero],faceOnlyIds:[0],preprocess:smallPrep,
            protectUnassignedFaces:true,unmaskedPersonId:1,timestampUs:0)
 test(ambiguousRegions.values.contains{$0.source == .detectedFace && abs($0.centerX-32)<0.1},
      "ambiguous hero/selected face was exempted")
-let trustedWins=IOSFacePrivacyTemporalResolver(locator:TestFaceLocator([faceBox(14,22)]))
+let trustedWins=try IOSFacePrivacyTemporalResolver(locator:TestFaceLocator([faceBox(14,22)]))
   .resolve(image:image,persons:[left],faceOnlyIds:[0],preprocess:smallPrep,
            coveredHeadFallbackIds:[0],timestampUs:0)
 test(trustedWins[0]?.source == .detectedFace,"occlusion hint suppressed a real detected face")
-let hiddenGuess=IOSFacePrivacyTemporalResolver(locator:TestFaceLocator([]))
+let hiddenGuess=try IOSFacePrivacyTemporalResolver(locator:TestFaceLocator([]))
   .resolve(image:image,persons:[left],faceOnlyIds:[0],preprocess:smallPrep,
            coveredHeadFallbackIds:[0],timestampUs:0)
 test(hiddenGuess[0]==nil,"fully covered guessed head remained visible")
@@ -292,7 +292,7 @@ final class TestDetailFaceLocator: IOSFaceLocating {
     return [faceBox(14,22)]
   }
 }
-let detailFaces=IOSFacePrivacyTemporalResolver(locator:TestDetailFaceLocator())
+let detailFaces=try IOSFacePrivacyTemporalResolver(locator:TestDetailFaceLocator())
   .resolve(image:image,persons:[left],faceOnlyIds:[0],preprocess:smallPrep,
            protectUnassignedFaces:true,timestampUs:0)
 test(detailFaces[0]?.source == .detectedFace,"small face ROI did not refine the current head")
@@ -318,7 +318,7 @@ var heroInstanceMask=shared
 for y in 15..<58 {for x in 65..<95 {heroInstanceMask[y*160+x]=0}}
 let heroWithFaceHole=IOSPreviewPerson(id:1,detection:IOSYoloDetection(x1:8,y1:4,x2:62,y2:60,
   confidence:0.99,mask:heroInstanceMask))
-let faceInsideHeroBox=IOSFacePrivacyTemporalResolver(locator:TestFaceLocator([faceBox(27,37),faceBox(50,58)]))
+let faceInsideHeroBox=try IOSFacePrivacyTemporalResolver(locator:TestFaceLocator([faceBox(27,37),faceBox(50,58)]))
   .resolve(image:image,persons:[heroWithFaceHole],faceOnlyIds:[],preprocess:smallPrep,
            protectUnassignedFaces:true,unmaskedPersonId:1,timestampUs:0)
 test(faceInsideHeroBox.values.contains{abs($0.centerX-32)<0.1},
@@ -339,7 +339,7 @@ final class TestFailingFaceLocator: IOSFaceLocating {
 }
 for global in [true,false] {
   let failedResolver=IOSFacePrivacyTemporalResolver(locator:TestFailingFaceLocator(global))
-  _=failedResolver.resolve(image:image,persons:[left],faceOnlyIds:[0],preprocess:smallPrep,
+  _=try failedResolver.resolve(image:image,persons:[left],faceOnlyIds:[0],preprocess:smallPrep,
                            protectUnassignedFaces:true,timestampUs:0)
   test(failedResolver.localizationFailed,"current-scene localization failure was silently accepted")
 }
@@ -351,56 +351,73 @@ final class MovingFaceLocator: IOSFaceLocating {
 }
 let movingLocator=MovingFaceLocator()
 let movingResolver=IOSFacePrivacyTemporalResolver(locator:movingLocator)
-let widePerson=IOSPreviewPerson(id:0,detection:box(4,4,62,60))
-_=movingResolver.resolve(image:image,persons:[widePerson],faceOnlyIds:[0],preprocess:smallPrep,timestampUs:0)
+// The current body moves with the detected face; both inputs satisfy the shared head gate.
+let widePerson=IOSPreviewPerson(id:0,detection:box(4,4,32,60))
+let movedPerson=IOSPreviewPerson(id:0,detection:box(24,4,62,60))
+_=try movingResolver.resolve(image:image,persons:[widePerson],faceOnlyIds:[0],preprocess:smallPrep,timestampUs:0)
 movingLocator.faces=[faceBox(42,58)]
-let moved=movingResolver.resolve(image:image,persons:[widePerson],faceOnlyIds:[0],preprocess:smallPrep,timestampUs:40_000)[0]!
+let moved=try movingResolver.resolve(image:image,persons:[movedPerson],faceOnlyIds:[0],preprocess:smallPrep,timestampUs:40_000)[0]!
 let currentFace=IOSFacePrivacyGeometry.detectedEllipse(movingLocator.faces[0])!
-test(abs(moved.centerX-currentFace.centerX)<0.001 && abs(moved.centerY-currentFace.centerY)<0.001,
+let currentCoverage=IOSFrameKernelFaceGeometry.coverCurrent(movedPerson.detection,
+  region:SIMD4(currentFace.centerX,currentFace.centerY,currentFace.radiusX,currentFace.radiusY),
+  preprocess:smallPrep)!
+test(abs(moved.centerX-currentCoverage.x)<0.001 && abs(moved.centerY-currentCoverage.y)<0.001,
      "current detected face was delayed by the old fallback position")
-test(moved.radiusX>=currentFace.radiusX && moved.radiusY>=currentFace.radiusY,
+test(moved.radiusX>=currentCoverage.z && moved.radiusY>=currentCoverage.w,
      "smoothing shrank current detected face coverage")
 let raisedArmBody=box(125.8871,403.623,1461.6781,3440.3723)
 let recoveryROI=IOSFacePrivacyGeometry.upperBodyFaceSearchRegion(raisedArmBody)
 test(recoveryROI.contains(CGPoint(x:1213,y:1177)),"raised-arm recovery ROI omitted the actual face")
-test(recoveryROI.width<IOSFacePrivacyGeometry.faceSearchRegion(raisedArmBody).width,
+test(recoveryROI.width<CGFloat(max((raisedArmBody.x2-raisedArmBody.x1)*2.50,(raisedArmBody.y2-raisedArmBody.y1)*0.80)),
      "raised-arm recovery did not restore spatial detail")
 print("CURRENT_DETECTED_FACE_NO_LAG_AND_RAISED_ARM_DETAIL=PASS")
 
 let paddingLocator=MovingFaceLocator()
 let paddingResolver=IOSFacePrivacyTemporalResolver(locator:paddingLocator)
 let firstPrivacyPerson=IOSPreviewPerson(id:-2_000_000,detection:left.detection)
-_=paddingResolver.resolve(image:image,persons:[firstPrivacyPerson],faceOnlyIds:[firstPrivacyPerson.id],preprocess:smallPrep,
+_=try paddingResolver.resolve(image:image,persons:[firstPrivacyPerson],faceOnlyIds:[firstPrivacyPerson.id],preprocess:smallPrep,
   protectUnassignedFaces:true,timestampUs:0)
 paddingLocator.faces=[]
 let armPerson=IOSPreviewPerson(id:-2_001_000,detection:box(2,0,62,60))
-let paddedRegions=paddingResolver.resolve(image:image,persons:[armPerson],faceOnlyIds:[armPerson.id],preprocess:smallPrep,
+let paddedRegions=try paddingResolver.resolve(image:image,persons:[armPerson],faceOnlyIds:[armPerson.id],preprocess:smallPrep,
   protectUnassignedFaces:true,timestampUs:400_000)
 let padded=paddedRegions.values.first{$0.source == .predictedFace}!
 test(padded.source == .predictedFace && abs(padded.centerX-18)<0.001,"raised bbox dragged the prior observed face onto an arm")
-let currentHead=IOSFacePrivacyGeometry.fallbackEllipse(armPerson.detection)!
+let currentHead=IOSFacePrivacyGeometry.fallbackGeometry(armPerson.detection,preprocess:smallPrep,currentMask:true)!.region
 let paddingDidNotRemoveCurrentHead=paddedRegions.values.contains { region in
   pow((currentHead.centerX-region.centerX)/region.radiusX,2)
     + pow((currentHead.centerY-region.centerY)/region.radiusY,2)<=1
 }
 test(paddingDidNotRemoveCurrentHead,"spatial padding removed current head coverage instead of adding protection")
-let expiredPadding=paddingResolver.resolve(image:image,persons:[armPerson],faceOnlyIds:[armPerson.id],preprocess:smallPrep,
+let expiredPadding=try paddingResolver.resolve(image:image,persons:[armPerson],faceOnlyIds:[armPerson.id],preprocess:smallPrep,
   protectUnassignedFaces:true,timestampUs:800_001)
 test(!expiredPadding.values.contains{$0.source == .predictedFace},"spatial padding renewed its own face lease")
 paddingLocator.faces=[faceBox(14,22)]
-_=paddingResolver.resolve(image:image,persons:[firstPrivacyPerson],faceOnlyIds:[firstPrivacyPerson.id],preprocess:smallPrep,
+_=try paddingResolver.resolve(image:image,persons:[firstPrivacyPerson],faceOnlyIds:[firstPrivacyPerson.id],preprocess:smallPrep,
   protectUnassignedFaces:true,timestampUs:1_000_000)
 paddingLocator.faces=[]
 let unsupportedArm=IOSPreviewPerson(id:-2_002_000,detection:IOSYoloDetection(x1:2,y1:0,x2:62,y2:60,confidence:0.99,
   mask:[UInt8](repeating:0,count:160*160)))
-let rejectedPadding=paddingResolver.resolve(image:image,persons:[unsupportedArm],faceOnlyIds:[unsupportedArm.id],preprocess:smallPrep,
+let rejectedPadding=try paddingResolver.resolve(image:image,persons:[unsupportedArm],faceOnlyIds:[unsupportedArm.id],preprocess:smallPrep,
   protectUnassignedFaces:true,timestampUs:1_040_000)
 test(!rejectedPadding.values.contains{$0.source == .predictedFace},"padding survived without current instance support")
-_=paddingResolver.resolve(image:image,persons:[armPerson,heroPerson],faceOnlyIds:[armPerson.id,heroPerson.id],preprocess:smallPrep,
+_=try paddingResolver.resolve(image:image,persons:[armPerson,heroPerson],faceOnlyIds:[armPerson.id,heroPerson.id],preprocess:smallPrep,
   protectUnassignedFaces:true,timestampUs:1_080_000)
-let resetPadding=paddingResolver.resolve(image:image,persons:[armPerson],faceOnlyIds:[armPerson.id],preprocess:smallPrep,
+let resetPadding=try paddingResolver.resolve(image:image,persons:[armPerson],faceOnlyIds:[armPerson.id],preprocess:smallPrep,
   protectUnassignedFaces:true,timestampUs:1_120_000)
 test(!resetPadding.values.contains{$0.source == .predictedFace},"single-person padding crossed a multi-person scope boundary")
 print("SINGLE_SCENE_OCCLUSION_PADDING_CURRENT_MASK_EXPIRY_AND_SCOPE=PASS")
+
+// Bound to the actual source observations at 22.16/22.24 seconds in raised-arm footage.
+let realArmBody=box(152.49,430.80,1942.18,3455.41)
+let realArmPlan=IOSFrameKernel.faceHeadPlan(realArmBody,width:2160,height:4096)!
+let waistFalseFace=IOSFaceCandidate(x1:900.16,y1:1814.05,x2:1100.16,y2:2014.05,confidence:0.99)
+test(IOSFrameKernel.selectFace([waistFalseFace],plan:realArmPlan)==nil,"waist false positive replaced current head fallback")
+let validArmFace=IOSFaceCandidate(x1:1162.10,y1:1077.52,x2:1362.10,y2:1277.52,confidence:0.55)
+test(IOSFrameKernel.selectFace([waistFalseFace,validArmFace],plan:realArmPlan)==1,"valid head lost to confident waist detection")
+let realHandPlan=IOSFrameKernel.faceHeadPlan(box(172.46,637.08,2103.70,3438.19),width:2160,height:4096)!
+let handFalseFace=IOSFaceCandidate(x1:1399.36,y1:661.19,x2:1599.36,y2:861.19,confidence:0.99)
+test(IOSFrameKernel.selectFace([handFalseFace],plan:realHandPlan)==nil,"raised hand replaced current head fallback")
+print("SHARED_HEAD_OWNERSHIP_RAISED_ARM_WAIST_AND_HAND=PASS")
 
 print("IOS_TRACKER_HOST_REGRESSION=PASS")

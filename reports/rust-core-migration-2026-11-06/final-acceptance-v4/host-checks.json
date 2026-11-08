@@ -1,0 +1,35 @@
+{
+  "status": "passed_existing_source_checks",
+  "compiled_native_source_commit": "28594280c86aadca5ec1b17101d3a461e8301745",
+  "rust_toolchain": "1.97.1",
+  "rust": {
+    "format_check": "passed",
+    "clippy": "passed",
+    "unit_tests": 75,
+    "integration_tests": 14,
+    "integration_test_binaries": 9,
+    "documentation_tests": 1,
+    "failures": 0,
+    "check_log_sha256": "7276c5333ef9c33cb4ebb6c727ddeaaae7ee3a22fc612781ca94e44e5eea2998",
+    "build_log_sha256": "3e5d0a423f7b6669249f04ef7e483ce0c0a82255d6f7f992a4954affb75ab1a5"
+  },
+  "android_jvm": {
+    "tests": 615,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": 149,
+    "full_run_log_sha256": "c0879195de765867b555dfb726c061f730ed4be89e98232e07948d9e7e618092",
+    "sorted_suite_xml_hashes_sha256": "4aab89447c424ba0857f86084351ff61107b3e19c9bd1aef00cdde151c1be2ae"
+  },
+  "mac_host_and_qa_build": {
+    "status": "passed",
+    "frozen_native_face_geometry_cases": 512,
+    "production_clipped_face_and_current_ownership_checks": "passed",
+    "synthetic_two_person_production_ownership_check": "passed",
+    "tracking_and_privacy_class_host_checks": "passed",
+    "qa_build_succeeded": true,
+    "log_sha256": "996e1470a59068f8c517546715d3d643e1f86dd1b57019728b67ab1ddb962a33"
+  },
+  "scope": "Existing successful checks for the unchanged compiled native source are reused. Counts and log hashes only; raw logs and original observations remain local. Host checks do not replace full media acceptance."
+}

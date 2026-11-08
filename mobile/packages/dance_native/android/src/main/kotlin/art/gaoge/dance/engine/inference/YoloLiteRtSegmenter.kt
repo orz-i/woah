@@ -26,6 +26,7 @@ class YoloLiteRtSegmenter(
     private var runner: LiteRtModelRunner? = null
     private var tensorAdapter: YoloLiteRtTensorAdapter? = null
     private val workspace = PreprocessorWorkspace(640)
+    private val observationReplay by lazy { art.gaoge.dance.engine.diagnostics.QaObservationReplay.open(context) }
     private val reusableInputFloats = FloatArray(1 * 3 * 640 * 640)
     private val tensorDiagnosticsByJobId = mutableMapOf<String, art.gaoge.dance.engine.diagnostics.YoloTensorDiagnostics>()
 
@@ -137,6 +138,23 @@ class YoloLiteRtSegmenter(
         )
         stageTimings["yoloPreprocess"] = (System.nanoTime() - preprocessStartNs) / 1_000_000
 
+        val replay = observationReplay
+        val replayStartNs = System.nanoTime()
+        val replayKey = replay?.key("yolo", "${mapper.srcWidth},${mapper.srcHeight},${mapper.modelInputSize},${mapper.protoSize}|${modelRunner.effectiveAccelerator}|threads=$cpuNumThreads|${modelRunner.runtimeInfo?.inputShapes}|${modelRunner.runtimeInfo?.outputShapes}", workspace.floatArray)
+        if (replayKey != null) {
+            val cached = replay.read(replayKey)
+            if (cached != null) {
+                val persons = runCatching { art.gaoge.dance.engine.diagnostics.QaObservationCodec.decode(cached) }.getOrNull()
+                if (persons != null) {
+                    replay.hit(replayKey, cached)
+                    stageTimings["qaObservationReplay"] = (System.nanoTime()-replayStartNs)/1_000_000
+                    return SegmentationFrame(timestampUs, persons, System.currentTimeMillis()-startTime, stageTimings)
+                }
+                replay.reject(replayKey)
+            }
+        }
+        val beforeAccelerator = modelRunner.effectiveAccelerator
+
         // 2. Write input buffer and run inference
         val detections = try {
             val inputBufs = modelRunner.getInputBuffers()
@@ -206,6 +224,9 @@ class YoloLiteRtSegmenter(
         }
 
         val elapsed = System.currentTimeMillis() - startTime
+        if (replayKey != null && beforeAccelerator == modelRunner.effectiveAccelerator) {
+            replay.record(replayKey, art.gaoge.dance.engine.diagnostics.QaObservationCodec.encode(detections))
+        }
         return SegmentationFrame(
             timestampUs = timestampUs,
             persons = detections,

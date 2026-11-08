@@ -27,19 +27,8 @@ data class FaceObservation(
      * placement follow the actual face rather than bbox shape changes.
      */
     fun localizationCenter(): FacePoint {
-        if (keypoints.size < 4) {
-            return FacePoint(bbox.centerX, bbox.centerY)
-        }
-        val leftEye = keypoints[0]
-        val rightEye = keypoints[1]
-        val nose = keypoints[2]
-        val mouth = keypoints[3]
-        val eyeMidX = (leftEye.x + rightEye.x) * 0.5f
-        val eyeMidY = (leftEye.y + rightEye.y) * 0.5f
-        return FacePoint(
-            x = (eyeMidX + nose.x + mouth.x) / 3f,
-            y = (eyeMidY + nose.y + mouth.y) / 3f
-        )
+        val value = art.gaoge.dance.engine.core.FrameKernel.faceCenterNative(coreRecord())
+        return FacePoint(value[0], value[1])
     }
 }
 
@@ -201,3 +190,11 @@ object FacePersonAssociator {
         return (right - left).coerceAtLeast(0f) * (bottom - top).coerceAtLeast(0f)
     }
 }
+
+/** Bounded value transport shared with the C/Swift adapters. */
+internal fun FaceObservation.coreRecord(): FloatArray = FloatArray(18).also { row ->
+    row[0]=bbox.left;row[1]=bbox.top;row[2]=bbox.right;row[3]=bbox.bottom
+    row[4]=confidence;row[5]=keypoints.size.coerceAtMost(6).toFloat()
+    keypoints.take(6).forEachIndexed { i,p -> row[6+i*2]=p.x;row[7+i*2]=p.y }
+}
+internal fun List<FaceObservation>.coreRecords(): FloatArray = flatMap { it.coreRecord().asList() }.toFloatArray()

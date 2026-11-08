@@ -204,9 +204,9 @@ dependencies {
     // Shared comparison session; match video_player_android's Media3 version.
     implementation("androidx.media3:media3-exoplayer:1.9.2")
     implementation("com.google.ai.edge.litert:litert:2.1.5")
-    // Face locator runtime is packaged but remains dormant until an explicit
-    // internal caller opts in. YOLO/TrackManager remains identity authority.
-    implementation("com.google.mediapipe:tasks-vision:1.0.0")
+    // Historical MediaPipe oracle is instrumented-test-only. Production runs
+    // the pinned face model through LiteRT with shared FrameKernel pre/post.
+    androidTestImplementation("com.google.mediapipe:tasks-vision:1.0.0")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.json:json:20240303")

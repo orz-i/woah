@@ -1,0 +1,275 @@
+{
+  "run_id": "shared_geometry_cold_focused13",
+  "binary_sha256": "b3768924b18ac21034bb13ec854e6836b8098db9d3aa06496cd55f6a0f57ae7c",
+  "source_sha256": "f401df9259f7fcbf7b01121cbb720e744e0dbba6e3ebce2f64027d37c873d6a1",
+  "spec_sha256": "2a61feb50af08a7fefdbd858894199bbd6f79a15a988918392afe68eee0cf0ff",
+  "auditor_sha256": "9eb2876123cc5b7469a1789007c10f93dd43505ec5fca2ded841d64d5a44547f",
+  "scope": "Known source points omitted by automatic face scan; actual opaque-red pixels only, complements media and non-solid visual audits.",
+  "probes": [
+    {
+      "case": "solo_4k_raised_arm_trim_556",
+      "kind": "export",
+      "output_frame": 0,
+      "source_pts_us": 22240000,
+      "source_point": [
+        1320,
+        1180
+      ],
+      "movie_sha256": "303d968f95ab6a2d79b85611644823352c2c05c188717f3c7031c85c07929003",
+      "trace_sha256": "d58f20fdac39d37d8eb32cee33428d542d0a4a48ec4cb108d34d456cb26f70af",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_556",
+      "kind": "preview",
+      "source_pts_us": 22240000,
+      "source_point": [
+        1320,
+        1180
+      ],
+      "preview_sha256": "1ce28c8fed0934bd0d649930335a51b7a8668865fde39bb91b0cf2863673bd46",
+      "control_sha256": "422327ce9a04f59af424c7cb7634411c474cf9afec2bde739c87bc6baf6f4312",
+      "red_pixels": 196,
+      "pixels": 196,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_557",
+      "kind": "export",
+      "output_frame": 0,
+      "source_pts_us": 22280000,
+      "source_point": [
+        1304,
+        1180
+      ],
+      "movie_sha256": "be62fb4edddd36e76f037d00665812a36d2ad868ed265b0cdae33538476f23ba",
+      "trace_sha256": "3eaa1d5c09df5c398b2b8ead286c919c56593c9b8c49487146185141eb73b1cb",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_557",
+      "kind": "preview",
+      "source_pts_us": 22280000,
+      "source_point": [
+        1304,
+        1180
+      ],
+      "preview_sha256": "ff24b5aed0e422621eaf56cc7c904d1fcdf325aea7e7f9ed9ef1d53aa98c818f",
+      "control_sha256": "157fa796cb51de88d26be5ebd20e392790e484242f5705f004ca75a18a54b330",
+      "red_pixels": 196,
+      "pixels": 196,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_558",
+      "kind": "export",
+      "output_frame": 0,
+      "source_pts_us": 22320000,
+      "source_point": [
+        1288,
+        1180
+      ],
+      "movie_sha256": "97e528f2200f51beff31bf01a013917bed4ff9fab6d9cbc6eb3f799a282e0677",
+      "trace_sha256": "9560a8a0d6addd18ad907ef6bd59baeb7fa714cfb2ac626843a6b155c71313fd",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_558",
+      "kind": "preview",
+      "source_pts_us": 22320000,
+      "source_point": [
+        1288,
+        1180
+      ],
+      "preview_sha256": "70747eba599222669d2c71a1f879d8715e72cd6bdf15e592aedd1794c5d2045e",
+      "control_sha256": "047913a68040f2b4e03a5b0de84138d7338a8293c0d136cea3e6ce4409889de2",
+      "red_pixels": 196,
+      "pixels": 196,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_559",
+      "kind": "export",
+      "output_frame": 0,
+      "source_pts_us": 22360000,
+      "source_point": [
+        1272,
+        1176
+      ],
+      "movie_sha256": "0d36966110ef2318407ae62a17b59a52172c45b18889b8f55d726b60574d4c64",
+      "trace_sha256": "7bfab6370e1548c6853748fc0f6688a8303261eb872c11627730db30396cd3dc",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_559",
+      "kind": "preview",
+      "source_pts_us": 22360000,
+      "source_point": [
+        1272,
+        1176
+      ],
+      "preview_sha256": "4385a0367a2c950043fdd418ba447c8eb8dfe6ae030499f61229356455437040",
+      "control_sha256": "b6c1d6a87abc1b3358393ded95dbc1d7a22c1d2e6b1a17b2e90f68e7c4319226",
+      "red_pixels": 196,
+      "pixels": 196,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_560",
+      "kind": "export",
+      "output_frame": 0,
+      "source_pts_us": 22400000,
+      "source_point": [
+        1243,
+        1173
+      ],
+      "movie_sha256": "0585228a97133bd6a31970b5c4d8625b53d5b81400e61fa50a967b30a4c94eda",
+      "trace_sha256": "3b51f0b60d6d3fc4a483a45d26e08114cd516ac5ee2177e2697795085dedbd17",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_560",
+      "kind": "preview",
+      "source_pts_us": 22400000,
+      "source_point": [
+        1243,
+        1173
+      ],
+      "preview_sha256": "79bb8b7dfb3311b1354f0907ae3ee5c1a261acca3af799454f8a901caf7ad94e",
+      "control_sha256": "27d57c075e8652b99c08f9295b311b6968a68b2fa28aa6fa66d8ff2bd9cc9c80",
+      "red_pixels": 196,
+      "pixels": 196,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_561",
+      "kind": "export",
+      "output_frame": 0,
+      "source_pts_us": 22440000,
+      "source_point": [
+        1214,
+        1177
+      ],
+      "movie_sha256": "1a950903b18f4afadc874b90ca4ed14c3644ee0730b2704092e566507c5a8063",
+      "trace_sha256": "59e26c34beaa16e554fa847001cb6fd304aeb3f2f9ae7ac4cdcb9ea7dd29e933",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_561",
+      "kind": "preview",
+      "source_pts_us": 22440000,
+      "source_point": [
+        1214,
+        1177
+      ],
+      "preview_sha256": "96261b9fc735a34752d1aba467ac8c9bbc7ddc354ea1cfe72a2c1b980bc99e37",
+      "control_sha256": "0ee77689ee776dcdee4ce5be64084ee38c698eaa18da58cfed2c3b94c697c2fa",
+      "red_pixels": 196,
+      "pixels": 196,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_562",
+      "kind": "export",
+      "output_frame": 0,
+      "source_pts_us": 22480000,
+      "source_point": [
+        1187,
+        1179
+      ],
+      "movie_sha256": "d636271b916d1a16cf558ba32df25616321670b64cc228750cdd5311baf344fe",
+      "trace_sha256": "bbe47c9ac3b291eda29edd2616c6b3784e11a5ebbd520323561ec11da53b7eb1",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_562",
+      "kind": "preview",
+      "source_pts_us": 22480000,
+      "source_point": [
+        1187,
+        1179
+      ],
+      "preview_sha256": "94246a565b16cc37e52f8f5f1bbd026c4ebdcff6084f5a2ca8d76d866ecebd09",
+      "control_sha256": "aaa4f1d9503bf211f32b24512eae53b328b2790339f9e281f5e49dd36cba1240",
+      "red_pixels": 196,
+      "pixels": 196,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_563",
+      "kind": "export",
+      "output_frame": 0,
+      "source_pts_us": 22520000,
+      "source_point": [
+        1168,
+        1186
+      ],
+      "movie_sha256": "1814ae26f761d1fbf8fcfafedecf4c948ec9f8c00215f9ade7b9835df507fd25",
+      "trace_sha256": "29625cf950ec85055741a4a0ae874256a458f1e82330c4bf0482e96c1b6954e8",
+      "red_pixels": 576,
+      "pixels": 576,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_563",
+      "kind": "preview",
+      "source_pts_us": 22520000,
+      "source_point": [
+        1168,
+        1186
+      ],
+      "preview_sha256": "afedc98209832c46856e86533d9f1cb2332329613a0171d523ebc72da7ff37fe",
+      "control_sha256": "1745c1baced69a091d42ce9849febb6f66a9db5531ee898889d5d634403d18e3",
+      "red_pixels": 196,
+      "pixels": 196,
+      "fraction": 1.0,
+      "passed": true,
+      "status": "passed"
+    }
+  ],
+  "status": "passed"
+}

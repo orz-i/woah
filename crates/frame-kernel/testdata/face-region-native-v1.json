@@ -1,0 +1,13 @@
+{
+  "schema": "frame-kernel-native-face-region-v1",
+  "cases": 512,
+  "bytes": 1635523,
+  "sha256": "e0e75f439552d6e7599c73f1020dd1d1d7f5323db0db26a4628bf10035b96298",
+  "producer": "Original native Kotlin geometry copies before production migration; uses already certified shared letterboxing/landmark center/anchor translation primitives.",
+  "native_source_lf_sha256": {
+    "CanonicalBodyMaskFaceHeadEstimator.kt": "c85985afb66e3430578c1184b0fb92cdbdabb806a956f3f1f0fa99d821659260",
+    "CanonicalFacePrivacyRegionResolver.kt": "ffb11a56a34202520f4f9400288fffa854230d60a5229d7a6da11903cc43a41a",
+    "CanonicalFaceTrustedMaskFallback.kt": "12e05a4de6e4b6cb781f6cfa8e75ed38eba8e440ff0535a7c889bc8f65b828e9"
+  },
+  "coverage": "Four source aspect/dimension pairs, local detector boxes with/without keypoints, exact detected/fallback geometry, 160x160 current body masks including head-like rows, wide shoulders/arms, distractors, one-row/threshold edge support, trusted current-mask fallback."
+}

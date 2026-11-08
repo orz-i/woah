@@ -1,0 +1,16 @@
+{
+  "canonical_commit": "ab85241d",
+  "generation": "Existing canonical Kotlin TrackManager in D:/dance-anonymizer; one isolated Gradle test using the external test source directory. Rust observation update was not a consumer during generation.",
+  "generator": "mobile/packages/dance_native/android/src/test/kotlin/art/gaoge/dance/engine/tracking/TrackingUpdateReferenceCorpusTest.kt",
+  "cases": 12,
+  "frames_per_case": 80,
+  "total_steps": 960,
+  "bytes": 1106813,
+  "sha256": "5fd286abd958be4462be76e01ceab4e684483affb69d00042ece100af88313e3",
+  "scope": [
+    "all output track IDs/state/counters/age/current observation/Float32 bounds/confidence/foot/occluders/render-mask bytes",
+    "fresh body/face privacy-class evidence, suppressed IDs, hard classes and motion-only evidence",
+    "body/face/protected selection splits, inference skips, real misses, overlap/merged observations, LOST recovery and scene compensation"
+  ],
+  "result": "960 updates match frozen native outputs; this foundation is not yet a production adapter switch."
+}

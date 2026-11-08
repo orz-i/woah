@@ -1,0 +1,86 @@
+{
+  "frames": [
+    {
+      "source_frame": 165,
+      "old_raw_alert": {
+        "output_frame": 165,
+        "source_frame": 165,
+        "source_pts_us": 6600000,
+        "source_bbox": [
+          1322.3081588745117,
+          266.67189091444016,
+          1391.1694765090942,
+          335.5332112312317
+        ],
+        "output_core": [
+          334,
+          329,
+          390,
+          385
+        ],
+        "coverage_fraction": 0.0
+      },
+      "fixed_raw_alert": {
+        "output_frame": 165,
+        "source_frame": 165,
+        "source_pts_us": 6600000,
+        "source_bbox": [
+          1322.3081588745117,
+          266.67189091444016,
+          1391.1694765090942,
+          335.5332112312317
+        ],
+        "output_core": [
+          334,
+          329,
+          390,
+          385
+        ],
+        "coverage_fraction": 0.0
+      }
+    },
+    {
+      "source_frame": 295,
+      "old_raw_alert": {
+        "output_frame": 295,
+        "source_frame": 295,
+        "source_pts_us": 11800000,
+        "source_bbox": [
+          1399.6079635620117,
+          274.63544458150864,
+          1468.3376669883728,
+          343.3651542663574
+        ],
+        "output_core": [
+          324,
+          338,
+          380,
+          394
+        ],
+        "coverage_fraction": 0.47225765306122447
+      },
+      "fixed_raw_alert": {
+        "output_frame": 295,
+        "source_frame": 295,
+        "source_pts_us": 11800000,
+        "source_bbox": [
+          1399.6079635620117,
+          274.63544458150864,
+          1468.3376669883728,
+          343.3651542663574
+        ],
+        "output_core": [
+          324,
+          338,
+          380,
+          394
+        ],
+        "coverage_fraction": 0.0
+      }
+    }
+  ],
+  "source_sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+  "old_movie_sha256": "471d46a52bc83da9812ba7fb6541405b6a9067c886c7920a2d7b710470a770ea",
+  "fixed_movie_sha256": "f93bb364c73aa23152552a974b84a99467e92c77b1e34338e4de9964585ca700",
+  "board_sha256": "a5de49cf38e62006a7e39fbb6e81db9f252aebb5f618fa28ad0c3dd12a8563bc"
+}

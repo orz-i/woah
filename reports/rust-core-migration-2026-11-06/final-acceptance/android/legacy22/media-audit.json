@@ -1,0 +1,765 @@
+{
+  "run_id": "shared_policy_final_v2_legacy22",
+  "cases": [
+    {
+      "case": "group_all_faces",
+      "status": "passed_media",
+      "sha256": "5a218dcd10d5760474a4978e071a6180dea7c0ff0df42d23fd8772d0deb167f9",
+      "bytes": 1002960,
+      "dimensions": [
+        960,
+        540
+      ],
+      "decoded_frames": 76,
+      "expected_frames": 76,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "00b1444557fc4d8e01ed149ecf51fd2af6fd27f8f0a1b74eab5c2c144275ae39"
+    },
+    {
+      "case": "group_face_sticker_follow",
+      "status": "passed_media",
+      "sha256": "3aab42d71bd50b128d2b2055d434e8a09dbdb38d0df9fb779f2a1437c75702df",
+      "bytes": 1245248,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "decoded_frames": 76,
+      "expected_frames": 76,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "c024b78d4343352e0f302d2976a591328a6537c02782566727b8ad8c5fb40e9f"
+    },
+    {
+      "case": "group_face_solid_follow",
+      "status": "passed_media",
+      "sha256": "d2e79ac5864dc5b585b97ac67cbbca64f2f2969be348ae6ce504452770dc8b48",
+      "bytes": 1171408,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "decoded_frames": 76,
+      "expected_frames": 76,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "43e6a071f8d2303750ad2e8340ee6e6c7ab341f022b9ea82d9eda28adce3dbdf"
+    },
+    {
+      "case": "group_full_solid",
+      "status": "passed_media",
+      "sha256": "42147014de2951d0695bb2652c233b16110d51853e88e4886ad850b095f090f5",
+      "bytes": 553360,
+      "dimensions": [
+        960,
+        540
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "4348a06af1e7c256dc242d321147ecd0a0d4a50383f2405ec7e03a9e8c8733e9"
+    },
+    {
+      "case": "group_full_mosaic",
+      "status": "passed_media",
+      "sha256": "071966a4a089446d6d6f083b04349e96dc3594b88e86bb311ee4cf99aedb789f",
+      "bytes": 480096,
+      "dimensions": [
+        960,
+        540
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "17a223e51f5e88077235a4e22e26385168564b719dff0150caf6809f788c77bc"
+    },
+    {
+      "case": "group_full_blur",
+      "status": "passed_media",
+      "sha256": "8a7812ba18dc7e5eb6d636242fe8871c749b7e660d1aa23c662cf12b60c256f5",
+      "bytes": 591792,
+      "dimensions": [
+        960,
+        540
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "01e4a2abf104f140e01f1ca71f7f1debf380072f0eff0fc1d22b735d03edc043"
+    },
+    {
+      "case": "group_full_gradient",
+      "status": "passed_media",
+      "sha256": "7dfc83ebb805820441b28bf38c19306cc82dc51431f7f092ca370baadf5c9e3a",
+      "bytes": 521744,
+      "dimensions": [
+        960,
+        540
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "f63e7e682096e0e49e7bca3bf5d2812aa0e996d33ab24c5f63ec59b72eb68344"
+    },
+    {
+      "case": "group_first_solid",
+      "status": "passed_media",
+      "sha256": "9d48bd25d98211c727603e9fdcfa6891fa5c2fa93344eeb53d7a56814b177b0c",
+      "bytes": 540112,
+      "dimensions": [
+        960,
+        540
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "86d7bbca297a28927128f813ce15176c8bb517bc36264327600c0d7c5602fec8"
+    },
+    {
+      "case": "group_4k_full",
+      "status": "passed_media",
+      "sha256": "9c1c76d0f9243215757c2908af4c356ba6088706fb89cdb6dd6bf73f9a3d7c28",
+      "bytes": 601008,
+      "dimensions": [
+        960,
+        540
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "f8fa99dac7e2161d31f669908028ed0f4c261ba8703cd11b9005775d84fcbdfe"
+    },
+    {
+      "case": "duo_full_solid",
+      "status": "passed_media",
+      "sha256": "24ad2d6bc04a02e1caeb29cbdb688cde6c04ffcb309baa5227f63dbba73ced08",
+      "bytes": 183040,
+      "dimensions": [
+        960,
+        540
+      ],
+      "decoded_frames": 48,
+      "expected_frames": 48,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "bb58e1e9972533a59aa9edf737a30f9ab1355e74c23a3acef2b076fb8d03781c"
+    },
+    {
+      "case": "solo_face_sticker",
+      "status": "passed_media",
+      "sha256": "47db939923f87d3b804c3e61916764d04264d6107660dde8c51e0f302702b472",
+      "bytes": 272115,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "b519a5b25cdf14802b8e8836b98b2a2374c74738766f6430928556944560c669"
+    },
+    {
+      "case": "solo_face_mosaic",
+      "status": "passed_media",
+      "sha256": "ff84819a07c09567848252ec84a1f0b5e99e84706fd11f9d17a75e0f7f5540c0",
+      "bytes": 207891,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "92d8086591bc6e03279aace20e737f1c4b3dc90f86ecda5f09596d4e5e95730e"
+    },
+    {
+      "case": "solo_face_blur",
+      "status": "passed_media",
+      "sha256": "27b5468222182a5ff3f81c47899330ab272a6cbb9b995baf8048596906a2a885",
+      "bytes": 209075,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "a2a0f3d96f74c8db9bb508442615584772a3f2d1cf6cfd2e00a8a6ae5bd257fa"
+    },
+    {
+      "case": "solo_face_solid",
+      "status": "passed_media",
+      "sha256": "59bc8263cc9852c7d4fbd976a8f50fd5c9b1bdeafe2adb9c5453b552e69c814e",
+      "bytes": 216275,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "957611b210536d4fa2d3e5960cc51e99d56cd58d1945623f37366e8503a02108"
+    },
+    {
+      "case": "solo_face_gradient",
+      "status": "passed_media",
+      "sha256": "937324bf484c2bb64bd4c29f3d09d542da3a7b09c6a4849d134a46103d86ac92",
+      "bytes": 214451,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "452f896a758717481a2df0bc5ba50b2d1312d47beb52260cb954fa44db6448c7"
+    },
+    {
+      "case": "solo_face_balanced",
+      "status": "passed_media",
+      "sha256": "63a2fe0673def22843daaae6d845bf54bc0e1a027c4576d75b6fbef5e340d185",
+      "bytes": 274899,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "715bd529e773d885124fadc8ccf96eede59480b50e49165318a46f4acb4631af"
+    },
+    {
+      "case": "solo_face_speed",
+      "status": "passed_media",
+      "sha256": "cc62c105b15e2bb98721023f51489fe0fca0969afdb3a1b128fe923e4f6da47f",
+      "bytes": 274899,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "bb58975b27e945453977da98bf4500636edfeca7c6ff254f23849d2a5247b5fb"
+    },
+    {
+      "case": "solo_nonzero_trim",
+      "status": "passed_media",
+      "sha256": "b52f261d669c0f42db7e16a4e12210a5afc6930f5418367d69265b901f28937e",
+      "bytes": 264659,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 2.220446049250313e-16,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "f73ea796b6e35b71a73e65f32f3ddacafce518b4c466fb6ef8488e05122ab4a4"
+    },
+    {
+      "case": "solo_4k_sticker",
+      "status": "passed_media",
+      "sha256": "3fbe023e368ea66404b4756a589ac590db8d3dbe8c736cdb0729907938be66ba",
+      "bytes": 297171,
+      "dimensions": [
+        540,
+        1024
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "bece4565fbfa804daea9324e44e508f4d981d7f923ac037a76ec45e414912170"
+    },
+    {
+      "case": "group_full_balanced",
+      "status": "passed_media",
+      "sha256": "e1500cb8e47ff6fd9da7631e62e136a38cf353ef59bbf71e7cc745f9dcd2079a",
+      "bytes": 545600,
+      "dimensions": [
+        960,
+        540
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "62b13b5667bc653631901a91f70be221efbb473b772fca2d41adfab48801c295"
+    },
+    {
+      "case": "group_full_speed",
+      "status": "passed_media",
+      "sha256": "bdafa84bad9d74000cbc2b16606eea49eec1acc676de19c47f234e62ff1d139f",
+      "bytes": 545600,
+      "dimensions": [
+        960,
+        540
+      ],
+      "decoded_frames": 40,
+      "expected_frames": 40,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "afb62e0c3fa492e36cb6b2359de2df13728ed143348c838b5c3dae3fd8e18f53"
+    },
+    {
+      "case": "group_full_length_follow",
+      "status": "passed_media",
+      "sha256": "bf50522516659181aaa47b065dea432a9e901ec150c9a76f6192a844615ce79a",
+      "bytes": 9259351,
+      "dimensions": [
+        720,
+        1280
+      ],
+      "decoded_frames": 581,
+      "expected_frames": 581,
+      "max_pts_delta_seconds": 0.0,
+      "audio_streams": 0,
+      "audio_waveform": null,
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "f903ffbd76db4d50aaf94742c54300707d1612b1d3f480593a11eee75197664e"
+    },
+    {
+      "case": "retry_custom_sticker",
+      "status": "passed_media",
+      "sha256": "edcccfc11c803b3c1ba55c1c01b07c7b9594bdacf175f97e3a3cef775c7ba217",
+      "bytes": 346954,
+      "dimensions": [
+        674,
+        1280
+      ],
+      "decoded_frames": 48,
+      "expected_frames": 48,
+      "max_pts_delta_seconds": 2.220446049250313e-16,
+      "audio_streams": 1,
+      "audio_waveform": {
+        "correlation": 1.0,
+        "lag_ms": 0.0,
+        "reference_rms": 0.0,
+        "output_rms": 0.0,
+        "gain_ratio": 1.0,
+        "alignment_observable": false
+      },
+      "faststart": {
+        "atoms": [
+          "ftyp",
+          "moov",
+          "free",
+          "mdat"
+        ],
+        "moov_before_mdat": true
+      },
+      "black_frames": 0,
+      "green_frames": 0,
+      "privacy_probes": [],
+      "topology_candidates": [],
+      "topology_scope": "FACE_ONLY solid interior holes; not semantic face coverage",
+      "input_binding_sha256": "123382cede8bda5c6c83804a848a40f09099a6cd5adf97a74d78a731e455b77a"
+    }
+  ]
+}

@@ -1,0 +1,325 @@
+{
+  "platform": "android",
+  "cohorts": [
+    {
+      "run_id": "shared_geometry_first_focused13",
+      "platform": "android",
+      "cases": 13,
+      "source_commit": "e3abee02652a99eb803ff5e933f3a446159c99ba",
+      "source_fingerprint": "942cace8ed3c0dfb9e969ee1f64459e029ab3cf4a399d80ed60b17ef4ab452ad",
+      "raw_binary_sha256": "b3768924b18ac21034bb13ec854e6836b8098db9d3aa06496cd55f6a0f57ae7c",
+      "case_results": {
+        "group_4k_body_face_union": "output_created",
+        "solo_4k_body_face_union": "output_created",
+        "solo_4k_raised_arm_sticker": "output_created",
+        "solo_4k_raised_arm_solid": "output_created",
+        "solo_4k_raised_arm_body": "output_created",
+        "group_hd_overlap_face": "output_created",
+        "group_hd_overlap_body": "output_created",
+        "group_4k_face_solid": "output_created",
+        "group_4k_body_solid": "output_created",
+        "group_4k_tail_face": "output_created",
+        "solo_4k_custom_gallery_probe": "output_created",
+        "solo_4k_cancel_probe": "cancelled_cleanly",
+        "solo_4k_immediate_retry_probe": "output_created"
+      },
+      "audit_statuses": {
+        "media": [
+          {
+            "case": "group_4k_body_face_union",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_body_face_union",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_raised_arm_sticker",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_raised_arm_solid",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_raised_arm_body",
+            "status": "passed_media"
+          },
+          {
+            "case": "group_hd_overlap_face",
+            "status": "passed_media"
+          },
+          {
+            "case": "group_hd_overlap_body",
+            "status": "passed_media"
+          },
+          {
+            "case": "group_4k_face_solid",
+            "status": "passed_media"
+          },
+          {
+            "case": "group_4k_body_solid",
+            "status": "passed_media"
+          },
+          {
+            "case": "group_4k_tail_face",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_custom_gallery_probe",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_cancel_probe",
+            "status": "passed_cancellation"
+          },
+          {
+            "case": "solo_4k_immediate_retry_probe",
+            "status": "passed_media"
+          }
+        ],
+        "face": [
+          {
+            "case": "group_4k_body_face_union",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_body_face_union",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_raised_arm_sticker",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_raised_arm_solid",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_raised_arm_body",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "group_hd_overlap_face",
+            "status": "failed_face_cores"
+          },
+          {
+            "case": "group_hd_overlap_body",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "group_4k_face_solid",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "group_4k_body_solid",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "group_4k_tail_face",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_custom_gallery_probe",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_immediate_retry_probe",
+            "status": "passed_all_detected_face_cores"
+          }
+        ],
+        "preview": [
+          {
+            "case": "group_4k_body_face_union",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_body_face_union",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_raised_arm_sticker",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_raised_arm_solid",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_raised_arm_body",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "group_hd_overlap_face",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "group_hd_overlap_body",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "group_4k_face_solid",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "group_4k_body_solid",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "group_4k_tail_face",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_custom_gallery_probe",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_cancel_probe",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_immediate_retry_probe",
+            "status": "passed_preview_time"
+          }
+        ],
+        "gallery": [
+          {
+            "case": "solo_4k_custom_gallery_probe",
+            "status": "passed_saved_original_bytes"
+          }
+        ],
+        "lifecycle": []
+      },
+      "known_face_probes": 16,
+      "known_face_probe_status": "passed",
+      "scope": "Completed stage only. Does not establish final 62-case acceptance. Raw automatic failures are retained for separate manual review."
+    },
+    {
+      "run_id": "shared_geometry_cold_focused13",
+      "platform": "android",
+      "cases": 8,
+      "source_commit": "e3abee02652a99eb803ff5e933f3a446159c99ba",
+      "source_fingerprint": "942cace8ed3c0dfb9e969ee1f64459e029ab3cf4a399d80ed60b17ef4ab452ad",
+      "raw_binary_sha256": "b3768924b18ac21034bb13ec854e6836b8098db9d3aa06496cd55f6a0f57ae7c",
+      "case_results": {
+        "solo_4k_raised_arm_trim_556": "output_created",
+        "solo_4k_raised_arm_trim_557": "output_created",
+        "solo_4k_raised_arm_trim_558": "output_created",
+        "solo_4k_raised_arm_trim_559": "output_created",
+        "solo_4k_raised_arm_trim_560": "output_created",
+        "solo_4k_raised_arm_trim_561": "output_created",
+        "solo_4k_raised_arm_trim_562": "output_created",
+        "solo_4k_raised_arm_trim_563": "output_created"
+      },
+      "audit_statuses": {
+        "media": [
+          {
+            "case": "solo_4k_raised_arm_trim_556",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_557",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_558",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_559",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_560",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_561",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_562",
+            "status": "passed_media"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_563",
+            "status": "passed_media"
+          }
+        ],
+        "face": [
+          {
+            "case": "solo_4k_raised_arm_trim_556",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_557",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_558",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_559",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_560",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_561",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_562",
+            "status": "passed_all_detected_face_cores"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_563",
+            "status": "passed_all_detected_face_cores"
+          }
+        ],
+        "preview": [
+          {
+            "case": "solo_4k_raised_arm_trim_556",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_557",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_558",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_559",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_560",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_561",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_562",
+            "status": "passed_preview_time"
+          },
+          {
+            "case": "solo_4k_raised_arm_trim_563",
+            "status": "passed_preview_time"
+          }
+        ],
+        "gallery": [],
+        "lifecycle": []
+      },
+      "known_face_probes": 16,
+      "known_face_probe_status": "passed",
+      "scope": "Completed stage only. Does not establish final 62-case acceptance. Raw automatic failures are retained for separate manual review."
+    }
+  ]
+}

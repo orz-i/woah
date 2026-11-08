@@ -1,0 +1,35 @@
+{
+  "run_id": "hero295_fixed_probe_legacy22",
+  "scope": "Manual first/middle/last decoded movie and every native source/protected preview; complements full decode, source-face cores and known-point probes.",
+  "cases": [
+    {
+      "case": "group_full_length_follow",
+      "audit_origin": "matrix",
+      "movie_sha256": "f93bb364c73aa23152552a974b84a99467e92c77b1e34338e4de9964585ca700",
+      "movie_frame_indices": [
+        0,
+        165,
+        330
+      ],
+      "previews": [
+        {
+          "requested_ms": 0,
+          "source_sha256": "2fb0109031c4b4586ce97524f8bade9c9970067dee3bf87e3e14c329c213965c",
+          "protected_sha256": "5b019cdbb2c8cf58b66b1d9aac61fecae7ffa1cbf6fb37b0ffe18f5dfe7df8c7"
+        },
+        {
+          "requested_ms": 6600,
+          "source_sha256": "54e8a7cabd37e16e1fe1b7f958995eb42ada26ca23381cc94a3e1b533cab90e5",
+          "protected_sha256": "a2da27208ad0a2a1a0a0bc809963f9a596728d32dc1be21dfe6ef0f1c9d01b8b"
+        },
+        {
+          "requested_ms": 13200,
+          "source_sha256": "e49913e673153000b6c716e8fa7242fe4b8e9d14150f20d8d6dcbdfc16af8218",
+          "protected_sha256": "64c7ce3ca7515d0a0af64b38e193becfe45c5b06a36b875aa433acb2106efc48"
+        }
+      ],
+      "board": "group_full_length_follow.jpg",
+      "board_sha256": "d539c2ac51908dcecda5782cdaeba115f8664ce0a356d463d19cd3e15cb52e20"
+    }
+  ]
+}

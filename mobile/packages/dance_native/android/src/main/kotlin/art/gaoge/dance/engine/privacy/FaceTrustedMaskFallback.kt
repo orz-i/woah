@@ -19,37 +19,7 @@ internal data class FacePrivacyTrustedGeometry(
  */
 internal object FaceTrustedMaskFallback {
     fun resolve(
-        mask: NativeMask?,
-        currentPersonBbox: FloatRect,
-        trusted: FacePrivacyTrustedGeometry,
-        radiusExpansion: Float
-    ): FacePrivacyEllipse? {
-        if (mask == null || currentPersonBbox.width <= 1f || currentPersonBbox.height <= 1f) return null
-        if (trusted.radiusX <= 0f || trusted.radiusY <= 0f) return null
-
-        val translation = PersonBboxMotionEstimator.estimate(
-            previous = trusted.trustedPersonBbox,
-            current = currentPersonBbox
-        )
-        val radiusX = (trusted.radiusX * radiusExpansion).coerceAtLeast(1f)
-        val radiusY = (trusted.radiusY * radiusExpansion).coerceAtLeast(1f)
-        val seedCenterX = trusted.centerX + translation.dx
-        val seedCenterY = trusted.centerY + translation.dy
-        val currentHead = BodyMaskFaceHeadEstimator.estimate(
-            mask = mask,
-            personBbox = currentPersonBbox,
-            seedCenterX = seedCenterX,
-            seedCenterY = seedCenterY,
-            seedRadiusX = radiusX,
-            seedRadiusY = radiusY
-        ) ?: return null
-
-        return FacePrivacyEllipse(
-            centerX = currentHead.x,
-            centerY = currentHead.y,
-            radiusX = radiusX,
-            radiusY = radiusY,
-            source = FacePrivacyRegionSource.YOLO_HEAD_FALLBACK
-        )
-    }
+        mask: NativeMask?, currentPersonBbox: FloatRect,
+        trusted: FacePrivacyTrustedGeometry, radiusExpansion: Float
+    ): FacePrivacyEllipse? = FrameKernelFaceGeometry.trusted(mask, currentPersonBbox, trusted, radiusExpansion)
 }

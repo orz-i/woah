@@ -1,0 +1,109 @@
+{
+  "run_id": "shared_geometry_cold_focused13",
+  "cases": [
+    {
+      "case": "solo_4k_raised_arm_trim_556",
+      "input_binding_sha256": "db01eff6817a9485f704cb8481d02218418c2a7ec6d8d8f9cb6e95e598e47324",
+      "decoded_frames": 1,
+      "tested_visible_face_cores": 0,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "microsecond_quantization_matches": [],
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_557",
+      "input_binding_sha256": "64b0eda840e2315b89e3ebd1114e1339ae418b67a03d0fad543536b990fc899b",
+      "decoded_frames": 1,
+      "tested_visible_face_cores": 0,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "microsecond_quantization_matches": [],
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_558",
+      "input_binding_sha256": "5daa433121bfddb3d4c2b5ebc233a98cfda598075f8f6fdc4e025d1a1de4328c",
+      "decoded_frames": 1,
+      "tested_visible_face_cores": 0,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "microsecond_quantization_matches": [],
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_559",
+      "input_binding_sha256": "52d26b9018e385c6c26ca6316c6b2f0632362dcf9de66af5af0e74942486b5ac",
+      "decoded_frames": 1,
+      "tested_visible_face_cores": 0,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "microsecond_quantization_matches": [],
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_560",
+      "input_binding_sha256": "aeb1cd7b2255190f71c416bba9b75b49c6a32b6b0107e8415fef76008ec98a87",
+      "decoded_frames": 1,
+      "tested_visible_face_cores": 0,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "microsecond_quantization_matches": [],
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_561",
+      "input_binding_sha256": "ce2f16fbfbc7bb8f0c8f0c603fd763de1a20a8b6f011d8584bb8d9157402c4a8",
+      "decoded_frames": 1,
+      "tested_visible_face_cores": 1,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "microsecond_quantization_matches": [],
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_562",
+      "input_binding_sha256": "9cb1a62b314406c59c9f8369e3f44d0254bffeeba1d49da53fc41d816fda87d8",
+      "decoded_frames": 1,
+      "tested_visible_face_cores": 1,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "microsecond_quantization_matches": [],
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    },
+    {
+      "case": "solo_4k_raised_arm_trim_563",
+      "input_binding_sha256": "b92b32bdd25c47a4700a6111c12242137a280016929e2d7863fd73afb3b641c3",
+      "decoded_frames": 1,
+      "tested_visible_face_cores": 1,
+      "outside_or_tiny_cores": 0,
+      "uncovered_face_cores": [],
+      "follow_hero_id": null,
+      "microsecond_quantization_matches": [],
+      "status": "passed_all_detected_face_cores",
+      "coverage_measure": "decoded_opaque_red_pixels",
+      "scope": "Source-only macOS Vision observations; non-solid modes check recorded face protection geometry separately from visual effect review; undetected faces require separate visual/known-point checks."
+    }
+  ]
+}

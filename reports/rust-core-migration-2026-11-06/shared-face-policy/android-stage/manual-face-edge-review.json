@@ -1,0 +1,62 @@
+{
+  "run_id": "shared_geometry_first_focused13",
+  "raw_statuses_unchanged": true,
+  "scope": "Source/actual exported343frame/exact13720ms native-preview enlarged board inspected. Separate semantic decision, no numeric threshold or raw result changed.",
+  "board": "geometry-android-343-detail.jpg",
+  "board_sha256": "b9a80bc8351bf2e7c82779c9873ca6132b8d251b69757a645f5605c1a0f61c46",
+  "decisions": [
+    {
+      "case": "group_hd_overlap_face",
+      "kind": "export",
+      "raw_status": "failed_face_cores",
+      "raw_alerts": [
+        {
+          "output_frame": 0,
+          "source_frame": 343,
+          "source_pts_us": 13720000,
+          "source_bbox": [
+            1269.9224853515625,
+            359.35417234897614,
+            1337.5244092941284,
+            426.956090927124
+          ],
+          "output_core": [
+            1281,
+            370,
+            1327,
+            416
+          ],
+          "coverage_fraction": 0.8478260869565217
+        }
+      ],
+      "source_sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+      "movie_sha256": "e7d39d41b5ac4695b2206010a6d8052d34bbbff729ce130aa591932b42e80871",
+      "manual_decision": "eyes_nose_mouth_covered_bbox_edge_includes_hair_neck"
+    },
+    {
+      "case": "group_hd_overlap_face",
+      "kind": "native_preview",
+      "requested_ms": 13720,
+      "raw_alerts": [
+        {
+          "source_bbox": [
+            1269.9224853515625,
+            359.35417234897614,
+            1337.5244092941284,
+            426.956090927124
+          ],
+          "preview_core": [
+            854,
+            247,
+            884,
+            277
+          ],
+          "red_fraction": 0.8655555555555555
+        }
+      ],
+      "control_sha256": "ecb00833d4f453ec09d99ac4d7744222237b8deda74e61e740236899b0d0231d",
+      "protected_sha256": "7600ecd66399de58b4e8035f545a36ea5222b69b3a8be3539be9be5a05cba5bf",
+      "manual_decision": "eyes_nose_mouth_covered_bbox_edge_includes_hair_neck"
+    }
+  ]
+}

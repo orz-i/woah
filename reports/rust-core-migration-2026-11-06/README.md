@@ -1,7 +1,8 @@
 # Rust 共享核心迁移：阶段验证
 
-这是分阶段验证记录，尚非两端 62 项最终验收。固定矩阵为
-[`testdata/privacy/matrix.json`](../../testdata/privacy/matrix.json)，沿用原来的八份素材及模型 SHA。
+Android 真机与 iOS 模拟器已使用同一批八份素材分别完成 62 项。结果、原尺寸 4K 验证、检测回放和证据范围见[双端完整回归报告](final-acceptance-v9/README.md)。
+
+下文记录各阶段当时的范围和待办；后续实现见[共享人脸策略阶段](shared-face-policy/README.md)。固定用例见[隐私回归矩阵](../../testdata/privacy/matrix.json)。
 
 ## 独立核心与工具链
 

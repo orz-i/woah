@@ -1,0 +1,128 @@
+{
+  "run_id": "shared_policy_final_v2_legacy22",
+  "reviewed_utc": "2026-11-07T03:21:25.230317+00:00",
+  "review_index_sha256": "877d49214b5eb59cf18a98855036f342d7808396944811314c67e3f718c68788",
+  "scope": "All23 actual first/middle/last movie boards viewed, all native source/protected previews (including6600/11800ms), plus lifecycle48-frame custom retry. Does not establish remaining40 final cases.",
+  "cases": [
+    {
+      "case": "group_all_faces",
+      "board_sha256": "73edc4f628964484248540974e60f840b3ba4e5bfa4ffb043b6c9ee4f11c9d5d",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_face_sticker_follow",
+      "board_sha256": "9ffa374752ed79273f1e7e059defae03d90dd2c77bf11dcb003cfb2603a7e735",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_face_solid_follow",
+      "board_sha256": "8a980b95e7d8bbe328f9a13cbb4e13e46e8a63cd8b6529de06cd29de0efb982f",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_full_solid",
+      "board_sha256": "f57a7338d8c975fdc9fb830f1de46da57b709773f98e9e329b8b35374d28f30e",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_full_mosaic",
+      "board_sha256": "7e6ea49ea3860bf87c570fec38fad55ea304e026ab36e7cc6ca322a68a6f330b",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_full_blur",
+      "board_sha256": "556ab097e3fd126e3cc33dd6ef29f5db066a007176d2553c9a8e9e9b928cca0a",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_full_gradient",
+      "board_sha256": "30e45a486205d6488ddc337008e8e6fe45b2887f7070e0527766adc1e89278a9",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_first_solid",
+      "board_sha256": "9d8afac750d5b09d7605993bd4afa67c7113af57e763a092cf94036179ad7745",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_4k_full",
+      "board_sha256": "64a87e20286bacdfc0a7381ded1e1faeb7529b180a58f3138e7c8c56babecfde",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "duo_full_solid",
+      "board_sha256": "7bda13f7abac7c41e199c1cb45f0a4935f63e7a3b3114d20d75252c84c1e8edf",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_sticker",
+      "board_sha256": "895763470a68fbbd93a36b8279438e3226236c1b60f853b4c33528b3ffb64dec",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_mosaic",
+      "board_sha256": "b157d5f71c76f10c1c7639a9c4f84ef6b3b754f6bb24f60318b166ec73605833",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_blur",
+      "board_sha256": "38ce17790530dbe2453c380b2e8da24e1c50d7df56c4268044f344775dafdc41",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_solid",
+      "board_sha256": "cf12a83e68ba04312a6444bad4ae08ba16e537822bf1b51b4d8e6206b7e0d92e",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_gradient",
+      "board_sha256": "13743310c751b9a24459e029e13dd94b3b8ed2955cbd3c02b81cf28dacfb789d",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_balanced",
+      "board_sha256": "86e5b2b52c3f40b45f717983b27ac4bace5d5c27275c4c12dae41c2d0c6359cf",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_face_speed",
+      "board_sha256": "34be9f1283f0fbdcec68c3cd0ee76d91f3d524bda165b5145071088934a9b034",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_nonzero_trim",
+      "board_sha256": "5b40d803a1f465c294c688737d12135dd6969d7ad64776e7129fbe9efbc8b8c5",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "solo_4k_sticker",
+      "board_sha256": "7040e59fb112fbf5d917c0e656bcc16bb47f633103de27c48e0455c2a3aa02bb",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_full_balanced",
+      "board_sha256": "2ba9e50c60035af3fbb8fdecbee26a86483a8939baa81ae4830a9f5dacd4dad7",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_full_speed",
+      "board_sha256": "7b2bf02259ff84f13ba8f8ddb157acea0d5b24c42a1fa1d055b62a8733ee5fa7",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "group_full_length_follow",
+      "board_sha256": "31ed476ba98adccf6e60c4400257beb9d15d1cffcd223da9ce7b6a63779da5ac",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    },
+    {
+      "case": "retry_custom_sticker",
+      "board_sha256": "3d8ea9223b96f92a9341903997ff8b982511c17f19c26e9b773f82d7b13d6303",
+      "decision": "reviewed_no_new_privacy_omission_at_displayed_samples"
+    }
+  ],
+  "observations": [
+    "Hero6 clear and adjacent blonde protected in native6600/11800ms previews. Actual source0 hero face is occluded by forearm; conservative anonymous regions overlap that arm.",
+    "Selected-root0 source39 retains previously documented Unknown protection.",
+    "All six effects and quality/balanced/speed displayed samples inspected; no encoded pixel identity across platforms is claimed."
+  ]
+}

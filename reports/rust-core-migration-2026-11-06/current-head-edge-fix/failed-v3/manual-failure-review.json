@@ -1,0 +1,35 @@
+{
+  "status": "confirmed_privacy_failure_not_accepted",
+  "at_utc": "2026-11-07T06:42:04.903758+00:00",
+  "compiled_source_commit": "81082a70b4d1e332dff15387dc1b77f88d4549d0",
+  "index_sha256": "89f9be5b00001859facb44ea4185f33efd07ce1b759359c83f5d070fc618a0bd",
+  "scope": "All3 before/after encoded-movie comparison pages were visually inspected. Their regenerated page bytes match exactly. Both corrected per-frame native-preview crops were also visually inspected. Only this filtered diagnosis was run on iOS; no complete62 acceptance.",
+  "source_frames": [
+    185,
+    186,
+    188,
+    189,
+    190,
+    193,
+    194,
+    201,
+    202,
+    203,
+    204,
+    205
+  ],
+  "movie_decision": "identifying_nose_or_mouth_still_visible_at_previously_confirmed_frames",
+  "native_preview_decisions": [
+    {
+      "requested_ms": 7400,
+      "decision": "identifying_nose_or_mouth_still_visible",
+      "comparison_sha256": "dcb66763d4fb5f5bb94238dab75f67305fecc2c9c239622833039c0811821a1e"
+    },
+    {
+      "requested_ms": 8120,
+      "decision": "identifying_nose_or_mouth_still_visible",
+      "comparison_sha256": "1405858e83ef9f5d3045ec4827cf295d4ddbfd675926114496c2a007d9d402b5"
+    }
+  ],
+  "method_correction": "The old central70-percent independent face-box metric passed at99.8 percent while real identifying features at its boundary remained visible. New tests require100 percent of the full independently detected face box. The initial fixed fractional8120ms preview crop missed the moving target; this record uses the corrected per-frame original bbox mapping."
+}
