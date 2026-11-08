@@ -75,17 +75,21 @@ fn current_profile_support_is_covered_on_both_sides_and_seed_is_retained() {
     }
 }
 #[test]
-fn isolated_mask_row_cannot_enlarge_a_detected_region() {
+fn isolated_mask_row_cannot_enlarge_beyond_the_sampling_margin() {
     let mut pixels = vec![0; 1024];
     pixels[10 * 32 + 10..10 * 32 + 20].fill(255);
     assert_eq!(
         current_face_region(Some(&pixels), spec(), seed()),
-        Some(seed())
+        current_face_region(Some(&[0; 1024]), spec(), seed())
     );
     assert_eq!(current_face_region(None, spec(), seed()), Some(seed()));
     assert_eq!(
         current_face_region(Some(&[0; 1024]), spec(), seed()),
-        Some(seed())
+        Some(Ellipse {
+            radius_x: 16.0,
+            radius_y: 18.0,
+            ..seed()
+        })
     );
     assert_eq!(
         current_face_region(Some(&pixels[..1023]), spec(), seed()),
@@ -96,7 +100,7 @@ fn isolated_mask_row_cannot_enlarge_a_detected_region() {
 fn broad_body_or_distant_support_cannot_become_a_head_envelope() {
     assert_eq!(
         current_face_region(Some(&[255; 1024]), spec(), seed()),
-        Some(seed())
+        current_face_region(Some(&[0; 1024]), spec(), seed())
     );
     let mut pixels = vec![0; 1024];
     for y in 7..13 {
@@ -104,8 +108,28 @@ fn broad_body_or_distant_support_cannot_become_a_head_envelope() {
     }
     assert_eq!(
         current_face_region(Some(&pixels), spec(), seed()),
-        Some(seed())
+        current_face_region(Some(&[0; 1024]), spec(), seed())
     );
+}
+#[test]
+fn sampling_margin_protects_chin_without_inventing_a_mask_head() {
+    let output = current_face_region(Some(&[0; 1024]), spec(), seed()).unwrap();
+    assert_eq!(output.center_x, seed().center_x);
+    assert_eq!(output.center_y, seed().center_y);
+    assert!(!contains(seed(), 56.0, 57.0));
+    assert!(contains(output, 56.0, 57.0));
+    for n in 0..360 {
+        let angle = n as f32 * std::f32::consts::TAU / 360.0;
+        assert!(contains(
+            output,
+            seed().center_x + seed().radius_x * angle.cos(),
+            seed().center_y + seed().radius_y * angle.sin()
+        ));
+    }
+    let mut invalid = spec();
+    invalid.transform.scale = f32::MIN_POSITIVE;
+    invalid.transform.input_size = 65535;
+    assert!(current_face_region(Some(&[0; 1024]), invalid, seed()).is_none());
 }
 #[test]
 fn abi_rejects_invalid_mask_without_writing_output() {

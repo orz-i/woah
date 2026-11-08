@@ -25,6 +25,16 @@ class CurrentFaceCoverageNativeTest {
         assertEquals(seed.source,result.source)
         assertEquals(seed,FrameKernelFaceGeometry.coverCurrent(null,FloatRect(80f,60f,560f,620f),seed))
     }
+    @Test fun samplingMarginCoversTheChinWhenTheCurrentMaskHasNoHeadRun() {
+        val mask=NativeMask(160,160,ByteBuffer.allocateDirect(160*160),640,640,
+            mapper=ModelCoordinateMapper(640,640))
+        val seed=FacePrivacyEllipse(280f,200f,60f,70f,FacePrivacyRegionSource.DETECTED_FACE)
+        val result=FrameKernelFaceGeometry.coverCurrent(mask,FloatRect(80f,60f,560f,620f),seed)
+        assertEquals(64f,result.radiusX)
+        assertEquals(74f,result.radiusY)
+        assertTrue(result.centerY+result.radiusY>=273f)
+        assertEquals(seed.source,result.source)
+    }
     @Test fun malformedCurrentMaskCannotProduceARenderRegion() {
         assertFailsWith<IllegalArgumentException> {
             FrameKernel.currentFaceRegionNative(byteArrayOf(1,2,3),160,160,

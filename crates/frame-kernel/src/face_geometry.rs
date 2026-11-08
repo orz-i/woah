@@ -96,10 +96,23 @@ pub fn current_face_region(
         right: region.center_x + half_width,
         bottom: region.center_y + half_height,
     };
-    let Some(support) = observed_head_support(pixels, spec, bounds) else {
-        return Some(region);
+    let covered = observed_head_support(pixels, spec, bounds)
+        .map_or(region, |support| cover_rect(region, support));
+    // A current detector ellipse still needs a sampling margin when the mask
+    // cannot establish a coherent head run. Otherwise a profile's lower chin
+    // can sit exactly at the geometric edge and remain visible after rendering.
+    // Apply this AFTER the envelope so every previously covered point remains.
+    let cell_x = spec.transform.input_size as f32 / (spec.width as f32 * spec.transform.scale);
+    let cell_y = spec.transform.input_size as f32 / (spec.height as f32 * spec.transform.scale);
+    if !cell_x.is_finite() || !cell_y.is_finite() || cell_x <= 0.0 || cell_y <= 0.0 {
+        return None;
+    }
+    let output = Ellipse {
+        radius_x: covered.radius_x + cell_x,
+        radius_y: covered.radius_y + cell_y,
+        ..covered
     };
-    Some(cover_rect(region, support))
+    valid_seed(output).then_some(output)
 }
 
 fn cover_rect(region: Ellipse, bounds: Rect) -> Ellipse {

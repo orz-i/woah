@@ -234,3 +234,8 @@ let profileOutput=profileRegions[0]!
 precondition(profileOutput.source == .detectedFace)
 precondition(profileContains(SIMD4(profileOutput.centerX,profileOutput.centerY,profileOutput.radiusX,profileOutput.radiusY),400,200))
 print("CURRENT_FACE_COVERAGE_PRODUCTION_SYNTHETIC=PASS current_profile_and_original_extent")
+let sparseCurrent=person(SIMD4(80,60,560,620),[UInt8](repeating:0,count:25600))
+let chinMargin=IOSFrameKernelFaceGeometry.coverCurrent(sparseCurrent,region:profileSeed,preprocess:ownershipPre)!
+precondition(chinMargin == SIMD4<Float>(280,200,64,74))
+precondition(!profileContains(profileSeed,280,273) && profileContains(chinMargin,280,273))
+print("CURRENT_FACE_SAMPLING_MARGIN_NATIVE=PASS no_coherent_head_run_chin_covered")

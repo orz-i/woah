@@ -14,8 +14,10 @@ The core searches the inferred face-height band for coherent head-sized mask run
 near the existing ellipse. Broad body runs, distant support and isolated rows do
 not establish a head envelope. It adds one prototype cell around supported bounds
 to cover raster quantization, then constructs an ellipse containing both the
-complete original ellipse and the visible-support rectangle. If the original
-ellipse already contains the support, its bytes are retained. No current mask
+complete original ellipse and the visible-support rectangle. After that envelope,
+one source-space prototype cell is added to both radii, including when a supplied
+current mask cannot establish a head run. This sampling margin protects a chin
+at the geometric edge and retains the entire previous envelope. No current mask
 retains the original region; malformed supplied evidence fails without writing.
 
 This is additive render coverage, not an ownership score, confidence threshold,
