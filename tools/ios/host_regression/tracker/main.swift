@@ -358,9 +358,12 @@ _=try movingResolver.resolve(image:image,persons:[widePerson],faceOnlyIds:[0],pr
 movingLocator.faces=[faceBox(42,58)]
 let moved=try movingResolver.resolve(image:image,persons:[movedPerson],faceOnlyIds:[0],preprocess:smallPrep,timestampUs:40_000)[0]!
 let currentFace=IOSFacePrivacyGeometry.detectedEllipse(movingLocator.faces[0])!
-test(abs(moved.centerX-currentFace.centerX)<0.001 && abs(moved.centerY-currentFace.centerY)<0.001,
+let currentCoverage=IOSFrameKernelFaceGeometry.coverCurrent(movedPerson.detection,
+  region:SIMD4(currentFace.centerX,currentFace.centerY,currentFace.radiusX,currentFace.radiusY),
+  preprocess:smallPrep)!
+test(abs(moved.centerX-currentCoverage.x)<0.001 && abs(moved.centerY-currentCoverage.y)<0.001,
      "current detected face was delayed by the old fallback position")
-test(moved.radiusX>=currentFace.radiusX && moved.radiusY>=currentFace.radiusY,
+test(moved.radiusX>=currentCoverage.z && moved.radiusY>=currentCoverage.w,
      "smoothing shrank current detected face coverage")
 let raisedArmBody=box(125.8871,403.623,1461.6781,3440.3723)
 let recoveryROI=IOSFacePrivacyGeometry.upperBodyFaceSearchRegion(raisedArmBody)
