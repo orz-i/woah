@@ -70,9 +70,11 @@ Repeat `--approved-run` for each approved producer. The audit checks the
 observation contract and binary, reconstructs the approved payload hashes, and
 verifies every replay event within the completed case run's native PID and UTC
 window. It counts fresh inference including conflict fallback separately from
-replay and rejected reads. The counts apply only to the instrumented detectors;
-host checks, uninstrumented inference paths and calls outside that window are
-outside the measurement.
+replay and rejected reads. A completed cohort can have zero fresh calls if every
+instrumented input has an approved observation. Keep the separate cold/hot check
+for the inference fallback; do not force cache misses in each full cohort.
+Android Bitmap analysis, other uninstrumented inference paths and calls outside
+the run window are outside this measurement.
 
 ## Regression evidence
 
