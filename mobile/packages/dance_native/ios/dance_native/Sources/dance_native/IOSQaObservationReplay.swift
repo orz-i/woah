@@ -124,4 +124,3 @@ struct IOSQaFaceObservation: Codable {
     return f
   }
 }
-

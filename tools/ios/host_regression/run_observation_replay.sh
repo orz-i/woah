@@ -7,4 +7,3 @@ trap 'rm -rf "$OUT"' EXIT
 N=mobile/packages/dance_native/ios/dance_native/Sources/dance_native
 swiftc -o "$OUT/tests" "$HERE/tracker/ModelStubs.swift" "$N/IOSQaObservationReplay.swift" "$HERE/observation_replay/main.swift"
 "$OUT/tests"
-

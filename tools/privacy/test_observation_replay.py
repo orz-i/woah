@@ -65,4 +65,3 @@ class ObservationReplayTests(unittest.TestCase):
             self.assertFalse((root/(key+".approved")).exists())
 
 if __name__ == "__main__": unittest.main()
-

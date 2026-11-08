@@ -113,4 +113,3 @@ def main():
         print(json.dumps({"operations":counts,"approved_entries":len(list(args.directory.glob("*.approved"))),
                           "pending_entries":len(list(args.directory.glob("*.bin")))}))
 if __name__ == "__main__": main()
-

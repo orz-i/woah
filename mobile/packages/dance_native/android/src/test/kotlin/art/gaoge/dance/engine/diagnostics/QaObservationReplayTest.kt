@@ -61,4 +61,3 @@ class QaObservationReplayTest {
         } finally {directory.deleteRecursively()}
     }
 }
-

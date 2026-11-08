@@ -91,4 +91,3 @@ internal object QaObservationCodec {
     private fun DataOutputStream.optionalRect(rect: FloatRect?) { writeBoolean(rect != null); if (rect != null) rect(rect) }
     private fun DataInputStream.optionalRect(): FloatRect? = if (readBoolean()) rect() else null
 }
-

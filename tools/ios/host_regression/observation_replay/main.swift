@@ -30,4 +30,3 @@ try Data(digest.utf8).write(to:approval)
 check(cache.read(key,as:IOSQaYoloObservation.self,validate:{$0.detections() != nil}) == nil,"conflicting entry replayed")
 check(IOSQaObservationReplay.open() == nil,"ordinary host enabled QA replay")
 print("QA_OBSERVATION_REPLAY_SYNTHETIC=PASS lossless_pending_corrupt_conflicting_and_incompatible_inputs")
-

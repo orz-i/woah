@@ -112,4 +112,3 @@ internal class QaObservationReplay internal constructor(
         private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).hex()
     }
 }
-

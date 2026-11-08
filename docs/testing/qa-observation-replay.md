@@ -68,4 +68,3 @@ evidence/provenance binding.
 Raw observation payloads, masks, face coordinates, rendered crops and approval
 files remain local ignored QA artifacts. Publish generic code, synthetic tests,
 aggregate counts and hashes only. Remove the control file after testing.
-
