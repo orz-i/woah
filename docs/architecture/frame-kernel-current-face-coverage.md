@@ -20,6 +20,13 @@ current mask cannot establish a head run. This sampling margin protects a chin
 at the geometric edge and retains the entire previous envelope. No current mask
 retains the original region; malformed supplied evidence fails without writing.
 
+A current face can also be visible without a reliable person match. iOS's
+existing protect-unassigned policy emits such a face independently. This
+rendering path now calls `frame_kernel_standalone_face_region` for the same
+source-space sampling margin. It does not guess which body owns the face or
+borrow a person's mask. The detector ellipse and ownership scores are unchanged;
+only the standalone region submitted for rendering grows.
+
 This is additive render coverage, not an ownership score, confidence threshold,
 identity assignment or exemption. The detector geometry ABI and frozen legacy
 geometry remain available unchanged. Existing current-face ownership checks and

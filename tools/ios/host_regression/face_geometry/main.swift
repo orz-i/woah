@@ -239,3 +239,19 @@ let chinMargin=IOSFrameKernelFaceGeometry.coverCurrent(sparseCurrent,region:prof
 precondition(chinMargin == SIMD4<Float>(280,200,64,74))
 precondition(!profileContains(profileSeed,280,273) && profileContains(chinMargin,280,273))
 print("CURRENT_FACE_SAMPLING_MARGIN_NATIVE=PASS no_coherent_head_run_chin_covered")
+
+let unownedResolver=IOSFacePrivacyTemporalResolver(locator:SyntheticProfileLocator())
+let unownedSeed=IOSFrameKernelFaceGeometry.detected(
+  try SyntheticProfileLocator().locateFaces(in:blank)[0])!
+let unowned=try unownedResolver.resolve(image:blank,persons:[],faceOnlyIds:[],
+  preprocess:ownershipPre,protectUnassignedFaces:true,timestampUs:0)
+precondition(unowned.count == 1 && unowned.keys.first! < 0)
+let unownedRegion=unowned.values.first!
+let unownedOutput=SIMD4(unownedRegion.centerX,unownedRegion.centerY,unownedRegion.radiusX,unownedRegion.radiusY)
+let chinY=unownedSeed.y+unownedSeed.w+3
+precondition(!profileContains(unownedSeed,unownedSeed.x,chinY))
+precondition(profileContains(unownedOutput,unownedSeed.x,chinY))
+let disabledUnowned=try unownedResolver.resolve(image:blank,persons:[],faceOnlyIds:[],
+  preprocess:ownershipPre,protectUnassignedFaces:false,timestampUs:1)
+precondition(disabledUnowned.isEmpty)
+print("STANDALONE_FACE_SAMPLING_MARGIN_NATIVE=PASS no_owner_no_identity_change")

@@ -1,7 +1,7 @@
 //! Uniform region ABI:0 success,1 no evidence,-1 invalid. Failures never write.
 use crate::{
     face_geometry::{self, HeadMaskSpec},
-    geometry::Rect,
+    geometry::{Rect, Transform},
     temporal_region::Ellipse,
 };
 pub const REGION_OK: i32 = 0;
@@ -32,6 +32,25 @@ pub unsafe extern "C" fn frame_kernel_current_face_region(
         Some(p)
     };
     let Some(region) = face_geometry::current_face_region(pixels, spec, region) else {
+        return REGION_INVALID;
+    };
+    // SAFETY: caller supplies a disjoint writable aligned ellipse.
+    unsafe { output.write(region) };
+    REGION_OK
+}
+
+/// # Safety
+/// Output is one disjoint writable aligned ellipse. No owner is assigned.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_standalone_face_region(
+    region: Ellipse,
+    transform: Transform,
+    output: *mut Ellipse,
+) -> i32 {
+    if output.is_null() {
+        return REGION_INVALID;
+    }
+    let Some(region) = face_geometry::standalone_face_region(region, transform) else {
         return REGION_INVALID;
     };
     // SAFETY: caller supplies a disjoint writable aligned ellipse.

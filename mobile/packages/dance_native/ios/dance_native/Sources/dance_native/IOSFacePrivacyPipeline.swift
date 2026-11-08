@@ -441,7 +441,14 @@ final class IOSFacePrivacyTemporalResolver {
         // A visible face with no certain person owner remains protected. No
         // identity is assigned and no guessed hero bbox can exempt this face.
         if let region = IOSFacePrivacyGeometry.detectedEllipse(face) {
-          regions[Self.syntheticClassFallbackBase - 100_000 - index] = region
+          guard let covered=IOSFrameKernelFaceGeometry.coverStandalone(
+            region:SIMD4(region.centerX,region.centerY,region.radiusX,region.radiusY),
+            preprocess:preprocess) else {
+            throw NSError(domain:"FrameKernel",code:-1,
+              userInfo:[NSLocalizedDescriptionKey:"Invalid standalone face coverage input"])
+          }
+          regions[Self.syntheticClassFallbackBase - 100_000 - index] = IOSFacePrivacyEllipse(
+            centerX:covered.x,centerY:covered.y,radiusX:covered.z,radiusY:covered.w,source:region.source)
         }
       }
     }

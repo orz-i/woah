@@ -150,12 +150,21 @@ enum IOSFrameKernelFaceGeometry {
     guard status==0 else{return nil}
     return values(output)
   }
-  private static func spec(_ person:IOSYoloDetection,_ preprocess:IOSYoloPreprocessResult)->FrameKernelHeadMaskSpec? {
+  static func coverStandalone(region:SIMD4<Float>,preprocess:IOSYoloPreprocessResult)->SIMD4<Float>? {
+    guard let metadata=transform(preprocess) else{return nil}
+    var output=FrameKernelEllipse()
+    let status=frame_kernel_standalone_face_region(ellipse(region),metadata,&output)
+    return status==0 ? values(output) : nil
+  }
+  private static func transform(_ preprocess:IOSYoloPreprocessResult)->FrameKernelTransform? {
     guard preprocess.sourceWidth>0,preprocess.sourceHeight>0,preprocess.inputSize>0,
       preprocess.sourceWidth<=65535,preprocess.sourceHeight<=65535,preprocess.inputSize<=65535 else{return nil}
-    let t=FrameKernelTransform(scale:preprocess.scale,pad_left:preprocess.padLeft,pad_top:preprocess.padTop,
+    return FrameKernelTransform(scale:preprocess.scale,pad_left:preprocess.padLeft,pad_top:preprocess.padTop,
       source_width:UInt32(preprocess.sourceWidth),source_height:UInt32(preprocess.sourceHeight),
       input_size:UInt32(preprocess.inputSize),proto_size:UInt32(IOSYoloPostprocessor.protoSize))
+  }
+  private static func spec(_ person:IOSYoloDetection,_ preprocess:IOSYoloPreprocessResult)->FrameKernelHeadMaskSpec? {
+    guard let t=transform(preprocess) else{return nil}
     return FrameKernelHeadMaskSpec(width:UInt32(IOSYoloPostprocessor.protoSize),height:UInt32(IOSYoloPostprocessor.protoSize),transform:t,person:rect(person))
   }
   static func estimate(_ mask:[UInt8],person:IOSYoloDetection,seed:SIMD4<Float>,preprocess:IOSYoloPreprocessResult)->SIMD2<Float>? {

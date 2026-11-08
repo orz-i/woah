@@ -247,6 +247,9 @@ int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRe
      the detected ellipse; it never removes detector coverage or grants identity.
      Positive len requires a valid mask/spec; invalid input leaves output intact. */
   int32_t frame_kernel_current_face_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse region,FrameKernelEllipse *output);
+/* Current detected face with uncertain ownership. Apply render sampling margin
+   without a body mask or identity. Invalid inputs leave output unchanged. */
+int32_t frame_kernel_standalone_face_region(FrameKernelEllipse region,FrameKernelTransform transform,FrameKernelEllipse *output);
 int32_t frame_kernel_head_fallback(FrameKernelRect person,FrameKernelEllipse *output);
 /* Complete bbox/current-mask fallback. A zero len omits current evidence; a
    null seed selects the bbox seed. Nonzero len requires a valid current mask.

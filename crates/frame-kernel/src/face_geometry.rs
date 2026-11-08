@@ -102,15 +102,38 @@ pub fn current_face_region(
     // cannot establish a coherent head run. Otherwise a profile's lower chin
     // can sit exactly at the geometric edge and remain visible after rendering.
     // Apply this AFTER the envelope so every previously covered point remains.
-    let cell_x = spec.transform.input_size as f32 / (spec.width as f32 * spec.transform.scale);
-    let cell_y = spec.transform.input_size as f32 / (spec.height as f32 * spec.transform.scale);
+    sampled_face_region(covered, spec.transform, spec.width, spec.height)
+}
+
+/// Render a current face with uncertain ownership. The geometry gets the same
+/// sampling margin as an owned face, without borrowing any person's mask or ID.
+pub fn standalone_face_region(region: Ellipse, transform: Transform) -> Option<Ellipse> {
+    if !valid_seed(region) || !transform.valid() {
+        return None;
+    }
+    sampled_face_region(
+        region,
+        transform,
+        transform.proto_size,
+        transform.proto_size,
+    )
+}
+
+fn sampled_face_region(
+    region: Ellipse,
+    transform: Transform,
+    width: u32,
+    height: u32,
+) -> Option<Ellipse> {
+    let cell_x = transform.input_size as f32 / (width as f32 * transform.scale);
+    let cell_y = transform.input_size as f32 / (height as f32 * transform.scale);
     if !cell_x.is_finite() || !cell_y.is_finite() || cell_x <= 0.0 || cell_y <= 0.0 {
         return None;
     }
     let output = Ellipse {
-        radius_x: covered.radius_x + cell_x,
-        radius_y: covered.radius_y + cell_y,
-        ..covered
+        radius_x: region.radius_x + cell_x,
+        radius_y: region.radius_y + cell_y,
+        ..region
     };
     valid_seed(output).then_some(output)
 }

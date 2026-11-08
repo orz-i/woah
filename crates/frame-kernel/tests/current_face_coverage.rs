@@ -150,3 +150,29 @@ fn abi_rejects_invalid_mask_without_writing_output() {
     assert_eq!(status, 0);
     assert!(contains(output, 80.0, 40.0));
 }
+
+#[test]
+fn standalone_face_keeps_detected_coverage_and_pads_without_an_owner() {
+    use frame_kernel::frame_kernel_standalone_face_region;
+    let mut output = seed();
+    // SAFETY: output points to one writable ellipse.
+    let status =
+        unsafe { frame_kernel_standalone_face_region(seed(), spec().transform, &mut output) };
+    assert_eq!(status, 0);
+    assert!(!contains(seed(), 56.0, 57.0));
+    assert!(contains(output, 56.0, 57.0));
+    assert!(contains(output, 56.0, 26.0));
+    assert_eq!(
+        Some(output),
+        current_face_region(Some(&[0; 1024]), spec(), seed())
+    );
+
+    let invalid = Transform {
+        scale: 0.0,
+        ..spec().transform
+    };
+    // SAFETY: output is writable; invalid metadata must leave it untouched.
+    let status = unsafe { frame_kernel_standalone_face_region(seed(), invalid, &mut output) };
+    assert_eq!(status, -1);
+    assert!(contains(output, 56.0, 57.0));
+}
