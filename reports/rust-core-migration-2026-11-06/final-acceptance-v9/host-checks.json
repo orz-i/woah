@@ -1,0 +1,34 @@
+{
+  "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+  "verified_utc": "2026-11-08T02:34:50.154093+00:00",
+  "rust": {
+    "version": "1.97.1",
+    "commit": "8bab26f4f68e0e26f0bb7960be334d5b520ea452",
+    "llvm": "22.1.6",
+    "windows": {
+      "fmt": "passed",
+      "clippy": "passed",
+      "tests": 96,
+      "check_log_sha256": "61e1f59c1232940d36f6ce6d885498ee7fdcdcad48e69472293c8e12203e3d55"
+    },
+    "macos": {
+      "fmt": "passed",
+      "clippy": "passed",
+      "tests": 96
+    }
+  },
+  "android_jvm": {
+    "suites": 151,
+    "tests": 621,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "ios_swift_host": {
+    "canonical_geometry_cases": 512,
+    "geometry_corpus_sha256": "e0e75f439552d6e7599c73f1020dd1d1d7f5323db0db26a4628bf10035b96298",
+    "standalone_sampling_margin": "passed",
+    "tracker": "passed"
+  },
+  "scope": "Host checks for the compiled source. Does not replace either native regression."
+}

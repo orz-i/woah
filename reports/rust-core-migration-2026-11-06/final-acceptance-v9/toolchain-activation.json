@@ -1,0 +1,41 @@
+{
+  "status": "verified_same_pinned_compiler",
+  "rust_version": "1.97.1",
+  "rustc_commit": "8bab26f4f68e0e26f0bb7960be334d5b520ea452",
+  "llvm_version": "22.1.6",
+  "windows": {
+    "host": "x86_64-pc-windows-msvc",
+    "mode": "Activate the existing project-scoped toolchain environment in each new PowerShell session.",
+    "activation_script_sha256": "e85d095f0b4e2185f372185aa904a96c5cdde6fc59750512f8695eac69b078f6",
+    "installed_targets": [
+      "aarch64-linux-android",
+      "armv7-linux-androideabi",
+      "x86_64-linux-android",
+      "x86_64-pc-windows-msvc"
+    ],
+    "repo_doctor": "passed after activation",
+    "scope": "Toolchain storage belongs to the Woah workspace. Existing global Rust installations for other projects are separate."
+  },
+  "mac": {
+    "host": "aarch64-apple-darwin",
+    "mode": "Fresh zsh/bash login shells load the existing installation through ~/.cargo/env. Non-login runners may source that file explicitly.",
+    "changed_startup_files": [
+      "~/.cargo/env",
+      "~/.zprofile",
+      "~/.bash_profile"
+    ],
+    "new_login_shell_checks": [
+      "zsh passed",
+      "bash passed"
+    ],
+    "repo_doctor": "passed in new zsh login shell",
+    "installed_targets": [
+      "aarch64-apple-darwin",
+      "aarch64-apple-ios",
+      "aarch64-apple-ios-sim",
+      "x86_64-apple-ios"
+    ],
+    "scope": "Reuses the existing toolchain in woah-rust-tools. Startup configuration only; compiled native binaries and repository inputs unchanged."
+  },
+  "verified_utc": "2026-11-07T11:51:08.953848+00:00"
+}

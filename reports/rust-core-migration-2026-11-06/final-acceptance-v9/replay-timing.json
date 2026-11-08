@@ -1,0 +1,70 @@
+{
+  "android": {
+    "platform": "android",
+    "cases": 22,
+    "same_sources_and_case_configuration": true,
+    "scope": "Native elapsed wall time on the same 22-case matrix; independently audited runs. Binary revisions and cache availability differ. Includes full native work, excludes external audit time. Does not measure production or 4K performance.",
+    "earlier": {
+      "compiled_source_commit": "c314769cad654e724f3e3d5109fda2db4df06d97",
+      "results_sha256": "6885e5f978b6b09df119b60a8d79ff20831d61cbba419e5f7cc0c67ea285ec5a",
+      "native_duration_seconds": 2952.927
+    },
+    "with_additional_approved_observations": {
+      "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+      "results_sha256": "c384e00b4c5d56d7462fabe64b67e3f9997db4d74745569aa85d3061c4aa8263",
+      "native_duration_seconds": 1782.49
+    },
+    "observed_duration_reduction_percent": 39.64,
+    "paired_short_4k_diagnostic": {
+      "case": "profile_4k_face_probe",
+      "compiled_source_commit": "3ec329c6ff84b2ce41468e47e6265e21db4bdd1d",
+      "decoded_output_frames": 5,
+      "preview_pairs": 3,
+      "pixel_equal_planes": 6,
+      "scope": "One paired native short-case diagnostic per platform. Same binary and case within each pair. Elapsed includes native analysis, previews and actual export. No isolated encoder or detector timer and no production throughput claim.",
+      "binary_sha256": "ffb11390a22f2a7ec042696873aec7e1e4c5022b04c9292ddc7552aa51a348a6",
+      "cold": {
+        "results_sha256": "00bebc21036364e067ae22fb8fa695a79ac2b5a97d9020c9334f374f047b25d0",
+        "native_case_elapsed_seconds": 22.606
+      },
+      "replay": {
+        "results_sha256": "d6499246c4d4262d4b81916c020ba68d0af653bab1d1305ef2b08e0fa163ba5e",
+        "native_case_elapsed_seconds": 18.699
+      }
+    }
+  },
+  "ios": {
+    "platform": "ios",
+    "cases": 22,
+    "same_sources_and_case_configuration": true,
+    "scope": "Native elapsed wall time on the same 22-case matrix; independently audited runs. Binary revisions and cache availability differ. Includes full native work, excludes external audit time. Does not measure production or 4K performance.",
+    "earlier": {
+      "compiled_source_commit": "c314769cad654e724f3e3d5109fda2db4df06d97",
+      "results_sha256": "e59cff2cdc1f6725f068393734e390db2272ed37216526bbaaa491a65a925a5d",
+      "native_duration_seconds": 674.69
+    },
+    "with_additional_approved_observations": {
+      "compiled_source_commit": "14f95fe1cedcf638e9c59855a378bcd83623aa76",
+      "results_sha256": "2dc98ba027d952c6bbd85d8f1288adc699441849fc55be9a4499f0c5eae02848",
+      "native_duration_seconds": 305.716
+    },
+    "observed_duration_reduction_percent": 54.69,
+    "paired_short_4k_diagnostic": {
+      "case": "profile_4k_face_probe",
+      "compiled_source_commit": "3ec329c6ff84b2ce41468e47e6265e21db4bdd1d",
+      "decoded_output_frames": 5,
+      "preview_pairs": 3,
+      "pixel_equal_planes": 6,
+      "scope": "One paired native short-case diagnostic per platform. Same binary and case within each pair. Elapsed includes native analysis, previews and actual export. No isolated encoder or detector timer and no production throughput claim.",
+      "binary_sha256": "9e1d5517ef032837e946c4e8e5b53370eebf6d054296360701c61d1cb1e1d5ed",
+      "cold": {
+        "results_sha256": "83b473efd3cff0350064aaed13bddabba52f620215535f4762f4003bbf4efac7",
+        "native_case_elapsed_seconds": 7.302
+      },
+      "replay": {
+        "results_sha256": "635b1d7582e8ab9245ab7edffcdb95ee887b7219462992635b2d7ace5150aaf4",
+        "native_case_elapsed_seconds": 5.106
+      }
+    }
+  }
+}

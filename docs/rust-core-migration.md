@@ -80,6 +80,7 @@ Vision/MediaPipe production split. The library remains neutral, MIT-licensed and
 unpublished. Native GPU rendering and inference execution require actual output
 conformance; equal source code does not imply bit-identical encoded files.
 
-Final acceptance is still pending. Stage-only 13-case and eight cold-frame runs,
-frozen input replay and host unit tests cannot substitute for both complete
-62-case device/simulator runs and media/privacy review.
+The [final regression report](../reports/rust-core-migration-2026-11-06/final-acceptance-v9/README.md)
+records 62 cases on an Android device and 62 on an iOS simulator, with independent
+media and privacy review. The QA harness can replay qualified detector observations
+while running tracking, protection policy, native rendering and export again.
