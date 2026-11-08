@@ -48,6 +48,12 @@ def approve(directory, results_path, receipt_path):
                                     for r in results["cases"])
     events = directory / "events.tsv"
     assert receipt["events_sha256"] == sha(events)
+    snapshot = receipt_path.with_name(receipt_path.stem + ".events.tsv")
+    if snapshot.exists():
+        assert sha(snapshot) == receipt["events_sha256"]
+    else:
+        snapshot.write_bytes(events.read_bytes())
+        assert sha(snapshot) == receipt["events_sha256"]
     start = dt.datetime.fromisoformat(results["started_at_utc"].replace("Z", "+00:00")).timestamp()*1000
     end = dt.datetime.fromisoformat(results["finished_at_utc"].replace("Z", "+00:00")).timestamp()*1000
     pids = {int(results["process_id"])} | {int(r.get("pid", results["process_id"])) for r in results["cases"]}

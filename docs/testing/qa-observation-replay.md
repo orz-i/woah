@@ -56,6 +56,24 @@ inference, replay and rejected/conflicting counts separately. A cold/hot native
 probe must verify decoded video frames and previews before enabling replay for a
 full regression; report any residual pixel differences explicitly.
 
+An approval archives the exact input ledger alongside the review receipt as
+`<review-stem>.events.tsv`. Archive the completed native run's own ledger before
+cleaning up its control file. To confirm replay provenance and produce a counts
+and hashes only report, run:
+
+```text
+python tools/privacy/audit_observation_replay.py RUN_DIR RUN_EVENTS CONTROL CONTRACT SUMMARY \
+  --approved-run PRODUCER_RUN PRODUCER_EVENTS REVIEW_RECEIPT APPROVAL_RECEIPT
+```
+
+Repeat `--approved-run` for each approved producer. The audit checks the
+observation contract and binary, reconstructs the approved payload hashes, and
+verifies every replay event within the completed case run's native PID and UTC
+window. It counts fresh inference including conflict fallback separately from
+replay and rejected reads. The counts apply only to the instrumented detectors;
+host checks, uninstrumented inference paths and calls outside that window are
+outside the measurement.
+
 ## Regression evidence
 
 The frozen 8 inputs and 22 + 27 + 13 case definitions remain unchanged. A short

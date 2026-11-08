@@ -41,6 +41,7 @@ class ObservationReplayTests(unittest.TestCase):
             root=Path(temporary);key,results,receipt=self.baseline(root)
             result=approve(root,results,receipt)
             self.assertEqual(1,result["approved"])
+            self.assertEqual(sha(root/"events.tsv"),sha(root/"review.events.tsv"))
             self.assertEqual(sha(root/(key+".bin")),(root/(key+".approved")).read_text().strip())
             review=json.loads(receipt.read_bytes());review["reviewed_case_ids"]=[]
             receipt.write_text(json.dumps(review))
