@@ -63,8 +63,13 @@ enum IOSFacePrivacyPhase5Smoke {
     }
     try assertNear(detectedRegion.centerX, 32, tolerance: 0.01, label: "detected centerX")
     try assertNear(detectedRegion.centerY, 13.52, tolerance: 0.05, label: "detected centerY")
-    try assertNear(detectedRegion.radiusX, 6.6, tolerance: 0.05, label: "detected radiusX")
-    try assertNear(detectedRegion.radiusY, 8.88, tolerance: 0.05, label: "detected radiusY")
+    let detectorGeometry = IOSFacePrivacyGeometry.detectedEllipse(trustedFace)!
+    try assertNear(detectorGeometry.radiusX, 6.6, tolerance: 0.05, label: "raw detector radiusX")
+    try assertNear(detectorGeometry.radiusY, 8.88, tolerance: 0.05, label: "raw detector radiusY")
+    // This synthetic64px source spans160 prototype cells: render coverage adds
+    // one0.4px cell, while the detector/identity geometry above stays unchanged.
+    try assertNear(detectedRegion.radiusX, 7.0, tolerance: 0.05, label: "sample-safe rendered radiusX")
+    try assertNear(detectedRegion.radiusY, 9.28, tolerance: 0.05, label: "sample-safe rendered radiusY")
 
     let missed = try resolver.resolve(
       image: source,
