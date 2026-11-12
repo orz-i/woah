@@ -1,7 +1,7 @@
 import AVFoundation
 import Foundation
 
-/// AVAssetReader performs the channel mix and sample-rate conversion. Each PCM
+/// AVAssetReader decodes at the source rate/channel count. Rust normalizes each PCM
 /// buffer's actual presentation timestamp is checked before streaming samples.
 /// Apple references: AVAssetReaderTrackOutput; Linear PCM format settings;
 /// CMSampleBufferGetPresentationTimeStamp; CMBlockBufferCopyDataBytes.
@@ -23,8 +23,6 @@ final class IOSComparisonMusicPcmDecoder {
     defer { reader.cancelReading() }
     let settings: [String: Any] = [
       AVFormatIDKey: kAudioFormatLinearPCM,
-      AVSampleRateKey: Double(IOSComparisonMusicFeatureBuilder.rate),
-      AVNumberOfChannelsKey: 1,
       AVLinearPCMBitDepthKey: 32,
       AVLinearPCMIsFloatKey: true,
       AVLinearPCMIsBigEndianKey: false,
@@ -40,7 +38,6 @@ final class IOSComparisonMusicPcmDecoder {
       throw reader.error ?? IOSComparisonMusicError.decode("音频解码失败，请手动校准。")
     }
     var builder: IOSComparisonMusicFeatureBuilder?
-    var continuity = IOSComparisonMusicPCMContinuity()
     while true {
       try iosComparisonMusicCheck(isCancelled)
       let found = try autoreleasepool { () throws -> Bool in
@@ -50,14 +47,15 @@ final class IOSComparisonMusicPcmDecoder {
         guard let description = CMSampleBufferGetFormatDescription(sample),
               let format = CMAudioFormatDescriptionGetStreamBasicDescription(description)?.pointee,
               format.mFormatID == kAudioFormatLinearPCM,
-              format.mSampleRate == Double(IOSComparisonMusicFeatureBuilder.rate),
-              format.mChannelsPerFrame == 1,
+              (8000...192000).contains(format.mSampleRate),
+              format.mSampleRate.rounded() == format.mSampleRate,
+              (1...8).contains(format.mChannelsPerFrame),
               format.mBitsPerChannel == 32,
-              format.mBytesPerFrame == 4,
+              format.mBytesPerFrame == 4 * format.mChannelsPerFrame,
               format.mFormatFlags & kAudioFormatFlagIsFloat != 0,
               format.mFormatFlags & kAudioFormatFlagIsBigEndian == 0,
               let block = CMSampleBufferGetDataBuffer(sample),
-              CMBlockBufferGetDataLength(block) == count * MemoryLayout<Float>.size else {
+              CMBlockBufferGetDataLength(block) == count * Int(format.mChannelsPerFrame) * MemoryLayout<Float>.size else {
           throw IOSComparisonMusicError.decode("音频格式不支持，请手动校准。")
         }
         let pts = CMSampleBufferGetPresentationTimeStamp(sample)
@@ -67,20 +65,17 @@ final class IOSComparisonMusicPcmDecoder {
           throw IOSComparisonMusicError.discontinuousAudio
         }
         let timeUs = converted.value
-        try continuity.consume(timeUs: timeUs, sampleCount: count)
         if builder == nil { builder = IOSComparisonMusicFeatureBuilder(originUs: timeUs) }
         // CMBlockBuffer may be noncontiguous; copy into owned Float storage.
-        var pcm = [Float](repeating: 0, count: count)
+        var pcm = [Float](repeating: 0, count: count * Int(format.mChannelsPerFrame))
         let copyStatus = pcm.withUnsafeMutableBytes { bytes in
           CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: bytes.count, destination: bytes.baseAddress!)
         }
         guard copyStatus == kCMBlockBufferNoErr else {
           throw IOSComparisonMusicError.decode("无法读取音频样本，请手动校准。")
         }
-        for (i, value) in pcm.enumerated() {
-          if i % 4096 == 0 { try iosComparisonMusicCheck(isCancelled) }
-          try builder!.add(value)
-        }
+        try iosComparisonMusicCheck(isCancelled)
+        try builder!.addPCM(pcm, rate: UInt32(format.mSampleRate), channels: format.mChannelsPerFrame, timeUs: timeUs)
         return true
       }
       if !found { break }
@@ -90,7 +85,7 @@ final class IOSComparisonMusicPcmDecoder {
       throw reader.error ?? IOSComparisonMusicError.decode("音频解码未完成，请手动校准。")
     }
     guard let builder else { throw IOSComparisonMusicError.noAudio }
-    let features = builder.finish()
+    let features = try builder.finish()
     try iosComparisonMusicCheck(isCancelled)
     return features
   }

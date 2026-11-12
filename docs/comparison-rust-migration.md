@@ -59,4 +59,20 @@ retained independently and does not count as comparison coverage.
 - Android/Dart overlap uses a discrete end; iOS also constrains the continuous
   edit end. Scale=2 and target end=11 us gives Android/Dart end=6 vs iOS end=5.
 
-Status: implementation and new device regression pending.
+## Verified progress
+
+- Stage 1 merged as PR #35, main `f7b31236`. Rust 100, Android JVM 622,
+  Flutter 277 and domain 28 checks passed. Windows/Mac C ABI timeline fingerprints
+  agree. Real Android and iOS simulator Dart-to-Rust symbol/mapping smoke passed.
+  Linux production, iOS build/archive/runtime and required governance CI passed.
+- Stage 2 PR #36: streaming PCM normalization, features and both matching paths
+  are shared Rust. Kotlin/Swift implementations were removed. Rust 107 and Android
+  JVM 623 checks passed; existing Swift music, PCM and composition gates passed.
+  Windows/Mac ABI known-music results agree (constant exact, affine max truth error
+  0.594 ms on the frozen synthetic example). Full native flow regression pending.
+
+When adding Rust source files, run `pod install` on Mac and commit the resulting
+`dance_native` checksum: its script input list deliberately fingerprints the
+actual Rust source inventory. Run `pod install --deployment` after that to verify
+the pinned result. Source-file inventory changes also require refreshing Pods'
+compiled Swift file list in an existing Mac checkout.

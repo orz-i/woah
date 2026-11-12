@@ -1,12 +1,9 @@
 import Foundation
+@_implementationOnly import FrameKernelC
 
 enum IOSComparisonMusicError: Error, LocalizedError {
-  case cancelled
-  case tooLong
-  case discontinuousAudio
-  case noAudio
+  case cancelled, tooLong, discontinuousAudio, noAudio
   case decode(String)
-
   var errorDescription: String? {
     switch self {
     case .cancelled: return "匹配已取消"
@@ -17,7 +14,6 @@ enum IOSComparisonMusicError: Error, LocalizedError {
     }
   }
 }
-
 struct IOSComparisonMusicFrame {
   let timeUs: Int64
   var spectrum: [Float]
@@ -25,185 +21,89 @@ struct IOSComparisonMusicFrame {
   let peaks: [Int]
   var pitchSpectrum: [Float]
 }
-
 struct IOSComparisonMusicFeatures {
-  var frames: [IOSComparisonMusicFrame]
-  var startUs: Int64 { frames.first?.timeUs ?? 0 }
-  var endUs: Int64 { (frames.last?.timeUs ?? 0) + 10_000 }
-}
-
-/// Same 16 kHz / 10 ms music features as Android. Origin is the first decoded
-/// audio presentation timestamp, never the video start or nominal frame rate.
-final class IOSComparisonMusicFeatureBuilder {
-  static let rate = 16_000
-  static let hop = 160
-  static let fft = 1024
-  static let maxFrames = 60_000
-
-  private let originUs: Int64
-  private var ring = [Double](repeating: 0, count: 1024)
-  private var real = [Double](repeating: 0, count: 1024)
-  private var imaginary = [Double](repeating: 0, count: 1024)
-  private let window = (0..<1024).map { 0.5 - 0.5 * cos(2 * .pi * Double($0) / 1023) }
-  private let cosine = (0..<512).map { cos(-2 * .pi * Double($0) / 1024) }
-  private let sine = (0..<512).map { sin(-2 * .pi * Double($0) / 1024) }
-  private let reverse: [Int] = (0..<1024).map { input in
-    var value = input
-    var result = 0
-    for _ in 0..<10 { result = (result << 1) | (value & 1); value >>= 1 }
-    return result
-  }
-  private let edges = [2, 4, 6, 9, 13, 19, 27, 38, 54, 76, 108, 152, 214, 300, 380, 450, 512]
-  private let pitchBins = (0..<48).map { 4 * pow(2, Double($0) / 8) }
-  private var frames: [IOSComparisonMusicFrame] = []
-  private var samples: Int64 = 0
-  private var previous = [Float](repeating: 0, count: 16)
-
-  init(originUs: Int64) { self.originUs = originUs }
-
-  func add(_ value: Float) throws {
-    guard value.isFinite else { throw IOSComparisonMusicError.decode("音频样本无效，请手动校准。") }
-    ring[Int(samples % Int64(Self.fft))] = Double(value)
-    samples += 1
-    if samples >= Self.fft && (samples - Int64(Self.fft)) % Int64(Self.hop) == 0 {
-      try extract()
+  let payload: Data
+  private func u32(_ offset: Int) -> UInt32 { payload.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: offset, as: UInt32.self).littleEndian } }
+  private func i64(_ offset: Int) -> Int64 { payload.withUnsafeBytes { $0.loadUnaligned(fromByteOffset: offset, as: Int64.self).littleEndian } }
+  var count: Int { Int(u32(8)) }
+  var startUs: Int64 { count == 0 ? 0 : i64(12) }
+  var endUs: Int64 { (count == 0 ? 0 : i64(12 + (count - 1) * 348)) + 10_000 }
+  // Inspection only. The production matcher sends the packed replay directly.
+  var frames: [IOSComparisonMusicFrame] {
+    (0..<count).map { i in
+      let start = 12 + i * 348
+      return IOSComparisonMusicFrame(timeUs: i64(start),
+        spectrum: (0..<16).map { Float(bitPattern: u32(start + 8 + $0 * 4)) },
+        onset: (0..<16).map { Float(bitPattern: u32(start + 72 + $0 * 4)) },
+        peaks: (0..<Int(u32(start + 136))).map { Int(u32(start + 140 + $0 * 4)) },
+        pitchSpectrum: (0..<48).map { Float(bitPattern: u32(start + 156 + $0 * 4)) })
     }
   }
-
-  private func extract() throws {
-    guard frames.count < Self.maxFrames else { throw IOSComparisonMusicError.tooLong }
-    let first = Int(samples % Int64(Self.fft))
-    for i in 0..<Self.fft {
-      real[reverse[i]] = ring[(first + i) % Self.fft] * window[i]
-      imaginary[i] = 0
+  init(payload: Data) { self.payload = payload }
+  init(frames: [IOSComparisonMusicFrame]) {
+    var bytes = Data([70,75,77,70,1,0,0,0])
+    func append<T: FixedWidthInteger>(_ raw: T) { var value = raw.littleEndian; withUnsafeBytes(of: &value) { bytes.append(contentsOf: $0) } }
+    append(UInt32(frames.count))
+    for frame in frames {
+      precondition(frame.spectrum.count == 16 && frame.onset.count == 16 && frame.peaks.count <= 4)
+      append(frame.timeUs)
+      for value in frame.spectrum + frame.onset { append(value.bitPattern) }
+      append(UInt32(frame.peaks.count))
+      for i in 0..<4 { append(UInt32(i < frame.peaks.count ? frame.peaks[i] : 0)) }
+      for i in 0..<48 { append((i < frame.pitchSpectrum.count ? frame.pitchSpectrum[i] : 0).bitPattern) }
     }
-    var length = 2
-    while length <= Self.fft {
-      let half = length / 2
-      let stride = Self.fft / length
-      for start in Swift.stride(from: 0, to: Self.fft, by: length) {
-        for j in 0..<half {
-          let p = start + j
-          let q = p + half
-          let c = cosine[j * stride]
-          let s = sine[j * stride]
-          let r = real[q] * c - imaginary[q] * s
-          let im = real[q] * s + imaginary[q] * c
-          real[q] = real[p] - r
-          imaginary[q] = imaginary[p] - im
-          real[p] += r
-          imaginary[p] += im
-        }
-      }
-      length *= 2
-    }
-    let power: [Double] = (0..<(Self.fft / 2)).map { index -> Double in
-      let realPower: Double = real[index] * real[index]
-      let imaginaryPower: Double = imaginary[index] * imaginary[index]
-      return realPower + imaginaryPower
-    }
-    let bands: [Float] = (0..<16).map { band in
-      let sum: Double = power[edges[band]..<edges[band + 1]].reduce(0.0, +)
-      return Float(log(1 + sum / Double(edges[band + 1] - edges[band]) * 100))
-    }
-    let onset = (0..<16).map { max(0, bands[$0] - previous[$0]) }
-    previous = bands
-    let peaks: [Int] = Self.peakBins(power)
-    let pitch: [Float] = (0..<48).map { b in
-      let center = pitchBins[b]
-      let lo = max(1, Int(floor(center / pow(2, 1.0 / 8))))
-      let hi = min(power.count - 1, Int(ceil(center * pow(2, 1.0 / 8))))
-      var sum = 0.0
-      var weight = 0.0
-      for i in lo...hi {
-        let w = max(0, 1 - abs(log(Double(i) / center) / log(2) * 8))
-        sum += power[i] * w
-        weight += w
-      }
-      return Float(log(1 + sum / max(0.01, weight) * 100))
-    }
-    let timeUs = originUs + (samples - Int64(Self.fft / 2)) * 1_000_000 / Int64(Self.rate)
-    frames.append(IOSComparisonMusicFrame(timeUs: timeUs, spectrum: bands,
-      onset: onset, peaks: peaks, pitchSpectrum: pitch))
-  }
-
-  // Split filtering, ordering and truncation to reduce Xcode 26 constraint-
-  // solver complexity without changing the peak selection rules.
-  // Input is the 512-bin power spectrum produced by extract().
-  static func peakBins(_ power: [Double]) -> [Int] {
-    var totalPower: Double = 0.0
-    for value in power { totalPower += value }
-    let mean: Double = totalPower / Double(power.count)
-    let threshold: Double = mean * 3.0
-    var candidates: [Int] = []
-    for index in 4..<500 {
-      let value: Double = power[index]
-      let left: Double = power[index - 1]
-      let right: Double = power[index + 1]
-      if value > left && value >= right && value > threshold {
-        candidates.append(index)
-      }
-    }
-    candidates.sort { (left: Int, right: Int) -> Bool in
-      let leftPower: Double = power[left]
-      let rightPower: Double = power[right]
-      if leftPower == rightPower { return left < right }
-      return leftPower > rightPower
-    }
-    return Array(candidates.prefix(4))
-  }
-
-  func finish() -> IOSComparisonMusicFeatures {
-    guard !frames.isEmpty else { return IOSComparisonMusicFeatures(frames: []) }
-    var means = [Double](repeating: 0, count: 16)
-    var deviations = means
-    var pitchMean = [Double](repeating: 0, count: 48)
-    var pitchDev = pitchMean
-    for row in frames {
-      for b in 0..<16 { means[b] += Double(row.spectrum[b]) }
-      for b in 0..<48 { pitchMean[b] += Double(row.pitchSpectrum[b]) }
-    }
-    for b in 0..<16 { means[b] /= Double(frames.count) }
-    for b in 0..<48 { pitchMean[b] /= Double(frames.count) }
-    for row in frames {
-      for b in 0..<16 { deviations[b] += pow(Double(row.spectrum[b]) - means[b], 2) }
-      for b in 0..<48 { pitchDev[b] += pow(Double(row.pitchSpectrum[b]) - pitchMean[b], 2) }
-    }
-    for b in 0..<16 { deviations[b] = max(0.25, sqrt(deviations[b] / Double(frames.count))) }
-    for b in 0..<48 { pitchDev[b] = max(0.25, sqrt(pitchDev[b] / Double(frames.count))) }
-    for i in frames.indices {
-      for b in 0..<48 { frames[i].pitchSpectrum[b] = Float((Double(frames[i].pitchSpectrum[b]) - pitchMean[b]) / pitchDev[b]) }
-      for b in 0..<16 { frames[i].spectrum[b] = Float((Double(frames[i].spectrum[b]) - means[b]) / deviations[b]) }
-      normalize(&frames[i].pitchSpectrum)
-      normalize(&frames[i].spectrum)
-      normalize(&frames[i].onset)
-    }
-    return IOSComparisonMusicFeatures(frames: frames)
-  }
-
-  private func normalize(_ values: inout [Float]) {
-    let norm = sqrt(values.reduce(0) { $0 + Double($1) * Double($1) })
-    if norm > 1e-8 { for i in values.indices { values[i] = Float(Double(values[i]) / norm) } }
+    self.payload = bytes
   }
 }
 
 func iosComparisonMusicCheck(_ isCancelled: () -> Bool) throws {
   if isCancelled() { throw IOSComparisonMusicError.cancelled }
 }
+func iosComparisonAudioStatus(_ code: Int64) throws {
+  switch code {
+  case 0: return
+  case -2: throw IOSComparisonMusicError.tooLong
+  case -3: throw IOSComparisonMusicError.discontinuousAudio
+  case -4: throw IOSComparisonMusicError.cancelled
+  default: throw IOSComparisonMusicError.decode("音乐分析输入无效，请手动校准。")
+  }
+}
 
-/// Kotlin roundToInt/roundToLong semantics, including negative half values.
-func iosComparisonMusicRound(_ value: Double) -> Int64 { Int64(floor(value + 0.5)) }
-
-/// Small PTS jitter is accepted like Android; a gap or backwards edit must never
-/// be flattened into one contiguous PCM stream and confidently auto-applied.
-struct IOSComparisonMusicPCMContinuity {
-  private var expectedUs: Int64?
-
-  mutating func consume(timeUs: Int64, sampleCount: Int) throws {
-    guard sampleCount > 0 else { return }
-    if let expectedUs, abs(timeUs - expectedUs) > 20_000 {
-      throw IOSComparisonMusicError.discontinuousAudio
-    }
-    expectedUs = timeUs + Int64(sampleCount) * 1_000_000 / Int64(IOSComparisonMusicFeatureBuilder.rate)
+/// Chunk transport only; feature extraction and PCM normalization are Rust.
+final class IOSComparisonMusicFeatureBuilder {
+  static let rate = 16_000, hop = 160, fft = 1024, maxFrames = 60_000
+  private var id: UInt64
+  private var pending: [Float] = []
+  init(originUs: Int64) {
+    id = frame_kernel_audio_create(originUs)
+    precondition(id != 0)
+    pending.reserveCapacity(8192)
+  }
+  deinit { close() }
+  private func close() { if id != 0 { frame_kernel_audio_destroy(id); id = 0 } }
+  private func flush() throws {
+    guard !pending.isEmpty else { return }
+    let status = pending.withUnsafeBufferPointer { frame_kernel_audio_push(id, $0.baseAddress, $0.count, 0, 16000, 1, 0) }
+    try iosComparisonAudioStatus(Int64(status)); pending.removeAll(keepingCapacity: true)
+  }
+  func add(_ value: Float) throws {
+    guard id != 0, value.isFinite else { throw IOSComparisonMusicError.decode("音频样本无效。") }
+    pending.append(value)
+    if pending.count == 8192 { try flush() }
+  }
+  func addPCM(_ pcm: [Float], rate: UInt32, channels: UInt32, timeUs: Int64) throws {
+    guard id != 0, pending.isEmpty else { throw IOSComparisonMusicError.decode("音频输入状态无效。") }
+    let status = pcm.withUnsafeBufferPointer { frame_kernel_audio_push(id, $0.baseAddress, $0.count, 1, rate, channels, timeUs) }
+    try iosComparisonAudioStatus(Int64(status))
+  }
+  func finish() throws -> IOSComparisonMusicFeatures {
+    defer { close() }
+    try flush()
+    let size = frame_kernel_audio_finish(id, nil, 0)
+    guard size >= 12 && size <= 20_880_012 else { try iosComparisonAudioStatus(size); throw IOSComparisonMusicError.decode("音乐特征不可用。") }
+    var bytes = Data(count: Int(size))
+    let written = bytes.withUnsafeMutableBytes { frame_kernel_audio_finish(id, $0.bindMemory(to: UInt8.self).baseAddress, $0.count) }
+    guard written == size else { try iosComparisonAudioStatus(written); throw IOSComparisonMusicError.decode("音乐特征未完整读取。") }
+    return IOSComparisonMusicFeatures(payload: bytes)
   }
 }

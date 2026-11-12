@@ -1,12 +1,24 @@
 # FrameKernel
 
-`frame-kernel` is a platform-independent Rust library for frame geometry and
-region processing. Rust consumers import it as `frame_kernel`; C consumers use
+`frame-kernel` is a platform-independent Rust library for media time, audio
+correspondence, frame geometry and region processing. Rust consumers import it as `frame_kernel`; C consumers use
 `frame_kernel_*` functions from `include/frame_kernel.h`.
 
 The crate has no Flutter, Android, Apple framework, inference-runtime or
 application-model dependencies. Native bindings, video I/O, model execution and
 GPU resources belong to consumers and adapters outside this directory.
+
+Source-time mapping, common edit/sample intervals, real-PTS navigation, pane/fit
+geometry and screen-space picture transforms are shared numerical primitives.
+The audio profile implements streaming mono normalization, fixed-rate resampling
+(pinned MIT/Apache-2.0 rubato), spectral/onset/pitch observations, landmark matching
+and bounded affine correspondence. Normalization compensates resampler delay and
+drains exactly the source's sample count; discontinuous PCM is rejected.
+Feature replay is versioned little-endian FKMF v1; native adapters own its bytes.
+Owned analysis handles accept PCM blocks and retain no caller pointers. Matching
+checks a synchronous cancellation callback. Native compressed decoders and platform
+floating-point math can produce numerical differences; compare features with a
+documented tolerance and validate status/candidate correspondence against truth.
 
 Current functionality includes overlapping detail views, tile boundary checks,
 prototype-mask reprojection, cropped output-mask projection, configurable instance
