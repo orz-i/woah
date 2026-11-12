@@ -21,6 +21,8 @@ int32_t frame_kernel_work_can_replace(uint32_t state);
 
 typedef struct FrameKernelTimeRange { int64_t start, end; uint32_t valid, reserved; } FrameKernelTimeRange;
 typedef struct FrameKernelTimeMap { double scale; int64_t offset; uint32_t valid, reserved; } FrameKernelTimeMap;
+typedef struct FrameKernelEditRange { int64_t start, duration; uint32_t timescale, valid; } FrameKernelEditRange;
+FrameKernelEditRange frame_kernel_time_edit(int64_t start, int64_t end, double scale, int64_t offset);
 /* Half ties towards positive infinity before adding offset. mode 0 maps native
    source ticks, mode 1 maps target microseconds back to reference. MIN invalid. */
 int64_t frame_kernel_time_value(uint32_t mode, int64_t value, uint32_t ticks, double scale, int64_t offset);

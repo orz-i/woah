@@ -1,0 +1,110 @@
+{
+  "schema": "woah.comparison.gallery-audit.v1",
+  "platform": "android",
+  "passed": true,
+  "scope": "Read only the 17 returned MediaStore entries, verified owning package and exact original movie hashes.",
+  "results": [
+    {
+      "id": "base_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "4a875dfc8bc26e36ac67bb1c3da25483d625366d73b1241655e1d744710e1aae",
+      "bytes": 1324366
+    },
+    {
+      "id": "base_trim",
+      "status": "passed_saved_original_bytes",
+      "sha256": "8c2af5a166309e811e452f69891ebe1a5f29e17d32e42c332cb4d0f3afa041dc",
+      "bytes": 400912
+    },
+    {
+      "id": "base_picture_slow_loop",
+      "status": "passed_saved_original_bytes",
+      "sha256": "e2bd9babe6d4eed79ddf079252376f191b633b48dbdd64e6e221131beae19d29",
+      "bytes": 183376
+    },
+    {
+      "id": "base_repeat",
+      "status": "passed_saved_original_bytes",
+      "sha256": "c1f315eb93afcdc4efbb908b44f06354d1915b11250919ae431efc1b125d47bd",
+      "bytes": 176464
+    },
+    {
+      "id": "negative_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "1b717695b851f93b7948db2a14a386d8517c1e226a868df37e6d6fe1a658d895",
+      "bytes": 966927
+    },
+    {
+      "id": "vfr_boundary",
+      "status": "passed_saved_original_bytes",
+      "sha256": "bb2830101ba287772b71677652c3b05809a2e3f370aecba1e145d88c6918d680",
+      "bytes": 159616
+    },
+    {
+      "id": "vfr_irregular_trim",
+      "status": "passed_saved_original_bytes",
+      "sha256": "5bba8980ea8c03c0bdcae0c6dde44f532f6a5b697557a59711b4bb7ad43e4ecd",
+      "bytes": 389280
+    },
+    {
+      "id": "vfr_affine_tail",
+      "status": "passed_saved_original_bytes",
+      "sha256": "678d459090efa88ea503c3d2b362a097739c6cad1b941f9f29b6a9dcaa40c2c9",
+      "bytes": 122384
+    },
+    {
+      "id": "silent_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "4e40836ae8adfbb50e092b4023a2d7062633c9c2aee9dd2c8e133789a9b0bf84",
+      "bytes": 1116987
+    },
+    {
+      "id": "24fps_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "16349e1b60598345cf9e2432d32ff1edd396b7b05ef5bd12f4abc32a821d7760",
+      "bytes": 958735
+    },
+    {
+      "id": "60fps_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "9b9824f74013b33aacd7b1f7ce653325a4b06853ad2f0a1305c4ef2bcdb9fabe",
+      "bytes": 993455
+    },
+    {
+      "id": "landscape4k_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "efe42384b43c5e686d718f573c0e53cd7a6454e819e39a4fcef5ccd156d34869",
+      "bytes": 19852328
+    },
+    {
+      "id": "landscape4k_tail",
+      "status": "passed_saved_original_bytes",
+      "sha256": "04792f57690c5f6f95aeb01d80b8f572877df77c60c9fc2aa8569b184589be3e",
+      "bytes": 989127
+    },
+    {
+      "id": "landscape4k_repeat",
+      "status": "passed_saved_original_bytes",
+      "sha256": "821de357db14637b8c55479796740cca881acb9dee356c0c0a6fc07095d3e213",
+      "bytes": 1483166
+    },
+    {
+      "id": "portrait4k_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "c5614dabefef301806f79a4204ba4570c0a2fba89626b18ec5cdaf4fc77c9746",
+      "bytes": 4085643
+    },
+    {
+      "id": "portrait4k_tail",
+      "status": "passed_saved_original_bytes",
+      "sha256": "b4ec5fef72721ce9258ec87f26783168ff61faa7e488cd954a0293546fb6eb60",
+      "bytes": 190423
+    },
+    {
+      "id": "landscape4k_retry",
+      "status": "passed_saved_original_bytes",
+      "sha256": "8bc2265be7891bdf87c8ce1eb7c9dce6665923ab7b751f567b8fe9bcbb651540",
+      "bytes": 19852328
+    }
+  ]
+}

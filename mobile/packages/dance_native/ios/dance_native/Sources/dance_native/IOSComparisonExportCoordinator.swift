@@ -233,6 +233,20 @@ final class IOSComparisonExportCoordinator {
         }
       }
     } catch {
+      #if DEBUG
+      // Codes diagnose codec/compositor failures without exposing media URLs,
+      // filenames or NSError userInfo in application logs.
+      var diagnostic = error as NSError
+      var codes: [String] = []
+      for _ in 0..<4 {
+        let domain = ["AVFoundationErrorDomain", "NSOSStatusErrorDomain",
+          "WoahComparisonCompositor"].contains(diagnostic.domain) ? diagnostic.domain : "comparison"
+        codes.append("\(domain):\(diagnostic.code)")
+        guard let underlying = diagnostic.userInfo[NSUnderlyingErrorKey] as? NSError else { break }
+        diagnostic = underlying
+      }
+      NSLog("WoahComparison export_failure %@", codes.joined(separator: ">"))
+      #endif
       withLock {
         guard var record = current, record.id == id, record.state != "completed" else { return }
         if cancellation.reason == .backgroundExpired {

@@ -35,8 +35,8 @@ def panes(spec):
         first=(w-g)//2;return [(0,0,first,h),(first+g,0,w-first-g,h)]
     first=(h-g)//2;return [(0,0,w,first),(0,first+g,w,h-first-g)]
 
-def transform(spec,index):
-    x,y,w,h=panes(spec)[index];fw=min(w,int(h*640/360));fh=min(h,int(w*360/640))
+def transform(spec,index,aspect=640/360):
+    x,y,w,h=panes(spec)[index];fw=min(w,int(h*aspect));fh=min(h,int(w/aspect))
     fx=x+(w-fw)//2;fy=y+(h-fh)//2
     p=spec[['teacherPicture','learnerPicture'][index]];z=p['zoom']
     cx=(2*(fx-x+fw/2)/w-1)*z;cy=(1-2*(fy-y+fh/2)/h)*z
@@ -61,8 +61,49 @@ def code_pixels(image,spec,index,expected):
     assert not errors,(index,expected,errors)
     return checked
 
+def source_image(path,info,time):
+    index=frame_times(info).index(time)
+    stream=next(s for s in info['streams'] if s['codec_type']=='video')
+    raw=subprocess.check_output(['ffmpeg','-v','error','-i',str(path),'-vf',f'select=eq(n\\,{index})',
+        '-frames:v','1','-f','rawvideo','-pix_fmt','rgb24','pipe:1'])
+    return np.frombuffer(raw,dtype=np.uint8).reshape(stream['height'],stream['width'],3)
+
+def pane_similarity(image,spec,index,original):
+    sh,sw=original.shape[:2]
+    x,y,w,h,zx,zy,sx,sy=transform(spec,index,sw/sh)
+    mx,my=zx*w/sw,zy*h/sh
+    left=x+(1+sx-zx)*w/2;top=y+(1-sy-zy)*h/2
+    mirror=spec[['mirrorTeacher','mirrorLearner'][index]]
+    matrix=np.array([[-mx if mirror else mx,0,left+(zx*w-mx/2 if mirror else mx/2)-.5],
+                     [0,my,top+my/2-.5]],dtype=np.float32)
+    expected=cv2.warpAffine(original,matrix,(spec['width'],spec['height']))
+    valid=cv2.warpAffine(np.ones((sh,sw),dtype=np.uint8),matrix,(spec['width'],spec['height']),flags=cv2.INTER_NEAREST).astype(bool)
+    clip=np.zeros(valid.shape,dtype=bool);clip[y+3:y+h-3,x+3:x+w-3]=True;valid &= clip
+    actual=cv2.cvtColor(image,cv2.COLOR_RGB2GRAY)[valid].astype(np.float32)
+    want=cv2.cvtColor(expected,cv2.COLOR_RGB2GRAY)[valid].astype(np.float32)
+    assert len(want)>100 and float(np.std(want))>1,'Missing source visual detail'
+    ncc=float(np.corrcoef(actual,want)[0,1]);mae=float(np.mean(np.abs(actual-want)))
+    assert ncc>.97 and mae<12,(index,ncc,mae)
+    return dict(pane=index,ncc=ncc,meanAbsoluteError=mae,checkedPixels=len(want))
+
 def pcm(path,rate):
     return np.frombuffer(subprocess.check_output(['ffmpeg','-v','error','-i',str(path),'-map','0:a:0','-ac','1','-ar',str(rate),'-f','f32le','pipe:1']),dtype=np.float32)
+
+def check_audio_segment(out,reference,rate):
+    """Check signal timing, including silent selections inside audio tracks."""
+    assert len(reference)>0 and len(out)>=len(reference),'Missing audio samples'
+    x=out[:len(reference)]
+    expected_rms=float(np.sqrt(np.mean(reference**2)))
+    if expected_rms<1e-4:
+        rms=float(np.sqrt(np.mean(x**2)));assert rms<1e-4,rms
+        return dict(sampleRate=rate,silentRms=rms,referenceSilent=True,decodedSamples=len(out))
+    corr=signal.correlate(x,reference,mode='full',method='fft')
+    lag=int(signal.correlation_lags(len(x),len(reference))[np.argmax(corr)])
+    denominator=float(np.linalg.norm(x)*np.linalg.norm(reference))
+    normalized=float(np.max(corr)/denominator) if denominator>0 else 0.0
+    assert abs(lag)<=round(rate*.002),(lag,rate)
+    assert normalized>.97,normalized
+    return dict(sampleRate=rate,lagSamples=lag,lagUs=round(lag*1e6/rate),correlation=normalized,decodedSamples=len(out))
 
 def validate(video,record,ref,target,report_path,coded_fixtures=False,snapshot=None):
     label=video.stem;s=record.get('spec',record)
@@ -80,14 +121,17 @@ def validate(video,record,ref,target,report_path,coded_fixtures=False,snapshot=N
     duration_error=abs(round(float(v['duration'])*1e6)-duration);assert duration_error<=20,duration_error
     audio_duration_error=abs(round(float(audio['duration'])*1e6)-duration);assert audio_duration_error<=100,audio_duration_error
     container_error=abs(round(float(oi['format']['duration'])*1e6)-duration);assert container_error<=100,container_error
-    indices=sorted(set([0,len(op)-1]+[round((len(op)-1)*i/10) for i in range(1,10)])) if coded_fixtures else ([len(op)//2] if snapshot else [])
+    indices=sorted(set([0,len(op)-1]+[round((len(op)-1)*i/10) for i in range(1,10)])) if coded_fixtures else sorted(set([0,len(op)//2,len(op)-1]))
     selector='+'.join('eq(n,'+str(i)+')' for i in indices)
     raw=b'' if not indices else subprocess.check_output(['ffmpeg','-v','error','-i',str(video),'-map','0:v:0','-vf','select='+selector.replace(',',r'\,'),'-fps_mode','vfr','-f','rawvideo','-pix_fmt','rgb24','pipe:1'])
     frames=np.frombuffer(raw,dtype=np.uint8).reshape(len(indices),s['height'],s['width'],3)
     checks=[]
     for n,frame in zip(indices,frames):
-        if not coded_fixtures: continue
         rt,tt=source_correspondence(reference_pts,target_pts,exact_start+exact_expect[n],a,b)
+        if not coded_fixtures:
+            visual=[pane_similarity(frame,s,i,source_image(path,info,t)) for i,(path,info,t) in enumerate([(ref,ri,rt),(target,ti,tt)])]
+            checks.append(dict(outputUs=op[n],referencePtsUs=round(rt*1_000_000),targetPtsUs=round(tt*1_000_000),visual=visual))
+            continue
         rc,tc=round(rt*30),round(tt*30)
         bits=[code_pixels(frame,s,0,rc),code_pixels(frame,s,1,tc)]
         checks.append(dict(outputUs=op[n],referencePtsUs=round(rt*1_000_000),targetPtsUs=round(tt*1_000_000),codes=[rc,tc],checkedBits=bits))
@@ -97,11 +141,7 @@ def validate(video,record,ref,target,report_path,coded_fixtures=False,snapshot=N
     if any(v['codec_type']=='audio' for v in ri['streams']):
         reference=pcm(ref,rate);first=math.ceil(start*rate/1e6);segment=reference[first:first+min(len(out),round(duration*rate/1e6))]
         # A second lossy AAC generation may change samples; position must remain within 2ms.
-        x=out[:len(segment)];corr=signal.correlate(x,segment,mode='full',method='fft');lag=int(signal.correlation_lags(len(x),len(segment))[np.argmax(corr)])
-        normalized=float(np.max(corr)/(np.linalg.norm(x)*np.linalg.norm(segment)))
-        assert abs(lag)<=round(rate*.002),(lag,rate)
-        assert normalized>.97,normalized
-        audio_check=dict(sampleRate=rate,lagSamples=lag,lagUs=round(lag*1e6/rate),correlation=normalized,decodedSamples=len(out))
+        audio_check=check_audio_segment(out,segment,rate)
     else:
         rms=float(np.sqrt(np.mean(out**2)));assert rms<1e-4,rms
         audio_check=dict(sampleRate=rate,silentRms=rms,decodedSamples=len(out))

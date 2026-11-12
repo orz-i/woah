@@ -1,0 +1,417 @@
+{
+  "schema": "woah.comparison.texture-audit.v1",
+  "platform": "android",
+  "passed": true,
+  "scope": "Actual Flutter texture snapshots at three source clocks in eight sessions; independent of playback DTO frame labels.",
+  "corpusManifestSha256": "b5961783b2ffcae9a74e9fd250191aff51c7a82de2eecd3b4a6e0417724566e6",
+  "results": [
+    {
+      "session": "base",
+      "positionUs": 280000,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 266667,
+      "targetPtsUs": 3266667,
+      "imageSha256": "62adc83d8ccf2545646aeff98041b70178e731a48d8585d6f8419b1f3a84d359"
+    },
+    {
+      "session": "base",
+      "positionUs": 1250000,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 1233333,
+      "targetPtsUs": 4233333,
+      "imageSha256": "fbf0af93633dfc9410877eb98694e292dfd1a5b335c1ddc8df71b8b6be433174"
+    },
+    {
+      "session": "base",
+      "positionUs": 11999999,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 11966667,
+      "targetPtsUs": 14966667,
+      "imageSha256": "70a7ae05eb758a1b6d8fea99661a3d7ae385c0d19b6b3899a19d365880f3c0fb"
+    },
+    {
+      "session": "negative",
+      "positionUs": 280000,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 3266667,
+      "targetPtsUs": 266667,
+      "imageSha256": "075830b4169dfe7e192f1792abcf5bbcc7d1f56b723d0c285cb01dfef5c9f302"
+    },
+    {
+      "session": "negative",
+      "positionUs": 1250000,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 4233333,
+      "targetPtsUs": 1233333,
+      "imageSha256": "db5e0e5d898e2f5836816c9b26b4ab9502e26bef123fd7da050eafbc7badc83c"
+    },
+    {
+      "session": "negative",
+      "positionUs": 11999999,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 14966667,
+      "targetPtsUs": 11966667,
+      "imageSha256": "b503cec2902cdd01d11275984718fe789336e516c07550a43571a432122278da"
+    },
+    {
+      "session": "vfr_affine",
+      "positionUs": 280000,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 266667,
+      "targetPtsUs": 1400000,
+      "imageSha256": "ba70cd6ffa8a45fabdca13d57a43727ad4358f19df00837697746722c24329f5"
+    },
+    {
+      "session": "vfr_affine",
+      "positionUs": 1250000,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 1200000,
+      "targetPtsUs": 2200000,
+      "imageSha256": "8acb7d8d8ac07e657f266cc96261c410376bbf42a94847b12ca9fd1484fa3a43"
+    },
+    {
+      "session": "vfr_affine",
+      "positionUs": 22999999,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 22966667,
+      "targetPtsUs": 19566667,
+      "imageSha256": "d721354543b6668e565c9048eca5eda99bf80474ffac7ff7c3ae58c076427586"
+    },
+    {
+      "session": "silent",
+      "positionUs": 280000,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 266667,
+      "targetPtsUs": 3266667,
+      "imageSha256": "62adc83d8ccf2545646aeff98041b70178e731a48d8585d6f8419b1f3a84d359"
+    },
+    {
+      "session": "silent",
+      "positionUs": 1250000,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 1233333,
+      "targetPtsUs": 4233333,
+      "imageSha256": "fbf0af93633dfc9410877eb98694e292dfd1a5b335c1ddc8df71b8b6be433174"
+    },
+    {
+      "session": "silent",
+      "positionUs": 11999999,
+      "checkedBits": [
+        20,
+        20
+      ],
+      "status": "passed",
+      "referencePtsUs": 11966667,
+      "targetPtsUs": 14966667,
+      "imageSha256": "70a7ae05eb758a1b6d8fea99661a3d7ae385c0d19b6b3899a19d365880f3c0fb"
+    },
+    {
+      "session": "24fps",
+      "positionUs": 280000,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.9776827870682598,
+          "meanAbsoluteError": 2.773256778717041,
+          "checkedPixels": 13050
+        },
+        {
+          "pane": 1,
+          "ncc": 0.9779756313364587,
+          "meanAbsoluteError": 3.9645211696624756,
+          "checkedPixels": 13050
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 250000,
+      "targetPtsUs": 3266667,
+      "imageSha256": "34e569b548bfd36c262987c21c85b0053a85b6349e5f9db115b7998684dd21fe"
+    },
+    {
+      "session": "24fps",
+      "positionUs": 1250000,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.9800539730482742,
+          "meanAbsoluteError": 2.7977778911590576,
+          "checkedPixels": 13050
+        },
+        {
+          "pane": 1,
+          "ncc": 0.981921449203346,
+          "meanAbsoluteError": 3.940000057220459,
+          "checkedPixels": 13050
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 1250000,
+      "targetPtsUs": 4233333,
+      "imageSha256": "56e62bdf54044ac17058978764257b3327ad61e8a2137927d9e788c3e35e06d4"
+    },
+    {
+      "session": "24fps",
+      "positionUs": 11999999,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.9830656896225941,
+          "meanAbsoluteError": 2.877164840698242,
+          "checkedPixels": 13050
+        },
+        {
+          "pane": 1,
+          "ncc": 0.9793979564715027,
+          "meanAbsoluteError": 3.9595401287078857,
+          "checkedPixels": 13050
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 11958333,
+      "targetPtsUs": 14966667,
+      "imageSha256": "3fcb353f6187571bb24971b46ed937d524477351a24991a42b933ade3465b1ee"
+    },
+    {
+      "session": "60fps",
+      "positionUs": 280000,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.9778022831526973,
+          "meanAbsoluteError": 2.7744061946868896,
+          "checkedPixels": 13050
+        },
+        {
+          "pane": 1,
+          "ncc": 0.9779756313364587,
+          "meanAbsoluteError": 3.9645211696624756,
+          "checkedPixels": 13050
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 266667,
+      "targetPtsUs": 3266667,
+      "imageSha256": "d0d1c4b3474822d50b6606648514bb09c65ffe0129b8473ed213983fabff6cb3"
+    },
+    {
+      "session": "60fps",
+      "positionUs": 1250000,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.9804394992254769,
+          "meanAbsoluteError": 2.7725670337677,
+          "checkedPixels": 13050
+        },
+        {
+          "pane": 1,
+          "ncc": 0.981921449203346,
+          "meanAbsoluteError": 3.940000057220459,
+          "checkedPixels": 13050
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 1250000,
+      "targetPtsUs": 4233333,
+      "imageSha256": "7c15ad329270b9adc15ec6a3a1376da18c2443502c0d743a38249db73a05237a"
+    },
+    {
+      "session": "60fps",
+      "positionUs": 11999999,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.9831798432417832,
+          "meanAbsoluteError": 2.8721072673797607,
+          "checkedPixels": 13050
+        },
+        {
+          "pane": 1,
+          "ncc": 0.9793979564715027,
+          "meanAbsoluteError": 3.9595401287078857,
+          "checkedPixels": 13050
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 11983333,
+      "targetPtsUs": 14966667,
+      "imageSha256": "b26edc6493ab637a164269c5e33fc9ac6dd39c53c04784fc0df08116b3a42e65"
+    },
+    {
+      "session": "landscape4k",
+      "positionUs": 280000,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.9994256950406158,
+          "meanAbsoluteError": 1.4188505411148071,
+          "checkedPixels": 13050
+        },
+        {
+          "pane": 1,
+          "ncc": 0.998657527442859,
+          "meanAbsoluteError": 1.770038366317749,
+          "checkedPixels": 13050
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 280000,
+      "targetPtsUs": 960000,
+      "imageSha256": "fd3a8c32124974c71567ddb969a38d2aed2fa89573f8cb8c9c5e09bc68f8c58a"
+    },
+    {
+      "session": "landscape4k",
+      "positionUs": 1250000,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.9994435738360714,
+          "meanAbsoluteError": 1.3973180055618286,
+          "checkedPixels": 13050
+        },
+        {
+          "pane": 1,
+          "ncc": 0.9987609828575519,
+          "meanAbsoluteError": 1.8075095415115356,
+          "checkedPixels": 13050
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 1240000,
+      "targetPtsUs": 1920000,
+      "imageSha256": "4335ba3dc749a5a50cdc70fe38c14a5403509011fcbd4b4f48bb7389c7483812"
+    },
+    {
+      "session": "landscape4k",
+      "positionUs": 22539999,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.999470630905712,
+          "meanAbsoluteError": 1.4570881128311157,
+          "checkedPixels": 13050
+        },
+        {
+          "pane": 1,
+          "ncc": 0.9990308508068182,
+          "meanAbsoluteError": 1.7009961605072021,
+          "checkedPixels": 13050
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 22520000,
+      "targetPtsUs": 23200000,
+      "imageSha256": "016a4b7f9f2f8527181a33754c1c52f564a5e0d271d749389950aaf07eba98fd"
+    },
+    {
+      "session": "portrait4k",
+      "positionUs": 280000,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.9976291893085784,
+          "meanAbsoluteError": 1.417921543121338,
+          "checkedPixels": 29484
+        },
+        {
+          "pane": 1,
+          "ncc": 0.985209573937718,
+          "meanAbsoluteError": 1.615079402923584,
+          "checkedPixels": 29484
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 280000,
+      "targetPtsUs": 960000,
+      "imageSha256": "fe8be8710d02ee54567637737d7f018a934b1ecacadbae5cd0f084e5f1b9c324"
+    },
+    {
+      "session": "portrait4k",
+      "positionUs": 1250000,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.998417279315212,
+          "meanAbsoluteError": 1.4097137451171875,
+          "checkedPixels": 29484
+        },
+        {
+          "pane": 1,
+          "ncc": 0.9832015430560452,
+          "meanAbsoluteError": 1.6093813180923462,
+          "checkedPixels": 29484
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 1240000,
+      "targetPtsUs": 1920000,
+      "imageSha256": "5cfe20eb370804085a53c736108c0c2e0897ea6975ef37a61e0c222a1f506873"
+    },
+    {
+      "session": "portrait4k",
+      "positionUs": 25779999,
+      "visual": [
+        {
+          "pane": 0,
+          "ncc": 0.9981535141804485,
+          "meanAbsoluteError": 1.4307421445846558,
+          "checkedPixels": 29484
+        },
+        {
+          "pane": 1,
+          "ncc": 0.9835429743815409,
+          "meanAbsoluteError": 1.601750135421753,
+          "checkedPixels": 29484
+        }
+      ],
+      "status": "passed",
+      "referencePtsUs": 25760000,
+      "targetPtsUs": 26440000,
+      "imageSha256": "4f4b0093545fa514bf8aed9c28471cec0d708dc3c1709fee9bbe449f3467d67d"
+    }
+  ]
+}

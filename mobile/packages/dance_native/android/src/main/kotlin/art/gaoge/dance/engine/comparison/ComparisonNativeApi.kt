@@ -170,15 +170,19 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
                 debug("music teacher_frames="+teacher.count+" origin_us="+teacher.startUs)
                 val learner=ComparisonPcmDecoder(context).features(learnerUri,current)
                 debug("music learner_frames="+learner.count+" origin_us="+learner.startUs)
-                check(current()) { "匹配已取消" }
+                if(!current()) throw ComparisonAlignmentCancelled()
                 val result=ComparisonMusicMatcher.match(teacher,learner,current)
+                if(!current()) throw ComparisonAlignmentCancelled()
                 debug("music status="+result.status+" elapsed_ms="+(android.os.SystemClock.elapsedRealtime()-started)+
                     " candidates="+result.candidates.joinToString { "offset_us="+it.offsetUs+" time_scale="+it.timeScale+" score="+it.score+
                         " windows="+it.consistentWindows+" span_s="+it.supportedSeconds+" residual_ms="+it.residualMs })
                 MusicAlignmentDto(result.status,result.message,result.candidates.map {
                     MusicCandidateDto(it.offsetUs,it.score,it.consistentWindows,it.supportedSeconds,it.residualMs,it.timeScale)
                 })
-            } catch (error: ComparisonAlignmentCancelled) { debug("music status=cancelled");throw error }
+            } catch (error: ComparisonAlignmentCancelled) {
+                debug("music status=cancelled")
+                MusicAlignmentDto("cancelled","匹配已取消",emptyList())
+            }
             catch (error: ComparisonAlignmentTooLong) {
                 debug("music status=unsupported reason=duration")
                 MusicAlignmentDto("unsupported","自动匹配暂支持十分钟内的视频；可以使用手动校准。",emptyList())

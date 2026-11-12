@@ -38,18 +38,12 @@ final class IOSComparisonExportPipeline {
     progress: @escaping (Double) -> Void) async throws {
     let duration = CMTime(value: spec.durationUs, timescale: 1_000_000)
     let asset = composition.asset
-    let videoTracks = try await asset.loadTracks(withMediaType: .video)
-    guard !videoTracks.isEmpty else { throw failure("没有可导出的视频画面") }
+    let frames = try await IOSComparisonExportFrames(spec: spec, composition: composition,
+      cancellation: cancellation)
+    defer { frames.close() }
     let audioTracks = try await asset.loadTracks(withMediaType: .audio)
     let reader = try AVAssetReader(asset: asset)
     reader.timeRange = CMTimeRange(start: .zero, duration: duration)
-    let videoOutput = AVAssetReaderVideoCompositionOutput(videoTracks: videoTracks,
-      videoSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-        kCVPixelBufferIOSurfacePropertiesKey as String: [:]])
-    videoOutput.videoComposition = composition.videoComposition
-    videoOutput.alwaysCopiesSampleData = false
-    guard reader.canAdd(videoOutput) else { throw failure("无法读取合成视频") }
-    reader.add(videoOutput)
 
     let audioOutput: AVAssetReaderAudioMixOutput?
     if audioTracks.isEmpty {
@@ -98,18 +92,20 @@ final class IOSComparisonExportPipeline {
     }
     writer.add(videoInput)
     writer.add(audioInput)
+    var operation = "start"
+    var videoCount = 0
+    var lastPTS = CMTime.invalid
     do {
       try cancellation.check()
       guard writer.startWriting() else { throw writer.error ?? failure("无法创建导出文件") }
       writer.startSession(atSourceTime: .zero)
-      guard reader.startReading() else { throw reader.error ?? failure("无法解码对比视频") }
+      if audioOutput != nil, !reader.startReading() { throw reader.error ?? failure("无法解码参考音频") }
       let audio = try IOSComparisonExportPCM(output: audioOutput, durationUs: spec.durationUs)
-      var currentVideo: CMSampleBuffer? = autoreleasepool { videoOutput.copyNextSampleBuffer() }
-      var nextVideo: CMSampleBuffer? = autoreleasepool { videoOutput.copyNextSampleBuffer() }
+      operation = "video_read"
+      var currentVideo = try autoreleasepool { try frames.next() }
+      var nextVideo = try autoreleasepool { try frames.next() }
       var videoFinished = false
       var audioFinished = false
-      var videoCount = 0
-      var lastPTS = CMTime.invalid
       var lastProgressTime = Date.distantPast
       while !videoFinished || !audioFinished {
         try cancellation.check()
@@ -129,6 +125,7 @@ final class IOSComparisonExportPipeline {
               }
               let timed = try Self.timedCopy(sample, pts: start,
                 sampleDuration: CMTimeSubtract(end, start))
+              operation = "video_append"
               guard videoInput.append(timed) else {
                 throw writer.error ?? failure("无法写入对比视频帧")
               }
@@ -141,7 +138,8 @@ final class IOSComparisonExportPipeline {
               }
             }
             currentVideo = nextVideo
-            nextVideo = autoreleasepool { videoOutput.copyNextSampleBuffer() }
+            operation = "video_read"
+            nextVideo = try autoreleasepool { try frames.next() }
           } else {
             videoInput.markAsFinished()
             videoFinished = true
@@ -149,7 +147,9 @@ final class IOSComparisonExportPipeline {
           appended = true
         }
         if !audioFinished, audioInput.isReadyForMoreMediaData {
+          operation = "audio_read"
           if let sample = try audio.next() {
+            operation = "audio_append"
             guard audioInput.append(sample) else { throw writer.error ?? failure("无法写入参考音频") }
           } else {
             audioInput.markAsFinished()
@@ -165,6 +165,7 @@ final class IOSComparisonExportPipeline {
       // The final video frame's explicit duration and this session boundary
       // prevent an encoder's default frame/AAC padding from extending the trim.
       writer.endSession(atSourceTime: duration)
+      operation = "finish"
       progress(0.98)
       try cancellation.check()
       await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
@@ -183,6 +184,10 @@ final class IOSComparisonExportPipeline {
         throw failure("导出文件时长或音视频轨道不完整")
       }
     } catch {
+      #if DEBUG
+      NSLog("WoahComparison pipeline_failure operation=%@ frames=%d last_pts=%f reader=%d writer=%d",
+        operation, videoCount, CMTimeGetSeconds(lastPTS), reader.status.rawValue, writer.status.rawValue)
+      #endif
       reader.cancelReading()
       writer.cancelWriting()
       try? FileManager.default.removeItem(at: outputURL)
@@ -206,6 +211,137 @@ final class IOSComparisonExportPipeline {
 
   private func failure(_ text: String) -> IOSComparisonExportError {
     IOSComparisonExportError(code: "COMPARISON_EXPORT_FAILED", message: text)
+  }
+}
+
+/// Decode original tracks instead of cropped/scaled composition tracks. iOS 17's
+/// composition reader can lose H.264 reorder dependencies near an edit's tail.
+/// Only native decoding/rendering lives here; Rust maps each original source PTS.
+private final class IOSComparisonExportFrames {
+  private let reference: Source
+  private let target: Source
+  private let spec: IOSComparisonExportSpec
+  private let start: CMTime
+  private let end: CMTime
+  private let instruction: IOSComparisonVideoInstruction
+  private let compositor = IOSComparisonCompositor()
+  private let pool: CVPixelBufferPool
+  private let cancellation: IOSComparisonExportCancellation
+  private var clock: CMTime
+
+  init(spec: IOSComparisonExportSpec, composition: IOSComparisonComposition,
+    cancellation: IOSComparisonExportCancellation) async throws {
+    self.spec = spec
+    self.cancellation = cancellation
+    start = CMTime(value: composition.referenceStartUs, timescale: 1_000_000)
+    end = CMTimeAdd(start, CMTime(value: spec.durationUs, timescale: 1_000_000))
+    clock = start
+    guard let instruction = composition.videoComposition.instructions.first as? IOSComparisonVideoInstruction else {
+      throw IOSComparisonExportError.invalid("无法读取对比画面布局")
+    }
+    self.instruction = instruction
+    var created: CVPixelBufferPool?
+    let status = CVPixelBufferPoolCreate(kCFAllocatorDefault, nil, [
+      kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_32BGRA,
+      kCVPixelBufferWidthKey: spec.width, kCVPixelBufferHeightKey: spec.height,
+      kCVPixelBufferIOSurfacePropertiesKey: [:], kCVPixelBufferMetalCompatibilityKey: true,
+    ] as CFDictionary, &created)
+    guard status == kCVReturnSuccess, let created else { throw IOSComparisonExportError.invalid("无法分配对比画面") }
+    pool = created
+    reference = try await Source(url: IOSComparisonFiles.resolve(spec.teacherURI),
+      time: composition.referenceStartUs, cancellation: cancellation)
+    do {
+      target = try await Source(url: IOSComparisonFiles.resolve(spec.learnerURI),
+        time: IOSComparisonTimeCore.map(composition.referenceStartUs, scale: spec.timeScale, offset: spec.offsetUs),
+        cancellation: cancellation)
+    } catch { reference.close(); throw error }
+  }
+
+  func close() { reference.close(); target.close() }
+
+  func next() throws -> CMSampleBuffer? {
+    try cancellation.check()
+    guard CMTimeCompare(clock, end) < 0 else { return nil }
+    guard let referenceUs = IOSComparisonTimeCore.map(clock),
+          let targetUs = IOSComparisonTimeCore.map(clock, scale: spec.timeScale, offset: spec.offsetUs) else {
+      throw IOSComparisonExportError.invalid("视频帧时间戳无效")
+    }
+    let r = try reference.frame(at: referenceUs)
+    let t = try target.frame(at: targetUs)
+    var pixel: CVPixelBuffer?
+    guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pixel) == kCVReturnSuccess,
+          let pixel else { throw IOSComparisonExportError.invalid("无法分配导出画面") }
+    compositor.render(reference: r, target: t, instruction: instruction, output: pixel)
+    var format: CMVideoFormatDescription?
+    guard CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault,
+      imageBuffer: pixel, formatDescriptionOut: &format) == noErr, let format else {
+      throw IOSComparisonExportError.invalid("导出画面格式无效")
+    }
+    let following = CMTimeMinimum(end, reference.nextTime ?? end)
+    guard CMTimeCompare(following, clock) > 0 else { throw IOSComparisonExportError.invalid("视频帧时间戳未递增") }
+    var timing = CMSampleTimingInfo(duration: CMTimeSubtract(following, clock),
+      presentationTimeStamp: CMTimeSubtract(clock, start), decodeTimeStamp: .invalid)
+    var sample: CMSampleBuffer?
+    let status = CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault,
+      imageBuffer: pixel, formatDescription: format, sampleTiming: &timing, sampleBufferOut: &sample)
+    guard status == noErr, let sample else { throw IOSComparisonExportError.invalid("无法读取导出画面") }
+    clock = following
+    return sample
+  }
+
+  private final class Source {
+    private let reader: AVAssetReader
+    private let output: AVAssetReaderTrackOutput
+    private let cancellation: IOSComparisonExportCancellation
+    private var current: CMSampleBuffer?
+    private var following: CMSampleBuffer?
+    var nextTime: CMTime? { following.map { CMSampleBufferGetPresentationTimeStamp($0) } }
+
+    init(url: URL, time: Int64, cancellation: IOSComparisonExportCancellation) async throws {
+      self.cancellation = cancellation
+      let index = try IOSComparisonFrameIndex.read(url: url, isCancelled: { cancellation.reason != nil })
+      let asset = AVURLAsset(url: url)
+      guard let track = try await asset.loadTracks(withMediaType: .video).first,
+            let first = index.frame(atOrBefore: time) else { throw IOSComparisonExportError.invalid("没有可导出的视频画面") }
+      reader = try AVAssetReader(asset: asset)
+      output = AVAssetReaderTrackOutput(track: track, outputSettings: [
+        kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+        kCVPixelBufferIOSurfacePropertiesKey as String: [:]])
+      output.alwaysCopiesSampleData = false
+      let range = try await track.load(.timeRange)
+      // Include the exact rational sample even when its microsecond PTS rounded
+      // upward. Keep the original track's end and H.264 reorder dependencies.
+      let begin = CMTimeMaximum(range.start, CMTime(value: max(0, first - 1), timescale: 1_000_000))
+      reader.timeRange = CMTimeRange(start: begin, end: CMTimeRangeGetEnd(range))
+      guard reader.canAdd(output) else { throw IOSComparisonExportError.invalid("无法读取源视频") }
+      reader.add(output)
+      guard reader.startReading() else { throw reader.error ?? IOSComparisonExportError.invalid("无法解码源视频") }
+      do { current = try read(); following = try read() }
+      catch { reader.cancelReading(); throw error }
+    }
+
+    func close() { reader.cancelReading(); current = nil; following = nil }
+
+    private func read() throws -> CMSampleBuffer? {
+      try cancellation.check()
+      let value = autoreleasepool { output.copyNextSampleBuffer() }
+      if reader.status == .failed { throw reader.error ?? IOSComparisonExportError.invalid("源视频解码失败") }
+      return value
+    }
+
+    func frame(at time: Int64) throws -> CVPixelBuffer {
+      while let following,
+            let pts = IOSComparisonTimeCore.map(CMSampleBufferGetPresentationTimeStamp(following)), pts <= time {
+        try cancellation.check()
+        current = following
+        self.following = try read()
+      }
+      guard let current, let pts = IOSComparisonTimeCore.map(CMSampleBufferGetPresentationTimeStamp(current)),
+            pts <= time, let image = CMSampleBufferGetImageBuffer(current) else {
+        throw IOSComparisonExportError.invalid("选段没有可读取的视频帧")
+      }
+      return image
+    }
   }
 }
 

@@ -1,0 +1,110 @@
+{
+  "schema": "woah.comparison.gallery-audit.v1",
+  "platform": "ios",
+  "passed": true,
+  "scope": "Read-only lookup of each of the 17 returned PHAsset identifiers in this QA simulator. Exact original movie bytes; no added app Photos read permission.",
+  "results": [
+    {
+      "id": "base_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "ffd51160e19d59f0af78f144c4a65ec23ba93a40412f2daaaf150bb368a25df9",
+      "bytes": 3189606
+    },
+    {
+      "id": "base_trim",
+      "status": "passed_saved_original_bytes",
+      "sha256": "e5e83e6670813d97ea257173ac0088191e7089eb309649f6bf10a16212d610e2",
+      "bytes": 564880
+    },
+    {
+      "id": "base_picture_slow_loop",
+      "status": "passed_saved_original_bytes",
+      "sha256": "86012cf9c94d8fbbaf868f9e96e1bd12513a977078e3389bcc2946ff7bd0f510",
+      "bytes": 384848
+    },
+    {
+      "id": "base_repeat",
+      "status": "passed_saved_original_bytes",
+      "sha256": "38b424d13b623adb3c5fb223ec2c7d4de4a31102f946656fe79ceca46574e684",
+      "bytes": 229145
+    },
+    {
+      "id": "negative_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "3f780846a889282f62884404e32be9344391e57ba0d0f4bb042e9630d88d5f4a",
+      "bytes": 1402581
+    },
+    {
+      "id": "vfr_boundary",
+      "status": "passed_saved_original_bytes",
+      "sha256": "fd2a5c4babc03aae848668214246948c83addf1e41adc9c9aa3b134d8ec2863d",
+      "bytes": 92097
+    },
+    {
+      "id": "vfr_irregular_trim",
+      "status": "passed_saved_original_bytes",
+      "sha256": "d9cdc691cd924312dcfba345043540ce7873f7a82ef0f6a6fd403918900b499e",
+      "bytes": 536496
+    },
+    {
+      "id": "vfr_affine_tail",
+      "status": "passed_saved_original_bytes",
+      "sha256": "b9494b2fd83ce5a75912fcce3b4ee1760e3da7b64a9fa87f42050949abc8df5e",
+      "bytes": 131306
+    },
+    {
+      "id": "silent_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "b8c442b9769ab0e85ece7dbf1767a61bd30b514d1aa50766a8dd55bb789aa464",
+      "bytes": 1299283
+    },
+    {
+      "id": "24fps_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "2f48055beae74b529b4136de4553cd65282c09307eb7053eefdce62eb6cbdeb4",
+      "bytes": 1183342
+    },
+    {
+      "id": "60fps_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "f4d566a6df15ea60edc9901614d483a89dcf77a8fbbc4660bb0c8dff81a70b59",
+      "bytes": 1629624
+    },
+    {
+      "id": "landscape4k_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "6d21ae290129759037ac12fe5b9b1aa15db3aae2b4096e9c8d0fc85d4b0aa49d",
+      "bytes": 34918646
+    },
+    {
+      "id": "landscape4k_tail",
+      "status": "passed_saved_original_bytes",
+      "sha256": "0f19fc13e7a2f326ed37d644846f063c0707644e8aaedd287684e594156d0f12",
+      "bytes": 1882542
+    },
+    {
+      "id": "landscape4k_repeat",
+      "status": "passed_saved_original_bytes",
+      "sha256": "46d66ae3f26b4f31079fc5251926cc2031e56dc39ba28d65e5887df429aca60d",
+      "bytes": 3124477
+    },
+    {
+      "id": "portrait4k_full",
+      "status": "passed_saved_original_bytes",
+      "sha256": "8e413e80eef31ded22b7617f0536c55892bb0ce69275f32c1e97e6b89ffa7b61",
+      "bytes": 10898625
+    },
+    {
+      "id": "portrait4k_tail",
+      "status": "passed_saved_original_bytes",
+      "sha256": "b10f25e7b863a362deea7e9fad14e19143487dc93a68e49746cbaa885b5e4280",
+      "bytes": 442075
+    },
+    {
+      "id": "landscape4k_retry",
+      "status": "passed_saved_original_bytes",
+      "sha256": "fb38773c859d6484f6c6f9b2055c676740ff0174d3e9b1350c9a43ec8b5f60f8",
+      "bytes": 34918622
+    }
+  ]
+}

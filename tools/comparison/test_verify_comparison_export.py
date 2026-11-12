@@ -1,11 +1,24 @@
 """Exact source-frame correspondence regressions; no media files or FFmpeg needed."""
 import unittest
+import numpy as np
 from fractions import Fraction
 
-from verify_comparison_export import frame_times, source_correspondence
+from verify_comparison_export import frame_times, source_correspondence, check_audio_segment
 
 
 class ExportCorrespondenceTest(unittest.TestCase):
+    def test_silent_selection_is_valid_inside_an_audio_track(self):
+        result=check_audio_segment(np.zeros(48000,dtype=np.float32),np.zeros(48000,dtype=np.float32),48000)
+        self.assertTrue(result['referenceSilent'])
+        with self.assertRaises(AssertionError):
+            check_audio_segment(np.ones(48000,dtype=np.float32)*.1,np.zeros(48000,dtype=np.float32),48000)
+
+    def test_audible_music_cannot_be_dropped_or_shifted_five_milliseconds(self):
+        reference=np.random.default_rng(7).standard_normal(48000).astype(np.float32)*.1
+        self.assertGreater(check_audio_segment(reference,reference,48000)['correlation'],.999)
+        for bad in [np.zeros_like(reference),np.concatenate([np.zeros(240,dtype=np.float32),reference[:-240]])]:
+            with self.assertRaises(AssertionError):
+                check_audio_segment(bad,reference,48000)
     def test_fractional_reference_maps_to_exact_target_frame_boundary(self):
         # The real iOS output exposed this boundary. Microsecond rounding would
         # move the lookup just before frame 80 and incorrectly demand frame 79.

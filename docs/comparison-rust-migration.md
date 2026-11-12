@@ -65,11 +65,19 @@ retained independently and does not count as comparison coverage.
   Flutter 277 and domain 28 checks passed. Windows/Mac C ABI timeline fingerprints
   agree. Real Android and iOS simulator Dart-to-Rust symbol/mapping smoke passed.
   Linux production, iOS build/archive/runtime and required governance CI passed.
-- Stage 2 PR #36: streaming PCM normalization, features and both matching paths
+- Stage 2 merged as PR #36: streaming PCM normalization, features and both matching paths
   are shared Rust. Kotlin/Swift implementations were removed. Rust 107 and Android
   JVM 623 checks passed; existing Swift music, PCM and composition gates passed.
   Windows/Mac ABI known-music results agree (constant exact, affine max truth error
-  0.594 ms on the frozen synthetic example). Full native flow regression pending.
+  0.594 ms on the frozen synthetic example).
+- Stage 3 merged as PR #37: both adapters consume the shared frame-step rules and
+  export cancellation/publication priorities; native resource ownership stays native.
+- Stage 4 [runtime report](../reports/comparison-rust-migration-2026-11-12/README.md):
+  both platforms passed 39 flow checks, 17 fresh exports / 4,426 decoded frames,
+  24 actual texture snapshots and 16 targeted privacy checks. Rust 110 / JVM 623
+  checks passed. Fixes retain rational affine edit endpoints, decode original
+  export tracks on iOS 17, and return the same native cancellation status.
+  The previous privacy 62-case acceptance remains baseline evidence.
 
 When adding Rust source files, run `pod install` on Mac and commit the resulting
 `dance_native` checksum: its script input list deliberately fingerprints the
