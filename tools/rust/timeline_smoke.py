@@ -12,12 +12,19 @@ class TimeRange(c.Structure):
                 ('valid', c.c_uint32), ('reserved', c.c_uint32)]
 
 
+class EditRange(c.Structure):
+    _fields_ = [('start', c.c_int64), ('duration', c.c_int64),
+                ('timescale', c.c_uint32), ('valid', c.c_uint32)]
+
+
 def main():
     lib = c.CDLL(sys.argv[1])
     lib.frame_kernel_time_value.argtypes = [c.c_uint32, c.c_int64, c.c_uint32, c.c_double, c.c_int64]
     lib.frame_kernel_time_value.restype = c.c_int64
     lib.frame_kernel_time_overlap.argtypes = [c.c_int64]*4 + [c.c_double, c.c_int64]
     lib.frame_kernel_time_overlap.restype = TimeRange
+    lib.frame_kernel_time_edit.argtypes = [c.c_int64, c.c_int64, c.c_double, c.c_int64]
+    lib.frame_kernel_time_edit.restype = EditRange
     path = Path(__file__).resolve().parents[2] / 'testdata/comparison/timeline-v1.json'
     fixture = json.loads(path.read_text(encoding='utf-8'))
     checks = []
@@ -31,6 +38,9 @@ def main():
         assert value == case['expected'], (case, value)
         checks.append(value)
     assert lib.frame_kernel_time_value(0, 11, 6, .8, 1200000) == 2666667
+    edit = lib.frame_kernel_time_edit(21765433, 23000000, .8, 1200000)
+    assert [edit.start, edit.duration, edit.timescale, edit.valid] == [93061732, 4938268, 5000000, 1]
+    checks.append([edit.start, edit.duration, edit.timescale])
     print(json.dumps({'schema': fixture['schema'], 'checks': len(checks)+1,
                       'result_sha256': hashlib.sha256(json.dumps(checks).encode()).hexdigest()}))
 
