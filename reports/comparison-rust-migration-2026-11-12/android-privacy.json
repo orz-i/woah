@@ -1,0 +1,348 @@
+{
+  "schema": "woah.privacy.comparison-nonregression.v1",
+  "platform": "android",
+  "scope": "13 existing focused cases plus three existing legacy effect cases, fresh native processing; prior full62 acceptance remains baseline evidence.",
+  "passed": true,
+  "cases": 16,
+  "movies": 15,
+  "cancelled": 1,
+  "decodedFrames": 408,
+  "nativePreviewPairs": 44,
+  "testedVisibleFaceCores": 284,
+  "visualBoardsReviewed": 16,
+  "sourceBindings": [
+    {
+      "run": "comparison_core_20261112_focused13",
+      "sourceFingerprint": "a7aa3031029db59abe48bc003ff904279da99aa5f223f41684758fb625e8978f",
+      "binarySha256": "2fc49bde84a613f3b323d6b024596f52897eadccf7bddfc3d1dd54acb803cca7"
+    },
+    {
+      "run": "comparison_core_modes_20261112_legacy22",
+      "sourceFingerprint": "a7aa3031029db59abe48bc003ff904279da99aa5f223f41684758fb625e8978f",
+      "binarySha256": "2fc49bde84a613f3b323d6b024596f52897eadccf7bddfc3d1dd54acb803cca7"
+    }
+  ],
+  "results": [
+    {
+      "case": "group_4k_body_face_union",
+      "result": "output_created",
+      "decodedFrames": 40,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "outputSha256": "380501ea78699e18e26fd5890074dabdfd9002894101a319c30552d4f6396724",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 29,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 1,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9996040018426549,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "solo_4k_body_face_union",
+      "result": "output_created",
+      "decodedFrames": 40,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "outputSha256": "f40665ee22fdd1661202d6edf24b35ceb6374dc7513c7620f3d708eacb84d779",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 40,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 1,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9983847155019738,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "solo_4k_raised_arm_sticker",
+      "result": "output_created",
+      "decodedFrames": 40,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "outputSha256": "3725a6ee2fd9dc3dfb39815f36698345b8db1b918f0e20f03ee87546de806c05",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 30,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 0,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9978468107918429,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "solo_4k_raised_arm_solid",
+      "result": "output_created",
+      "decodedFrames": 40,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "outputSha256": "8eee1b6a557f9f9bba3cbbbf0d0c970e48344cfaf107768b1d0164f1040c3e58",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 30,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 8,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9978468107918429,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "solo_4k_raised_arm_body",
+      "result": "output_created",
+      "decodedFrames": 40,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "outputSha256": "b54202393a035ff35dc53ee3c4d88d3bef8f0ee582d0153395f06a8456030bfe",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 30,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 8,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9978468107918429,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "group_hd_overlap_face",
+      "result": "output_created",
+      "decodedFrames": 1,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "outputSha256": "1dccc7d6060364c31eea00dff04a43d1942f6eca3e89e2edea33a2283b654688",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 4,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 0,
+      "knownProbesPassed": true,
+      "previewPairs": 1,
+      "minimumPreviewSourceNcc": 0.9997713604152616,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "group_hd_overlap_body",
+      "result": "output_created",
+      "decodedFrames": 1,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "outputSha256": "a257710f4e9579005d3b70801dd54fdb255aaa745c4562894330666f71117dcb",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 4,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 0,
+      "knownProbesPassed": true,
+      "previewPairs": 1,
+      "minimumPreviewSourceNcc": 0.9997713604152616,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "group_4k_face_solid",
+      "result": "output_created",
+      "decodedFrames": 10,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "outputSha256": "0ddf83ccd76b3c2c304b55b7f99fd9a3977b2996ea4a9936dd8f1bedfb2cf78a",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 31,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 1,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9997223822950299,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "group_4k_body_solid",
+      "result": "output_created",
+      "decodedFrames": 10,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "outputSha256": "3b412ed269e50b0951ec7591b29e1c3006fc6a2680dc0075e9b69749cd0c1ca2",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 23,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 1,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9998073950815647,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "group_4k_tail_face",
+      "result": "output_created",
+      "decodedFrames": 10,
+      "dimensions": [
+        3840,
+        2160
+      ],
+      "outputSha256": "bfc8d96860ae045052eb3bc3753b14f25dce9d63e5af49b437cbfdc850b4eb4d",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 4,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 1,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9998323897111924,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "solo_4k_custom_gallery_probe",
+      "result": "output_created",
+      "decodedFrames": 16,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "outputSha256": "1941f2f277239f739dc5470a48c082e783c462fd5c6377812e04f9363abdf7f4",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 16,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 0,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9982410790271793,
+      "savedOriginalPassed": true,
+      "visualReviewed": true
+    },
+    {
+      "case": "solo_4k_cancel_probe",
+      "result": "cancelled_cleanly",
+      "decodedFrames": 0,
+      "dimensions": null,
+      "outputSha256": null,
+      "mediaStatus": "passed_cancellation",
+      "faceStatus": null,
+      "testedVisibleFaceCores": 0,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 0,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9983277039399817,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "solo_4k_immediate_retry_probe",
+      "result": "output_created",
+      "decodedFrames": 40,
+      "dimensions": [
+        2160,
+        4096
+      ],
+      "outputSha256": "51abae4068b98f4502d8f666476283ee230c4324efadd4f0bab8d2355746ced7",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 40,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 0,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.99842093761734,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "group_full_mosaic",
+      "result": "output_created",
+      "decodedFrames": 40,
+      "dimensions": [
+        960,
+        540
+      ],
+      "outputSha256": "000a630bd523740f45434589579d919a43fec5c0b6da1be2681819a72048058e",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 1,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 0,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9996691388005338,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "group_full_blur",
+      "result": "output_created",
+      "decodedFrames": 40,
+      "dimensions": [
+        960,
+        540
+      ],
+      "outputSha256": "d7c4b49754650f5f2a14c766d5621789abc5df20ada5fd8fee70f8aafa0c0fc4",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 1,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 0,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9996691388005338,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    },
+    {
+      "case": "group_full_gradient",
+      "result": "output_created",
+      "decodedFrames": 40,
+      "dimensions": [
+        960,
+        540
+      ],
+      "outputSha256": "412e9d91916ea56c88731a0f766ac1a7beee9387726470180e77c7fd33da8371",
+      "mediaStatus": "passed_media",
+      "faceStatus": "passed_all_detected_face_cores",
+      "testedVisibleFaceCores": 1,
+      "uncoveredFaceCores": 0,
+      "knownPrivacyProbes": 0,
+      "knownProbesPassed": true,
+      "previewPairs": 3,
+      "minimumPreviewSourceNcc": 0.9996691388005338,
+      "savedOriginalPassed": false,
+      "visualReviewed": true
+    }
+  ],
+  "limitations": [
+    "Known conservative extra coverage remains; no new privacy leak observed in these checks.",
+    "This is a targeted regression, not a new 62-case run."
+  ]
+}

@@ -1,0 +1,3293 @@
+{
+  "schema": "woah.comparison.acceptance.v1",
+  "platform": "android",
+  "environment": "OnePlus 8T KB2000 / Android14 / ARM64",
+  "corpusManifestSha256": "b5961783b2ffcae9a74e9fd250191aff51c7a82de2eecd3b4a6e0417724566e6",
+  "binaryProductionSourcesCommit": "57e3f2b4",
+  "binarySha256": "f8231eb913f5b460a7e8112b5a0f2b7fa1d507b3ff9731f972c70a6fb414a50d",
+  "runtimePassed": true,
+  "runtimeChecks": 39,
+  "runtime": [
+    {
+      "id": "picker/close_pending",
+      "status": "passed",
+      "cancelled": true,
+      "elapsedMs": 517
+    },
+    {
+      "id": "music/positive_offset",
+      "status": "passed",
+      "scale": 1.0,
+      "offsetUs": 3000000,
+      "maxTruthErrorUs": 0.0,
+      "elapsedMs": 1126
+    },
+    {
+      "id": "music/negative_offset",
+      "status": "passed",
+      "scale": 1.0,
+      "offsetUs": -3000000,
+      "maxTruthErrorUs": 0.0,
+      "elapsedMs": 732
+    },
+    {
+      "id": "music/preserved_pitch",
+      "status": "passed",
+      "scale": 0.7999901500627373,
+      "offsetUs": 1204665,
+      "maxTruthErrorUs": 4635.450188212097,
+      "elapsedMs": 1670
+    },
+    {
+      "id": "music/shifted_pitch",
+      "status": "passed",
+      "scale": 1.3326556481102378,
+      "offsetUs": 677117,
+      "maxTruthErrorUs": 8416.944330713712,
+      "elapsedMs": 2232
+    },
+    {
+      "id": "music/real_music",
+      "status": "passed",
+      "scale": 0.7996005342191188,
+      "offsetUs": 709846,
+      "maxTruthErrorUs": 8647.6026573563,
+      "elapsedMs": 3607
+    },
+    {
+      "id": "music/source_rates_4k",
+      "status": "passed",
+      "scale": 1.0,
+      "offsetUs": 700000,
+      "maxTruthErrorUs": 0.0,
+      "elapsedMs": 3187
+    },
+    {
+      "id": "music/no_audio",
+      "status": "passed",
+      "elapsedMs": 18
+    },
+    {
+      "id": "music/too_short",
+      "status": "passed",
+      "elapsedMs": 221
+    },
+    {
+      "id": "music/cancel_overlap",
+      "status": "passed",
+      "elapsedMs": 66
+    },
+    {
+      "id": "playback/base",
+      "status": "passed",
+      "opened": {
+        "phase": "paused",
+        "positionUs": 0,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 0,
+        "targetFrameUs": 3000000,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "sourcePairs": [
+        {
+          "phase": "paused",
+          "positionUs": 280000,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 266666,
+          "targetFrameUs": 3266666,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 1250000,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 1233333,
+          "targetFrameUs": 4233333,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 11999999,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 11966666,
+          "targetFrameUs": 14966666,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        }
+      ],
+      "forward": {
+        "phase": "paused",
+        "positionUs": 300000,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 300000,
+        "targetFrameUs": 3300000,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "backward": {
+        "phase": "paused",
+        "positionUs": 266666,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 266666,
+        "targetFrameUs": 3266666,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "paused": {
+        "phase": "paused",
+        "positionUs": 1330000,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 1333333,
+        "targetFrameUs": 4333333,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 0.5
+      },
+      "elapsedMs": 3794
+    },
+    {
+      "id": "playback/negative",
+      "status": "passed",
+      "opened": {
+        "phase": "paused",
+        "positionUs": 0,
+        "durationUs": 12000000,
+        "referenceStartUs": 3000000,
+        "referenceFrameUs": 3000000,
+        "targetFrameUs": 0,
+        "scale": 1.0,
+        "offsetUs": -3000000,
+        "speed": 1.0
+      },
+      "sourcePairs": [
+        {
+          "phase": "paused",
+          "positionUs": 280000,
+          "durationUs": 12000000,
+          "referenceStartUs": 3000000,
+          "referenceFrameUs": 3266666,
+          "targetFrameUs": 266666,
+          "scale": 1.0,
+          "offsetUs": -3000000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 1250000,
+          "durationUs": 12000000,
+          "referenceStartUs": 3000000,
+          "referenceFrameUs": 4233333,
+          "targetFrameUs": 1233333,
+          "scale": 1.0,
+          "offsetUs": -3000000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 11999999,
+          "durationUs": 12000000,
+          "referenceStartUs": 3000000,
+          "referenceFrameUs": 14966666,
+          "targetFrameUs": 11966666,
+          "scale": 1.0,
+          "offsetUs": -3000000,
+          "speed": 1.0
+        }
+      ],
+      "forward": {
+        "phase": "paused",
+        "positionUs": 300000,
+        "durationUs": 12000000,
+        "referenceStartUs": 3000000,
+        "referenceFrameUs": 3300000,
+        "targetFrameUs": 300000,
+        "scale": 1.0,
+        "offsetUs": -3000000,
+        "speed": 1.0
+      },
+      "backward": {
+        "phase": "paused",
+        "positionUs": 266666,
+        "durationUs": 12000000,
+        "referenceStartUs": 3000000,
+        "referenceFrameUs": 3266666,
+        "targetFrameUs": 266666,
+        "scale": 1.0,
+        "offsetUs": -3000000,
+        "speed": 1.0
+      },
+      "paused": {
+        "phase": "paused",
+        "positionUs": 1451000,
+        "durationUs": 12000000,
+        "referenceStartUs": 3000000,
+        "referenceFrameUs": 4433333,
+        "targetFrameUs": 1433333,
+        "scale": 1.0,
+        "offsetUs": -3000000,
+        "speed": 0.5
+      },
+      "elapsedMs": 2461
+    },
+    {
+      "id": "playback/vfr_affine",
+      "status": "passed",
+      "opened": {
+        "phase": "paused",
+        "positionUs": 0,
+        "durationUs": 23000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 0,
+        "targetFrameUs": 1200000,
+        "scale": 0.8,
+        "offsetUs": 1200000,
+        "speed": 1.0
+      },
+      "sourcePairs": [
+        {
+          "phase": "paused",
+          "positionUs": 280000,
+          "durationUs": 23000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 266666,
+          "targetFrameUs": 1400000,
+          "scale": 0.8,
+          "offsetUs": 1200000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 1250000,
+          "durationUs": 23000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 1200000,
+          "targetFrameUs": 2200000,
+          "scale": 0.8,
+          "offsetUs": 1200000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 22999999,
+          "durationUs": 23000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 22966666,
+          "targetFrameUs": 19566666,
+          "scale": 0.8,
+          "offsetUs": 1200000,
+          "speed": 1.0
+        }
+      ],
+      "forward": {
+        "phase": "paused",
+        "positionUs": 333333,
+        "durationUs": 23000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 333333,
+        "targetFrameUs": 1466666,
+        "scale": 0.8,
+        "offsetUs": 1200000,
+        "speed": 1.0
+      },
+      "backward": {
+        "phase": "paused",
+        "positionUs": 266666,
+        "durationUs": 23000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 266666,
+        "targetFrameUs": 1400000,
+        "scale": 0.8,
+        "offsetUs": 1200000,
+        "speed": 1.0
+      },
+      "paused": {
+        "phase": "paused",
+        "positionUs": 1469000,
+        "durationUs": 23000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 1433333,
+        "targetFrameUs": 2366666,
+        "scale": 0.8,
+        "offsetUs": 1200000,
+        "speed": 0.5
+      },
+      "elapsedMs": 1912
+    },
+    {
+      "id": "playback/silent",
+      "status": "passed",
+      "opened": {
+        "phase": "paused",
+        "positionUs": 0,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 0,
+        "targetFrameUs": 3000000,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "sourcePairs": [
+        {
+          "phase": "paused",
+          "positionUs": 280000,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 266666,
+          "targetFrameUs": 3266666,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 1250000,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 1233333,
+          "targetFrameUs": 4233333,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 11999999,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 11966666,
+          "targetFrameUs": 14966666,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        }
+      ],
+      "forward": {
+        "phase": "paused",
+        "positionUs": 300000,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 300000,
+        "targetFrameUs": 3300000,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "backward": {
+        "phase": "paused",
+        "positionUs": 266666,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 266666,
+        "targetFrameUs": 3266666,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "paused": {
+        "phase": "paused",
+        "positionUs": 1384670,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 1366666,
+        "targetFrameUs": 4366666,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 0.5
+      },
+      "elapsedMs": 3733
+    },
+    {
+      "id": "playback/24fps",
+      "status": "passed",
+      "opened": {
+        "phase": "paused",
+        "positionUs": 0,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 0,
+        "targetFrameUs": 3000000,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "sourcePairs": [
+        {
+          "phase": "paused",
+          "positionUs": 280000,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 250000,
+          "targetFrameUs": 3266666,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 1250000,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 1250000,
+          "targetFrameUs": 4233333,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 11999999,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 11958333,
+          "targetFrameUs": 14966666,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        }
+      ],
+      "forward": {
+        "phase": "paused",
+        "positionUs": 291666,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 291666,
+        "targetFrameUs": 3266666,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "backward": {
+        "phase": "paused",
+        "positionUs": 250000,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 250000,
+        "targetFrameUs": 3233333,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "paused": {
+        "phase": "paused",
+        "positionUs": 1353000,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 1333333,
+        "targetFrameUs": 4333333,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 0.5
+      },
+      "elapsedMs": 3545
+    },
+    {
+      "id": "playback/60fps",
+      "status": "passed",
+      "opened": {
+        "phase": "paused",
+        "positionUs": 0,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 0,
+        "targetFrameUs": 3000000,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "sourcePairs": [
+        {
+          "phase": "paused",
+          "positionUs": 280000,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 266666,
+          "targetFrameUs": 3266666,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 1250000,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 1250000,
+          "targetFrameUs": 4233333,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 11999999,
+          "durationUs": 12000000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 11983333,
+          "targetFrameUs": 14966666,
+          "scale": 1.0,
+          "offsetUs": 3000000,
+          "speed": 1.0
+        }
+      ],
+      "forward": {
+        "phase": "paused",
+        "positionUs": 283333,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 283333,
+        "targetFrameUs": 3266666,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "backward": {
+        "phase": "paused",
+        "positionUs": 266666,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 266666,
+        "targetFrameUs": 3266666,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 1.0
+      },
+      "paused": {
+        "phase": "paused",
+        "positionUs": 1433000,
+        "durationUs": 12000000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 1433333,
+        "targetFrameUs": 4433333,
+        "scale": 1.0,
+        "offsetUs": 3000000,
+        "speed": 0.5
+      },
+      "elapsedMs": 2770
+    },
+    {
+      "id": "playback/landscape4k",
+      "status": "passed",
+      "opened": {
+        "phase": "paused",
+        "positionUs": 0,
+        "durationUs": 22540000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 0,
+        "targetFrameUs": 680000,
+        "scale": 1.0,
+        "offsetUs": 700000,
+        "speed": 1.0
+      },
+      "sourcePairs": [
+        {
+          "phase": "paused",
+          "positionUs": 280000,
+          "durationUs": 22540000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 280000,
+          "targetFrameUs": 960000,
+          "scale": 1.0,
+          "offsetUs": 700000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 1250000,
+          "durationUs": 22540000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 1240000,
+          "targetFrameUs": 1920000,
+          "scale": 1.0,
+          "offsetUs": 700000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 22539999,
+          "durationUs": 22540000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 22520000,
+          "targetFrameUs": 23200000,
+          "scale": 1.0,
+          "offsetUs": 700000,
+          "speed": 1.0
+        }
+      ],
+      "forward": {
+        "phase": "paused",
+        "positionUs": 320000,
+        "durationUs": 22540000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 320000,
+        "targetFrameUs": 1000000,
+        "scale": 1.0,
+        "offsetUs": 700000,
+        "speed": 1.0
+      },
+      "backward": {
+        "phase": "paused",
+        "positionUs": 280000,
+        "durationUs": 22540000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 280000,
+        "targetFrameUs": 960000,
+        "scale": 1.0,
+        "offsetUs": 700000,
+        "speed": 1.0
+      },
+      "paused": {
+        "phase": "opening",
+        "positionUs": 1250000,
+        "durationUs": 22540000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 1000000,
+        "targetFrameUs": 1680000,
+        "scale": 1.0,
+        "offsetUs": 700000,
+        "speed": 0.5
+      },
+      "elapsedMs": 5779
+    },
+    {
+      "id": "playback/portrait4k",
+      "status": "passed",
+      "opened": {
+        "phase": "paused",
+        "positionUs": 0,
+        "durationUs": 25780000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 0,
+        "targetFrameUs": 680000,
+        "scale": 1.0,
+        "offsetUs": 700000,
+        "speed": 1.0
+      },
+      "sourcePairs": [
+        {
+          "phase": "paused",
+          "positionUs": 280000,
+          "durationUs": 25780000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 280000,
+          "targetFrameUs": 960000,
+          "scale": 1.0,
+          "offsetUs": 700000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 1250000,
+          "durationUs": 25780000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 1240000,
+          "targetFrameUs": 1920000,
+          "scale": 1.0,
+          "offsetUs": 700000,
+          "speed": 1.0
+        },
+        {
+          "phase": "paused",
+          "positionUs": 25779999,
+          "durationUs": 25780000,
+          "referenceStartUs": 0,
+          "referenceFrameUs": 25760000,
+          "targetFrameUs": 26440000,
+          "scale": 1.0,
+          "offsetUs": 700000,
+          "speed": 1.0
+        }
+      ],
+      "forward": {
+        "phase": "paused",
+        "positionUs": 320000,
+        "durationUs": 25780000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 320000,
+        "targetFrameUs": 1000000,
+        "scale": 1.0,
+        "offsetUs": 700000,
+        "speed": 1.0
+      },
+      "backward": {
+        "phase": "paused",
+        "positionUs": 280000,
+        "durationUs": 25780000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 280000,
+        "targetFrameUs": 960000,
+        "scale": 1.0,
+        "offsetUs": 700000,
+        "speed": 1.0
+      },
+      "paused": {
+        "phase": "opening",
+        "positionUs": 1250000,
+        "durationUs": 25780000,
+        "referenceStartUs": 0,
+        "referenceFrameUs": 1000000,
+        "targetFrameUs": 1680000,
+        "scale": 1.0,
+        "offsetUs": 700000,
+        "speed": 0.5
+      },
+      "elapsedMs": 5567
+    },
+    {
+      "id": "project/anchors_swap_marker_restore",
+      "status": "passed",
+      "restored": true,
+      "swapped": {
+        "phase": "paused",
+        "positionUs": 1250000,
+        "durationUs": 12000000,
+        "referenceStartUs": 3000000,
+        "referenceFrameUs": 4233333,
+        "targetFrameUs": 1233333,
+        "scale": 1.0,
+        "offsetUs": -3000000,
+        "speed": 1.0
+      },
+      "elapsedMs": 496
+    },
+    {
+      "id": "manual/independent_players",
+      "status": "passed",
+      "referenceUs": 1000000,
+      "targetUs": 2000000,
+      "elapsedMs": 347
+    },
+    {
+      "id": "export/base_full",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 12000000,
+      "width": 1280,
+      "height": 720,
+      "elapsedMs": 7528
+    },
+    {
+      "id": "export/base_trim",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 4864198,
+      "width": 640,
+      "height": 360,
+      "elapsedMs": 4327
+    },
+    {
+      "id": "export/base_picture_slow_loop",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 2000000,
+      "width": 640,
+      "height": 360,
+      "elapsedMs": 2744
+    },
+    {
+      "id": "export/base_repeat",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 2000000,
+      "width": 640,
+      "height": 360,
+      "elapsedMs": 2788
+    },
+    {
+      "id": "export/negative_full",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 12000000,
+      "width": 640,
+      "height": 360,
+      "elapsedMs": 8444
+    },
+    {
+      "id": "export/vfr_boundary",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 1000000,
+      "width": 320,
+      "height": 240,
+      "elapsedMs": 1803
+    },
+    {
+      "id": "export/vfr_irregular_trim",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 4864198,
+      "width": 640,
+      "height": 360,
+      "elapsedMs": 3836
+    },
+    {
+      "id": "export/vfr_affine_tail",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 1234567,
+      "width": 640,
+      "height": 360,
+      "elapsedMs": 1968
+    },
+    {
+      "id": "export/silent_full",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 12000000,
+      "width": 640,
+      "height": 360,
+      "elapsedMs": 7095
+    },
+    {
+      "id": "export/24fps_full",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 12000000,
+      "width": 640,
+      "height": 360,
+      "elapsedMs": 7645
+    },
+    {
+      "id": "export/60fps_full",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 12000000,
+      "width": 640,
+      "height": 360,
+      "elapsedMs": 12149
+    },
+    {
+      "id": "export/landscape4k_full",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 22540000,
+      "width": 1920,
+      "height": 1080,
+      "elapsedMs": 17328
+    },
+    {
+      "id": "export/landscape4k_tail",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 1234567,
+      "width": 1920,
+      "height": 1080,
+      "elapsedMs": 3611
+    },
+    {
+      "id": "export/landscape4k_repeat",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 2000000,
+      "width": 1920,
+      "height": 1080,
+      "elapsedMs": 3072
+    },
+    {
+      "id": "export/portrait4k_full",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 25780000,
+      "width": 1080,
+      "height": 1920,
+      "elapsedMs": 19926
+    },
+    {
+      "id": "export/portrait4k_tail",
+      "status": "passed",
+      "state": "completed",
+      "durationUs": 1234567,
+      "width": 1080,
+      "height": 1920,
+      "elapsedMs": 3440
+    },
+    {
+      "id": "export/cancel_immediate_retry_4k",
+      "status": "passed",
+      "cancelled": true,
+      "retryState": "completed",
+      "elapsedMs": 16468
+    },
+    {
+      "id": "invalid/corrupt_source",
+      "status": "passed",
+      "rejected": true,
+      "elapsedMs": 63
+    },
+    {
+      "id": "gallery/open_completed_movie",
+      "status": "passed",
+      "opened": true,
+      "elapsedMs": 60
+    }
+  ],
+  "exports": [
+    {
+      "id": "base_full",
+      "status": "passed",
+      "bytes": 1324366,
+      "sha256": "4a875dfc8bc26e36ac67bb1c3da25483d625366d73b1241655e1d744710e1aae",
+      "audit": {
+        "label": "base_full",
+        "width": 1280,
+        "height": 720,
+        "durationUs": 12000000,
+        "frameCount": 360,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          33333,
+          33334
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 3000000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 0,
+            "targetPtsUs": 3000000,
+            "codes": [
+              0,
+              90
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1200000,
+            "referencePtsUs": 1200000,
+            "targetPtsUs": 4200000,
+            "codes": [
+              36,
+              126
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 2400000,
+            "referencePtsUs": 2400000,
+            "targetPtsUs": 5400000,
+            "codes": [
+              72,
+              162
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 3600000,
+            "referencePtsUs": 3600000,
+            "targetPtsUs": 6600000,
+            "codes": [
+              108,
+              198
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 4800000,
+            "referencePtsUs": 4800000,
+            "targetPtsUs": 7800000,
+            "codes": [
+              144,
+              234
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 6000000,
+            "referencePtsUs": 6000000,
+            "targetPtsUs": 9000000,
+            "codes": [
+              180,
+              270
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 7166667,
+            "referencePtsUs": 7166667,
+            "targetPtsUs": 10166667,
+            "codes": [
+              215,
+              305
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 8366667,
+            "referencePtsUs": 8366667,
+            "targetPtsUs": 11366667,
+            "codes": [
+              251,
+              341
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 9566667,
+            "referencePtsUs": 9566667,
+            "targetPtsUs": 12566667,
+            "codes": [
+              287,
+              377
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 10766667,
+            "referencePtsUs": 10766667,
+            "targetPtsUs": 13766667,
+            "codes": [
+              323,
+              413
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 11966667,
+            "referencePtsUs": 11966667,
+            "targetPtsUs": 14966667,
+            "codes": [
+              359,
+              449
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 16000,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9999587535858154,
+          "decodedSamples": 192000
+        }
+      }
+    },
+    {
+      "id": "base_trim",
+      "status": "passed",
+      "bytes": 400912,
+      "sha256": "8c2af5a166309e811e452f69891ebe1a5f29e17d32e42c332cb4d0f3afa041dc",
+      "audit": {
+        "label": "base_trim",
+        "width": 640,
+        "height": 360,
+        "durationUs": 4864198,
+        "frameCount": 147,
+        "ptsMaxErrorUs": 1,
+        "durationErrorUs": 2,
+        "audioDurationErrorUs": 11,
+        "containerDurationErrorUs": 2,
+        "frameIntervalsUs": [
+          9878,
+          33333,
+          33334
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 3000000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 100000,
+            "targetPtsUs": 3100000,
+            "codes": [
+              3,
+              93
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 476544,
+            "referencePtsUs": 600000,
+            "targetPtsUs": 3600000,
+            "codes": [
+              18,
+              108
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 943211,
+            "referencePtsUs": 1066667,
+            "targetPtsUs": 4066667,
+            "codes": [
+              32,
+              122
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1443211,
+            "referencePtsUs": 1566667,
+            "targetPtsUs": 4566667,
+            "codes": [
+              47,
+              137
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1909878,
+            "referencePtsUs": 2033333,
+            "targetPtsUs": 5033333,
+            "codes": [
+              61,
+              151
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 2409878,
+            "referencePtsUs": 2533333,
+            "targetPtsUs": 5533333,
+            "codes": [
+              76,
+              166
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 2909878,
+            "referencePtsUs": 3033333,
+            "targetPtsUs": 6033333,
+            "codes": [
+              91,
+              181
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 3376544,
+            "referencePtsUs": 3500000,
+            "targetPtsUs": 6500000,
+            "codes": [
+              105,
+              195
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 3876544,
+            "referencePtsUs": 4000000,
+            "targetPtsUs": 7000000,
+            "codes": [
+              120,
+              210
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 4343211,
+            "referencePtsUs": 4466667,
+            "targetPtsUs": 7466667,
+            "codes": [
+              134,
+              224
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 4843211,
+            "referencePtsUs": 4966667,
+            "targetPtsUs": 7966667,
+            "codes": [
+              149,
+              239
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 16000,
+          "lagSamples": 1,
+          "lagUs": 62,
+          "correlation": 0.9999620914459229,
+          "decodedSamples": 77827
+        }
+      }
+    },
+    {
+      "id": "base_picture_slow_loop",
+      "status": "passed",
+      "bytes": 183376,
+      "sha256": "e2bd9babe6d4eed79ddf079252376f191b633b48dbdd64e6e221131beae19d29",
+      "audit": {
+        "label": "base_picture_slow_loop",
+        "width": 640,
+        "height": 360,
+        "durationUs": 2000000,
+        "frameCount": 60,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          33333,
+          33334
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 3000000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 1000000,
+            "targetPtsUs": 4000000,
+            "codes": [
+              30,
+              120
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          },
+          {
+            "outputUs": 200000,
+            "referencePtsUs": 1200000,
+            "targetPtsUs": 4200000,
+            "codes": [
+              36,
+              126
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          },
+          {
+            "outputUs": 400000,
+            "referencePtsUs": 1400000,
+            "targetPtsUs": 4400000,
+            "codes": [
+              42,
+              132
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          },
+          {
+            "outputUs": 600000,
+            "referencePtsUs": 1600000,
+            "targetPtsUs": 4600000,
+            "codes": [
+              48,
+              138
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          },
+          {
+            "outputUs": 800000,
+            "referencePtsUs": 1800000,
+            "targetPtsUs": 4800000,
+            "codes": [
+              54,
+              144
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          },
+          {
+            "outputUs": 1000000,
+            "referencePtsUs": 2000000,
+            "targetPtsUs": 5000000,
+            "codes": [
+              60,
+              150
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          },
+          {
+            "outputUs": 1166667,
+            "referencePtsUs": 2166667,
+            "targetPtsUs": 5166667,
+            "codes": [
+              65,
+              155
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          },
+          {
+            "outputUs": 1366667,
+            "referencePtsUs": 2366667,
+            "targetPtsUs": 5366667,
+            "codes": [
+              71,
+              161
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          },
+          {
+            "outputUs": 1566667,
+            "referencePtsUs": 2566667,
+            "targetPtsUs": 5566667,
+            "codes": [
+              77,
+              167
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          },
+          {
+            "outputUs": 1766667,
+            "referencePtsUs": 2766667,
+            "targetPtsUs": 5766667,
+            "codes": [
+              83,
+              173
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          },
+          {
+            "outputUs": 1966667,
+            "referencePtsUs": 2966667,
+            "targetPtsUs": 5966667,
+            "codes": [
+              89,
+              179
+            ],
+            "checkedBits": [
+              17,
+              14
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 16000,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9999591112136841,
+          "decodedSamples": 32000
+        }
+      }
+    },
+    {
+      "id": "base_repeat",
+      "status": "passed",
+      "bytes": 176464,
+      "sha256": "c1f315eb93afcdc4efbb908b44f06354d1915b11250919ae431efc1b125d47bd",
+      "audit": {
+        "label": "base_repeat",
+        "width": 640,
+        "height": 360,
+        "durationUs": 2000000,
+        "frameCount": 60,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          33333,
+          33334
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 3000000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 1000000,
+            "targetPtsUs": 4000000,
+            "codes": [
+              30,
+              120
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 200000,
+            "referencePtsUs": 1200000,
+            "targetPtsUs": 4200000,
+            "codes": [
+              36,
+              126
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 400000,
+            "referencePtsUs": 1400000,
+            "targetPtsUs": 4400000,
+            "codes": [
+              42,
+              132
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 600000,
+            "referencePtsUs": 1600000,
+            "targetPtsUs": 4600000,
+            "codes": [
+              48,
+              138
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 800000,
+            "referencePtsUs": 1800000,
+            "targetPtsUs": 4800000,
+            "codes": [
+              54,
+              144
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1000000,
+            "referencePtsUs": 2000000,
+            "targetPtsUs": 5000000,
+            "codes": [
+              60,
+              150
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1166667,
+            "referencePtsUs": 2166667,
+            "targetPtsUs": 5166667,
+            "codes": [
+              65,
+              155
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1366667,
+            "referencePtsUs": 2366667,
+            "targetPtsUs": 5366667,
+            "codes": [
+              71,
+              161
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1566667,
+            "referencePtsUs": 2566667,
+            "targetPtsUs": 5566667,
+            "codes": [
+              77,
+              167
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1766667,
+            "referencePtsUs": 2766667,
+            "targetPtsUs": 5766667,
+            "codes": [
+              83,
+              173
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1966667,
+            "referencePtsUs": 2966667,
+            "targetPtsUs": 5966667,
+            "codes": [
+              89,
+              179
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 16000,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9999591112136841,
+          "decodedSamples": 32000
+        }
+      }
+    },
+    {
+      "id": "negative_full",
+      "status": "passed",
+      "bytes": 966927,
+      "sha256": "1b717695b851f93b7948db2a14a386d8517c1e226a868df37e6d6fe1a658d895",
+      "audit": {
+        "label": "negative_full",
+        "width": 640,
+        "height": 360,
+        "durationUs": 12000000,
+        "frameCount": 360,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          33333,
+          33334
+        ],
+        "sourceOriginUs": 3000000,
+        "timeScale": 1.0,
+        "offsetUs": -3000000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 3000000,
+            "targetPtsUs": 0,
+            "codes": [
+              90,
+              0
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1200000,
+            "referencePtsUs": 4200000,
+            "targetPtsUs": 1200000,
+            "codes": [
+              126,
+              36
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 2400000,
+            "referencePtsUs": 5400000,
+            "targetPtsUs": 2400000,
+            "codes": [
+              162,
+              72
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 3600000,
+            "referencePtsUs": 6600000,
+            "targetPtsUs": 3600000,
+            "codes": [
+              198,
+              108
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 4800000,
+            "referencePtsUs": 7800000,
+            "targetPtsUs": 4800000,
+            "codes": [
+              234,
+              144
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 6000000,
+            "referencePtsUs": 9000000,
+            "targetPtsUs": 6000000,
+            "codes": [
+              270,
+              180
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 7166667,
+            "referencePtsUs": 10166667,
+            "targetPtsUs": 7166667,
+            "codes": [
+              305,
+              215
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 8366667,
+            "referencePtsUs": 11366667,
+            "targetPtsUs": 8366667,
+            "codes": [
+              341,
+              251
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 9566667,
+            "referencePtsUs": 12566667,
+            "targetPtsUs": 9566667,
+            "codes": [
+              377,
+              287
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 10766667,
+            "referencePtsUs": 13766667,
+            "targetPtsUs": 10766667,
+            "codes": [
+              413,
+              323
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 11966667,
+            "referencePtsUs": 14966667,
+            "targetPtsUs": 11966667,
+            "codes": [
+              449,
+              359
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 16000,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9999566674232483,
+          "decodedSamples": 192000
+        }
+      }
+    },
+    {
+      "id": "vfr_boundary",
+      "status": "passed",
+      "bytes": 159616,
+      "sha256": "bb2830101ba287772b71677652c3b05809a2e3f370aecba1e145d88c6918d680",
+      "audit": {
+        "label": "vfr_boundary",
+        "width": 320,
+        "height": 240,
+        "durationUs": 1000000,
+        "frameCount": 26,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          33333,
+          33334,
+          66666,
+          66667
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 0.8,
+        "offsetUs": 1200000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 966667,
+            "targetPtsUs": 2000000,
+            "codes": [
+              29,
+              60
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          },
+          {
+            "outputUs": 66667,
+            "referencePtsUs": 1066667,
+            "targetPtsUs": 2033333,
+            "codes": [
+              32,
+              61
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          },
+          {
+            "outputUs": 166667,
+            "referencePtsUs": 1166667,
+            "targetPtsUs": 2133333,
+            "codes": [
+              35,
+              64
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          },
+          {
+            "outputUs": 300000,
+            "referencePtsUs": 1300000,
+            "targetPtsUs": 2233333,
+            "codes": [
+              39,
+              67
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          },
+          {
+            "outputUs": 366667,
+            "referencePtsUs": 1366667,
+            "targetPtsUs": 2266667,
+            "codes": [
+              41,
+              68
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          },
+          {
+            "outputUs": 433333,
+            "referencePtsUs": 1433333,
+            "targetPtsUs": 2333333,
+            "codes": [
+              43,
+              70
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          },
+          {
+            "outputUs": 566667,
+            "referencePtsUs": 1566667,
+            "targetPtsUs": 2433333,
+            "codes": [
+              47,
+              73
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          },
+          {
+            "outputUs": 666667,
+            "referencePtsUs": 1666667,
+            "targetPtsUs": 2533333,
+            "codes": [
+              50,
+              76
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          },
+          {
+            "outputUs": 766667,
+            "referencePtsUs": 1766667,
+            "targetPtsUs": 2600000,
+            "codes": [
+              53,
+              78
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          },
+          {
+            "outputUs": 833333,
+            "referencePtsUs": 1833333,
+            "targetPtsUs": 2666667,
+            "codes": [
+              55,
+              80
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          },
+          {
+            "outputUs": 966667,
+            "referencePtsUs": 1966667,
+            "targetPtsUs": 2766667,
+            "codes": [
+              59,
+              83
+            ],
+            "checkedBits": [
+              16,
+              13
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 16000,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9785932302474976,
+          "decodedSamples": 16000
+        }
+      }
+    },
+    {
+      "id": "vfr_irregular_trim",
+      "status": "passed",
+      "bytes": 389280,
+      "sha256": "5bba8980ea8c03c0bdcae0c6dde44f532f6a5b697557a59711b4bb7ad43e4ecd",
+      "audit": {
+        "label": "vfr_irregular_trim",
+        "width": 640,
+        "height": 360,
+        "durationUs": 4864198,
+        "frameCount": 126,
+        "ptsMaxErrorUs": 1,
+        "durationErrorUs": 2,
+        "audioDurationErrorUs": 11,
+        "containerDurationErrorUs": 2,
+        "frameIntervalsUs": [
+          9878,
+          33333,
+          33334,
+          66666,
+          66667
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 0.8,
+        "offsetUs": 1200000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 100000,
+            "targetPtsUs": 1266667,
+            "codes": [
+              3,
+              38
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 443211,
+            "referencePtsUs": 566667,
+            "targetPtsUs": 1633333,
+            "codes": [
+              17,
+              49
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 943211,
+            "referencePtsUs": 1066667,
+            "targetPtsUs": 2033333,
+            "codes": [
+              32,
+              61
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1443211,
+            "referencePtsUs": 1566667,
+            "targetPtsUs": 2433333,
+            "codes": [
+              47,
+              73
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1909878,
+            "referencePtsUs": 2033333,
+            "targetPtsUs": 2800000,
+            "codes": [
+              61,
+              84
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 2376544,
+            "referencePtsUs": 2500000,
+            "targetPtsUs": 3200000,
+            "codes": [
+              75,
+              96
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 2876544,
+            "referencePtsUs": 3000000,
+            "targetPtsUs": 3600000,
+            "codes": [
+              90,
+              108
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 3376544,
+            "referencePtsUs": 3500000,
+            "targetPtsUs": 4000000,
+            "codes": [
+              105,
+              120
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 3843211,
+            "referencePtsUs": 3966667,
+            "targetPtsUs": 4366667,
+            "codes": [
+              119,
+              131
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 4309878,
+            "referencePtsUs": 4433333,
+            "targetPtsUs": 4733333,
+            "codes": [
+              133,
+              142
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 4809878,
+            "referencePtsUs": 4933333,
+            "targetPtsUs": 5133333,
+            "codes": [
+              148,
+              154
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 16000,
+          "lagSamples": 1,
+          "lagUs": 62,
+          "correlation": 0.9998353719711304,
+          "decodedSamples": 77827
+        }
+      }
+    },
+    {
+      "id": "vfr_affine_tail",
+      "status": "passed",
+      "bytes": 122384,
+      "sha256": "678d459090efa88ea503c3d2b362a097739c6cad1b941f9f29b6a9dcaa40c2c9",
+      "audit": {
+        "label": "vfr_affine_tail",
+        "width": 640,
+        "height": 360,
+        "durationUs": 1234567,
+        "frameCount": 32,
+        "ptsMaxErrorUs": 1,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 58,
+        "containerDurationErrorUs": 58,
+        "frameIntervalsUs": [
+          33333,
+          33334,
+          34567,
+          66666,
+          66667
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 0.8,
+        "offsetUs": 1200000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 21733333,
+            "targetPtsUs": 18600000,
+            "codes": [
+              652,
+              558
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 101233,
+            "referencePtsUs": 21866667,
+            "targetPtsUs": 18666667,
+            "codes": [
+              656,
+              560
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 201233,
+            "referencePtsUs": 21966667,
+            "targetPtsUs": 18766667,
+            "codes": [
+              659,
+              563
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 334567,
+            "referencePtsUs": 22100000,
+            "targetPtsUs": 18866667,
+            "codes": [
+              663,
+              566
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 434567,
+            "referencePtsUs": 22200000,
+            "targetPtsUs": 18933333,
+            "codes": [
+              666,
+              568
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 601233,
+            "referencePtsUs": 22366667,
+            "targetPtsUs": 19066667,
+            "codes": [
+              671,
+              572
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 734567,
+            "referencePtsUs": 22500000,
+            "targetPtsUs": 19200000,
+            "codes": [
+              675,
+              576
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 834567,
+            "referencePtsUs": 22600000,
+            "targetPtsUs": 19266667,
+            "codes": [
+              678,
+              578
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 967900,
+            "referencePtsUs": 22733333,
+            "targetPtsUs": 19366667,
+            "codes": [
+              682,
+              581
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1067900,
+            "referencePtsUs": 22833333,
+            "targetPtsUs": 19466667,
+            "codes": [
+              685,
+              584
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1201233,
+            "referencePtsUs": 22966667,
+            "targetPtsUs": 19566667,
+            "codes": [
+              689,
+              587
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 16000,
+          "silentRms": 0.0,
+          "referenceSilent": true,
+          "decodedSamples": 19753
+        }
+      }
+    },
+    {
+      "id": "silent_full",
+      "status": "passed",
+      "bytes": 1116987,
+      "sha256": "4e40836ae8adfbb50e092b4023a2d7062633c9c2aee9dd2c8e133789a9b0bf84",
+      "audit": {
+        "label": "silent_full",
+        "width": 640,
+        "height": 360,
+        "durationUs": 12000000,
+        "frameCount": 360,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          33333,
+          33334
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 3000000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 0,
+            "targetPtsUs": 3000000,
+            "codes": [
+              0,
+              90
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 1200000,
+            "referencePtsUs": 1200000,
+            "targetPtsUs": 4200000,
+            "codes": [
+              36,
+              126
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 2400000,
+            "referencePtsUs": 2400000,
+            "targetPtsUs": 5400000,
+            "codes": [
+              72,
+              162
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 3600000,
+            "referencePtsUs": 3600000,
+            "targetPtsUs": 6600000,
+            "codes": [
+              108,
+              198
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 4800000,
+            "referencePtsUs": 4800000,
+            "targetPtsUs": 7800000,
+            "codes": [
+              144,
+              234
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 6000000,
+            "referencePtsUs": 6000000,
+            "targetPtsUs": 9000000,
+            "codes": [
+              180,
+              270
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 7166667,
+            "referencePtsUs": 7166667,
+            "targetPtsUs": 10166667,
+            "codes": [
+              215,
+              305
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 8366667,
+            "referencePtsUs": 8366667,
+            "targetPtsUs": 11366667,
+            "codes": [
+              251,
+              341
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 9566667,
+            "referencePtsUs": 9566667,
+            "targetPtsUs": 12566667,
+            "codes": [
+              287,
+              377
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 10766667,
+            "referencePtsUs": 10766667,
+            "targetPtsUs": 13766667,
+            "codes": [
+              323,
+              413
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          },
+          {
+            "outputUs": 11966667,
+            "referencePtsUs": 11966667,
+            "targetPtsUs": 14966667,
+            "codes": [
+              359,
+              449
+            ],
+            "checkedBits": [
+              20,
+              20
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 48000,
+          "silentRms": 0.0,
+          "decodedSamples": 576000
+        }
+      }
+    },
+    {
+      "id": "24fps_full",
+      "status": "passed",
+      "bytes": 958735,
+      "sha256": "16349e1b60598345cf9e2432d32ff1edd396b7b05ef5bd12f4abc32a821d7760",
+      "audit": {
+        "label": "24fps_full",
+        "width": 640,
+        "height": 360,
+        "durationUs": 12000000,
+        "frameCount": 288,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          41666,
+          41667
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 3000000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 0,
+            "targetPtsUs": 3000000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9770982381968953,
+                "meanAbsoluteError": 2.045179605484009,
+                "checkedPixels": 54870
+              },
+              {
+                "pane": 1,
+                "ncc": 0.983425797276396,
+                "meanAbsoluteError": 1.3578822612762451,
+                "checkedPixels": 54870
+              }
+            ]
+          },
+          {
+            "outputUs": 6000000,
+            "referencePtsUs": 6000000,
+            "targetPtsUs": 9000000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9817226146824192,
+                "meanAbsoluteError": 2.3406779766082764,
+                "checkedPixels": 54870
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9830062705888339,
+                "meanAbsoluteError": 1.7225077152252197,
+                "checkedPixels": 54870
+              }
+            ]
+          },
+          {
+            "outputUs": 11958333,
+            "referencePtsUs": 11958333,
+            "targetPtsUs": 14933333,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9828708662331617,
+                "meanAbsoluteError": 2.366848945617676,
+                "checkedPixels": 54870
+              },
+              {
+                "pane": 1,
+                "ncc": 0.981215430593199,
+                "meanAbsoluteError": 1.7332603931427002,
+                "checkedPixels": 54870
+              }
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 16000,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9999587535858154,
+          "decodedSamples": 192000
+        }
+      }
+    },
+    {
+      "id": "60fps_full",
+      "status": "passed",
+      "bytes": 993455,
+      "sha256": "9b9824f74013b33aacd7b1f7ce653325a4b06853ad2f0a1305c4ef2bcdb9fabe",
+      "audit": {
+        "label": "60fps_full",
+        "width": 640,
+        "height": 360,
+        "durationUs": 12000000,
+        "frameCount": 720,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          16666,
+          16667
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 3000000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 0,
+            "targetPtsUs": 3000000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9762702438924945,
+                "meanAbsoluteError": 2.284381151199341,
+                "checkedPixels": 54870
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9830272690549791,
+                "meanAbsoluteError": 1.6099143028259277,
+                "checkedPixels": 54870
+              }
+            ]
+          },
+          {
+            "outputUs": 6000000,
+            "referencePtsUs": 6000000,
+            "targetPtsUs": 9000000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9804471411684205,
+                "meanAbsoluteError": 2.617368221282959,
+                "checkedPixels": 54870
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9814012644751285,
+                "meanAbsoluteError": 2.1930928230285645,
+                "checkedPixels": 54870
+              }
+            ]
+          },
+          {
+            "outputUs": 11983333,
+            "referencePtsUs": 11983333,
+            "targetPtsUs": 14966667,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.980853111526733,
+                "meanAbsoluteError": 3.050337076187134,
+                "checkedPixels": 54870
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9799837249481334,
+                "meanAbsoluteError": 2.4400582313537598,
+                "checkedPixels": 54870
+              }
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 16000,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9999587535858154,
+          "decodedSamples": 192000
+        }
+      }
+    },
+    {
+      "id": "landscape4k_full",
+      "status": "passed",
+      "bytes": 19852328,
+      "sha256": "efe42384b43c5e686d718f573c0e53cd7a6454e819e39a4fcef5ccd156d34869",
+      "audit": {
+        "label": "landscape4k_full",
+        "width": 1920,
+        "height": 1080,
+        "durationUs": 22540000,
+        "frameCount": 564,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          40000
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 700000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 0,
+            "targetPtsUs": 680000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9964232342219338,
+                "meanAbsoluteError": 2.71897292137146,
+                "checkedPixels": 510150
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9965033510644661,
+                "meanAbsoluteError": 2.6657943725585938,
+                "checkedPixels": 510150
+              }
+            ]
+          },
+          {
+            "outputUs": 11280000,
+            "referencePtsUs": 11280000,
+            "targetPtsUs": 11960000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9991732742686316,
+                "meanAbsoluteError": 1.635115146636963,
+                "checkedPixels": 510150
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9991555340537022,
+                "meanAbsoluteError": 1.6817229986190796,
+                "checkedPixels": 510150
+              }
+            ]
+          },
+          {
+            "outputUs": 22520000,
+            "referencePtsUs": 22520000,
+            "targetPtsUs": 23200000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9992609291312641,
+                "meanAbsoluteError": 1.4413172006607056,
+                "checkedPixels": 510150
+              },
+              {
+                "pane": 1,
+                "ncc": 0.999323586837991,
+                "meanAbsoluteError": 1.3992512226104736,
+                "checkedPixels": 510150
+              }
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 44100,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9999341368675232,
+          "decodedSamples": 994014
+        }
+      }
+    },
+    {
+      "id": "landscape4k_tail",
+      "status": "passed",
+      "bytes": 989127,
+      "sha256": "04792f57690c5f6f95aeb01d80b8f572877df77c60c9fc2aa8569b184589be3e",
+      "audit": {
+        "label": "landscape4k_tail",
+        "width": 1920,
+        "height": 1080,
+        "durationUs": 1234567,
+        "frameCount": 32,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 36,
+        "containerDurationErrorUs": 36,
+        "frameIntervalsUs": [
+          14567,
+          40000
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 700000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 21280000,
+            "targetPtsUs": 22000000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9972276800545016,
+                "meanAbsoluteError": 2.3278701305389404,
+                "checkedPixels": 510150
+              },
+              {
+                "pane": 1,
+                "ncc": 0.997250439057867,
+                "meanAbsoluteError": 2.309283494949341,
+                "checkedPixels": 510150
+              }
+            ]
+          },
+          {
+            "outputUs": 614567,
+            "referencePtsUs": 21920000,
+            "targetPtsUs": 22600000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9993198560264838,
+                "meanAbsoluteError": 1.3393217325210571,
+                "checkedPixels": 510150
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9993627741362117,
+                "meanAbsoluteError": 1.3576830625534058,
+                "checkedPixels": 510150
+              }
+            ]
+          },
+          {
+            "outputUs": 1214567,
+            "referencePtsUs": 22520000,
+            "targetPtsUs": 23200000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9992809347845693,
+                "meanAbsoluteError": 1.399756908416748,
+                "checkedPixels": 510150
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9993428140872601,
+                "meanAbsoluteError": 1.3560658693313599,
+                "checkedPixels": 510150
+              }
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 44100,
+          "silentRms": 0.0,
+          "referenceSilent": true,
+          "decodedSamples": 54444
+        }
+      }
+    },
+    {
+      "id": "landscape4k_repeat",
+      "status": "passed",
+      "bytes": 1483166,
+      "sha256": "821de357db14637b8c55479796740cca881acb9dee356c0c0a6fc07095d3e213",
+      "audit": {
+        "label": "landscape4k_repeat",
+        "width": 1920,
+        "height": 1080,
+        "durationUs": 2000000,
+        "frameCount": 50,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          40000
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 700000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 1000000,
+            "targetPtsUs": 1680000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9976963904397673,
+                "meanAbsoluteError": 2.3040761947631836,
+                "checkedPixels": 714400
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9966414330698825,
+                "meanAbsoluteError": 2.2345919609069824,
+                "checkedPixels": 918650
+              }
+            ]
+          },
+          {
+            "outputUs": 1000000,
+            "referencePtsUs": 2000000,
+            "targetPtsUs": 2680000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9983899331041004,
+                "meanAbsoluteError": 2.0817692279815674,
+                "checkedPixels": 714400
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9969808708569735,
+                "meanAbsoluteError": 1.9660447835922241,
+                "checkedPixels": 918650
+              }
+            ]
+          },
+          {
+            "outputUs": 1960000,
+            "referencePtsUs": 2960000,
+            "targetPtsUs": 3640000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9988565603210339,
+                "meanAbsoluteError": 1.7465075254440308,
+                "checkedPixels": 714400
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9976279678605074,
+                "meanAbsoluteError": 1.7824851274490356,
+                "checkedPixels": 918650
+              }
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 44100,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9910962581634521,
+          "decodedSamples": 88200
+        }
+      }
+    },
+    {
+      "id": "portrait4k_full",
+      "status": "passed",
+      "bytes": 4085643,
+      "sha256": "c5614dabefef301806f79a4204ba4570c0a2fba89626b18ec5cdaf4fc77c9746",
+      "audit": {
+        "label": "portrait4k_full",
+        "width": 1080,
+        "height": 1920,
+        "durationUs": 25780000,
+        "frameCount": 645,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          40000
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 700000,
+        "sideBySide": false,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 0,
+            "targetPtsUs": 680000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9908167269452738,
+                "meanAbsoluteError": 0.9913972616195679,
+                "checkedPixels": 478800
+              },
+              {
+                "pane": 1,
+                "ncc": 0.989688812635955,
+                "meanAbsoluteError": 1.0126608610153198,
+                "checkedPixels": 478800
+              }
+            ]
+          },
+          {
+            "outputUs": 12880000,
+            "referencePtsUs": 12880000,
+            "targetPtsUs": 13560000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9913660190833906,
+                "meanAbsoluteError": 1.103510856628418,
+                "checkedPixels": 478800
+              },
+              {
+                "pane": 1,
+                "ncc": 0.992418226053504,
+                "meanAbsoluteError": 0.9975271224975586,
+                "checkedPixels": 478800
+              }
+            ]
+          },
+          {
+            "outputUs": 25760000,
+            "referencePtsUs": 25760000,
+            "targetPtsUs": 26440000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9896277267256046,
+                "meanAbsoluteError": 1.0337531566619873,
+                "checkedPixels": 478800
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9911105703848347,
+                "meanAbsoluteError": 0.949177086353302,
+                "checkedPixels": 478800
+              }
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 44100,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9999343156814575,
+          "decodedSamples": 1136898
+        }
+      }
+    },
+    {
+      "id": "portrait4k_tail",
+      "status": "passed",
+      "bytes": 190423,
+      "sha256": "b4ec5fef72721ce9258ec87f26783168ff61faa7e488cd954a0293546fb6eb60",
+      "audit": {
+        "label": "portrait4k_tail",
+        "width": 1080,
+        "height": 1920,
+        "durationUs": 1234567,
+        "frameCount": 32,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 36,
+        "containerDurationErrorUs": 36,
+        "frameIntervalsUs": [
+          14567,
+          40000
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 700000,
+        "sideBySide": false,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 24520000,
+            "targetPtsUs": 25240000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9920068613959792,
+                "meanAbsoluteError": 0.911986231803894,
+                "checkedPixels": 478800
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9916586860399321,
+                "meanAbsoluteError": 0.8650689125061035,
+                "checkedPixels": 478800
+              }
+            ]
+          },
+          {
+            "outputUs": 614567,
+            "referencePtsUs": 25160000,
+            "targetPtsUs": 25840000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9901835071113603,
+                "meanAbsoluteError": 0.9019361138343811,
+                "checkedPixels": 478800
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9896209164928048,
+                "meanAbsoluteError": 1.0427443981170654,
+                "checkedPixels": 478800
+              }
+            ]
+          },
+          {
+            "outputUs": 1214567,
+            "referencePtsUs": 25760000,
+            "targetPtsUs": 26440000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.98975207441253,
+                "meanAbsoluteError": 1.0371407270431519,
+                "checkedPixels": 478800
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9914017697501529,
+                "meanAbsoluteError": 0.9372013211250305,
+                "checkedPixels": 478800
+              }
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 44100,
+          "silentRms": 0.0,
+          "referenceSilent": true,
+          "decodedSamples": 54444
+        }
+      }
+    },
+    {
+      "id": "landscape4k_retry",
+      "status": "passed",
+      "bytes": 19852328,
+      "sha256": "8bc2265be7891bdf87c8ce1eb7c9dce6665923ab7b751f567b8fe9bcbb651540",
+      "audit": {
+        "label": "landscape4k_retry",
+        "width": 1920,
+        "height": 1080,
+        "durationUs": 22540000,
+        "frameCount": 564,
+        "ptsMaxErrorUs": 0,
+        "durationErrorUs": 0,
+        "audioDurationErrorUs": 0,
+        "containerDurationErrorUs": 0,
+        "frameIntervalsUs": [
+          40000
+        ],
+        "sourceOriginUs": 0,
+        "timeScale": 1.0,
+        "offsetUs": 700000,
+        "sideBySide": true,
+        "frames": [
+          {
+            "outputUs": 0,
+            "referencePtsUs": 0,
+            "targetPtsUs": 680000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9964232342219338,
+                "meanAbsoluteError": 2.71897292137146,
+                "checkedPixels": 510150
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9965033510644661,
+                "meanAbsoluteError": 2.6657943725585938,
+                "checkedPixels": 510150
+              }
+            ]
+          },
+          {
+            "outputUs": 11280000,
+            "referencePtsUs": 11280000,
+            "targetPtsUs": 11960000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9991732742686316,
+                "meanAbsoluteError": 1.635115146636963,
+                "checkedPixels": 510150
+              },
+              {
+                "pane": 1,
+                "ncc": 0.9991555340537022,
+                "meanAbsoluteError": 1.6817229986190796,
+                "checkedPixels": 510150
+              }
+            ]
+          },
+          {
+            "outputUs": 22520000,
+            "referencePtsUs": 22520000,
+            "targetPtsUs": 23200000,
+            "visual": [
+              {
+                "pane": 0,
+                "ncc": 0.9992609291312641,
+                "meanAbsoluteError": 1.4413172006607056,
+                "checkedPixels": 510150
+              },
+              {
+                "pane": 1,
+                "ncc": 0.999323586837991,
+                "meanAbsoluteError": 1.3992512226104736,
+                "checkedPixels": 510150
+              }
+            ]
+          }
+        ],
+        "audio": {
+          "sampleRate": 44100,
+          "lagSamples": 0,
+          "lagUs": 0,
+          "correlation": 0.9999341368675232,
+          "decodedSamples": 994014
+        }
+      }
+    }
+  ],
+  "independentAuditPassed": true,
+  "limitations": [
+    "Encoded 4K inputs are derived from the same public source videos; comparison export retains its 1920 longest-edge limit."
+  ],
+  "musicFullOverlapTruth": [
+    {
+      "id": "music/positive_offset",
+      "maxTruthErrorUs": 0.0
+    },
+    {
+      "id": "music/negative_offset",
+      "maxTruthErrorUs": 0.0
+    },
+    {
+      "id": "music/preserved_pitch",
+      "maxTruthErrorUs": 4665.0
+    },
+    {
+      "id": "music/shifted_pitch",
+      "maxTruthErrorUs": 10450.0
+    },
+    {
+      "id": "music/real_music",
+      "maxTruthErrorUs": 9846.0
+    },
+    {
+      "id": "music/source_rates_4k",
+      "maxTruthErrorUs": 0.0
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schema": "woah.comparison.rust-regression-summary.v1",
+  "status": "runtime_regression_passed",
+  "corpusManifestSha256": "b5961783b2ffcae9a74e9fd250191aff51c7a82de2eecd3b4a6e0417724566e6",
+  "comparison": {
+    "checksPerPlatform": 39,
+    "moviesPerPlatform": 17,
+    "decodedFramesPerPlatform": 4426,
+    "totalChecks": 78,
+    "totalMovies": 34,
+    "totalDecodedFrames": 8852,
+    "actualPreviewImagesPerPlatform": 24,
+    "totalActualPreviewImages": 48,
+    "fullOverlapTruthErrorLimitUs": 35000,
+    "savedGalleryOriginalsVerifiedPerPlatform": 17
+  },
+  "privacy": {
+    "targetedChecksPerPlatform": 16,
+    "totalChecks": 32,
+    "totalMovies": 30,
+    "totalDecodedFrames": 816,
+    "nativePreviewPairs": 88,
+    "prior62BaselineRetained": true
+  },
+  "checks": {
+    "rust": 110,
+    "androidJvm": 623,
+    "flutterApp": 277,
+    "dartDomain": 28,
+    "pythonComparison": 32,
+    "hostTimelineAbiFingerprint": "a0e72ab036ceee31aa1eafc54b071e8494dd18fb4f2a8b9a54506d71af455396"
+  },
+  "pullRequests": [
+    35,
+    36,
+    37,
+    38
+  ],
+  "ciStatusUrl": "https://github.com/orz-i/woah/pull/38/checks",
+  "safeArtifactsOnly": true
+}

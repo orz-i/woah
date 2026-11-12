@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:video_player/video_player.dart';
 
 /// Same real bridge/media/renderer/encoder test on Android and iOS, without mocks.
@@ -21,12 +23,15 @@ Future<void> main() async {
             builder: (_, _) => Column(
               children: [
                 Text('${Platform.operatingSystem}: ${qa.current}'),
-                SizedBox(
-                  width: 320,
-                  height: 240,
-                  child: qa.texture == null
-                      ? const ColoredBox(color: Colors.black)
-                      : Texture(textureId: qa.texture!),
+                RepaintBoundary(
+                  key: qa.previewKey,
+                  child: SizedBox(
+                    width: 320,
+                    height: 240,
+                    child: qa.texture == null
+                        ? const ColoredBox(color: Colors.black)
+                        : Texture(textureId: qa.texture!),
+                  ),
                 ),
                 Expanded(
                   child: ListView(
@@ -52,6 +57,8 @@ class ComparisonRegression extends ChangeNotifier {
   final api = DanceComparisonApi();
   final results = <Map<String, Object?>>[];
   final exports = <Map<String, Object?>>[];
+  final previews = <Map<String, Object?>>[];
+  final previewKey = GlobalKey();
   late Directory documents, corpus, outputs;
   late Map<String, dynamic> manifest;
   final uris = <String, String>{};
@@ -81,6 +88,7 @@ class ComparisonRegression extends ChangeNotifier {
         'passed': finished && results.every((r) => r['status'] == 'passed'),
         'results': results,
         'exports': exports,
+        'previews': previews,
       }),
       flush: true,
     );
@@ -376,7 +384,17 @@ class ComparisonRegression extends ChangeNotifier {
           if (a['scale'] != null) {
             require(r.candidates.isNotEmpty, 'Missing music evidence');
             final c = r.candidates.first;
-            final error = [3000000, 6000000, 9000000]
+            final truthScale = (a['scale'] as num).toDouble();
+            final truthOffset = a['offset'] as int;
+            final overlapStart = math.max(0, -truthOffset / truthScale);
+            final overlapEnd = math.min(
+              source(a['reference'] as String)['durationUs'] as int,
+              ((source(a['target'] as String)['durationUs'] as int) -
+                      truthOffset) /
+                  truthScale,
+            );
+            // An affine error reaches its maximum at an overlap endpoint.
+            final error = [overlapStart, overlapEnd]
                 .map(
                   (t) =>
                       ((c.timeScale ?? 1) * t +
@@ -421,6 +439,28 @@ class ComparisonRegression extends ChangeNotifier {
               evidence.add(
                 state(await seekProbe(Map<String, dynamic>.from(probe as Map))),
               );
+              await Future<void>.delayed(const Duration(milliseconds: 80));
+              await WidgetsBinding.instance.endOfFrame;
+              final boundary =
+                  previewKey.currentContext!.findRenderObject()
+                      as RenderRepaintBoundary;
+              final image = await boundary.toImage(pixelRatio: 1);
+              final bytes = await image.toByteData(
+                format: ui.ImageByteFormat.png,
+              );
+              image.dispose();
+              final folder = Directory(
+                '${documents.path}/comparison-core-previews',
+              )..createSync(recursive: true);
+              final name = '${s['id']}-${evidence.length}.png';
+              File(
+                '${folder.path}/$name',
+              ).writeAsBytesSync(bytes!.buffer.asUint8List());
+              previews.add({
+                'session': s['id'],
+                'file': name,
+                'positionUs': probe['positionUs'],
+              });
             }
             final probe = Map<String, dynamic>.from(
               (s['probes'] as List).first as Map,
