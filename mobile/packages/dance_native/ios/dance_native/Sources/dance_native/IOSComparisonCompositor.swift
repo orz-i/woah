@@ -72,23 +72,8 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
             throw NSError(domain: "WoahComparisonCompositor", code: 1,
               userInfo: [NSLocalizedDescriptionKey: "Could not obtain both comparison frames and a render buffer."])
           }
-          let layout = instruction.layout
-          let canvas = CGRect(x: 0, y: 0, width: CGFloat(layout.width), height: CGFloat(layout.height))
-          var image = CIImage(color: .black).cropped(to: canvas)
-          image = pane(reference, layer: instruction.reference, reference: true, layout: layout)
-            .composited(over: image)
-          image = pane(target, layer: instruction.target, reference: false, layout: layout)
-            .composited(over: image)
-
-          let bounds = CGRect(x: 0, y: 0, width: CGFloat(CVPixelBufferGetWidth(output)), height: CGFloat(CVPixelBufferGetHeight(output)))
-          // AVFoundation's renderTransform uses a top-left origin. Convert from
-          // and back to Core Image's bottom-left coordinates around that step.
-          // https://developer.apple.com/documentation/avfoundation/avvideocompositionrendercontext/rendertransform
-          image = image.transformed(by: CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: CGFloat(layout.height)))
-            .transformed(by: request.renderContext.renderTransform)
-            .transformed(by: CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height))
-          image = image.composited(over: CIImage(color: .black).cropped(to: bounds)).cropped(to: bounds)
-          context.render(image, to: output, bounds: bounds, colorSpace: colorSpace)
+          render(reference: reference, target: target, instruction: instruction, output: output,
+            renderTransform: request.renderContext.renderTransform)
           if currentGeneration() == requestedGeneration {
             request.finish(withComposedVideoFrame: output)
           } else {
@@ -103,6 +88,24 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
         }
       }
     }
+  }
+
+  /// The player and the export's independent source readers use one renderer.
+  func render(reference: CVPixelBuffer, target: CVPixelBuffer,
+    instruction: IOSComparisonVideoInstruction, output: CVPixelBuffer,
+    renderTransform: CGAffineTransform = .identity) {
+    let layout = instruction.layout
+    let canvas = CGRect(x: 0, y: 0, width: CGFloat(layout.width), height: CGFloat(layout.height))
+    var image = CIImage(color: .black).cropped(to: canvas)
+    image = pane(reference, layer: instruction.reference, reference: true, layout: layout).composited(over: image)
+    image = pane(target, layer: instruction.target, reference: false, layout: layout).composited(over: image)
+    let bounds = CGRect(x: 0, y: 0, width: CGFloat(CVPixelBufferGetWidth(output)), height: CGFloat(CVPixelBufferGetHeight(output)))
+    // Conjugate AVFoundation's top-left render transform into Core Image coordinates.
+    image = image.transformed(by: CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: CGFloat(layout.height)))
+      .transformed(by: renderTransform)
+      .transformed(by: CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height))
+    image = image.composited(over: CIImage(color: .black).cropped(to: bounds)).cropped(to: bounds)
+    context.render(image, to: output, bounds: bounds, colorSpace: colorSpace)
   }
 
   func cancelAllPendingVideoCompositionRequests() {

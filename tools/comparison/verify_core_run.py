@@ -33,7 +33,7 @@ def main():
             row.update(status='failed', error=str(error))
         rows.append(row)
         print(json.dumps(row), flush=True)
-    complete = runtime['finished'] and runtime['passed']
+    complete = runtime['finished'] and runtime['passed'] and not runtime.get('partial', False)
     passed = bool(rows) and all(r['status'] == 'passed' for r in rows) and (complete or args.allow_partial)
     result = dict(schema='woah.comparison.export-audit.v1', platform=runtime['platform'],
                   corpusManifestSha256=hashlib.sha256(manifest_bytes).hexdigest(),

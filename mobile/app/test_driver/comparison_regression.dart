@@ -48,6 +48,7 @@ Future<void> main() async {
 }
 
 class ComparisonRegression extends ChangeNotifier {
+  static const selection = String.fromEnvironment('COMPARISON_QA_FILTER');
   final api = DanceComparisonApi();
   final results = <Map<String, Object?>>[];
   final exports = <Map<String, Object?>>[];
@@ -73,6 +74,8 @@ class ComparisonRegression extends ChangeNotifier {
       jsonEncode({
         'schema': 'woah.comparison.core-runtime.v1',
         'platform': Platform.operatingSystem,
+        'selection': selection,
+        'partial': selection.isNotEmpty,
         'current': current,
         'finished': finished,
         'passed': finished && results.every((r) => r['status'] == 'passed'),
@@ -89,6 +92,9 @@ class ComparisonRegression extends ChangeNotifier {
     String id,
     Future<Map<String, Object?>> Function() body,
   ) async {
+    if (selection.isNotEmpty && !RegExp(selection).hasMatch(id)) {
+      return;
+    }
     current = id;
     final row = <String, Object?>{'id': id, 'status': 'running'};
     results.add(row);
