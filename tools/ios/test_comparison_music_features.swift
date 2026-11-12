@@ -8,7 +8,7 @@ struct ComparisonMusicFeaturesRegression {
     let origin: Int64 = 123_000
     let silence = IOSComparisonMusicFeatureBuilder(originUs: origin)
     for _ in 0..<1184 { try silence.add(0) }
-    let silent = silence.finish()
+    let silent = try silence.finish()
     precondition(silent.frames.count == 2)
     precondition(silent.frames.map(\.timeUs) == [155_000, 165_000])
     precondition(silent.frames.allSatisfy {
@@ -22,7 +22,7 @@ struct ComparisonMusicFeaturesRegression {
       let phase: Double = 2.0 * Double.pi * 440.0 * Double(sample) / 16_000.0
       try tone.add(Float(0.5 * sin(phase)))
     }
-    let features = tone.finish()
+    let features = try tone.finish()
     precondition(features.frames.count == 11)
     for frame in features.frames {
       // 440 Hz lies closest to FFT bin 28 at 16 kHz / 1024.
@@ -36,23 +36,7 @@ struct ComparisonMusicFeaturesRegression {
       try tone.add(.nan)
       preconditionFailure("Non-finite PCM must be rejected")
     } catch IOSComparisonMusicError.decode { }
-    // Preserve strict-left / inclusive-right plateau handling, descending
-    // power order, ascending bin tie-break and the four-peak limit.
-    var peaks = [Double](repeating: 0, count: 512)
-    peaks[10] = 10
-    peaks[20] = 10
-    peaks[30] = 20
-    peaks[40] = 10
-    peaks[41] = 10
-    peaks[50] = 10
-    precondition(IOSComparisonMusicFeatureBuilder.peakBins(peaks) == [30, 10, 20, 40])
-    var boundary = [Double](repeating: 1, count: 512)
-    boundary[10] = 3
-    boundary[11] = 0
-    boundary[12] = 0 // Total 512: bin 10 is exactly mean * 3, so excluded.
-    precondition(IOSComparisonMusicFeatureBuilder.peakBins(boundary).isEmpty)
-    boundary[10] = 3.01
-    precondition(IOSComparisonMusicFeatureBuilder.peakBins(boundary) == [10])
+    // Peak tie and strict-threshold cases live in Rust audio_features tests.
     print("IOS_COMPARISON_MUSIC_FEATURES_REGRESSION=PASS")
   }
 }

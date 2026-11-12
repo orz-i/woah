@@ -167,9 +167,9 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
             val current={ alignmentGeneration.get()==generation && !Thread.currentThread().isInterrupted }
             try {
                 val teacher=ComparisonPcmDecoder(context).features(teacherUri,current)
-                debug("music teacher_frames="+teacher.frames.size+" origin_us="+teacher.startUs)
+                debug("music teacher_frames="+teacher.count+" origin_us="+teacher.startUs)
                 val learner=ComparisonPcmDecoder(context).features(learnerUri,current)
-                debug("music learner_frames="+learner.frames.size+" origin_us="+learner.startUs)
+                debug("music learner_frames="+learner.count+" origin_us="+learner.startUs)
                 check(current()) { "匹配已取消" }
                 val result=ComparisonMusicMatcher.match(teacher,learner,current)
                 debug("music status="+result.status+" elapsed_ms="+(android.os.SystemClock.elapsedRealtime()-started)+

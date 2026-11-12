@@ -6,6 +6,9 @@
 
 pub mod association;
 pub mod association_score;
+pub mod audio_alignment;
+pub mod audio_features;
+pub mod audio_pcm;
 pub mod box_filter;
 pub mod camera;
 pub mod composition;
@@ -13,6 +16,7 @@ pub mod face_geometry;
 pub mod face_localization;
 pub mod face_observations;
 mod ffi;
+mod ffi_audio;
 mod ffi_class;
 mod ffi_face;
 mod ffi_face_geometry;
@@ -43,6 +47,7 @@ pub mod work_lifecycle;
 pub mod yuv;
 
 pub use ffi::*;
+pub use ffi_audio::*;
 pub use ffi_class::*;
 pub use ffi_face::*;
 pub use ffi_face_geometry::*;

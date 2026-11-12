@@ -1,100 +1,71 @@
 package art.gaoge.dance.engine.comparison
 
-import kotlin.math.*
+import art.gaoge.dance.engine.core.FrameKernel
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 internal class ComparisonAlignmentCancelled : RuntimeException("匹配已取消")
 internal class ComparisonAlignmentTooLong : RuntimeException("自动匹配暂支持十分钟内的视频；可以使用手动校准。")
 internal class ComparisonDiscontinuousAudio : RuntimeException("音轨时间不连续，请手动校准。")
 internal class ComparisonNoAudio : RuntimeException("视频没有音轨")
-internal data class MusicFrame(val timeUs: Long,val spectrum: FloatArray,val onset: FloatArray,val peaks: IntArray,val pitchSpectrum: FloatArray=FloatArray(0))
-internal data class MusicFeatures(val frames: List<MusicFrame>,val distinctHashes: Int=0) {
-    val startUs get()=frames.firstOrNull()?.timeUs ?: 0L
-    val endUs get()=(frames.lastOrNull()?.timeUs ?: 0L)+10_000
+internal data class MusicFrame(val timeUs:Long,val spectrum:FloatArray,val onset:FloatArray,val peaks:IntArray,val pitchSpectrum:FloatArray=FloatArray(0))
+
+/** Versioned feature replay, not an independent native feature implementation. */
+internal class MusicFeatures private constructor(val payload:ByteArray,val distinctHashes:Int=0) {
+    private val data get()=ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
+    val count:Int get()=data.getInt(8)
+    val startUs:Long get()=if(count==0)0L else data.getLong(12)
+    val endUs:Long get()=(if(count==0)0L else data.getLong(12+(count-1)*348))+10_000L
+    val frames:List<MusicFrame> = object:AbstractList<MusicFrame>() {
+        override val size:Int get()=count
+        override fun get(index:Int):MusicFrame {
+            require(index in 0 until count)
+            val b=data;b.position(12+index*348)
+            val time=b.long;val spectrum=FloatArray(16){b.float};val onset=FloatArray(16){b.float}
+            val n=b.int;val peaks=IntArray(4){b.int}.take(n).toIntArray();val pitch=FloatArray(48){b.float}
+            return MusicFrame(time,spectrum,onset,peaks,pitch)
+        }
+    }
+    constructor(frames:List<MusicFrame>,distinctHashes:Int=0):this(pack(frames),distinctHashes)
+    companion object {
+        fun fromPayload(payload:ByteArray)=MusicFeatures(payload)
+        private fun pack(frames:List<MusicFrame>):ByteArray {
+            val b=ByteBuffer.allocate(12+frames.size*348).order(ByteOrder.LITTLE_ENDIAN)
+            b.put(byteArrayOf(70,75,77,70,1,0,0,0));b.putInt(frames.size)
+            for(f in frames) {
+                require(f.spectrum.size==16 && f.onset.size==16 && f.peaks.size<=4)
+                b.putLong(f.timeUs);f.spectrum.forEach{b.putFloat(it)};f.onset.forEach{b.putFloat(it)}
+                b.putInt(f.peaks.size);repeat(4){b.putInt(f.peaks.getOrElse(it){0})}
+                repeat(48){b.putFloat(f.pitchSpectrum.getOrElse(it){0f})}
+            }
+            return b.array()
+        }
+    }
 }
 
-/** Streaming mono 16kHz PCM -> 10ms features. No song database or ML runtime. */
-internal class ComparisonMusicFeatureBuilder(private val originUs: Long) {
-    companion object { const val RATE=16000;const val HOP=160;const val FFT=1024;const val MAX_FRAMES=60_000 }
-    private val ring=DoubleArray(FFT)
-    private val real=DoubleArray(FFT)
-    private val imaginary=DoubleArray(FFT)
-    private val window=DoubleArray(FFT) { .5-.5*cos(2*PI*it/(FFT-1)) }
-    private val cosine=DoubleArray(FFT/2) { cos(-2*PI*it/FFT) }
-    private val sine=DoubleArray(FFT/2) { sin(-2*PI*it/FFT) }
-    private val reverse=IntArray(FFT) { Integer.reverse(it) ushr 22 }
-    private val edges=intArrayOf(2,4,6,9,13,19,27,38,54,76,108,152,214,300,380,450,512)
-    private val pitchBins=DoubleArray(48) { 4.0*2.0.pow(it/8.0) }
-    private val frames=ArrayList<MusicFrame>()
-    private var samples=0L
-    private var previous=FloatArray(16)
-    fun add(value: Float) {
-        ring[(samples%FFT).toInt()]=value.toDouble();samples++
-        if (samples>=FFT && (samples-FFT)%HOP==0L) extract()
+internal class ComparisonMusicFeatureBuilder(originUs:Long):AutoCloseable {
+    companion object {const val RATE=16000;const val HOP=160;const val FFT=1024;const val MAX_FRAMES=60_000}
+    private var id=FrameKernel.musicCreateNative(originUs)
+    private val pending=FloatArray(8192)
+    private var count=0
+    init {check(id!=0L)}
+    private fun checked(code:Int) {
+        when(code) {0->Unit;-2->throw ComparisonAlignmentTooLong();-3->throw ComparisonDiscontinuousAudio();-4->throw ComparisonAlignmentCancelled();else->throw IllegalArgumentException("Invalid shared audio input")}
     }
-    private fun extract() {
-        if (frames.size>=MAX_FRAMES) throw ComparisonAlignmentTooLong()
-        val first=(samples%FFT).toInt()
-        for (i in 0 until FFT) { real[reverse[i]]=ring[(first+i)%FFT]*window[i];imaginary[i]=0.0 }
-        var length=2
-        while (length<=FFT) {
-            val half=length/2;val stride=FFT/length
-            var start=0
-            while (start<FFT) {
-                for (j in 0 until half) {
-                    val p=start+j;val q=p+half;val c=cosine[j*stride];val s=sine[j*stride]
-                    val r=real[q]*c-imaginary[q]*s;val im=real[q]*s+imaginary[q]*c
-                    real[q]=real[p]-r;imaginary[q]=imaginary[p]-im
-                    real[p]+=r;imaginary[p]+=im
-                }
-                start+=length
-            }
-            length*=2
-        }
-        val power=DoubleArray(FFT/2) { real[it]*real[it]+imaginary[it]*imaginary[it] }
-        val bands=FloatArray(16) { band ->
-            var sum=0.0
-            for (i in edges[band] until edges[band+1]) sum+=power[i]
-            ln(1+sum/(edges[band+1]-edges[band])*100).toFloat()
-        }
-        val onset=FloatArray(16) { max(0f,bands[it]-previous[it]) }
-        previous=bands.copyOf()
-        val mean=power.average()
-        val peaks=(4 until 500).filter { power[it]>power[it-1] && power[it]>=power[it+1] && power[it]>mean*3 }
-            .sortedByDescending { power[it] }.take(4).toIntArray()
-        val pitch=FloatArray(48) { b ->
-            val center=pitchBins[b];val lo=max(1,floor(center/2.0.pow(1.0/8)).toInt())
-            val hi=min(power.lastIndex,ceil(center*2.0.pow(1.0/8)).toInt())
-            var sum=0.0;var weight=0.0
-            for (i in lo..hi) {
-                val w=(1-abs(ln(i/center)/ln(2.0)*8)).coerceAtLeast(0.0)
-                sum+=power[i]*w;weight+=w
-            }
-            ln(1+sum/max(.01,weight)*100).toFloat()
-        }
-        frames.add(MusicFrame(originUs+(samples-FFT/2)*1_000_000/RATE,bands,onset,peaks,pitch))
+    fun add(value:Float) {
+        require(value.isFinite());check(id!=0L)
+        pending[count++]=value;if(count==pending.size)flush()
     }
-    fun finish(): MusicFeatures {
-        if (frames.isEmpty()) return MusicFeatures(emptyList())
-        val means=DoubleArray(16);val deviations=DoubleArray(16)
-        for (row in frames) for (b in 0..15) means[b]+=row.spectrum[b]
-        for (b in 0..15) means[b]/=frames.size
-        for (row in frames) for (b in 0..15) deviations[b]+=(row.spectrum[b]-means[b]).pow(2)
-        for (b in 0..15) deviations[b]=sqrt(deviations[b]/frames.size).coerceAtLeast(.25)
-        val pitchMean=DoubleArray(48);val pitchDev=DoubleArray(48)
-        for (row in frames) for (b in 0..47) pitchMean[b]+=row.pitchSpectrum[b]
-        for (b in 0..47) pitchMean[b]/=frames.size
-        for (row in frames) for (b in 0..47) pitchDev[b]+=(row.pitchSpectrum[b]-pitchMean[b]).pow(2)
-        for (b in 0..47) pitchDev[b]=sqrt(pitchDev[b]/frames.size).coerceAtLeast(.25)
-        for (row in frames) {
-            for (b in 0..47) row.pitchSpectrum[b]=((row.pitchSpectrum[b]-pitchMean[b])/pitchDev[b]).toFloat()
-            normalize(row.pitchSpectrum)
-            for (b in 0..15) row.spectrum[b]=((row.spectrum[b]-means[b])/deviations[b]).toFloat()
-            normalize(row.spectrum);normalize(row.onset)
-        }
-        return MusicFeatures(frames)
+    private fun flush() {
+        if(count>0) {checked(FrameKernel.musicPushNative(id,pending.copyOf(count),0,RATE,1,0));count=0}
     }
-    private fun normalize(values: FloatArray) {
-        val norm=sqrt(values.sumOf { it.toDouble()*it })
-        if (norm>1e-8) for (i in values.indices) values[i]=(values[i]/norm).toFloat()
+    fun addPcm(values:FloatArray,rate:Int,channels:Int,timeUs:Long) {
+        check(id!=0L && count==0)
+        checked(FrameKernel.musicPushNative(id,values,1,rate,channels,timeUs))
     }
+    fun finish():MusicFeatures {
+        try {flush();return MusicFeatures.fromPayload(FrameKernel.musicFinishNative(id))}
+        finally {close()}
+    }
+    override fun close() {if(id!=0L){FrameKernel.musicDestroyNative(id);id=0L}}
 }

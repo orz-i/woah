@@ -6,6 +6,9 @@ rust-version = "1.97.1"
 publish = false
 license = "MIT"
 
+[dependencies]
+rubato = "=5.0.1"
+
 [lib]
 crate-type = ["rlib", "staticlib", "cdylib"]
 

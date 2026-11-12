@@ -36,6 +36,26 @@ FrameKernelViewport frame_kernel_pane(int32_t width, int32_t height, int32_t gap
 FrameKernelViewport frame_kernel_fit(FrameKernelViewport pane, double aspect);
 FrameKernelQuad frame_kernel_quad(FrameKernelViewport pane, FrameKernelViewport fit, double zoom, double pan_x, double pan_y);
 
+/* Shared analysis profile v1; playback time stretching stays native. */
+uint64_t frame_kernel_audio_create(int64_t origin_us);
+void frame_kernel_audio_destroy(uint64_t id);
+/* mode 0 normalized mono/16k, mode 1 interleaved source PCM. 0 success,
+   -1 invalid, -2 too long, -3 discontinuous. Caller retains samples during call. */
+int32_t frame_kernel_audio_push(uint64_t id, const float *samples, size_t len,
+    uint32_t mode, uint32_t rate, uint32_t channels, int64_t time_us);
+/* Null/0 queries required bytes and finalizes once; fill then destroy session.
+   Output is canonical little-endian FKMF v1, suitable for local replay. */
+int64_t frame_kernel_audio_finish(uint64_t id, uint8_t *output, size_t capacity);
+typedef struct FrameKernelMusicCandidate {
+    int64_t offset; double scale, score; uint32_t windows, reserved;
+    double support, residual;
+} FrameKernelMusicCandidate;
+/* status: 0 matched, 1 no match, 2 inconsistent, 3 ambiguous, 4 cancelled,
+   5 invalid. At most 3 candidates. Callback is synchronous, 1 continue/0 cancel. */
+typedef struct FrameKernelAlignment { uint32_t status, count; FrameKernelMusicCandidate candidates[3]; } FrameKernelAlignment;
+FrameKernelAlignment frame_kernel_audio_align(const uint8_t *reference, size_t reference_len,
+    const uint8_t *target, size_t target_len, uint32_t (*current)(void *), void *context);
+
 typedef struct FrameKernelRect { float left, top, right, bottom; } FrameKernelRect;
 typedef struct FrameKernelSceneTarget { int64_t id; uint32_t layers; } FrameKernelSceneTarget;
 /* layers: 1 body, 2 face. Body always has both bits for its face supplement.

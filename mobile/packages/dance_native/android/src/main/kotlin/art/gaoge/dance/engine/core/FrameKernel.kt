@@ -6,6 +6,11 @@ import java.nio.ByteBuffer
 
 /** Transport adapter only; the production and JVM paths load the same Rust core. */
 internal object FrameKernel {
+    external fun musicCreateNative(origin:Long):Long
+    external fun musicDestroyNative(id:Long)
+    external fun musicPushNative(id:Long,values:FloatArray,mode:Int,rate:Int,channels:Int,time:Long):Int
+    external fun musicFinishNative(id:Long):ByteArray
+    external fun musicAlignNative(reference:ByteArray,target:ByteArray,current:()->Boolean):DoubleArray
     external fun timeValueNative(mode:Int,value:Long,ticks:Int,scale:Double,offset:Long):Long
     external fun timeOverlapNative(rs:Long,re:Long,ts:Long,te:Long,scale:Double,offset:Long):LongArray?
     external fun timeInverseNative(scale:Double,offset:Long):Long

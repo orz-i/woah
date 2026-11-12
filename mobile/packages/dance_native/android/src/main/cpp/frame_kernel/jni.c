@@ -793,3 +793,74 @@ JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_quadN
     if(out) (*env)->SetFloatArrayRegion(env,out,0,4,a);
     return out;
 }
+
+/* Shared audio transport; no DSP or matching policy in JNI. */
+static void audio_error(JNIEnv *env,int64_t code) {
+    const char *name=code==-2 ? "art/gaoge/dance/engine/comparison/ComparisonAlignmentTooLong":
+        code==-3 ? "art/gaoge/dance/engine/comparison/ComparisonDiscontinuousAudio":
+        code==-4 ? "art/gaoge/dance/engine/comparison/ComparisonAlignmentCancelled":NULL;
+    if(!name) {invalid(env);return;}
+    jclass type=(*env)->FindClass(env,name);
+    if(!type) return;
+    jmethodID ctor=(*env)->GetMethodID(env,type,"<init>","()V");
+    if(!ctor) return;
+    jobject exception=(*env)->NewObject(env,type,ctor);
+    if(exception) (*env)->Throw(env,(jthrowable)exception);
+}
+JNIEXPORT jlong JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_musicCreateNative(JNIEnv *env,jobject self,jlong origin) {
+    (void)self;uint64_t id=frame_kernel_audio_create(origin);if(!id) invalid(env);return (jlong)id;
+}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_musicDestroyNative(JNIEnv *env,jobject self,jlong id) {
+    (void)env;(void)self;frame_kernel_audio_destroy((uint64_t)id);
+}
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_musicPushNative(JNIEnv *env,jobject self,jlong id,jfloatArray input,jint mode,jint rate,jint channels,jlong time) {
+    (void)self;if(!input || rate<0 || channels<0) {invalid(env);return -1;}
+    jsize n=(*env)->GetArrayLength(env,input);
+    if(n>1048576) {invalid(env);return -1;}
+    jfloat *data=n ? (*env)->GetFloatArrayElements(env,input,NULL):NULL;
+    if(n && !data) return -1;
+    int32_t code=frame_kernel_audio_push((uint64_t)id,data,(size_t)n,(uint32_t)mode,(uint32_t)rate,(uint32_t)channels,time);
+    if(data) (*env)->ReleaseFloatArrayElements(env,input,data,JNI_ABORT);
+    return code;
+}
+JNIEXPORT jbyteArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_musicFinishNative(JNIEnv *env,jobject self,jlong id) {
+    (void)self;int64_t size=frame_kernel_audio_finish((uint64_t)id,NULL,0);
+    if(size<0) {audio_error(env,size);return NULL;}
+    if(size>20880012) {invalid(env);return NULL;}
+    jbyteArray out=(*env)->NewByteArray(env,(jsize)size);if(!out) return NULL;
+    jbyte *data=(*env)->GetByteArrayElements(env,out,NULL);if(!data) return NULL;
+    int64_t result=frame_kernel_audio_finish((uint64_t)id,(uint8_t*)data,(size_t)size);
+    (*env)->ReleaseByteArrayElements(env,out,data,0);
+    if(result!=size) {audio_error(env,result);return NULL;}return out;
+}
+typedef struct AudioCurrent { JNIEnv *env; jobject fn; jmethodID invoke,value; } AudioCurrent;
+static uint32_t audio_current(void *context) {
+    AudioCurrent *c=(AudioCurrent*)context;JNIEnv *env=c->env;
+    if((*env)->ExceptionCheck(env)) return 0;
+    jobject value=(*env)->CallObjectMethod(env,c->fn,c->invoke);
+    if(!value || (*env)->ExceptionCheck(env)) return 0;
+    jboolean result=(*env)->CallBooleanMethod(env,value,c->value);
+    (*env)->DeleteLocalRef(env,value);return result ? 1u:0u;
+}
+JNIEXPORT jdoubleArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_musicAlignNative(JNIEnv *env,jobject self,jbyteArray reference,jbyteArray target,jobject current) {
+    (void)self;if(!reference || !target || !current) {invalid(env);return NULL;}
+    jsize rn=(*env)->GetArrayLength(env,reference),tn=(*env)->GetArrayLength(env,target);
+    if(rn>20880012 || tn>20880012) {invalid(env);return NULL;}
+    jclass function=(*env)->GetObjectClass(env,current),boolean=(*env)->FindClass(env,"java/lang/Boolean");
+    if(!function || !boolean) return NULL;
+    AudioCurrent check={env,current,(*env)->GetMethodID(env,function,"invoke","()Ljava/lang/Object;"),(*env)->GetMethodID(env,boolean,"booleanValue","()Z")};
+    if(!check.invoke || !check.value) return NULL;
+    jbyte *r=(*env)->GetByteArrayElements(env,reference,NULL);if(!r) return NULL;
+    jbyte *t=(*env)->GetByteArrayElements(env,target,NULL);
+    if(!t) {(*env)->ReleaseByteArrayElements(env,reference,r,JNI_ABORT);return NULL;}
+    FrameKernelAlignment result=frame_kernel_audio_align((const uint8_t*)r,(size_t)rn,(const uint8_t*)t,(size_t)tn,audio_current,&check);
+    (*env)->ReleaseByteArrayElements(env,reference,r,JNI_ABORT);(*env)->ReleaseByteArrayElements(env,target,t,JNI_ABORT);
+    if((*env)->ExceptionCheck(env)) return NULL;
+    jdouble data[20]={result.status,result.count};
+    for(uint32_t i=0;i<result.count && i<3;i++) {
+        FrameKernelMusicCandidate c=result.candidates[i];int k=2+(int)i*6;
+        data[k]=(double)c.offset;data[k+1]=c.scale;data[k+2]=c.score;data[k+3]=c.windows;data[k+4]=c.support;data[k+5]=c.residual;
+    }
+    jdoubleArray out=(*env)->NewDoubleArray(env,2+(jsize)result.count*6);
+    if(out) (*env)->SetDoubleArrayRegion(env,out,0,2+(jsize)result.count*6,data);return out;
+}

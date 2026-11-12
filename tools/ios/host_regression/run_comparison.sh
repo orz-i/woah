@@ -10,3 +10,18 @@ swiftc -O -I "$CORE/include" -o "$OUT/composition" \
   "$ROOT/mobile/packages/dance_native/ios/tests/comparison_composition/main.swift" \
   "$CORE/target/release/libframe_kernel.a" -liconv
 "$OUT/composition"
+
+swiftc -O -I "$CORE/include" -o "$OUT/music" \
+  "$N/IOSComparisonMusicFeatures.swift" "$N/IOSComparisonMusicMatcher.swift" \
+  "$ROOT/mobile/packages/dance_native/ios/tests/comparison_music/main.swift" \
+  "$CORE/target/release/libframe_kernel.a" -liconv
+"$OUT/music"
+swiftc -O -I "$CORE/include" -o "$OUT/pcm" \
+  "$N/IOSComparisonMusicFeatures.swift" "$N/IOSComparisonMusicPcmDecoder.swift" \
+  "$ROOT/mobile/packages/dance_native/ios/tests/comparison_music_pcm/main.swift" \
+  "$CORE/target/release/libframe_kernel.a" -liconv
+"$OUT/pcm"
+swiftc -O -I "$CORE/include" -o "$OUT/features" \
+  "$N/IOSComparisonMusicFeatures.swift" "$ROOT/tools/ios/test_comparison_music_features.swift" \
+  "$CORE/target/release/libframe_kernel.a" -liconv
+"$OUT/features"

@@ -2,7 +2,7 @@ import Foundation
 
 // Portable music-core regression suite. Run with an optimized Swift compiler:
 // swiftc -O IOSComparisonMusicFeatures.swift IOSComparisonMusicMatcher.swift \
-//   IOSComparisonMusicRateMatcher.swift tests/comparison_music/main.swift -o music-tests
+//   tests/comparison_music/main.swift -I crates/frame-kernel/include -lframe_kernel -o music-tests
 
 struct MusicRandom {
   var state: UInt64
@@ -30,7 +30,7 @@ func music(_ seconds: Double, rate: Double = 1, preservePitch: Bool = true,
 func features(_ pcm: [Float], originUs: Int64 = 0) throws -> IOSComparisonMusicFeatures {
   let builder = IOSComparisonMusicFeatureBuilder(originUs: originUs)
   for value in pcm { try builder.add(value) }
-  return builder.finish()
+  return try builder.finish()
 }
 
 func match(_ reference: [Float], _ target: [Float], referenceOrigin: Int64 = 0,
@@ -124,17 +124,18 @@ do {
   })
   fatalError("In-flight cancellation ignored")
 } catch IOSComparisonMusicError.cancelled {}
-var clock = IOSComparisonMusicPCMContinuity()
-try clock.consume(timeUs: 5_000_000, sampleCount: 1600)
-try clock.consume(timeUs: 5_100_005, sampleCount: 1600)
+let clock = IOSComparisonMusicFeatureBuilder(originUs: 0)
+try clock.addPCM([Float](repeating: 0, count: 1600), rate: 16000, channels: 1, timeUs: 5_000_000)
+try clock.addPCM([Float](repeating: 0, count: 1600), rate: 16000, channels: 1, timeUs: 5_100_005)
 do {
-  try clock.consume(timeUs: 5_500_000, sampleCount: 1600)
+  try clock.addPCM([Float](repeating: 0, count: 1600), rate: 16000, channels: 1, timeUs: 5_500_000)
   fatalError("PTS gap was flattened")
 } catch IOSComparisonMusicError.discontinuousAudio {}
 do {
-  try clock.consume(timeUs: 4_000_000, sampleCount: 1600)
+  try clock.addPCM([Float](repeating: 0, count: 1600), rate: 16000, channels: 1, timeUs: 4_000_000)
   fatalError("Backwards PTS was flattened")
 } catch IOSComparisonMusicError.discontinuousAudio {}
+
 do {
   try IOSComparisonMusicFeatureBuilder(originUs: 0).add(.nan)
   fatalError("Non-finite PCM accepted")
