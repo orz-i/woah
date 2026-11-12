@@ -22,8 +22,9 @@ Future<void> main() async {
       throw StateError('Shared timeline contract mismatch');
     }
     final inverse = mapping.inverse;
-    if (inverse.target(9200000) != 10000000)
+    if (inverse.target(9200000) != 10000000) {
       throw StateError('Inverse mismatch');
+    }
     result['passed'] = true;
   } catch (error, stack) {
     result.addAll({'passed': false, 'error': '$error', 'stack': '$stack'});
