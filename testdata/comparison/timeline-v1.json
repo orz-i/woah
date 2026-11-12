@@ -1,0 +1,17 @@
+{
+  "schema": "frame-kernel.timeline.v1",
+  "rounding": "half_towards_positive_infinity_before_offset",
+  "map": [
+    {"reference": 1, "scale": 0.5, "offset": -2, "target": -1},
+    {"reference": -1, "scale": 0.5, "offset": 0, "target": 0},
+    {"reference": 10000000, "scale": 0.8, "offset": 1200000, "target": 9200000},
+    {"reference": 0, "scale": 2.0, "offset": -3000000, "target": -3000000}
+  ],
+  "overlap": [
+    {"reference": [0, 20], "target": [0, 11], "scale": 2.0, "offset": 0, "expected": [0, 5]},
+    {"reference": [0, 10000000], "target": [0, 11000001], "scale": 2.0, "offset": 0, "expected": [0, 5500000]},
+    {"reference": [0, 15000000], "target": [0, 12000000], "scale": 1.0, "offset": -3000000, "expected": [3000000, 15000000]},
+    {"reference": [2000001, 14000001], "target": [5000001, 20000001], "scale": 1.0, "offset": 3000000, "expected": [2000001, 14000001]},
+    {"reference": [0, 3], "target": [0, 3], "scale": 1.0, "offset": 5, "expected": null}
+  ]
+}
