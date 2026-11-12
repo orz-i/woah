@@ -33,10 +33,8 @@ struct IOSComparisonComposition {
     let range = try overlap.sourceRange(startUs: rangeStartUs, endUs: rangeEndUs)
     let duration = time(range.endUs - range.startUs)
     let referenceRange = CMTimeRange(start: time(range.startUs), duration: duration)
-    let targetStart = overlap.mapping.targetTimeUs(referenceUs: range.startUs)
-    let targetEnd = overlap.mapping.targetTimeUs(referenceUs: range.endUs)
-    guard targetEnd > targetStart else { throw IOSComparisonModelError.invalidRange }
-    let targetRange = CMTimeRange(start: time(targetStart), duration: time(targetEnd - targetStart))
+    guard let targetRange = IOSComparisonTimeCore.editRange(start: range.startUs, end: range.endUs,
+      scale: timeScale, offset: offsetUs) else { throw IOSComparisonModelError.invalidRange }
 
     let referenceTransform = try await referenceVideo.load(.preferredTransform)
     let targetTransform = try await targetVideo.load(.preferredTransform)
@@ -55,7 +53,7 @@ struct IOSComparisonComposition {
     try reference.insertTimeRange(referenceRange, of: referenceVideo, at: .zero)
     try target.insertTimeRange(targetRange, of: targetVideo, at: .zero)
     // Target source time advances at timeScale per reference second. This is a
-    // single affine music-rate edit, with integer-microsecond endpoint rounding.
+    // single affine music-rate edit retaining the core's rational endpoints.
     target.scaleTimeRange(CMTimeRange(start: .zero, duration: targetRange.duration), toDuration: duration)
     // Source orientation is applied exactly once by the custom compositor.
     reference.preferredTransform = .identity

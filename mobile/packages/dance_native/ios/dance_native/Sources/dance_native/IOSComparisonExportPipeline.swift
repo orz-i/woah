@@ -98,18 +98,20 @@ final class IOSComparisonExportPipeline {
     }
     writer.add(videoInput)
     writer.add(audioInput)
+    var operation = "start"
+    var videoCount = 0
+    var lastPTS = CMTime.invalid
     do {
       try cancellation.check()
       guard writer.startWriting() else { throw writer.error ?? failure("无法创建导出文件") }
       writer.startSession(atSourceTime: .zero)
       guard reader.startReading() else { throw reader.error ?? failure("无法解码对比视频") }
       let audio = try IOSComparisonExportPCM(output: audioOutput, durationUs: spec.durationUs)
+      operation = "video_read"
       var currentVideo: CMSampleBuffer? = autoreleasepool { videoOutput.copyNextSampleBuffer() }
       var nextVideo: CMSampleBuffer? = autoreleasepool { videoOutput.copyNextSampleBuffer() }
       var videoFinished = false
       var audioFinished = false
-      var videoCount = 0
-      var lastPTS = CMTime.invalid
       var lastProgressTime = Date.distantPast
       while !videoFinished || !audioFinished {
         try cancellation.check()
@@ -129,6 +131,7 @@ final class IOSComparisonExportPipeline {
               }
               let timed = try Self.timedCopy(sample, pts: start,
                 sampleDuration: CMTimeSubtract(end, start))
+              operation = "video_append"
               guard videoInput.append(timed) else {
                 throw writer.error ?? failure("无法写入对比视频帧")
               }
@@ -141,6 +144,7 @@ final class IOSComparisonExportPipeline {
               }
             }
             currentVideo = nextVideo
+            operation = "video_read"
             nextVideo = autoreleasepool { videoOutput.copyNextSampleBuffer() }
           } else {
             videoInput.markAsFinished()
@@ -149,7 +153,9 @@ final class IOSComparisonExportPipeline {
           appended = true
         }
         if !audioFinished, audioInput.isReadyForMoreMediaData {
+          operation = "audio_read"
           if let sample = try audio.next() {
+            operation = "audio_append"
             guard audioInput.append(sample) else { throw writer.error ?? failure("无法写入参考音频") }
           } else {
             audioInput.markAsFinished()
@@ -165,6 +171,7 @@ final class IOSComparisonExportPipeline {
       // The final video frame's explicit duration and this session boundary
       // prevent an encoder's default frame/AAC padding from extending the trim.
       writer.endSession(atSourceTime: duration)
+      operation = "finish"
       progress(0.98)
       try cancellation.check()
       await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
@@ -183,6 +190,10 @@ final class IOSComparisonExportPipeline {
         throw failure("导出文件时长或音视频轨道不完整")
       }
     } catch {
+      #if DEBUG
+      NSLog("WoahComparison pipeline_failure operation=%@ frames=%d last_pts=%f reader=%d writer=%d",
+        operation, videoCount, CMTimeGetSeconds(lastPTS), reader.status.rawValue, writer.status.rawValue)
+      #endif
       reader.cancelReading()
       writer.cancelWriting()
       try? FileManager.default.removeItem(at: outputURL)

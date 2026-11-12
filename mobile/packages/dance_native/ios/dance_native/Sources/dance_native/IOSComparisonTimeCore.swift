@@ -4,6 +4,12 @@ import Foundation
 
 /// Transport only; the source-time rules are shared with JNI and Dart.
 enum IOSComparisonTimeCore {
+  static func editRange(start: Int64, end: Int64, scale: Double, offset: Int64) -> CMTimeRange? {
+    let value = frame_kernel_time_edit(start, end, scale, offset)
+    guard value.valid != 0, value.timescale <= Int32.max else { return nil }
+    return CMTimeRange(start: CMTime(value: value.start, timescale: Int32(value.timescale)),
+      duration: CMTime(value: value.duration, timescale: Int32(value.timescale)))
+  }
   static func step(fs: Int64, fe: Int64, start: Int64, end: Int64, forward: Bool, previous: Int64?) -> Int64? {
     let value = frame_kernel_frame_step(fs, fe, start, end, forward ? 1 : 0, previous ?? -1, fs)
     return value.valid != 0 && value.probe == 0 ? value.value : nil

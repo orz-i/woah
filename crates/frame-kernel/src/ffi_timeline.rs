@@ -3,6 +3,32 @@ use crate::timeline::{AffineMap, Interval};
 
 #[repr(C)]
 #[derive(Default)]
+pub struct EditRange {
+    pub start: i64,
+    pub duration: i64,
+    pub timescale: u32,
+    pub valid: u32,
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_time_edit(
+    start: i64,
+    end: i64,
+    scale: f64,
+    offset: i64,
+) -> EditRange {
+    AffineMap { scale, offset }
+        .edit_range(Interval { start, end })
+        .map_or_else(EditRange::default, |r| EditRange {
+            start: r.start,
+            duration: r.duration,
+            timescale: r.timescale,
+            valid: 1,
+        })
+}
+
+#[repr(C)]
+#[derive(Default)]
 pub struct TimeRange {
     pub start: i64,
     pub end: i64,

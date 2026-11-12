@@ -1,4 +1,5 @@
 import Foundation
+import CoreMedia
 
 // Standalone: swiftc IOSComparisonModels.swift tests/comparison_composition/main.swift -o comparison_models
 func near(_ actual: Double, _ expected: Double, _ tolerance: Double = 0.001) {
@@ -45,6 +46,11 @@ let bounded = try IOSComparisonTimeMapping.overlap(reference: source(0, 20),
 precondition(bounded.referenceEndUs == 5 && bounded.durationUs == 5)
 precondition(bounded.mapping.targetTimeUs(referenceUs: bounded.referenceEndUs) == 10)
 let half = try IOSComparisonMusicMapping(offsetUs: -2, timeScale: 0.5)
+let preciseEdit = IOSComparisonTimeCore.editRange(start: 21_765_433, end: 23_000_000,
+  scale: 0.8, offset: 1_200_000)!
+precondition(preciseEdit.start.timescale == 5_000_000)
+precondition(preciseEdit.start.value == 93_061_732)
+precondition(preciseEdit.duration.value == 4_938_268)
 precondition(half.targetTimeUs(referenceUs: 1) == -1) // round source product before adding offset
 for scale in [0.5, 0.731, 1.0, 1.001, 1.999, 2.0] {
   for offset: Int64 in [-3_000_001, -1, 0, 1, 3_000_001] {

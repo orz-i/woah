@@ -7,6 +7,14 @@ pub struct AffineMap {
     pub offset: i64,
 }
 
+/// Native continuous edits must retain sub-microsecond affine endpoints.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EditRange {
+    pub start: i64,
+    pub duration: i64,
+    pub timescale: u32,
+}
+
 fn integer(value: f64) -> Option<i64> {
     // Keep integer conversions exact and reserve MIN for the C ABI error value.
     (value.is_finite() && value.abs() <= 9_007_199_254_740_991.0).then_some(value as i64)
@@ -17,6 +25,39 @@ pub fn round_time(value: f64) -> Option<i64> {
 }
 
 impl AffineMap {
+    pub fn edit_range(self, reference: Interval) -> Option<EditRange> {
+        if !self.valid() || !reference.valid() || reference.end <= reference.start {
+            return None;
+        }
+        // Preserve common exact rates (4/5, 5/4, etc.) within CMTime's signed
+        // 32-bit time base. Do not round each endpoint to a microsecond first.
+        for denominator in 1..=2147i64 {
+            let numerator = (self.scale * denominator as f64).round();
+            if (numerator / denominator as f64 - self.scale).abs() > 1e-12 {
+                continue;
+            }
+            let numerator = integer(numerator)?;
+            let start = i128::from(reference.start) * i128::from(numerator)
+                + i128::from(self.offset) * i128::from(denominator);
+            let duration = i128::from(reference.end - reference.start) * i128::from(numerator);
+            return Some(EditRange {
+                start: i64::try_from(start).ok()?,
+                duration: i64::try_from(duration).ok()?,
+                timescale: (denominator * 1_000_000) as u32,
+            });
+        }
+        // An arbitrary inferred Double may not have a representable exact
+        // rational edit. Quantize only its final endpoints to nanoseconds;
+        // keep the original scale for individual sample lookups.
+        let mapped = |v: i64| round_time((v as f64 * self.scale + self.offset as f64) * 1000.0);
+        let start = mapped(reference.start)?;
+        let duration = mapped(reference.end)?.checked_sub(start)?;
+        (duration > 0).then_some(EditRange {
+            start,
+            duration,
+            timescale: 1_000_000_000,
+        })
+    }
     pub fn valid(self) -> bool {
         self.scale.is_finite() && self.scale > 0.0 && self.offset.unsigned_abs() < (1u64 << 53)
     }
@@ -155,6 +196,62 @@ pub fn frame_step(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn continuous_affine_trim_does_not_select_the_previous_boundary_frame() {
+        let map = AffineMap {
+            scale: 0.8,
+            offset: 1_200_000,
+        };
+        let reference = Interval {
+            start: 21_765_433,
+            end: 23_000_000,
+        };
+        let edit = map.edit_range(reference).unwrap();
+        assert_eq!(
+            edit,
+            EditRange {
+                start: 93_061_732,
+                duration: 4_938_268,
+                timescale: 5_000_000
+            }
+        );
+        // 22.5s reference is exactly target frame 576 (19.2s), not frame 575.
+        assert_eq!(edit.start + 734_567 * 4, 19_200_000 * 5);
+        let rounded_start = map.map(reference.start).unwrap();
+        let rounded_duration = map.map(reference.end).unwrap() - rounded_start;
+        assert!(
+            (rounded_start as f64 + 734_567.0 * rounded_duration as f64 / 1_234_567.0)
+                < 19_200_000.0
+        );
+    }
+
+    #[test]
+    fn arbitrary_edit_rate_keeps_nanosecond_endpoints_and_rejects_invalid_ranges() {
+        let map = AffineMap {
+            scale: 0.8006440297488754,
+            offset: 1_199_144,
+        };
+        let edit = map
+            .edit_range(Interval {
+                start: 123456,
+                end: 4987654,
+            })
+            .unwrap();
+        assert_eq!(edit.timescale, 1_000_000_000);
+        for (source, actual) in [(123456, edit.start), (4987654, edit.start + edit.duration)] {
+            let exact = (source as f64 * map.scale + map.offset as f64) * 1000.0;
+            assert!((actual as f64 - exact).abs() <= 0.5);
+        }
+        assert!(map.edit_range(Interval { start: 10, end: 10 }).is_none());
+        assert!(
+            AffineMap {
+                scale: f64::NAN,
+                offset: 0
+            }
+            .edit_range(Interval { start: 0, end: 1 })
+            .is_none()
+        );
+    }
     #[test]
     fn stepping_clipped_first_and_last_frames_never_leaves_range() {
         let range = Interval {
