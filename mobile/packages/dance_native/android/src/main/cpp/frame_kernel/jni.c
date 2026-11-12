@@ -864,3 +864,11 @@ JNIEXPORT jdoubleArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_musi
     jdoubleArray out=(*env)->NewDoubleArray(env,2+(jsize)result.count*6);
     if(out) (*env)->SetDoubleArrayRegion(env,out,0,2+(jsize)result.count*6,data);return out;
 }
+
+JNIEXPORT jlongArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_frameStepNative(JNIEnv *env,jobject self,jlong fs,jlong fe,jlong rs,jlong re,jboolean forward,jlong ps,jlong pe) {
+    (void)self;
+    FrameKernelFrameStep step=frame_kernel_frame_step(fs,fe,rs,re,forward,ps,pe);
+    if(!step.valid) {invalid(env);return NULL;}
+    jlong values[2]={step.value,step.probe};jlongArray out=(*env)->NewLongArray(env,2);
+    if(out) (*env)->SetLongArrayRegion(env,out,0,2,values);return out;
+}

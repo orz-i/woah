@@ -18,6 +18,42 @@ pub struct TimeMap {
     pub reserved: u32,
 }
 
+#[repr(C)]
+#[derive(Default)]
+pub struct FrameStep {
+    pub value: i64,
+    pub probe: u32,
+    pub valid: u32,
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_frame_step(
+    fs: i64,
+    fe: i64,
+    rs: i64,
+    re: i64,
+    forward: u32,
+    ps: i64,
+    pe: i64,
+) -> FrameStep {
+    let previous = if ps < 0 {
+        None
+    } else {
+        Some(Interval { start: ps, end: pe })
+    };
+    crate::timeline::frame_step(
+        Interval { start: fs, end: fe },
+        Interval { start: rs, end: re },
+        forward != 0,
+        previous,
+    )
+    .map_or_else(FrameStep::default, |(value, probe)| FrameStep {
+        value,
+        probe: u32::from(probe),
+        valid: 1,
+    })
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn frame_kernel_time_value(
     mode: u32,

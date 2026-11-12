@@ -15,6 +15,7 @@ internal object FrameKernel {
     external fun timeOverlapNative(rs:Long,re:Long,ts:Long,te:Long,scale:Double,offset:Long):LongArray?
     external fun timeInverseNative(scale:Double,offset:Long):Long
     external fun frameIndexNative(pts:LongArray,time:Long,start:Long,end:Long,mode:Int):Int
+    external fun frameStepNative(fs:Long,fe:Long,rs:Long,re:Long,forward:Boolean,ps:Long,pe:Long):LongArray
     external fun paneNative(width:Int,height:Int,gap:Int,reference:Boolean,sideBySide:Boolean):IntArray
     external fun fitNative(pane:IntArray,aspect:Double):IntArray
     external fun quadNative(pane:IntArray,fit:IntArray,zoom:Double,panX:Double,panY:Double):FloatArray

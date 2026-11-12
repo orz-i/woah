@@ -11,13 +11,11 @@ internal data class ComparisonLoop(val startUs: Long, val endUs: Long) {
 internal object ComparisonFrameNavigation {
     fun target(frame: ComparisonFrameInterval, forward: Boolean,
         overlap: ComparisonOverlap, previous: (Long) -> ComparisonFrameInterval): Long {
-        require(frame.endUs > overlap.teacherStartUs && frame.startUs < overlap.teacherEndUs)
-        if (forward) return if (frame.endUs < overlap.teacherEndUs) frame.endUs
-            else maxOf(frame.startUs, overlap.teacherStartUs)
-        if (frame.startUs <= overlap.teacherStartUs) return overlap.teacherStartUs
-        val probe = frame.startUs - 1
-        val before = previous(probe)
-        check(before.contains(probe) && before.startUs < frame.startUs)
-        return maxOf(overlap.teacherStartUs, before.startUs)
+        val plan=art.gaoge.dance.engine.core.FrameKernel.frameStepNative(frame.startUs,frame.endUs,
+            overlap.teacherStartUs,overlap.teacherEndUs,forward,-1,-1)
+        if(plan[1]==0L) return plan[0]
+        val before=previous(plan[0])
+        return art.gaoge.dance.engine.core.FrameKernel.frameStepNative(frame.startUs,frame.endUs,
+            overlap.teacherStartUs,overlap.teacherEndUs,forward,before.startUs,before.endUs)[0]
     }
 }
