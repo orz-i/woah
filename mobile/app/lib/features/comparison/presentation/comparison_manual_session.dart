@@ -73,7 +73,10 @@ class ComparisonManualSession extends ChangeNotifier {
           value.$1 + ((duration(0) - value.$1) * .6).round();
       final target =
           secondAnchor?.$2 ??
-          value.$2 + ((reference - value.$1) * project.timeScale).round();
+          ComparisonMusicMapping(
+            value.$2,
+            project.timeScale,
+          ).target(reference - value.$1);
       await Future.wait([seek(0, reference), seek(1, target)]);
       _tick();
     } catch (_) {

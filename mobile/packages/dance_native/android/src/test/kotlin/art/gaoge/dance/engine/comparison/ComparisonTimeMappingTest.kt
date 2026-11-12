@@ -6,6 +6,12 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class ComparisonTimeMappingTest {
+    @Test fun continuousEditBoundaryUsesTheSameCoreAsDartAndSwift() {
+        val value=ComparisonTimeMapping.overlap(SourceInterval(0,20),SourceInterval(0,11),0,2.0)!!
+        assertEquals(5L,value.teacherEndUs)
+        assertEquals(10L,value.learnerTimeUs(value.durationUs))
+        assertEquals(-1L,ComparisonMusicMapping(-2,.5).learnerTimeUs(1))
+    }
     private fun interval(start: Long, end: Long) = SourceInterval(start, end)
 
     @Test fun learnerMusicStartsThreeSecondsLater() {

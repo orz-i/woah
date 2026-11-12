@@ -78,43 +78,15 @@ struct IOSComparisonFrameIndex: Sendable {
   }
 
   func frame(atOrBefore timeUs: Int64) -> Int64? {
-    let index = upperBound(timeUs) - 1
-    return index >= 0 ? presentationTimesUs[index] : nil
+    IOSComparisonTimeCore.frameIndex(presentationTimesUs, time: timeUs).map { presentationTimesUs[$0] }
   }
 
   func frame(atOrBefore time: CMTime) -> Int64? {
-    guard time.isNumeric else { return nil }
-    let microseconds = CMTimeConvertScale(time, timescale: 1_000_000, method: .roundHalfAwayFromZero)
-    return frame(atOrBefore: microseconds.value)
+    IOSComparisonTimeCore.map(time).flatMap { frame(atOrBefore: $0) }
   }
 
   func adjacent(to timeUs: Int64, forward: Bool, startUs: Int64, endUs: Int64) -> Int64? {
-    let index: Int
-    if forward { index = upperBound(timeUs) }
-    else {
-      let displayed = frame(atOrBefore: timeUs) ?? timeUs
-      index = lowerBound(displayed) - 1
-    }
-    guard presentationTimesUs.indices.contains(index) else { return nil }
-    let time = presentationTimesUs[index]
-    return time >= startUs && time < endUs ? time : nil
-  }
-
-  private func lowerBound(_ value: Int64) -> Int {
-    var lo = 0; var hi = presentationTimesUs.count
-    while lo < hi {
-      let mid = lo + (hi - lo) / 2
-      if presentationTimesUs[mid] < value { lo = mid + 1 } else { hi = mid }
-    }
-    return lo
-  }
-
-  private func upperBound(_ value: Int64) -> Int {
-    var lo = 0; var hi = presentationTimesUs.count
-    while lo < hi {
-      let mid = lo + (hi - lo) / 2
-      if presentationTimesUs[mid] <= value { lo = mid + 1 } else { hi = mid }
-    }
-    return lo
+    IOSComparisonTimeCore.frameIndex(presentationTimesUs, time: timeUs,
+      start: startUs, end: endUs, mode: forward ? 1 : 2).map { presentationTimesUs[$0] }
   }
 }

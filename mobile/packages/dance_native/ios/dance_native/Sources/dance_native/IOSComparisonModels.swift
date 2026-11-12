@@ -48,8 +48,7 @@ struct IOSComparisonMusicMapping {
   }
 
   func targetTimeUs(referenceUs: Int64) -> Int64 {
-    // Kotlin roundToLong rounds a tie towards positive infinity.
-    Int64(floor(Double(referenceUs) * timeScale + 0.5)) + offsetUs
+    IOSComparisonTimeCore.map(referenceUs, scale: timeScale, offset: offsetUs)
   }
 }
 
@@ -74,16 +73,9 @@ enum IOSComparisonTimeMapping {
   static func overlap(reference: IOSComparisonSourceInterval, target: IOSComparisonSourceInterval,
     offsetUs: Int64, timeScale: Double = 1) throws -> IOSComparisonOverlap {
     let mapping = try IOSComparisonMusicMapping(offsetUs: offsetUs, timeScale: timeScale)
-    let start = max(reference.startUs,
-      Int64(ceil(Double(target.startUs - offsetUs) / timeScale)))
-    // Match Android's exclusive integer-sample end, then also constrain the
-    // continuous edit end: scale=2, targetEnd=11us must not insert through 12us.
-    // This tightens the Android end by at most one reference microsecond.
-    let sampleEnd = Int64(floor(Double(target.endUs - 1 - offsetUs) / timeScale)) + 1
-    let continuousEnd = Int64(floor(Double(target.endUs - offsetUs) / timeScale))
-    let end = min(reference.endUs, sampleEnd, continuousEnd)
-    guard end > start, mapping.targetTimeUs(referenceUs: start) >= target.startUs,
-          mapping.targetTimeUs(referenceUs: end) <= target.endUs else {
+    guard let (start, end) = IOSComparisonTimeCore.overlap(rs: reference.startUs,
+      re: reference.endUs, ts: target.startUs, te: target.endUs,
+      scale: timeScale, offset: offsetUs) else {
       throw IOSComparisonModelError.noOverlap
     }
     return IOSComparisonOverlap(referenceStartUs: start, referenceEndUs: end,
@@ -123,14 +115,7 @@ struct IOSComparisonPicture: Equatable {
   }
 
   func quad(pane: IOSComparisonViewport, fit: IOSComparisonViewport) -> IOSComparisonQuad {
-    let centerX = (2 * (Double(fit.x - pane.x) + Double(fit.width) / 2) / Double(pane.width) - 1) * zoom
-    let centerY = (1 - 2 * (Double(fit.top - pane.top) + Double(fit.height) / 2) / Double(pane.height)) * zoom
-    let travelX = zoom == 1 ? 0 : abs(Double(fit.width) / Double(pane.width) * zoom - 1)
-    let travelY = zoom == 1 ? 0 : abs(Double(fit.height) / Double(pane.height) * zoom - 1)
-    return IOSComparisonQuad(scaleX: Float(Double(fit.width) / Double(pane.width) * zoom),
-      scaleY: Float(Double(fit.height) / Double(pane.height) * zoom),
-      shiftX: Float(zoom == 1 ? centerX : min(travelX, max(-travelX, centerX + panX * travelX))),
-      shiftY: Float(zoom == 1 ? centerY : min(travelY, max(-travelY, centerY - panY * travelY))))
+    IOSComparisonTimeCore.quad(pane, fit, zoom: zoom, panX: panX, panY: panY)
   }
 }
 
@@ -153,22 +138,10 @@ struct IOSComparisonLayout {
   }
 
   func pane(reference: Bool) -> IOSComparisonViewport {
-    if sideBySide {
-      let first = (width - gap) / 2
-      let left = reference ? 0 : first + gap
-      return IOSComparisonViewport(x: left, top: 0, width: reference ? first : width - left, height: height)
-    }
-    let first = (height - gap) / 2
-    let top = reference ? 0 : first + gap
-    return IOSComparisonViewport(x: 0, top: top, width: width, height: reference ? first : height - top)
+    IOSComparisonTimeCore.pane(width: width, height: height, gap: gap, reference: reference, sideBySide: sideBySide)
   }
 
   func fit(reference: Bool, aspect: Double) -> IOSComparisonViewport {
-    precondition(aspect.isFinite && aspect > 0)
-    let pane = pane(reference: reference)
-    let width = max(1, Int(min(Double(pane.width), Double(pane.height) * aspect)))
-    let height = max(1, Int(min(Double(pane.height), Double(pane.width) / aspect)))
-    return IOSComparisonViewport(x: pane.x + (pane.width - width) / 2,
-      top: pane.top + (pane.height - height) / 2, width: width, height: height)
+    IOSComparisonTimeCore.fit(pane(reference: reference), aspect: aspect)
   }
 }

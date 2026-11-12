@@ -28,23 +28,12 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal data class ComparisonViewport(val x: Int, val top: Int, val width: Int, val height: Int)
 internal object ComparisonGlLayout {
-    fun pane(width: Int,height: Int,gap: Int,teacher: Boolean,sideBySide: Boolean): ComparisonViewport {
-        if (sideBySide) {
-            val first=(width-gap)/2
-            val left=if (teacher) 0 else first+gap
-            return ComparisonViewport(left,0,if (teacher) first else width-left,height)
-        }
-        val first=(height-gap)/2
-        val top=if (teacher) 0 else first+gap
-        return ComparisonViewport(0,top,width,if (teacher) first else height-top)
-    }
-    fun viewport(width: Int, height: Int, gap: Int, videoWidth: Int,
-                 videoHeight: Int, teacher: Boolean, sideBySide: Boolean = false): ComparisonViewport {
-        val pane=pane(width,height,gap,teacher,sideBySide)
-        val aspect = videoWidth.toDouble()/videoHeight
-        val w = minOf(pane.width,(pane.height*aspect).toInt()).coerceAtLeast(1)
-        val h = minOf(pane.height,(pane.width/aspect).toInt()).coerceAtLeast(1)
-        return ComparisonViewport(pane.x+(pane.width-w)/2,pane.top+(pane.height-h)/2,w,h)
+    private fun viewport(v:IntArray)=ComparisonViewport(v[0],v[1],v[2],v[3])
+    fun pane(width:Int,height:Int,gap:Int,teacher:Boolean,sideBySide:Boolean):ComparisonViewport =
+        viewport(art.gaoge.dance.engine.core.FrameKernel.paneNative(width,height,gap,teacher,sideBySide))
+    fun viewport(width:Int,height:Int,gap:Int,videoWidth:Int,videoHeight:Int,teacher:Boolean,sideBySide:Boolean=false):ComparisonViewport {
+        val p=pane(width,height,gap,teacher,sideBySide)
+        return viewport(art.gaoge.dance.engine.core.FrameKernel.fitNative(intArrayOf(p.x,p.top,p.width,p.height),videoWidth.toDouble()/videoHeight))
     }
 }
 
