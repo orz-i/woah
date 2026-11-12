@@ -33,7 +33,7 @@ impl AffineMap {
         // 32-bit time base. Do not round each endpoint to a microsecond first.
         for denominator in 1..=2147i64 {
             let numerator = (self.scale * denominator as f64).round();
-            if (numerator / denominator as f64 - self.scale).abs() > 1e-12 {
+            if numerator <= 0.0 || numerator / denominator as f64 != self.scale {
                 continue;
             }
             let numerator = integer(numerator)?;
