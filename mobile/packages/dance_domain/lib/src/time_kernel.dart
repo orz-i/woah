@@ -82,8 +82,9 @@ abstract final class TimeKernel {
 
   static (int, double) inverse(double scale, int offset) {
     final result = _inverse(scale, offset);
-    if (result.valid == 0)
+    if (result.valid == 0) {
       throw const FormatException('Invalid inverse mapping');
+    }
     return (result.offset, result.scale);
   }
 
