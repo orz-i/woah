@@ -80,18 +80,11 @@ struct ComparisonExportAVRegression {
       timeScale: spec.timeScale, rangeStartUs: spec.startUs, rangeEndUs: spec.endUs,
       width: spec.width, height: spec.height, gap: spec.gap,
       sideBySide: spec.sideBySide, practice: practice)
-    let reader = try AVAssetReader(asset: composition.asset)
-    let tracks = try await composition.asset.loadTracks(withMediaType: .video)
-    let composed = AVAssetReaderVideoCompositionOutput(videoTracks: tracks,
-      videoSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA])
-    composed.videoComposition = composition.videoComposition
-    reader.add(composed)
-    precondition(reader.startReading())
-    var expected: [Double] = []
-    while let sample = composed.copyNextSampleBuffer() {
-      expected.append(CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample)))
-    }
-    if reader.status == .failed { throw reader.error! }
+    // Derive cadence from the fixture's independent source timestamps; using
+    // AVFoundation's composition reader here would duplicate the failed path.
+    let begin = composition.referenceStartUs
+    let end = begin + spec.durationUs
+    let expected = [0.0] + cadence.filter { $0 > begin && $0 < end }.map { Double($0 - begin) / 1_000_000 }
     try await IOSComparisonExportPipeline().execute(spec: spec, outputURL: output,
       cancellation: IOSComparisonExportCancellation(), progress: { _ in })
     let asset = AVURLAsset(url: output)
