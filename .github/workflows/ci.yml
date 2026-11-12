@@ -55,6 +55,7 @@ jobs:
           python tools/rust/run.py build
           python tools/rust/abi_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
           python tools/rust/timeline_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
+          python tools/rust/audio_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
           python tools/rust/instances_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
           python tools/rust/follow_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
           python tools/rust/association_smoke.py crates/frame-kernel/target/release/libframe_kernel.so
