@@ -17,6 +17,38 @@ static int read_rect(JNIEnv *env, jfloatArray values, FrameKernelRect *rect) {
     if ((*env)->ExceptionCheck(env)) return 0;
     *rect = (FrameKernelRect){f[0], f[1], f[2], f[3]}; return 1;
 }
+JNIEXPORT jlong JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_timeValueNative(JNIEnv *env,jobject self,jint mode,jlong value,jint ticks,jdouble scale,jlong offset) {
+    (void)self;
+    int64_t result=frame_kernel_time_value((uint32_t)mode,value,(uint32_t)ticks,scale,offset);
+    if(result==INT64_MIN) invalid(env);
+    return result;
+}
+JNIEXPORT jlong JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_timeInverseNative(JNIEnv *env,jobject self,jdouble scale,jlong offset) {
+    (void)self;
+    FrameKernelTimeMap map=frame_kernel_time_inverse(scale,offset);
+    if(!map.valid) {invalid(env);return 0;}
+    return map.offset;
+}
+JNIEXPORT jlongArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_timeOverlapNative(JNIEnv *env,jobject self,jlong rs,jlong re,jlong ts,jlong te,jdouble scale,jlong offset) {
+    (void)self;
+    FrameKernelTimeRange range=frame_kernel_time_overlap(rs,re,ts,te,scale,offset);
+    if(!range.valid) return NULL;
+    jlong values[2]={range.start,range.end};
+    jlongArray out=(*env)->NewLongArray(env,2);
+    if(out) (*env)->SetLongArrayRegion(env,out,0,2,values);
+    return out;
+}
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_frameIndexNative(JNIEnv *env,jobject self,jlongArray pts,jlong time,jlong start,jlong end,jint mode) {
+    (void)self;
+    if(!pts) {invalid(env);return -1;}
+    jsize n=(*env)->GetArrayLength(env,pts);
+    if(n>10000000) {invalid(env);return -1;}
+    jlong *values=n ? (*env)->GetLongArrayElements(env,pts,NULL):NULL;
+    if(n && !values) return -1;
+    int64_t result=frame_kernel_frame_index((const int64_t*)values,(size_t)n,time,start,end,(uint32_t)mode);
+    if(values) (*env)->ReleaseLongArrayElements(env,pts,values,JNI_ABORT);
+    return (jint)result;
+}
 static int read_transform(JNIEnv *env, jfloatArray values, FrameKernelTransform *t) {
     if (!values || (*env)->GetArrayLength(env, values) != 7) { invalid(env); return 0; }
     jfloat f[7]; (*env)->GetFloatArrayRegion(env, values, 0, 7, f);
@@ -729,4 +761,35 @@ JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_proje
  int32_t status=frame_kernel_project_face_region(c,p,trusted,(int64_t)age,&output);
  if(status!=FRAME_KERNEL_REGION_OK)return NULL;
  return ellipse_output(env,output);
+}
+
+static jintArray viewport_output(JNIEnv *env,FrameKernelViewport v) {
+    if(v.width<=0 || v.height<=0) {invalid(env);return NULL;}
+    jint values[4]={v.x,v.top,v.width,v.height};
+    jintArray out=(*env)->NewIntArray(env,4);
+    if(out) (*env)->SetIntArrayRegion(env,out,0,4,values);
+    return out;
+}
+static int viewport_input(JNIEnv *env,jintArray values,FrameKernelViewport *v) {
+    if(!values || (*env)->GetArrayLength(env,values)!=4) {invalid(env);return 0;}
+    jint a[4];(*env)->GetIntArrayRegion(env,values,0,4,a);
+    *v=(FrameKernelViewport){a[0],a[1],a[2],a[3]};return !(*env)->ExceptionCheck(env);
+}
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_paneNative(JNIEnv *env,jobject self,jint w,jint h,jint gap,jboolean reference,jboolean side) {
+    (void)self;return viewport_output(env,frame_kernel_pane(w,h,gap,reference,side));
+}
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_fitNative(JNIEnv *env,jobject self,jintArray pane,jdouble aspect) {
+    (void)self;FrameKernelViewport p;
+    if(!viewport_input(env,pane,&p)) return NULL;
+    return viewport_output(env,frame_kernel_fit(p,aspect));
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_quadNative(JNIEnv *env,jobject self,jintArray pane,jintArray fit,jdouble zoom,jdouble x,jdouble y) {
+    (void)self;FrameKernelViewport p,f;
+    if(!viewport_input(env,pane,&p) || !viewport_input(env,fit,&f)) return NULL;
+    FrameKernelQuad q=frame_kernel_quad(p,f,zoom,x,y);
+    if(!q.valid) {invalid(env);return NULL;}
+    jfloat a[4]={q.scale_x,q.scale_y,q.shift_x,q.shift_y};
+    jfloatArray out=(*env)->NewFloatArray(env,4);
+    if(out) (*env)->SetFloatArrayRegion(env,out,0,4,a);
+    return out;
 }

@@ -19,6 +19,23 @@ extern "C" {
 int32_t frame_kernel_work_transition(uint32_t state, uint32_t event);
 int32_t frame_kernel_work_can_replace(uint32_t state);
 
+typedef struct FrameKernelTimeRange { int64_t start, end; uint32_t valid, reserved; } FrameKernelTimeRange;
+typedef struct FrameKernelTimeMap { double scale; int64_t offset; uint32_t valid, reserved; } FrameKernelTimeMap;
+/* Half ties towards positive infinity before adding offset. mode 0 maps native
+   source ticks, mode 1 maps target microseconds back to reference. MIN invalid. */
+int64_t frame_kernel_time_value(uint32_t mode, int64_t value, uint32_t ticks, double scale, int64_t offset);
+FrameKernelTimeMap frame_kernel_time_inverse(double scale, int64_t offset);
+FrameKernelTimeMap frame_kernel_time_anchors(int64_t r1, int64_t t1, int64_t r2, int64_t t2);
+FrameKernelTimeRange frame_kernel_time_overlap(int64_t rs, int64_t re, int64_t ts, int64_t te, double scale, int64_t offset);
+/* Sorted unique PTS; mode 0 displayed, 1 next, 2 previous displayed. Index or -1.
+   The caller owns and retains len readable samples for the duration of call. */
+int64_t frame_kernel_frame_index(const int64_t *pts, size_t len, int64_t time, int64_t start, int64_t end, uint32_t mode);
+typedef struct FrameKernelViewport { int32_t x, top, width, height; } FrameKernelViewport;
+typedef struct FrameKernelQuad { float scale_x, scale_y, shift_x, shift_y; uint32_t valid; } FrameKernelQuad;
+FrameKernelViewport frame_kernel_pane(int32_t width, int32_t height, int32_t gap, uint32_t reference, uint32_t side_by_side);
+FrameKernelViewport frame_kernel_fit(FrameKernelViewport pane, double aspect);
+FrameKernelQuad frame_kernel_quad(FrameKernelViewport pane, FrameKernelViewport fit, double zoom, double pan_x, double pan_y);
+
 typedef struct FrameKernelRect { float left, top, right, bottom; } FrameKernelRect;
 typedef struct FrameKernelSceneTarget { int64_t id; uint32_t layers; } FrameKernelSceneTarget;
 /* layers: 1 body, 2 face. Body always has both bits for its face supplement.

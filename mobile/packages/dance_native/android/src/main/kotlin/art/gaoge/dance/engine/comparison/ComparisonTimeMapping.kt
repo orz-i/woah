@@ -8,9 +8,9 @@ internal data class ComparisonMusicMapping(val offsetUs: Long, val timeScale: Do
         require(offsetUs in -172_800_000_000L..172_800_000_000L)
         require(timeScale.isFinite() && timeScale in .5..2.0)
     }
-    fun learnerTimeUs(teacherUs: Long) = (teacherUs*timeScale).roundToLong()+offsetUs
-    fun teacherTimeUs(learnerUs: Long) = ((learnerUs-offsetUs)/timeScale).roundToLong()
-    fun inverse() = ComparisonMusicMapping((-offsetUs/timeScale).roundToLong(),1/timeScale)
+    fun learnerTimeUs(teacherUs: Long) = ComparisonTimeCore.map(teacherUs,timeScale,offsetUs)
+    fun teacherTimeUs(learnerUs: Long) = ComparisonTimeCore.map(learnerUs,timeScale,offsetUs,true)
+    fun inverse() = ComparisonMusicMapping(art.gaoge.dance.engine.core.FrameKernel.timeInverseNative(timeScale,offsetUs),1/timeScale)
 }
 
 internal data class SourceInterval(val startUs: Long, val endUs: Long) {
@@ -34,10 +34,7 @@ internal object ComparisonTimeMapping {
         timeScale: Double = 1.0): ComparisonOverlap? {
         require(teacher.endUs <= 86_400_000_000L && learner.endUs <= 86_400_000_000L)
         val mapping=ComparisonMusicMapping(offsetUs,timeScale)
-        val start=max(teacher.startUs,ceil((learner.startUs-offsetUs)/timeScale).toLong())
-        // Keep the mapped integer microsecond strictly inside the target end.
-        val end=min(teacher.endUs,floor((learner.endUs-1-offsetUs)/timeScale).toLong()+1)
-        if (end<=start) return null
-        return ComparisonOverlap(start,end,mapping.offsetUs,mapping.timeScale)
+        val range=ComparisonTimeCore.overlap(teacher.startUs,teacher.endUs,learner.startUs,learner.endUs,timeScale,offsetUs) ?: return null
+        return ComparisonOverlap(range[0],range[1],mapping.offsetUs,mapping.timeScale)
     }
 }

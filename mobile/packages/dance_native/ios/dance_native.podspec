@@ -20,7 +20,10 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
   s.static_framework = true
   s.libraries = 'frame_kernel', 'iconv'
   s.user_target_xcconfig = {
-    'LIBRARY_SEARCH_PATHS' => '$(inherited) "$(PODS_CONFIGURATION_BUILD_DIR)/dance_native/FrameKernel"'
+    'LIBRARY_SEARCH_PATHS' => '$(inherited) "$(PODS_CONFIGURATION_BUILD_DIR)/dance_native/FrameKernel"',
+    # Dart's synchronous timeline calls use these same C ABI symbols. Retain
+    # them in the final executable even when no Swift call uses an entry point.
+    'OTHER_LDFLAGS' => '$(inherited) -Wl,-export_dynamic -Wl,-u,_frame_kernel_time_value -Wl,-u,_frame_kernel_time_inverse -Wl,-u,_frame_kernel_time_anchors -Wl,-u,_frame_kernel_time_overlap'
   }
   s.dependency 'Flutter'
   # The first-party general Swift runtime currently available through CocoaPods

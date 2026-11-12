@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+import 'time_kernel.dart';
 
 /// Music correspondence only: target source = reference source * scale + offset.
 /// Pose timing is never an input. Viewing speed is independent of this mapping.
@@ -12,27 +12,26 @@ class ComparisonMusicMapping {
       timeScale >= .5 &&
       timeScale <= 2 &&
       offsetUs.abs() <= 172800000000;
-  int target(int referenceUs) => (referenceUs * timeScale).round() + offsetUs;
-  int reference(int targetUs) => ((targetUs - offsetUs) / timeScale).round();
-  ComparisonMusicMapping get inverse =>
-      ComparisonMusicMapping((-offsetUs / timeScale).round(), 1 / timeScale);
+  int target(int referenceUs) =>
+      TimeKernel.map(referenceUs, timeScale, offsetUs);
+  int reference(int targetUs) =>
+      TimeKernel.map(targetUs, timeScale, offsetUs, inverse: true);
+  ComparisonMusicMapping get inverse {
+    final value = TimeKernel.inverse(timeScale, offsetUs);
+    return ComparisonMusicMapping(value.$1, value.$2);
+  }
 
   (int, int)? overlap(int referenceEndUs, int targetEndUs) {
     if (!valid) return null;
-    final start = math.max(0, (-offsetUs / timeScale).ceil());
-    final end = math.min(
-      referenceEndUs,
-      ((targetEndUs - 1 - offsetUs) / timeScale).floor() + 1,
-    );
-    return end > start ? (start, end) : null;
+    return TimeKernel.overlap(referenceEndUs, targetEndUs, timeScale, offsetUs);
   }
 
   factory ComparisonMusicMapping.anchors(int r1, int t1, int r2, int t2) {
     if (r2 - r1 < 2000000 || t2 - t1 < 2000000) {
       throw const FormatException('第二组音乐点需晚于第一组，两路至少间隔 2 秒');
     }
-    final scale = (t2 - t1) / (r2 - r1);
-    final value = ComparisonMusicMapping((t1 - r1 * scale).round(), scale);
+    final mapping = TimeKernel.anchors(r1, t1, r2, t2);
+    final value = ComparisonMusicMapping(mapping.$1, mapping.$2);
     if (!value.valid) throw const FormatException('音乐速度差需在 0.5–2 倍内，请检查两组对应点');
     return value;
   }

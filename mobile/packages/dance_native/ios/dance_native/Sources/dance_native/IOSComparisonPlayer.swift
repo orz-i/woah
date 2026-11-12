@@ -399,9 +399,8 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     // Keep rational source precision through the affine mapping. Rounding
     // 11/6s to microseconds first would map .8x + 1.2s just before the true
     // target 8/3s boundary and report the previous target frame.
-    let targetTime = CMTimeAdd(CMTimeMultiplyByFloat64(sourceTime, multiplier: config.timeScale),
-      CMTime(value: config.offsetUs, timescale: 1_000_000))
-    presentedTargetUs = targetIndex?.frame(atOrBefore: targetTime)
+    let targetTime = IOSComparisonTimeCore.map(sourceTime, scale: config.timeScale, offset: config.offsetUs)
+    presentedTargetUs = targetTime.flatMap { targetIndex?.frame(atOrBefore: $0) }
     pixels.store(buffer)
     registry.textureFrameAvailable(textureId)
     return true

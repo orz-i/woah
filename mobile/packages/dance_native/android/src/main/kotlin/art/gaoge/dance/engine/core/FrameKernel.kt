@@ -6,6 +6,13 @@ import java.nio.ByteBuffer
 
 /** Transport adapter only; the production and JVM paths load the same Rust core. */
 internal object FrameKernel {
+    external fun timeValueNative(mode:Int,value:Long,ticks:Int,scale:Double,offset:Long):Long
+    external fun timeOverlapNative(rs:Long,re:Long,ts:Long,te:Long,scale:Double,offset:Long):LongArray?
+    external fun timeInverseNative(scale:Double,offset:Long):Long
+    external fun frameIndexNative(pts:LongArray,time:Long,start:Long,end:Long,mode:Int):Int
+    external fun paneNative(width:Int,height:Int,gap:Int,reference:Boolean,sideBySide:Boolean):IntArray
+    external fun fitNative(pane:IntArray,aspect:Double):IntArray
+    external fun quadNative(pane:IntArray,fit:IntArray,zoom:Double,panX:Double,panY:Double):FloatArray
     external fun projectFaceRegionNative(current:FloatArray,previous:FloatArray,seed:FloatArray,ageUs:Long):FloatArray?
     external fun faceRegionNative(row:FloatArray,view:FloatArray?,size:Float,yaw:Float):FloatArray?
     external fun headFallbackNative(person:FloatArray):FloatArray?
