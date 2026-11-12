@@ -112,9 +112,122 @@ pub fn frame_index(pts: &[i64], time: i64, range: Interval, mode: u32) -> Option
     (value >= range.start && value < range.end).then_some(index)
 }
 
+/// A decoder may supply the previous interval lazily; indexed sources supply it
+/// immediately. Edge stepping lands on the clipped visible first/last frame.
+pub fn frame_step(
+    frame: Interval,
+    range: Interval,
+    forward: bool,
+    previous: Option<Interval>,
+) -> Option<(i64, bool)> {
+    if !frame.valid()
+        || !range.valid()
+        || frame.end <= frame.start
+        || frame.end <= range.start
+        || frame.start >= range.end
+    {
+        return None;
+    }
+    if forward {
+        return Some((
+            if frame.end < range.end {
+                frame.end
+            } else {
+                frame.start.max(range.start)
+            },
+            false,
+        ));
+    }
+    if frame.start <= range.start {
+        return Some((range.start, false));
+    }
+    let probe = frame.start - 1;
+    let Some(before) = previous else {
+        return Some((probe, true));
+    };
+    if !before.valid() || before.start >= frame.start || probe < before.start || probe >= before.end
+    {
+        return None;
+    }
+    Some((range.start.max(before.start), false))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn stepping_clipped_first_and_last_frames_never_leaves_range() {
+        let range = Interval {
+            start: 15000,
+            end: 110000,
+        };
+        assert_eq!(
+            frame_step(
+                Interval {
+                    start: 0,
+                    end: 33333
+                },
+                range,
+                false,
+                None
+            ),
+            Some((15000, false))
+        );
+        assert_eq!(
+            frame_step(
+                Interval {
+                    start: 100000,
+                    end: 150000
+                },
+                range,
+                true,
+                None
+            ),
+            Some((100000, false))
+        );
+        assert_eq!(
+            frame_step(
+                Interval {
+                    start: 100000,
+                    end: 150000
+                },
+                range,
+                false,
+                None
+            ),
+            Some((99999, true))
+        );
+        assert_eq!(
+            frame_step(
+                Interval {
+                    start: 100000,
+                    end: 150000
+                },
+                range,
+                false,
+                Some(Interval {
+                    start: 33333,
+                    end: 100000
+                })
+            ),
+            Some((33333, false))
+        );
+        assert_eq!(
+            frame_step(
+                Interval {
+                    start: 100000,
+                    end: 150000
+                },
+                range,
+                false,
+                Some(Interval {
+                    start: 0,
+                    end: 33333
+                })
+            ),
+            None
+        );
+    }
     #[test]
     fn half_rounds_before_offset_and_ticks_keep_precision() {
         let map = AffineMap {

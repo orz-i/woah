@@ -4,6 +4,10 @@ import Foundation
 
 /// Transport only; the source-time rules are shared with JNI and Dart.
 enum IOSComparisonTimeCore {
+  static func step(fs: Int64, fe: Int64, start: Int64, end: Int64, forward: Bool, previous: Int64?) -> Int64? {
+    let value = frame_kernel_frame_step(fs, fe, start, end, forward ? 1 : 0, previous ?? -1, fs)
+    return value.valid != 0 && value.probe == 0 ? value.value : nil
+  }
   static func map(_ value: Int64, scale: Double, offset: Int64) -> Int64 {
     frame_kernel_time_value(0, value, 1_000_000, scale, offset)
   }

@@ -233,6 +233,16 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
         if (art.gaoge.dance.engine.BuildConfig.DEBUG) android.util.Log.i("WoahComparison",message)
     }
     override suspend fun cancelAlignment() { alignmentGeneration.incrementAndGet() }
-    override suspend fun close() { alignmentGeneration.incrementAndGet();session?.close();session=null }
+    override suspend fun close() {
+        alignmentGeneration.incrementAndGet();session?.close();session=null
+        // A route may close while the external picker is opening. Release the
+        // pending reply and its owned activity, as the iOS adapter already does.
+        val selecting=picker;picker=null
+        selecting?.let { if(it.isActive) it.resume(null) }
+        if(selecting!=null) runCatching { binding?.activity?.finishActivity(requestCode) }
+        val exporting=exportPicker;exportPicker=null
+        exporting?.let { if(it.isActive) it.resume(null) }
+        if(exporting!=null) runCatching { binding?.activity?.finishActivity(exportRequestCode) }
+    }
     fun dispose() { alignmentGeneration.incrementAndGet();detach();session?.close();session=null }
 }

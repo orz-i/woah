@@ -86,7 +86,9 @@ struct IOSComparisonFrameIndex: Sendable {
   }
 
   func adjacent(to timeUs: Int64, forward: Bool, startUs: Int64, endUs: Int64) -> Int64? {
-    IOSComparisonTimeCore.frameIndex(presentationTimesUs, time: timeUs,
-      start: startUs, end: endUs, mode: forward ? 1 : 2).map { presentationTimesUs[$0] }
+    guard let i = IOSComparisonTimeCore.frameIndex(presentationTimesUs, time: timeUs) else { return nil }
+    let end = i + 1 < presentationTimesUs.count ? presentationTimesUs[i + 1] : endUs
+    return IOSComparisonTimeCore.step(fs: presentationTimesUs[i], fe: end, start: startUs,
+      end: endUs, forward: forward, previous: i > 0 ? presentationTimesUs[i - 1] : nil)
   }
 }

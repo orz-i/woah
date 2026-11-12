@@ -25,3 +25,8 @@ swiftc -O -I "$CORE/include" -o "$OUT/features" \
   "$N/IOSComparisonMusicFeatures.swift" "$ROOT/tools/ios/test_comparison_music_features.swift" \
   "$CORE/target/release/libframe_kernel.a" -liconv
 "$OUT/features"
+swiftc -O -I "$CORE/include" -o "$OUT/export" \
+  "$N/IOSComparisonExportSpec.swift" \
+  "$ROOT/mobile/packages/dance_native/ios/tests/comparison_export/main.swift" \
+  "$CORE/target/release/libframe_kernel.a" -liconv
+"$OUT/export"

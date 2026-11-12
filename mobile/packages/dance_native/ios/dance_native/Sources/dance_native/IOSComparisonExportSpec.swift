@@ -1,4 +1,5 @@
 import Foundation
+@_implementationOnly import FrameKernelC
 
 struct IOSComparisonExportError: LocalizedError {
   let code: String
@@ -155,7 +156,7 @@ final class IOSComparisonExportCancellation {
   enum Reason: Equatable { case user, backgroundExpired }
   private let lock = NSLock()
   private var reasonValue: Reason?
-  private var committed = false
+  private var publicationState: Int32 = 0
 
   var reason: Reason? {
     lock.lock(); defer { lock.unlock() }
@@ -165,7 +166,10 @@ final class IOSComparisonExportCancellation {
   @discardableResult
   func cancel(_ reason: Reason) -> Bool {
     lock.lock(); defer { lock.unlock() }
-    guard !committed else { return false }
+    let next = frame_kernel_work_transition(UInt32(publicationState), 0)
+    precondition(next >= 0)
+    guard next == 1 else { return false }
+    publicationState = next
     if reasonValue == nil { reasonValue = reason }
     return true
   }
@@ -180,6 +184,7 @@ final class IOSComparisonExportCancellation {
       throw IOSComparisonExportError(code: "COMPARISON_EXPORT_CANCELLED", message: "导出已取消")
     }
     try body()
-    committed = true
+    publicationState = frame_kernel_work_transition(UInt32(publicationState), 1)
+    precondition(publicationState >= 0)
   }
 }

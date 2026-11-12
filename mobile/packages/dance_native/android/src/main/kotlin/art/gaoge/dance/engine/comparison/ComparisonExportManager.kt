@@ -41,6 +41,7 @@ internal class ComparisonExportManager private constructor(private val context: 
         ComparisonExportRecord.parse(JSONObject(metadata.readFully().toString(Charsets.UTF_8)))
     }.getOrNull()
     private var cancelled=AtomicBoolean(false)
+    private var publication=art.gaoge.dance.engine.core.FrameKernel.WorkLifecycle()
     private var lastPersist=0L
     init {
         current?.takeIf { it.active }?.let {
@@ -54,6 +55,7 @@ internal class ComparisonExportManager private constructor(private val context: 
         }
         // Never guess ownership if the last export metadata was unreadable.
         if (current!=null) prunePrivateOutputs(current!!.id)
+        if (current?.state=="completed") publication.observe("completed")
     }
     /** Only this app's exact export row may be recovered or removed. */
     private fun pendingState(job: ComparisonExportRecord,uri: Uri): Int? {
@@ -118,14 +120,15 @@ internal class ComparisonExportManager private constructor(private val context: 
         }
         val job=ComparisonExportRecord(UUID.randomUUID().toString(),spec)
         val oldCancellation=cancelled
-        current=job;cancelled=AtomicBoolean(false)
+        val oldPublication=publication
+        current=job;cancelled=AtomicBoolean(false);publication=art.gaoge.dance.engine.core.FrameKernel.WorkLifecycle()
         try { persist() }
-        catch (e: Throwable) { current=previous;cancelled=oldCancellation;throw e }
+        catch (e: Throwable) { current=previous;cancelled=oldCancellation;publication=oldPublication;throw e }
         try { ComparisonExportService.start(context,job.id) }
         catch (e: Throwable) {
             // If Android refused the foreground service, retain the old job
             // and its sole local movie so a failed launch never discards data.
-            if (previous!=null) { current=previous;cancelled=oldCancellation;persist() }
+            if (previous!=null) { current=previous;cancelled=oldCancellation;publication=oldPublication;persist() }
             else { current=job.copy(state="failed",stage="导出未启动",error="无法启动导出，请回到应用后重试");persist() }
             throw e
         }
@@ -144,11 +147,11 @@ internal class ComparisonExportManager private constructor(private val context: 
     }
     @Synchronized fun cancel(id: String): ComparisonExportDto {
         val job=requireJob(id)
-        if (job.active) { cancelled.set(true);current=job.copy(state="cancelling",stage="正在取消");persist() }
+        if (job.active && publication.requestCancel()) { cancelled.set(true);current=job.copy(state="cancelling",stage="正在取消");persist() }
         return dto(current!!)
     }
     @Synchronized fun interrupted(id: String?=null) {
-        current?.takeIf { it.active && (id==null || it.id==id) }?.let { cancelled.set(true);current=it.recovered();persist() }
+        current?.takeIf { it.active && (id==null || it.id==id) }?.let { publication.requestCancel();cancelled.set(true);current=it.recovered();persist() }
     }
     @Synchronized private fun progress(id: String,stage: String,value: Double): ComparisonExportDto? {
         val job=current?.takeIf { it.id==id && it.active } ?: return null
@@ -172,6 +175,7 @@ internal class ComparisonExportManager private constructor(private val context: 
                 check(partial(id).renameTo(output(id))) { "无法保存导出文件" }
                 current=requireJob(id).copy(state=if (Build.VERSION.SDK_INT>=29) "publishing" else "completed",
                     stage=if (Build.VERSION.SDK_INT>=29) "保存到相册" else "导出完成",progress=.99);persist()
+                if(Build.VERSION.SDK_INT<29) publication.observe("completed")
             }
             if (Build.VERSION.SDK_INT>=29) publish(id)
         } catch (error: Throwable) {
@@ -232,12 +236,14 @@ internal class ComparisonExportManager private constructor(private val context: 
                 if (cancellation.get() || current?.id!=id) throw ComparisonExportCancelled()
                 check(resolver.update(uri,ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING,0) },null,null)>0)
                 current=requireJob(id).copy(state="completed",stage="已保存到相册",progress=1.0,savedUri=uri.toString(),pendingUri=null,error=null);persist()
+                publication.observe("completed")
             }
         } catch (e: Throwable) {
             uri?.let { runCatching { context.contentResolver.delete(it,null,null) } }
             synchronized(this) {
                 if (cancellation.get() || current?.id!=id) throw ComparisonExportCancelled()
                 current=job.copy(state="completed",stage="导出完成",progress=1.0,pendingUri=null,error="视频已导出，保存相册失败，可以重试保存");persist()
+                publication.observe("completed")
             }
         }
         return status(id) ?: throw ComparisonExportCancelled()

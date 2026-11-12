@@ -30,6 +30,10 @@ FrameKernelTimeRange frame_kernel_time_overlap(int64_t rs, int64_t re, int64_t t
 /* Sorted unique PTS; mode 0 displayed, 1 next, 2 previous displayed. Index or -1.
    The caller owns and retains len readable samples for the duration of call. */
 int64_t frame_kernel_frame_index(const int64_t *pts, size_t len, int64_t time, int64_t start, int64_t end, uint32_t mode);
+typedef struct FrameKernelFrameStep { int64_t value; uint32_t probe, valid; } FrameKernelFrameStep;
+/* Missing previous interval uses ps=-1; probe=1 asks the decoder for its interval
+   at value, then call again with that actual interval. Endpoints stay [rs,re). */
+FrameKernelFrameStep frame_kernel_frame_step(int64_t fs,int64_t fe,int64_t rs,int64_t re,uint32_t forward,int64_t ps,int64_t pe);
 typedef struct FrameKernelViewport { int32_t x, top, width, height; } FrameKernelViewport;
 typedef struct FrameKernelQuad { float scale_x, scale_y, shift_x, shift_y; uint32_t valid; } FrameKernelQuad;
 FrameKernelViewport frame_kernel_pane(int32_t width, int32_t height, int32_t gap, uint32_t reference, uint32_t side_by_side);
