@@ -1,0 +1,590 @@
+{
+  "schema": "woah.comparison.core-corpus.v1",
+  "alignments": [
+    {
+      "id": "positive_offset",
+      "reference": "base_reference",
+      "target": "base_target",
+      "scale": 1,
+      "offset": 3000000
+    },
+    {
+      "id": "negative_offset",
+      "reference": "base_target",
+      "target": "base_reference",
+      "scale": 1,
+      "offset": -3000000
+    },
+    {
+      "id": "preserved_pitch",
+      "reference": "rate_reference",
+      "target": "rate_target",
+      "scale": 0.8,
+      "offset": 1200000
+    },
+    {
+      "id": "shifted_pitch",
+      "reference": "rate_reference",
+      "target": "pitch_target",
+      "scale": 1.3333333333333333,
+      "offset": 666667
+    },
+    {
+      "id": "real_music",
+      "reference": "real_reference",
+      "target": "real_target",
+      "scale": 0.8,
+      "offset": 700000
+    },
+    {
+      "id": "source_rates_4k",
+      "reference": "landscape4k_reference",
+      "target": "landscape4k_target",
+      "scale": 1,
+      "offset": 700000
+    },
+    {
+      "id": "no_audio",
+      "reference": "silent_reference",
+      "target": "base_target",
+      "status": "no_audio"
+    },
+    {
+      "id": "too_short",
+      "reference": "short_reference",
+      "target": "short_reference",
+      "status": "no_match"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "base",
+      "reference": "base_reference",
+      "target": "base_target",
+      "scale": 1,
+      "offset": 3000000,
+      "startUs": 0,
+      "durationUs": 12000000,
+      "probes": [
+        {
+          "positionUs": 280000,
+          "referenceFrameUs": 266667,
+          "targetFrameUs": 3266667,
+          "nextReferenceFrameUs": 300000,
+          "previousReferenceFrameUs": 233333
+        },
+        {
+          "positionUs": 1250000,
+          "referenceFrameUs": 1233333,
+          "targetFrameUs": 4233333,
+          "nextReferenceFrameUs": 1266667,
+          "previousReferenceFrameUs": 1200000
+        },
+        {
+          "positionUs": 11999999,
+          "referenceFrameUs": 11966667,
+          "targetFrameUs": 14966667,
+          "nextReferenceFrameUs": 11966667,
+          "previousReferenceFrameUs": 11933333
+        }
+      ]
+    },
+    {
+      "id": "negative",
+      "reference": "base_target",
+      "target": "base_reference",
+      "scale": 1,
+      "offset": -3000000,
+      "startUs": 3000000,
+      "durationUs": 12000000,
+      "probes": [
+        {
+          "positionUs": 280000,
+          "referenceFrameUs": 3266667,
+          "targetFrameUs": 266667,
+          "nextReferenceFrameUs": 3300000,
+          "previousReferenceFrameUs": 3233333
+        },
+        {
+          "positionUs": 1250000,
+          "referenceFrameUs": 4233333,
+          "targetFrameUs": 1233333,
+          "nextReferenceFrameUs": 4266667,
+          "previousReferenceFrameUs": 4200000
+        },
+        {
+          "positionUs": 11999999,
+          "referenceFrameUs": 14966667,
+          "targetFrameUs": 11966667,
+          "nextReferenceFrameUs": 14966667,
+          "previousReferenceFrameUs": 14933333
+        }
+      ]
+    },
+    {
+      "id": "vfr_affine",
+      "reference": "rate_reference",
+      "target": "rate_target",
+      "scale": 0.8,
+      "offset": 1200000,
+      "startUs": 0,
+      "durationUs": 23000000,
+      "probes": [
+        {
+          "positionUs": 280000,
+          "referenceFrameUs": 266667,
+          "targetFrameUs": 1400000,
+          "nextReferenceFrameUs": 333333,
+          "previousReferenceFrameUs": 233333
+        },
+        {
+          "positionUs": 1250000,
+          "referenceFrameUs": 1200000,
+          "targetFrameUs": 2200000,
+          "nextReferenceFrameUs": 1266667,
+          "previousReferenceFrameUs": 1166667
+        },
+        {
+          "positionUs": 22999999,
+          "referenceFrameUs": 22966667,
+          "targetFrameUs": 19566667,
+          "nextReferenceFrameUs": 22966667,
+          "previousReferenceFrameUs": 22900000
+        }
+      ]
+    },
+    {
+      "id": "silent",
+      "reference": "silent_reference",
+      "target": "base_target",
+      "scale": 1,
+      "offset": 3000000,
+      "startUs": 0,
+      "durationUs": 12000000,
+      "probes": [
+        {
+          "positionUs": 280000,
+          "referenceFrameUs": 266667,
+          "targetFrameUs": 3266667,
+          "nextReferenceFrameUs": 300000,
+          "previousReferenceFrameUs": 233333
+        },
+        {
+          "positionUs": 1250000,
+          "referenceFrameUs": 1233333,
+          "targetFrameUs": 4233333,
+          "nextReferenceFrameUs": 1266667,
+          "previousReferenceFrameUs": 1200000
+        },
+        {
+          "positionUs": 11999999,
+          "referenceFrameUs": 11966667,
+          "targetFrameUs": 14966667,
+          "nextReferenceFrameUs": 11966667,
+          "previousReferenceFrameUs": 11933333
+        }
+      ]
+    },
+    {
+      "id": "24fps",
+      "reference": "reference_24fps",
+      "target": "base_target",
+      "scale": 1,
+      "offset": 3000000,
+      "startUs": 0,
+      "durationUs": 12000000,
+      "probes": [
+        {
+          "positionUs": 280000,
+          "referenceFrameUs": 250000,
+          "targetFrameUs": 3266667,
+          "nextReferenceFrameUs": 291667,
+          "previousReferenceFrameUs": 208333
+        },
+        {
+          "positionUs": 1250000,
+          "referenceFrameUs": 1250000,
+          "targetFrameUs": 4233333,
+          "nextReferenceFrameUs": 1291667,
+          "previousReferenceFrameUs": 1208333
+        },
+        {
+          "positionUs": 11999999,
+          "referenceFrameUs": 11958333,
+          "targetFrameUs": 14966667,
+          "nextReferenceFrameUs": 11958333,
+          "previousReferenceFrameUs": 11916667
+        }
+      ]
+    },
+    {
+      "id": "60fps",
+      "reference": "reference_60fps",
+      "target": "base_target",
+      "scale": 1,
+      "offset": 3000000,
+      "startUs": 0,
+      "durationUs": 12000000,
+      "probes": [
+        {
+          "positionUs": 280000,
+          "referenceFrameUs": 266667,
+          "targetFrameUs": 3266667,
+          "nextReferenceFrameUs": 283333,
+          "previousReferenceFrameUs": 250000
+        },
+        {
+          "positionUs": 1250000,
+          "referenceFrameUs": 1250000,
+          "targetFrameUs": 4233333,
+          "nextReferenceFrameUs": 1266667,
+          "previousReferenceFrameUs": 1233333
+        },
+        {
+          "positionUs": 11999999,
+          "referenceFrameUs": 11983333,
+          "targetFrameUs": 14966667,
+          "nextReferenceFrameUs": 11983333,
+          "previousReferenceFrameUs": 11966667
+        }
+      ]
+    },
+    {
+      "id": "landscape4k",
+      "reference": "landscape4k_reference",
+      "target": "landscape4k_target",
+      "scale": 1,
+      "offset": 700000,
+      "startUs": 0,
+      "durationUs": 22540000,
+      "probes": [
+        {
+          "positionUs": 280000,
+          "referenceFrameUs": 280000,
+          "targetFrameUs": 960000,
+          "nextReferenceFrameUs": 320000,
+          "previousReferenceFrameUs": 240000
+        },
+        {
+          "positionUs": 1250000,
+          "referenceFrameUs": 1240000,
+          "targetFrameUs": 1920000,
+          "nextReferenceFrameUs": 1280000,
+          "previousReferenceFrameUs": 1200000
+        },
+        {
+          "positionUs": 22539999,
+          "referenceFrameUs": 22520000,
+          "targetFrameUs": 23200000,
+          "nextReferenceFrameUs": 22560000,
+          "previousReferenceFrameUs": 22480000
+        }
+      ]
+    },
+    {
+      "id": "portrait4k",
+      "reference": "portrait4k_reference",
+      "target": "portrait4k_target",
+      "scale": 1,
+      "offset": 700000,
+      "startUs": 0,
+      "durationUs": 25780000,
+      "probes": [
+        {
+          "positionUs": 280000,
+          "referenceFrameUs": 280000,
+          "targetFrameUs": 960000,
+          "nextReferenceFrameUs": 320000,
+          "previousReferenceFrameUs": 240000
+        },
+        {
+          "positionUs": 1250000,
+          "referenceFrameUs": 1240000,
+          "targetFrameUs": 1920000,
+          "nextReferenceFrameUs": 1280000,
+          "previousReferenceFrameUs": 1200000
+        },
+        {
+          "positionUs": 25779999,
+          "referenceFrameUs": 25760000,
+          "targetFrameUs": 26440000,
+          "nextReferenceFrameUs": 25800000,
+          "previousReferenceFrameUs": 25720000
+        }
+      ]
+    }
+  ],
+  "exports": [
+    {
+      "id": "base_full",
+      "session": "base",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "id": "base_trim",
+      "session": "base",
+      "start": 123456,
+      "end": 4987654,
+      "width": 640,
+      "height": 360
+    },
+    {
+      "id": "base_picture_slow_loop",
+      "session": "base",
+      "start": 1000000,
+      "end": 3000000,
+      "picture": true,
+      "width": 640,
+      "height": 360
+    },
+    {
+      "id": "base_repeat",
+      "session": "base",
+      "start": 1000000,
+      "end": 3000000,
+      "width": 640,
+      "height": 360
+    },
+    {
+      "id": "negative_full",
+      "session": "negative",
+      "width": 640,
+      "height": 360
+    },
+    {
+      "id": "vfr_boundary",
+      "session": "vfr_affine",
+      "start": 1000000,
+      "end": 2000000,
+      "picture": true,
+      "width": 320,
+      "height": 240
+    },
+    {
+      "id": "vfr_irregular_trim",
+      "session": "vfr_affine",
+      "start": 123456,
+      "end": 4987654,
+      "width": 640,
+      "height": 360
+    },
+    {
+      "id": "vfr_affine_tail",
+      "session": "vfr_affine",
+      "tail": true,
+      "width": 640,
+      "height": 360
+    },
+    {
+      "id": "silent_full",
+      "session": "silent",
+      "width": 640,
+      "height": 360
+    },
+    {
+      "id": "24fps_full",
+      "session": "24fps",
+      "width": 640,
+      "height": 360
+    },
+    {
+      "id": "60fps_full",
+      "session": "60fps",
+      "width": 640,
+      "height": 360
+    },
+    {
+      "id": "landscape4k_full",
+      "session": "landscape4k",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "landscape4k_tail",
+      "session": "landscape4k",
+      "tail": true,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "landscape4k_repeat",
+      "session": "landscape4k",
+      "start": 1000000,
+      "end": 3000000,
+      "picture": true,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "portrait4k_full",
+      "session": "portrait4k",
+      "width": 1080,
+      "height": 1920,
+      "horizontal": false
+    },
+    {
+      "id": "portrait4k_tail",
+      "session": "portrait4k",
+      "tail": true,
+      "width": 1080,
+      "height": 1920,
+      "horizontal": false
+    }
+  ],
+  "ffmpeg": "ffmpeg version 9.0.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+  "fourKProvenance": "Encoded 4K derivatives of the existing HD group/solo materials; original video content is unchanged.",
+  "sources": {
+    "base_reference": {
+      "file": "base_reference.mp4",
+      "sha256": "433c1329c541ac6bcea0d6d4b8390c199b79c62ee99a5923e3a122e2fc34e433",
+      "bytes": 194005,
+      "coded30": true,
+      "durationUs": 12000000,
+      "width": 640,
+      "height": 360,
+      "hasAudio": true
+    },
+    "base_target": {
+      "file": "base_target.mp4",
+      "sha256": "bb22c5f102881b9858c76bb5a4d4e9a9991d69178267f2750ae26d090384e83b",
+      "bytes": 206395,
+      "coded30": true,
+      "durationUs": 15000000,
+      "width": 640,
+      "height": 360,
+      "hasAudio": true
+    },
+    "rate_reference": {
+      "file": "rate_reference.mp4",
+      "sha256": "913383a01c4df820351acbc108b7699d1cd741e9426cf8b119aabc2d8878fa64",
+      "bytes": 504960,
+      "coded30": true,
+      "durationUs": 23000000,
+      "width": 640,
+      "height": 360,
+      "hasAudio": true
+    },
+    "rate_target": {
+      "file": "rate_target.mp4",
+      "sha256": "fca8d1e4afec4c65b358b9bd5cc453cf118277bdab862cb17ed94e466d1dc77a",
+      "bytes": 439238,
+      "coded30": true,
+      "durationUs": 20000000,
+      "width": 640,
+      "height": 360,
+      "hasAudio": true
+    },
+    "pitch_target": {
+      "file": "pitch_target.mp4",
+      "sha256": "e1e0267102883028c2252929dfae51c549b4ae597fff2098819feb574b375f31",
+      "bytes": 609691,
+      "coded30": true,
+      "durationUs": 30666667,
+      "width": 640,
+      "height": 360,
+      "hasAudio": true
+    },
+    "real_reference": {
+      "file": "real_reference.mp4",
+      "sha256": "8fdc019e205c1e18abe6177edb040228b28e387666d560acb4e9e9c17ffacf0e",
+      "bytes": 2000086,
+      "coded30": false,
+      "durationUs": 17900000,
+      "width": 592,
+      "height": 1344,
+      "hasAudio": true
+    },
+    "real_target": {
+      "file": "real_target.mp4",
+      "sha256": "519737bd3614bab2bff64b9ed51dbf2d2274303c6d9f760b6a1b040aaae81363",
+      "bytes": 1319579,
+      "coded30": false,
+      "durationUs": 15066667,
+      "width": 592,
+      "height": 1344,
+      "hasAudio": true
+    },
+    "silent_reference": {
+      "file": "silent_reference.mp4",
+      "sha256": "fb145cb104d4757a1f898308cee0df5799a767137989b12a92331c3032fe2289",
+      "bytes": 121312,
+      "coded30": true,
+      "durationUs": 12000000,
+      "width": 640,
+      "height": 360,
+      "hasAudio": false
+    },
+    "short_reference": {
+      "file": "short_reference.mp4",
+      "sha256": "ba50d4502bbca4c3fa504006e0de99f9a597b9ac4131cd3b65494fe9bc719fb4",
+      "bytes": 12378,
+      "coded30": true,
+      "durationUs": 566667,
+      "width": 640,
+      "height": 360,
+      "hasAudio": true
+    },
+    "reference_24fps": {
+      "file": "reference_24fps.mp4",
+      "sha256": "6b9f0df0cfa363c1b2246f2357fd12295db86a0c80fad42089568d3d19d0549e",
+      "bytes": 199295,
+      "coded30": false,
+      "durationUs": 12000000,
+      "width": 640,
+      "height": 360,
+      "hasAudio": true
+    },
+    "reference_60fps": {
+      "file": "reference_60fps.mp4",
+      "sha256": "83fa664e8c91a422ba0a387ce7585c4f8a14c09639a9a0dfccd76ea8edfdcb06",
+      "bytes": 252104,
+      "coded30": false,
+      "durationUs": 12000000,
+      "width": 640,
+      "height": 360,
+      "hasAudio": true
+    },
+    "landscape4k_reference": {
+      "file": "landscape4k_reference.mp4",
+      "sha256": "ba5042ce780ca9229ab8a1aaafeaf43544dbcd7ce93fa5649c163f4bcb52dffd",
+      "bytes": 28463258,
+      "coded30": false,
+      "durationUs": 23240000,
+      "width": 3840,
+      "height": 2160,
+      "hasAudio": true
+    },
+    "landscape4k_target": {
+      "file": "landscape4k_target.mp4",
+      "sha256": "dbd10d43a7f5c09880a45e7de2f71a8d8a1fb5d0710ef8a63f11280f89701a1c",
+      "bytes": 28463393,
+      "coded30": false,
+      "durationUs": 23240000,
+      "width": 3840,
+      "height": 2160,
+      "hasAudio": true
+    },
+    "portrait4k_reference": {
+      "file": "portrait4k_reference.mp4",
+      "sha256": "174f12f0bce02dd6905208996c4ab611cf1e4f23087862a693ce35458bf55764",
+      "bytes": 11159706,
+      "coded30": false,
+      "durationUs": 26480000,
+      "width": 2160,
+      "height": 4096,
+      "hasAudio": true
+    },
+    "portrait4k_target": {
+      "file": "portrait4k_target.mp4",
+      "sha256": "18ade8bc815523289c48352c59eca5d119d1c574daa9b9c942dfff5c02e6e0a7",
+      "bytes": 11159354,
+      "coded30": false,
+      "durationUs": 26480000,
+      "width": 2160,
+      "height": 4096,
+      "hasAudio": true
+    }
+  },
+  "manifest_sha256": "b5961783b2ffcae9a74e9fd250191aff51c7a82de2eecd3b4a6e0417724566e6"
+}

@@ -64,6 +64,22 @@ def code_pixels(image,spec,index,expected):
 def pcm(path,rate):
     return np.frombuffer(subprocess.check_output(['ffmpeg','-v','error','-i',str(path),'-map','0:a:0','-ac','1','-ar',str(rate),'-f','f32le','pipe:1']),dtype=np.float32)
 
+def check_audio_segment(out,reference,rate):
+    """Check signal timing, including silent selections inside audio tracks."""
+    assert len(reference)>0 and len(out)>=len(reference),'Missing audio samples'
+    x=out[:len(reference)]
+    expected_rms=float(np.sqrt(np.mean(reference**2)))
+    if expected_rms<1e-4:
+        rms=float(np.sqrt(np.mean(x**2)));assert rms<1e-4,rms
+        return dict(sampleRate=rate,silentRms=rms,referenceSilent=True,decodedSamples=len(out))
+    corr=signal.correlate(x,reference,mode='full',method='fft')
+    lag=int(signal.correlation_lags(len(x),len(reference))[np.argmax(corr)])
+    denominator=float(np.linalg.norm(x)*np.linalg.norm(reference))
+    normalized=float(np.max(corr)/denominator) if denominator>0 else 0.0
+    assert abs(lag)<=round(rate*.002),(lag,rate)
+    assert normalized>.97,normalized
+    return dict(sampleRate=rate,lagSamples=lag,lagUs=round(lag*1e6/rate),correlation=normalized,decodedSamples=len(out))
+
 def validate(video,record,ref,target,report_path,coded_fixtures=False,snapshot=None):
     label=video.stem;s=record.get('spec',record)
     ri,ti,oi=map(probe,[ref,target,video]);rp,tp,op=map(pts,[ri,ti,oi])
@@ -97,11 +113,7 @@ def validate(video,record,ref,target,report_path,coded_fixtures=False,snapshot=N
     if any(v['codec_type']=='audio' for v in ri['streams']):
         reference=pcm(ref,rate);first=math.ceil(start*rate/1e6);segment=reference[first:first+min(len(out),round(duration*rate/1e6))]
         # A second lossy AAC generation may change samples; position must remain within 2ms.
-        x=out[:len(segment)];corr=signal.correlate(x,segment,mode='full',method='fft');lag=int(signal.correlation_lags(len(x),len(segment))[np.argmax(corr)])
-        normalized=float(np.max(corr)/(np.linalg.norm(x)*np.linalg.norm(segment)))
-        assert abs(lag)<=round(rate*.002),(lag,rate)
-        assert normalized>.97,normalized
-        audio_check=dict(sampleRate=rate,lagSamples=lag,lagUs=round(lag*1e6/rate),correlation=normalized,decodedSamples=len(out))
+        audio_check=check_audio_segment(out,segment,rate)
     else:
         rms=float(np.sqrt(np.mean(out**2)));assert rms<1e-4,rms
         audio_check=dict(sampleRate=rate,silentRms=rms,decodedSamples=len(out))
