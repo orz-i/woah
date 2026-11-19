@@ -42,8 +42,8 @@ enum IOSComparisonMusicMatcher {
     switch result.status {
     case 0: status = "matched"; message = "已按共同音乐的速率和位置对齐，可随时手动校准。"
     case 1: status = "no_match"; message = "没有找到可靠的共同音乐，可以手动校准。"
-    case 2: status = "inconsistent"; message = "未找到稳定的音乐对应关系，请用前后两组音乐点手动校准。"
-    case 3: status = "ambiguous"; message = "找到多个相似乐段，已保留最佳位置，可手动校准。"
+    case 2: status = "inconsistent"; message = "整段音乐无法稳定对齐。如有剪辑或跳拍，请选连续的相同乐段分段校准。"
+    case 3: status = "ambiguous"; message = "音乐位置待确认，请试听候选乐段。"
     case 4: throw IOSComparisonMusicError.cancelled
     default: throw IOSComparisonMusicError.decode("音乐特征无效，请手动校准。")
     }

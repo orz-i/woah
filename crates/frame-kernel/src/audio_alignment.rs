@@ -1,5 +1,5 @@
 //! Pairwise music correspondence. No pose, playback speed, BPM grid or database.
-use crate::audio_features::{AudioError, Features};
+use crate::audio_features::{AudioError, Features, Frame};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[repr(C)]
@@ -61,8 +61,37 @@ pub fn align(
     current: &dyn Fn() -> bool,
 ) -> Result<Alignment, AudioError> {
     check(current)?;
-    let constant = constant(t, l, current)?;
+    let mut constant = constant(t, l, current)?;
     if constant.status == 0 {
+        let best = constant.candidates[0];
+        if !local_conflict(t, l, best.seed(false), current)? {
+            return Ok(constant);
+        }
+        // Three long windows can hide a small steady drift or a late edit.
+        // Refit this passage at a different rate, not a new, shorter passage
+        // whose overlap might simply omit the conflicting end of the song.
+        constant.status = 2;
+        let mut verified = Vec::new();
+        for pitch in [false, true] {
+            if let Some(model) = refine(t, l, best.seed(pitch), current)?
+                && strong_affine(model)
+                && model.support >= best.support * 0.95
+                && !local_conflict(t, l, model.seed(pitch), current)?
+            {
+                verified.push(model);
+            }
+        }
+        if let Some(model) = verified.into_iter().min_by(compare) {
+            return Ok(Alignment {
+                status: 0,
+                candidates: vec![model],
+            });
+        }
+        return Ok(constant);
+    }
+    if constant.status == 3 && constant.candidates.len() > 1 {
+        // Do not turn two equally plausible same-speed passages into an
+        // automatic choice just because a rate search finds one of them first.
         return Ok(constant);
     }
     Ok(affine(t, l, current)?.unwrap_or(constant))
@@ -230,6 +259,15 @@ fn constant(
     } else {
         0
     };
+    if status == 3 {
+        let best_score = best.score;
+        selected.truncate(
+            selected
+                .iter()
+                .take_while(|v| v.score >= best_score - 0.08 && v.score > 0.60)
+                .count(),
+        );
+    }
     Ok(Alignment {
         status,
         candidates: selected,
@@ -276,6 +314,23 @@ struct Seed {
     scale: f64,
     offset: i64,
     pitch: bool,
+}
+
+impl Candidate {
+    fn seed(self, pitch: bool) -> Seed {
+        Seed {
+            scale: self.scale,
+            offset: self.offset,
+            pitch,
+        }
+    }
+}
+
+fn strong_affine(candidate: Candidate) -> bool {
+    candidate.score >= 0.64
+        && candidate.windows == 4
+        && candidate.residual <= 35.0
+        && candidate.support >= 6.0
 }
 struct Votes {
     count: u32,
@@ -454,40 +509,39 @@ fn affine(
     let mut results = Vec::new();
     for s in coarse {
         if let Some(c) = refine(t, l, s, current)? {
-            results.push(c);
+            results.push((c, s.pitch));
         }
     }
-    results.sort_by(compare);
-    let mut selected: Vec<Candidate> = Vec::new();
-    for c in results {
-        if selected
-            .iter()
-            .all(|v| (v.scale - c.scale).abs() >= 0.003 || (v.offset - c.offset).abs() >= 150000)
-        {
-            selected.push(c);
+    results.sort_by(|a, b| compare(&a.0, &b.0));
+    let mut selected: Vec<(Candidate, bool)> = Vec::new();
+    for (c, pitch) in results {
+        if selected.iter().all(|(v, _)| {
+            (v.scale - c.scale).abs() >= 0.003 || (v.offset - c.offset).abs() >= 150000
+        }) {
+            selected.push((c, pitch));
         }
         if selected.len() == 3 {
             break;
         }
     }
-    let Some(best) = selected.first() else {
+    let Some(&(best, pitch)) = selected.first() else {
         return Ok(None);
     };
-    let status =
-        if best.score < 0.64 || best.windows < 4 || best.residual > 35.0 || best.support < 6.0 {
-            2
-        } else if selected
-            .iter()
-            .skip(1)
-            .any(|v| v.score >= best.score - 0.08 && v.windows >= 4)
-        {
+    let status = if !strong_affine(best) {
+        2
+    } else {
+        selected.retain(|(v, _)| v.score >= best.score - 0.08 && strong_affine(*v));
+        if selected.len() > 1 {
             3
+        } else if local_conflict(t, l, best.seed(pitch), current)? {
+            2
         } else {
             0
-        };
+        }
+    };
     Ok(Some(Alignment {
         status,
-        candidates: selected,
+        candidates: selected.into_iter().map(|(v, _)| v).collect(),
     }))
 }
 
@@ -499,6 +553,103 @@ fn range(t: &Features, l: &Features, s: Seed) -> (i64, i64) {
             .min(((l.end() - s.offset) as f64 / s.scale).floor() as i64),
     )
 }
+
+/// Probe short windows all the way to the shared interval's edges. Large
+/// windows used for ranking are deliberately tolerant of silence and noise,
+/// but can average away even several seconds of a conflicting passage.
+fn local_conflict(
+    t: &Features,
+    l: &Features,
+    s: Seed,
+    current: &dyn Fn() -> bool,
+) -> Result<bool, AudioError> {
+    let (start, end) = range(t, l, s);
+    let width = ((end - start) / 4).min(1_200_000);
+    if width < 500_000 {
+        return Ok(false);
+    }
+    let travel = end - start - width;
+    let intervals = ((travel + width - 1) / width).max(2);
+    let shift = s.pitch.then(|| -s.scale.log2() * 8.0);
+    for i in 0..=intervals {
+        check(current)?;
+        let from = start + travel * i / intervals;
+        let reference: Vec<_> = (from..from + width)
+            .step_by(20_000)
+            .filter_map(|time| {
+                let a = t
+                    .frames
+                    .get(round((time - t.start()) as f64 / 10000.0) as usize)?;
+                if a.peaks.is_empty() {
+                    return None;
+                }
+                let target = (time as f64 * s.scale + s.offset as f64 - l.start() as f64) / 10000.0;
+                Some((a, target))
+            })
+            .collect();
+        if reference.len() < 15 {
+            continue; // No musical evidence here, not evidence of a shift.
+        }
+        let score = |lag: i32| {
+            let mut sum = 0.0;
+            let mut audible = 0;
+            for &(a, at) in &reference {
+                if let Some(b) = usize::try_from(round(at + f64::from(lag)))
+                    .ok()
+                    .and_then(|j| l.frames.get(j))
+                    .filter(|b| !b.peaks.is_empty())
+                {
+                    sum += similarity(a, b, shift);
+                    audible += 1;
+                }
+            }
+            (sum / reference.len() as f64, audible)
+        };
+        let near = (-1..=1).map(score).map(|v| v.0).fold(0.0, f64::max);
+        if near >= 0.94 {
+            continue;
+        }
+        // A clearly better local lag outside 30 ms is inconsistent with this
+        // mapping. Do not infer drift from a flat or weak correlation peak.
+        if near < 0.35 && score(0).1 * 2 >= reference.len() {
+            return Ok(true);
+        }
+        for lag in (-80i32..=80).filter(|lag| lag.abs() > 3) {
+            let (far, _) = score(lag);
+            if far >= 0.65 && far - near >= 0.06 {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+fn similarity(a: &Frame, b: &Frame, pitch_shift: Option<f64>) -> f64 {
+    let onset = dot(&a.onset, &b.onset);
+    let Some(shift) = pitch_shift else {
+        return 0.75 * dot(&a.spectrum, &b.spectrum) + 0.25 * onset;
+    };
+    let mut spectral = 0.0;
+    let mut na = 0.0;
+    let mut nb = 0.0;
+    for band in 0..48 {
+        let p = band as f64 + shift;
+        let k = p.floor() as i32;
+        if !(0..=46).contains(&k) {
+            continue;
+        }
+        let k = k as usize;
+        let f = p - k as f64;
+        let x = f64::from(a.pitch[band]);
+        let y = f64::from(b.pitch[k]) * (1.0 - f) + f64::from(b.pitch[k + 1]) * f;
+        spectral += x * y;
+        na += x * x;
+        nb += y * y;
+    }
+    spectral /= (na * nb).sqrt().max(1e-8);
+    0.9 * spectral + 0.1 * onset
+}
+
 fn affine_score(t: &Features, l: &Features, s: Seed, step: i64, bounds: Option<(i64, i64)>) -> f64 {
     let r = range(t, l, s);
     let (from, until) = bounds.unwrap_or(r);
@@ -509,7 +660,7 @@ fn affine_score(t: &Features, l: &Features, s: Seed, step: i64, bounds: Option<(
     let end = until.min(r.1);
     let mut sum = 0.0;
     let mut count = 0;
-    let shift = -s.scale.log2() * 8.0;
+    let shift = s.pitch.then(|| -s.scale.log2() * 8.0);
     while time < end {
         let i = round((time - t.start()) as f64 / 10000.0);
         let j = round((time as f64 * s.scale + s.offset as f64 - l.start() as f64) / 10000.0);
@@ -517,30 +668,7 @@ fn affine_score(t: &Features, l: &Features, s: Seed, step: i64, bounds: Option<(
             usize::try_from(i).ok().and_then(|i| t.frames.get(i)),
             usize::try_from(j).ok().and_then(|j| l.frames.get(j)),
         ) {
-            let onset = dot(&a.onset, &b.onset);
-            let mut spectral = 0.0;
-            if s.pitch {
-                let mut na = 0.0;
-                let mut nb = 0.0;
-                for band in 0..48 {
-                    let p = band as f64 + shift;
-                    let k = p.floor() as i32;
-                    if !(0..=46).contains(&k) {
-                        continue;
-                    }
-                    let k = k as usize;
-                    let f = p - k as f64;
-                    let x = f64::from(a.pitch[band]);
-                    let y = f64::from(b.pitch[k]) * (1.0 - f) + f64::from(b.pitch[k + 1]) * f;
-                    spectral += x * y;
-                    na += x * x;
-                    nb += y * y;
-                }
-                spectral /= (na * nb).sqrt().max(1e-8);
-                sum += 0.9 * spectral + 0.1 * onset;
-            } else {
-                sum += 0.75 * dot(&a.spectrum, &b.spectrum) + 0.25 * onset;
-            }
+            sum += similarity(a, b, shift);
             count += 1;
         }
         time += step;
@@ -659,7 +787,7 @@ fn refine(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::audio_features::FeatureBuilder;
+    use crate::audio_features::{FeatureBuilder, RATE};
     fn music(seconds: f64, rate: f64) -> Vec<f32> {
         let mut seed = 7u64;
         let notes: Vec<_> = (0..640)
@@ -706,5 +834,90 @@ mod tests {
             }
         }
         assert_eq!(align(&r, &r, &|| false).unwrap_err(), AudioError::Cancelled);
+    }
+
+    #[test]
+    fn edits_near_either_edge_cannot_be_masked_by_a_long_matching_passage() {
+        let pcm = music(20.0, 1.0);
+        let reference = features(&pcm, 0);
+        for (at, gap_ms) in [(15, 400), (50, 80), (85, 400)] {
+            let cut = pcm.len() * at / 100;
+            let mut edited = pcm[..cut].to_vec();
+            edited.resize(cut + gap_ms * 16, 0.0);
+            edited.extend(&pcm[cut..]);
+            let target = features(&edited, 0);
+            let result = align(&reference, &target, &|| true).unwrap();
+            assert_eq!(result.status, 2, "edit at {at}%: {result:?}");
+            let removed = [&pcm[..cut], &pcm[cut + gap_ms * 16..]].concat();
+            let result = align(&reference, &features(&removed, 0), &|| true).unwrap();
+            assert_ne!(result.status, 0, "removal at {at}%: {result:?}");
+        }
+    }
+
+    #[test]
+    fn local_verification_still_observes_cancellation() {
+        let reference = features(&music(8.0, 1.0), 0);
+        let calls = std::cell::Cell::new(0);
+        let current = || {
+            calls.set(calls.get() + 1);
+            calls.get() < 3
+        };
+        assert_eq!(
+            local_conflict(
+                &reference,
+                &reference,
+                Candidate {
+                    scale: 1.0,
+                    ..Candidate::default()
+                }
+                .seed(false),
+                &current
+            ),
+            Err(AudioError::Cancelled),
+        );
+    }
+
+    #[test]
+    fn small_drift_is_measured_at_both_ends_not_as_one_average_offset() {
+        let pcm = music(23.0, 1.0);
+        let reference = features(&pcm, 0);
+        let delay = 5328;
+        for scale in [0.995, 1.003] {
+            let mut target = vec![0.0; delay];
+            target.extend((0..((pcm.len() - 1) as f64 * scale) as usize).map(|i| {
+                let pos = i as f64 / scale;
+                let idx = pos as usize;
+                let fraction = (pos - idx as f64) as f32;
+                pcm[idx] * (1.0 - fraction) + pcm[idx + 1] * fraction
+            }));
+            let result = align(&reference, &features(&target, 0), &|| true).unwrap();
+            assert_eq!(result.status, 0, "{scale}: {result:?}");
+            let best = result.candidates[0];
+            assert_ne!(best.scale, 1.0, "{scale}: {best:?}");
+            for t in [0.0, 23_000_000.0] {
+                let error = best.scale * t + best.offset as f64 - (scale * t + 333000.0);
+                assert!(error.abs() < 35_000.0, "{scale}: {error} us, {best:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn repeated_passages_remain_separate_review_choices() {
+        let pcm = music(8.0, 1.0);
+        let mut repeated = vec![0.0; RATE];
+        repeated.extend(&pcm);
+        repeated.resize(10 * RATE, 0.0);
+        repeated.extend(&pcm);
+        let result = align(&features(&pcm, 0), &features(&repeated, 0), &|| true).unwrap();
+        assert_eq!(result.status, 3, "{result:?}");
+        for expected in [1_000_000, 10_000_000] {
+            assert!(
+                result
+                    .candidates
+                    .iter()
+                    .any(|c| c.offset.abs_diff(expected) < 20_000),
+                "{result:?}"
+            );
+        }
     }
 }

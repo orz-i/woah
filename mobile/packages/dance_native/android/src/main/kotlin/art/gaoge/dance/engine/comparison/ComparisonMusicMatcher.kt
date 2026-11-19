@@ -16,8 +16,8 @@ internal object ComparisonMusicMatcher {
         }
         val message=when(status) {
             "matched"->"已按共同音乐的速率和位置对齐，可随时手动校准。"
-            "ambiguous"->"找到多个相似乐段，已保留最佳位置，可手动校准。"
-            "inconsistent"->"未找到稳定的音乐对应关系，请用前后两组音乐点手动校准。"
+            "ambiguous"->"音乐位置待确认，请试听候选乐段。"
+            "inconsistent"->"整段音乐无法稳定对齐。如有剪辑或跳拍，请选连续的相同乐段分段校准。"
             else->"没有找到可靠的共同音乐，可以手动校准。"
         }
         return MusicAlignmentResult(status,message,candidates)

@@ -189,7 +189,7 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
             }
             catch (error: ComparisonDiscontinuousAudio) {
                 debug("music status=inconsistent reason=pcm_timestamps")
-                MusicAlignmentDto("inconsistent","音轨时间不连续，请用前后两组音乐点手动校准。",emptyList())
+                MusicAlignmentDto("inconsistent","音轨时间不连续，请选择连续乐段分段校准。",emptyList())
             }
             catch (error: ComparisonNoAudio) {
                 debug("music status=no_audio")

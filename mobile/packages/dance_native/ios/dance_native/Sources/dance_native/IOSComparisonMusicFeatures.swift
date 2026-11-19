@@ -8,7 +8,7 @@ enum IOSComparisonMusicError: Error, LocalizedError {
     switch self {
     case .cancelled: return "匹配已取消"
     case .tooLong: return "自动匹配暂支持十分钟内的视频；可以使用手动校准。"
-    case .discontinuousAudio: return "音轨时间不连续，请手动校准。"
+    case .discontinuousAudio: return "音轨时间不连续，请选择连续乐段分段校准。"
     case .noAudio: return "视频没有音轨"
     case .decode(let message): return message
     }
