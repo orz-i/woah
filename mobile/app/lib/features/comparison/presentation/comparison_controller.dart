@@ -18,6 +18,9 @@ class ComparisonController extends ChangeNotifier {
   ComparisonExportDto? pendingExport;
   String message = '选择参考和目标视频，按共同音乐开始对比。';
   String? error;
+  String? alignmentNotice;
+  List<ComparisonMusicMapping> _alignmentOptions = const [];
+  List<ComparisonMusicMapping> get alignmentOptions => _alignmentOptions;
   bool initialized = false, picking = false, matching = false, saving = false;
   bool calibrating = false, exporting = false;
   bool stepping = false;
@@ -73,6 +76,11 @@ class ComparisonController extends ChangeNotifier {
     _practiceRequest++;
     _controlRequest++;
     _settingPractice = false;
+  }
+
+  void _clearAlignmentReview() {
+    _alignmentOptions = const [];
+    alignmentNotice = null;
   }
 
   Future<void> initialize() async {
@@ -269,6 +277,7 @@ class ComparisonController extends ChangeNotifier {
       } else {
         await gateway.cancelAlignment();
         _invalidatePlayer();
+        _clearAlignmentReview();
         project = project.copyWith(
           teacher: role == 'teacher' ? source : null,
           learner: role == 'learner' ? source : null,
@@ -302,6 +311,7 @@ class ComparisonController extends ChangeNotifier {
   Future<void> matchMusic() async {
     if (_closed || !project.hasPair || busy) return;
     matching = true;
+    _clearAlignmentReview();
     error = null;
     message = '正在自动校准音乐…';
     final revision = ++_revision;
@@ -309,40 +319,40 @@ class ComparisonController extends ChangeNotifier {
     try {
       final result = await gateway.align(project);
       if (_closed || revision != _revision) return;
-      final available =
-          result.candidates
-              .where(
-                (item) =>
-                    ComparisonMusicMapping(
-                      item.offsetUs,
-                      item.timeScale ?? 1,
-                    ).overlap(
-                      project.teacher!.durationUs,
-                      project.learner!.durationUs,
-                    ) !=
-                    null,
-              )
-              .toList()
-            ..sort((a, b) => b.score.compareTo(a.score));
-      if (available.isNotEmpty &&
-          (result.status == 'matched' || result.status == 'ambiguous')) {
+      bool hasOverlap(ComparisonMusicMapping mapping) =>
+          mapping.overlap(
+            project.teacher!.durationUs,
+            project.learner!.durationUs,
+          ) !=
+          null;
+      final mappings = [
+        for (final item in result.candidates)
+          ComparisonMusicMapping(item.offsetUs, item.timeScale ?? 1),
+      ];
+      if (result.status == 'matched' &&
+          mappings.isNotEmpty &&
+          hasOverlap(mappings.first)) {
         final applied = await _applyMusicMapping(
-          ComparisonMusicMapping(
-            available.first.offsetUs,
-            available.first.timeScale ?? 1,
-          ),
-          alignment: result.status == 'matched' ? 'auto' : 'auto_review',
+          mappings.first,
+          alignment: 'auto',
         );
         if (!_closed && revision == _revision && applied) {
-          message = result.status == 'matched'
-              ? '已自动完成音乐速率和位置校准。'
-              : '已采用最佳音乐乐段，可手动校准。';
+          message = '已自动完成音乐速率和位置校准。';
         }
+      } else if (result.status == 'ambiguous' && mappings.any(hasOverlap)) {
+        _alignmentOptions = List.unmodifiable(mappings.where(hasOverlap));
+        message = '音乐对应不唯一，请试听后确认。';
       } else {
-        message = result.message;
+        alignmentNotice =
+            result.status == 'matched' || result.status == 'ambiguous'
+            ? '音乐候选不在共同区间内，请手动校准。'
+            : result.message;
+        message = alignmentNotice!;
       }
     } catch (_) {
-      if (!_closed && revision == _revision) message = '本次音乐匹配未完成，可以重试或手动校准。';
+      if (!_closed && revision == _revision) {
+        message = alignmentNotice = '本次音乐匹配未完成，可以重试或手动校准。';
+      }
     } finally {
       if (!_closed && revision == _revision) {
         matching = false;
@@ -362,6 +372,21 @@ class ComparisonController extends ChangeNotifier {
     // Keep editing disabled until that transaction has restored its snapshot.
     await applying;
     if (!_closed && revision == _revision) _notify();
+  }
+
+  Future<bool> confirmAlignmentCandidate(ComparisonMusicMapping mapping) async {
+    if (_closed ||
+        !calibrating ||
+        _mappingWork != null ||
+        !_alignmentOptions.contains(mapping)) {
+      return false;
+    }
+    final applied = await _applyMusicMapping(mapping, alignment: 'confirmed');
+    if (applied && !_closed) {
+      _clearAlignmentReview();
+      message = '已保存确认的音乐乐段。';
+    }
+    return applied;
   }
 
   Future<bool> _applyMusicMapping(
@@ -672,7 +697,10 @@ class ComparisonController extends ChangeNotifier {
       referenceAnchor2: teacher2Us,
       targetAnchor2: learner2Us,
     );
-    if (saved) message = '已保存手动音乐校准。';
+    if (saved) {
+      _clearAlignmentReview();
+      message = '已保存手动音乐校准。';
+    }
     return saved;
   }
 
@@ -1082,6 +1110,7 @@ class ComparisonController extends ChangeNotifier {
     await pause();
     await gateway.cancelAlignment();
     _invalidatePlayer();
+    _clearAlignmentReview();
     project = project.swapSources(referenceStartUs: playback?.teacherStartUs);
     final expectedStart = project.musicMapping
         .overlap(project.teacher!.durationUs, project.learner!.durationUs)
@@ -1112,6 +1141,7 @@ class ComparisonController extends ChangeNotifier {
     if (!_lastSaveSucceeded) return;
     _invalidatePlayer();
     await gateway.close();
+    _clearAlignmentReview();
     project = value;
     playback = null;
     message = '已恢复项目；源视频不可用时可点击重新关联。';
@@ -1128,6 +1158,7 @@ class ComparisonController extends ChangeNotifier {
     if (!_lastSaveSucceeded) return;
     _invalidatePlayer();
     await gateway.close();
+    _clearAlignmentReview();
     project = _newProject();
     playback = null;
     message = '选择参考和目标视频，按共同音乐开始对比。';

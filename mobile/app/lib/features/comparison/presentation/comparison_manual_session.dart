@@ -34,6 +34,11 @@ class ComparisonManualSession extends ChangeNotifier {
   final List<bool> _seekSucceeded = [false, false];
   bool ready = false, _closed = false;
   bool rateCalibration = false, anchoring = false;
+  int _playRequest = 0;
+  Future<void>? _playTail;
+  bool _candidateCued = false;
+  final List<bool> _auditioned = [false, false];
+  bool get candidateAuditioned => _candidateCued && _auditioned.every((v) => v);
   int anchorIndex = 0;
   (int, int)? firstAnchor, secondAnchor;
   void setRateCalibration(bool value) {
@@ -140,18 +145,98 @@ class ComparisonManualSession extends ChangeNotifier {
   }
 
   Future<void> pause() async {
+    _playRequest++;
+    if (_closed) return;
+    final playing = _playTail;
+    if (playing != null) await playing;
     if (_closed) return;
     await Future.wait(videos.map((v) => v.pause()));
   }
 
-  Future<void> toggle(int role) async {
-    if (!ready || _closed) return;
-    await videos[1 - role].pause();
-    if (videos[role].value.isPlaying) {
-      await videos[role].pause();
-    } else {
-      if (position(role) >= duration(role) - 100000) await seek(role, 0);
-      await videos[role].play();
+  Future<void> toggle(int role) {
+    if (!ready || _closed || anchoring) return Future.value();
+    final request = ++_playRequest;
+    bool current() => !_closed && request == _playRequest;
+    final previous = _playTail;
+    final work = () async {
+      if (previous != null) await previous;
+      if (!current()) return;
+      error = null;
+      try {
+        await videos[1 - role].pause();
+        if (!current()) return;
+        if (videos[role].value.isPlaying) {
+          await videos[role].pause();
+        } else {
+          if (position(role) >= duration(role) - 100000) await seek(role, 0);
+          if (current()) {
+            await videos[role].play();
+            if (current() && _candidateCued && !videos[role].value.hasError) {
+              _auditioned[role] = true;
+              _tick();
+            }
+          }
+        }
+      } catch (_) {
+        if (current()) {
+          error = '试听未完成，请重试。';
+          _tick();
+        }
+      }
+    }();
+    late final Future<void> completion;
+    completion = work.whenComplete(() {
+      if (identical(_playTail, completion)) _playTail = null;
+    });
+    _playTail = completion;
+    return completion;
+  }
+
+  /// Cue both sources, but play them one at a time so the user can hear each
+  /// candidate. The shared session and saved mapping stay untouched.
+  Future<bool> cueCandidate(
+    ComparisonMusicMapping mapping,
+    List<ComparisonMusicMapping> options,
+  ) async {
+    if (!ready || _closed || anchoring) return false;
+    _candidateCued = false;
+    _auditioned.fillRange(0, 2, false);
+    final referenceEnd = max(0, duration(0) - 1000);
+    final targetEnd = max(0, duration(1) - 1000);
+    final range = mapping.overlap(referenceEnd, targetEnd);
+    if (range == null) {
+      error = '此候选没有可试听的共同区间。';
+      _tick();
+      return false;
+    }
+    var (start, end) = range;
+    for (final option in options) {
+      final other = option.overlap(referenceEnd, targetEnd);
+      if (other == null) continue;
+      start = max(start, other.$1);
+      end = min(end, other.$2);
+    }
+    // Use the same reference phrase for all candidates when possible.
+    if (start >= end) (start, end) = range;
+    final cue = start + (end - start) ~/ 2;
+    anchoring = true;
+    _tick();
+    try {
+      await pause();
+      await Future.wait([seek(0, cue), seek(1, mapping.target(cue))]);
+      if (_closed) return false;
+      if (!_seekSucceeded.every((succeeded) => succeeded) || error != null) {
+        error = '候选乐段定位未完成，请重新选择后试听。';
+        return false;
+      }
+      _candidateCued = true;
+      return true;
+    } catch (_) {
+      if (!_closed) error = '候选乐段定位未完成，请重新选择后试听。';
+      return false;
+    } finally {
+      anchoring = false;
+      _tick();
     }
   }
 
@@ -227,6 +312,8 @@ class ComparisonManualSession extends ChangeNotifier {
       videos[i].removeListener(_tick);
     }
     await Future.wait([for (final work in _workers) ?work]);
+    final playing = _playTail;
+    if (playing != null) await playing;
     await Future.wait(videos.map((v) => v.dispose()));
     super.dispose();
   }

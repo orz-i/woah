@@ -873,7 +873,7 @@ void main() {
     },
   );
   test(
-    'automatic calibration chooses the best usable result without presenting alternatives',
+    'ambiguous music keeps the saved calibration until a candidate is confirmed',
     () async {
       final gateway = FakeComparisonGateway(saved: [savedProject()])
         ..alignmentResult = MusicAlignmentDto(
@@ -901,9 +901,22 @@ void main() {
       await controller.initialize();
       expect(gateway.alignCalls, 0);
       await controller.matchMusic();
+      expect(controller.project.offsetUs, 2000000);
+      expect(controller.project.alignment, 'manual');
+      expect(gateway.saves, 0);
+      expect(controller.alignmentOptions.map((v) => v.offsetUs), [
+        1000000,
+        3000000,
+      ]);
+      final selected = controller.alignmentOptions.last;
+      expect(await controller.confirmAlignmentCandidate(selected), isFalse);
+      expect(await controller.enterManualCalibration(), isTrue);
+      expect(await controller.confirmAlignmentCandidate(selected), isTrue);
       expect(controller.project.offsetUs, 3000000);
-      expect(controller.project.alignment, 'auto_review');
+      expect(controller.project.alignment, 'confirmed');
+      expect(controller.alignmentOptions, isEmpty);
       expect(gateway.projects.first.offsetUs, 3000000);
+      await controller.leaveManualCalibration(applied: true);
     },
   );
 
