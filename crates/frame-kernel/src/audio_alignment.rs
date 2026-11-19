@@ -664,22 +664,130 @@ fn directional_conflict(
     }
     let travel = end - start - width;
     let intervals = ((travel + width - 1) / width).max(2);
-    let shift = s.pitch.then(|| -s.scale.log2() * 8.0);
     let mut peak_times = None;
-    // A partial second after a late edit must not disappear into a 1.2 s
-    // average. Keep the longer probes for noise tolerance and also inspect
-    // the first/last 200 and 300 ms. The shortest probes require a stronger
-    // displaced peak so a brief noisy edge is not mistaken for an edit.
+    // Keep long probes for drift and noise tolerance. Overlapping 400 ms
+    // probes also detect a short edit which crosses a long-window boundary
+    // and returns to the original lag before the next long window.
     let probes = (0..=intervals)
-        .map(|i| (start + travel * i / intervals, width))
+        .map(|i| (start + travel * i / intervals, width, true))
+        .chain([200_000, 300_000].into_iter().flat_map(|edge_width| {
+            [
+                (start, edge_width, true),
+                (end - edge_width, edge_width, true),
+            ]
+        }))
         .chain(
-            [200_000, 300_000]
-                .into_iter()
-                .flat_map(|edge_width| [(start, edge_width), (end - edge_width, edge_width)]),
+            (start..=end - 400_000)
+                .step_by(200_000)
+                .map(|from| (from, 400_000, false)),
         );
-    for (from, probe_width) in probes {
+    for (from, probe_width, wide) in probes {
         check(current)?;
-        let reference: Vec<_> = (from..from + probe_width)
+        let probe = Probe::new(t, l, s, from, probe_width);
+        let minimum_frames = if probe_width < 300_000 { 10 } else { 15 };
+        if probe.frames.len() < minimum_frames {
+            continue; // No musical evidence here, not evidence of a shift.
+        }
+        let (near, near_peaks) = probe.near();
+        if near >= 0.94 {
+            continue;
+        }
+        if probe_width < 500_000 && near_peaks > 0.95 {
+            continue; // Short probes need raw spectral evidence of displacement.
+        }
+        // A clearly better local lag outside 30 ms is inconsistent with this
+        // mapping. A weak correlation alone can be temporary recording noise,
+        // not evidence of a different timeline; require a strong displaced peak.
+        // Short edge probes also need improved raw peak correspondence: a
+        // spectrally similar steady note alone cannot establish a different lag.
+        let minimum_score = if probe_width == 200_000 {
+            0.8
+        } else if wide {
+            0.65
+        } else {
+            0.72
+        };
+        for lag in (-80i32..=80).filter(|lag| lag.abs() > 3) {
+            let far = probe.score(lag);
+            if far >= minimum_score
+                && far - near >= 0.06
+                && (probe_width >= 500_000 || probe.displaced_peaks(lag, near_peaks, 0.05))
+            {
+                return Ok(true);
+            }
+        }
+        // Larger edits need displaced evidence too, not a return to rejecting
+        // weak/noisy windows. Propose lags from spectral peaks across the whole
+        // target, then verify a bounded set at full time/spectral resolution.
+        // A seconds-long jump needs a larger raw peak advantage than a nearby
+        // shift. Dense noise can upset the spectrum while leaving most of the
+        // underlying notes at their correct positions.
+        const WIDE_PEAK_MARGIN: f64 = 0.15;
+        if !wide || near_peaks > 1.0 - WIDE_PEAK_MARGIN {
+            continue;
+        }
+        let index = match &peak_times {
+            Some(index) => index,
+            None => peak_times.insert(PeakTimes::new(l, s, current)?),
+        };
+        // A distant clean copy of a noisy repeated phrase is only a proposal.
+        // Require the same lag in disjoint adjacent context, not just a single
+        // window. At a clip boundary use a shorter second probe on the inside.
+        let flank_width = if from == start || from + probe_width == end {
+            300_000
+        } else {
+            width
+        };
+        let flanks = [from - flank_width, from + probe_width]
+            .into_iter()
+            .filter(|&at| at >= start && at + flank_width <= end);
+        let mut context = None;
+        for lag in index.lags(&probe.frames, current)? {
+            check(current)?;
+            for refined in (lag - 5..=lag + 5).filter(|lag| lag.abs() > 80) {
+                let far = probe.score(refined);
+                // An entire song exposes more spectral aliases. Require the
+                // raw peak pattern to independently favor the displaced lag.
+                if far >= minimum_score
+                    && far - near >= 0.06
+                    && probe.displaced_peaks(refined, near_peaks, WIDE_PEAK_MARGIN)
+                {
+                    let context = context.get_or_insert_with(|| {
+                        flanks
+                            .clone()
+                            .map(|at| Probe::new(t, l, s, at, flank_width))
+                            .filter(|flank| flank.frames.len() >= 12)
+                            .map(|flank| {
+                                let near = flank.near();
+                                (flank, near)
+                            })
+                            .collect::<Vec<_>>()
+                    });
+                    if context.iter().any(|(flank, (near, near_peaks))| {
+                        let far = flank.score(refined);
+                        far >= 0.65
+                            && far - near >= 0.06
+                            && flank.displaced_peaks(refined, *near_peaks, WIDE_PEAK_MARGIN)
+                    }) {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+    }
+    Ok(false)
+}
+
+struct Probe<'a> {
+    frames: Vec<(&'a Frame, f64)>,
+    target: &'a Features,
+    shift: Option<f64>,
+    frequency_scale: f64,
+}
+
+impl<'a> Probe<'a> {
+    fn new(t: &'a Features, l: &'a Features, s: Seed, from: i64, width: i64) -> Self {
+        let frames = (from..from + width)
             .step_by(20_000)
             .filter_map(|time| {
                 let a = t
@@ -692,95 +800,65 @@ fn directional_conflict(
                 Some((a, target))
             })
             .collect();
-        let minimum_frames = if probe_width < 300_000 { 10 } else { 15 };
-        if reference.len() < minimum_frames {
-            continue; // No musical evidence here, not evidence of a shift.
-        }
-        let score = |lag: i32| {
-            let mut sum = 0.0;
-            for &(a, at) in &reference {
-                if let Some(b) = usize::try_from(round(at + f64::from(lag)))
-                    .ok()
-                    .and_then(|j| l.frames.get(j))
-                    .filter(|b| !b.peaks.is_empty())
-                {
-                    sum += similarity(a, b, shift);
-                }
-            }
-            sum / reference.len() as f64
-        };
-        let peak_agreement = |lag: i32| {
-            let frequency_scale = if s.pitch { s.scale } else { 1.0 };
-            let mut sum = 0.0;
-            for &(a, at) in &reference {
-                if let Some(b) = usize::try_from(round(at + f64::from(lag)))
-                    .ok()
-                    .and_then(|j| l.frames.get(j))
-                {
-                    let count = a.peaks.len().min(2);
-                    let matches = a
-                        .peaks
-                        .iter()
-                        .take(count)
-                        .filter(|&&peak| {
-                            b.peaks.iter().take(3).any(|&other| {
-                                (f64::from(peak) - f64::from(other) * frequency_scale).abs() <= 2.0
-                            })
-                        })
-                        .count();
-                    sum += matches as f64 / count as f64;
-                }
-            }
-            sum / reference.len() as f64
-        };
-        let near = (-1..=1).map(score).fold(0.0, f64::max);
-        if near >= 0.94 {
-            continue;
-        }
-        let near_peaks = (-1..=1).map(peak_agreement).fold(0.0, f64::max);
-        let displaced_peaks = |lag| {
-            let far_peaks = peak_agreement(lag);
-            far_peaks >= 0.75 && far_peaks - near_peaks >= 0.05
-        };
-        // A clearly better local lag outside 30 ms is inconsistent with this
-        // mapping. A weak correlation alone can be temporary recording noise,
-        // not evidence of a different timeline; require a strong displaced peak.
-        // Short edge probes also need improved raw peak correspondence: a
-        // spectrally similar steady note alone cannot establish a different lag.
-        let minimum_score = if probe_width < 300_000 { 0.8 } else { 0.65 };
-        for lag in (-80i32..=80).filter(|lag| lag.abs() > 3) {
-            let far = score(lag);
-            if far >= minimum_score
-                && far - near >= 0.06
-                && (probe_width >= 500_000 || displaced_peaks(lag))
-            {
-                return Ok(true);
-            }
-        }
-        // Larger edits need displaced evidence too, not a return to rejecting
-        // weak/noisy windows. Propose lags from spectral peaks across the whole
-        // target, then verify a bounded set at full time/spectral resolution.
-        // Perfect current peak correspondence cannot be improved by the
-        // required margin; avoid building/querying an index in that case.
-        if near_peaks > 0.95 {
-            continue;
-        }
-        if peak_times.is_none() {
-            peak_times = Some(PeakTimes::new(l, s, current)?);
-        }
-        for lag in peak_times.as_ref().unwrap().lags(&reference, current)? {
-            check(current)?;
-            for refined in lag - 5..=lag + 5 {
-                let far = score(refined);
-                // An entire song exposes more spectral aliases. Require the
-                // raw peak pattern to independently favor the displaced lag.
-                if far >= minimum_score && far - near >= 0.06 && displaced_peaks(refined) {
-                    return Ok(true);
-                }
-            }
+        Self {
+            frames,
+            target: l,
+            shift: s.pitch.then(|| -s.scale.log2() * 8.0),
+            frequency_scale: if s.pitch { s.scale } else { 1.0 },
         }
     }
-    Ok(false)
+
+    fn pairs(&self, lag: i32) -> impl Iterator<Item = (&Frame, &Frame)> {
+        self.frames.iter().filter_map(move |&(a, at)| {
+            let index = usize::try_from(round(at + f64::from(lag))).ok()?;
+            self.target
+                .frames
+                .get(index)
+                .filter(|b| !b.peaks.is_empty())
+                .map(|b| (a, b))
+        })
+    }
+
+    fn score(&self, lag: i32) -> f64 {
+        self.pairs(lag)
+            .map(|(a, b)| similarity(a, b, self.shift))
+            .sum::<f64>()
+            / self.frames.len() as f64
+    }
+
+    fn peak_agreement(&self, lag: i32) -> f64 {
+        self.pairs(lag)
+            .map(|(a, b)| {
+                let count = a.peaks.len().min(2);
+                let matches = a
+                    .peaks
+                    .iter()
+                    .take(count)
+                    .filter(|&&peak| {
+                        b.peaks.iter().take(3).any(|&other| {
+                            (f64::from(peak) - f64::from(other) * self.frequency_scale).abs() <= 2.0
+                        })
+                    })
+                    .count();
+                matches as f64 / count as f64
+            })
+            .sum::<f64>()
+            / self.frames.len() as f64
+    }
+
+    fn near(&self) -> (f64, f64) {
+        (
+            (-1..=1).map(|lag| self.score(lag)).fold(0.0, f64::max),
+            (-1..=1)
+                .map(|lag| self.peak_agreement(lag))
+                .fold(0.0, f64::max),
+        )
+    }
+
+    fn displaced_peaks(&self, lag: i32, near: f64, margin: f64) -> bool {
+        let far = self.peak_agreement(lag);
+        far >= 0.75 && far - near >= margin
+    }
 }
 
 fn musical_bounds(features: &Features) -> Option<(i64, i64)> {
@@ -812,25 +890,59 @@ fn musical_bounds(features: &Features) -> Option<(i64, i64)> {
 }
 
 struct PeakTimes {
-    bands: Vec<Vec<usize>>,
+    pairs: BTreeMap<i32, Vec<usize>>,
 }
 
 impl PeakTimes {
+    const DISTANCES: [i64; 2] = [8, 16]; // Feature hops in reference time.
+    const MAX_POSTINGS: usize = 96;
+
+    fn band(peak: i32, frequency_scale: f64) -> Option<i32> {
+        let band = round(f64::from(peak) * frequency_scale / 2.0) as i32;
+        (0..256).contains(&band).then_some(band)
+    }
+
     fn new(features: &Features, s: Seed, current: &dyn Fn() -> bool) -> Result<Self, AudioError> {
-        let mut bands = vec![Vec::new(); 256];
+        let mut pairs: BTreeMap<i32, Vec<usize>> = BTreeMap::new();
         let frequency_scale = if s.pitch { s.scale } else { 1.0 };
+        let distances = Self::DISTANCES.map(|hops| round(hops as f64 * s.scale) as usize);
+        let bands = |frame: &Frame| {
+            let mut peaks = frame.peaks.iter().take(2);
+            std::array::from_fn::<_, 2, _>(|_| {
+                peaks
+                    .next()
+                    .and_then(|&peak| Self::band(peak, frequency_scale))
+            })
+        };
+        // A pair of peaks separated in time is much more selective than a
+        // single frequency. Cap each signature before querying so a sustained
+        // note does not make every verification probe scan the entire track.
         for (i, frame) in features.frames.iter().enumerate().step_by(2) {
             if i % 1024 == 0 {
                 check(current)?;
             }
-            for &peak in frame.peaks.iter().take(3) {
-                let band = round(f64::from(peak) * frequency_scale / 2.0) as usize;
-                if let Some(times) = bands.get_mut(band) {
-                    times.push(i);
+            let anchors = bands(frame);
+            for (distance, hops) in distances.into_iter().enumerate() {
+                let Some(next) = features.frames.get(i + hops) else {
+                    continue;
+                };
+                let followers = bands(next);
+                for a in anchors.into_iter().flatten() {
+                    for b in followers.into_iter().flatten() {
+                        let times = pairs.entry(key(a, b, distance as i32)).or_default();
+                        // A saturated key is left disabled, not sampled from only
+                        // the start of the track (which would hide late edits).
+                        if times.len() <= Self::MAX_POSTINGS && times.last() != Some(&i) {
+                            times.push(i);
+                        }
+                    }
                 }
             }
         }
-        Ok(Self { bands })
+        // Only selective signatures may vote. Drop a common key instead of
+        // choosing arbitrary occurrences that can outvote informative pairs.
+        pairs.retain(|_, times| times.len() <= Self::MAX_POSTINGS);
+        Ok(Self { pairs })
     }
 
     fn lags(
@@ -841,19 +953,33 @@ impl PeakTimes {
         let mut votes: BTreeMap<i32, u32> = BTreeMap::new();
         for &(frame, at) in reference.iter().step_by(2) {
             check(current)?;
-            for &peak in frame.peaks.iter().take(2) {
-                let band = round(f64::from(peak) / 2.0) as i32;
-                for adjacent in band - 1..=band + 1 {
-                    let Some(times) = usize::try_from(adjacent)
-                        .ok()
-                        .and_then(|i| self.bands.get(i))
-                    else {
+            for (distance, hops) in Self::DISTANCES.into_iter().enumerate() {
+                let Ok(follower) = reference
+                    .binary_search_by_key(&(frame.time + hops * 10_000), |(candidate, _)| {
+                        candidate.time
+                    })
+                else {
+                    continue;
+                };
+                for &anchor in frame.peaks.iter().take(2) {
+                    let Some(a) = Self::band(anchor, 1.0) else {
                         continue;
                     };
-                    for &time in times {
-                        let lag = round((time as f64 - at) / 5.0) as i32 * 5;
-                        if lag.abs() > 80 {
-                            *votes.entry(lag).or_default() += 1;
+                    for &next in reference[follower].0.peaks.iter().take(2) {
+                        let Some(b) = Self::band(next, 1.0) else {
+                            continue;
+                        };
+                        for ra in (a - 1).max(0)..=(a + 1).min(255) {
+                            for rb in (b - 1).max(0)..=(b + 1).min(255) {
+                                if let Some(times) = self.pairs.get(&key(ra, rb, distance as i32)) {
+                                    for &time in times {
+                                        let lag = round((time as f64 - at) / 5.0) as i32 * 5;
+                                        if lag.abs() > 80 {
+                                            *votes.entry(lag).or_default() += 1;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1046,7 +1172,7 @@ mod tests {
     }
 
     fn music_seed(seconds: f64, rate: f64, mut seed: u64) -> Vec<f32> {
-        let notes: Vec<_> = (0..640)
+        let notes: Vec<_> = (0..(seconds * rate * 8.0).ceil() as usize + 1)
             .map(|_| {
                 seed = seed
                     .wrapping_mul(6364136223846793005)
@@ -1080,6 +1206,14 @@ mod tests {
                 pcm[index] * (1.0 - fraction) + pcm[index + 1] * fraction
             })
             .collect()
+    }
+
+    fn add_recording_noise(pcm: &mut [f32]) {
+        let mut seed = 11u64;
+        for sample in pcm {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+            *sample += ((seed >> 32) as f64 / u32::MAX as f64 * 2.0 - 1.0) as f32 * 0.5;
+        }
     }
 
     #[test]
@@ -1279,11 +1413,7 @@ mod tests {
         let clean = features(&pcm, 0);
         for at in [0, 10, 21] {
             let mut noisy = pcm.clone();
-            let mut seed = 11u64;
-            for sample in noisy.iter_mut().skip(at * RATE).take(2 * RATE) {
-                seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
-                *sample += ((seed >> 32) as f64 / u32::MAX as f64 * 2.0 - 1.0) as f32 * 0.5;
-            }
+            add_recording_noise(&mut noisy[at * RATE..(at + 2) * RATE]);
             let noisy = features(&noisy, 0);
             for (reference, target) in [(&clean, &noisy), (&noisy, &clean)] {
                 let result = align(reference, target, &|| true).unwrap();
@@ -1295,6 +1425,54 @@ mod tests {
                         "noise at {at}s: {best:?}",
                     );
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn a_noisy_repeat_does_not_turn_a_distant_copy_into_edit_evidence() {
+        for (rate, length) in [(1.0, 2), (1.0, 3), (0.5, 3)] {
+            let mut pcm = music(24.0, rate);
+            pcm.copy_within(4 * RATE..(4 + length) * RATE, 14 * RATE);
+            let clean = features(&pcm, 0);
+            for at in [4, 14] {
+                let mut noisy = pcm.clone();
+                add_recording_noise(&mut noisy[at * RATE..(at + length) * RATE]);
+                let noisy = features(&noisy, 0);
+                for (reference, target) in [(&clean, &noisy), (&noisy, &clean)] {
+                    let result = align(reference, target, &|| true).unwrap();
+                    assert_eq!(result.status, 0, "noise at {at}s: {result:?}");
+                    let best = result.candidates[0];
+                    for time in [0.0, 24_000_000.0] {
+                        assert!(
+                            (best.scale * time + best.offset as f64 - time).abs() < 35_000.0,
+                            "noise at {at}s: {best:?}",
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_brief_middle_edit_is_detected_even_when_the_original_lag_returns() {
+        let pcm = music(24.0, 1.0);
+        let reference = features(&pcm, 0);
+        for at_ms in [9500, 10_200, 10_750] {
+            for (gap_ms, shifted_ms) in [(200, 600), (400, 400), (400, 900)] {
+                let cut = at_ms * 16;
+                let resume = cut + shifted_ms * 16;
+                let gap = gap_ms * 16;
+                let mut target = pcm[..cut].to_vec();
+                target.resize(cut + gap, 0.0);
+                target.extend_from_slice(&pcm[cut..resume]);
+                target.extend_from_slice(&pcm[resume + gap..]);
+                assert_eq!(target.len(), pcm.len());
+                let result = align(&reference, &features(&target, 0), &|| true).unwrap();
+                assert_eq!(
+                    result.status, 2,
+                    "{at_ms}ms, {gap_ms}ms, {shifted_ms}ms: {result:?}"
+                );
             }
         }
     }
@@ -1470,6 +1648,86 @@ mod tests {
         assert_eq!(
             index.lags(&[(&reference.frames[0], 0.0)], &|| false),
             Err(AudioError::Cancelled),
+        );
+    }
+
+    #[test]
+    fn wide_lag_postings_are_bounded_and_keep_selective_late_events() {
+        // The common peak spans nine minutes; rare transitions occur only
+        // near the end. The cap must not bias the index towards the first few
+        // seconds or cause a query to traverse every common posting.
+        let mut track = Features {
+            frames: (0..54_000)
+                .map(|i| Frame {
+                    time: i * 10_000,
+                    spectrum: [0.0; 16],
+                    onset: [0.0; 16],
+                    peaks: vec![20],
+                    pitch: [0.0; 48],
+                })
+                .collect(),
+        };
+        for (i, frame) in track.frames[52_000..52_060].iter_mut().enumerate() {
+            frame.peaks = vec![100 + i as i32 * 4, 20];
+        }
+        let seed = Candidate {
+            scale: 1.0,
+            ..Candidate::default()
+        }
+        .seed(false);
+        let index = PeakTimes::new(&track, seed, &|| true).unwrap();
+        assert!(!index.pairs.contains_key(&key(10, 10, 0)));
+        assert!(
+            index
+                .pairs
+                .values()
+                .all(|times| times.len() <= PeakTimes::MAX_POSTINGS)
+        );
+        let probe: Vec<_> = track.frames[52_000..52_060]
+            .iter()
+            .step_by(2)
+            .enumerate()
+            .map(|(i, frame)| (frame, (50_000 + i * 2) as f64))
+            .collect();
+        assert_eq!(index.lags(&probe, &|| true).unwrap().first(), Some(&2_000));
+    }
+
+    #[test]
+    #[ignore = "optional host benchmark; run with --release"]
+    fn long_pcm_alignment_benchmark() {
+        let clean = music(540.0, 1.0);
+        let interference = music_seed(540.0, 1.0, 97);
+        for (tone_gain, interference_gain) in [(0.1, 0.45), (0.3, 0.35)] {
+            let mut reference = Vec::with_capacity(clean.len());
+            let mut target = Vec::with_capacity(clean.len());
+            for (i, (&clean, &interference)) in clean.iter().zip(&interference).enumerate() {
+                let time = i as f64 / RATE as f64;
+                let tone = (440.0 * (time * std::f64::consts::TAU)).sin() as f32 * tone_gain;
+                reference.push(clean * 0.65 + tone);
+                target.push(clean * 0.55 + tone + interference * interference_gain);
+            }
+            let reference = features(&reference, 0);
+            let target = features(&target, 0);
+            let start = std::time::Instant::now();
+            let result = align(&reference, &target, &|| true).unwrap();
+            eprintln!(
+                "540 s PCM-derived features ({tone_gain}, {interference_gain}): {:?}",
+                start.elapsed()
+            );
+            assert_eq!(result.status, 0, "{result:?}");
+            assert_eq!(result.candidates[0].offset, 0);
+            assert_eq!(result.candidates[0].scale, 1.0);
+        }
+
+        let sample = &clean[..180 * RATE];
+        let cut = sample.len() * 9 / 10;
+        let mut edited = sample[..cut].to_vec();
+        edited.resize(cut + RATE, 0.0);
+        edited.extend_from_slice(&sample[cut..]);
+        let result = align(&features(sample, 0), &features(&edited, 0), &|| true).unwrap();
+        assert_eq!(
+            result.status, 2,
+            "the performance cap cannot hide a late edit: {result:?}"
         );
     }
 }

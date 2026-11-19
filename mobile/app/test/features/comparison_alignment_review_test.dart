@@ -49,6 +49,23 @@ class DelayedCueVideo extends FakeCueVideo {
   }
 }
 
+class BufferingCueVideo extends FakeCueVideo {
+  BufferingCueVideo(super.source, super.events);
+
+  @override
+  Future<void> play() async {
+    value = value.copyWith(isPlaying: true, isBuffering: true);
+  }
+}
+
+void advanceAudition(FakeCueVideo video) {
+  for (var i = 0; i < 2; i++) {
+    video.value = video.value.copyWith(
+      position: video.value.position + const Duration(milliseconds: 100),
+    );
+  }
+}
+
 void main() {
   test(
     'cancelling candidate review never writes its mapping or loses saved anchors',
@@ -148,7 +165,10 @@ void main() {
       expect(session.position(1), reference + 1000000);
       await session.toggle(0);
       expect(session.candidateAuditioned, isFalse);
+      advanceAudition(videos[0]);
       await session.toggle(1);
+      expect(session.candidateAuditioned, isFalse);
+      advanceAudition(videos[1]);
       expect(session.candidateAuditioned, isTrue);
       await session.toggle(0);
       expect(videos[0].value.isPlaying, isTrue);
@@ -167,6 +187,8 @@ void main() {
       await latestPlay;
       expect(videos[0].value.isPlaying, isFalse);
       expect(videos[1].value.isPlaying, isTrue);
+      advanceAudition(videos[1]);
+      expect(session.candidateAuditioned, isFalse);
       await session.close();
     },
   );
@@ -250,6 +272,8 @@ void main() {
           find.byKey(const ValueKey('comparison-manual-play-0')),
         );
         await tester.pumpAndSettle();
+        advanceAudition(videos[0]);
+        await tester.pump();
         expect(tester.widget<FilledButton>(apply).onPressed, isNull);
         await tester.ensureVisible(
           find.byKey(const ValueKey('comparison-manual-play-1')),
@@ -259,6 +283,9 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(videos[1].value.isPlaying, isTrue);
+        expect(tester.widget<FilledButton>(apply).onPressed, isNull);
+        advanceAudition(videos[1]);
+        await tester.pump();
         await tester.ensureVisible(apply);
         await tester.tap(apply);
         await tester.pumpAndSettle();
@@ -275,6 +302,91 @@ void main() {
       },
     );
   }
+
+  testWidgets('buffered playback cannot confirm a candidate', (tester) async {
+    final gateway = gatewayForReview();
+    final previews = <BufferingCueVideo>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ComparisonScreen(
+          gateway: gateway,
+          manualVideoFactory: (uri) {
+            final video = BufferingCueVideo(uri, gateway.events);
+            previews.add(video);
+            return video;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Future<void> tap(String key) async {
+      final widget = find.byKey(ValueKey(key));
+      await tester.ensureVisible(widget);
+      await tester.tap(widget);
+      await tester.pumpAndSettle();
+    }
+
+    final original = gateway.projects.first.offsetUs;
+    await tap('comparison-review-music');
+    await tap('comparison-candidate-1');
+    final start = previews.map((video) => video.value.position).toList();
+    await tap('comparison-manual-play-0');
+    await tap('comparison-manual-play-1');
+    final apply = find.byKey(const ValueKey('comparison-manual-apply'));
+    expect(previews.every((video) => video.value.isBuffering), isTrue);
+    expect(previews.map((video) => video.value.position), start);
+    expect(tester.widget<FilledButton>(apply).onPressed, isNull);
+    expect(gateway.projects.first.offsetUs, original);
+
+    // A late tick from the stopped reference must not count as listening.
+    advanceAudition(previews[0]);
+    final learner = previews[1];
+    learner.value = learner.value.copyWith(isBuffering: false);
+    advanceAudition(learner);
+    await tester.pump();
+    expect(tester.widget<FilledButton>(apply).onPressed, isNull);
+
+    await tap('comparison-manual-play-0');
+    final reference = previews[0];
+    advanceAudition(reference); // While still buffering.
+    reference.value = reference.value.copyWith(isBuffering: false);
+    reference.value = reference.value.copyWith(
+      position: reference.value.position + const Duration(milliseconds: 250),
+    );
+    await tester.pump();
+    expect(tester.widget<FilledButton>(apply).onPressed, isNull);
+    reference.value = reference.value.copyWith(
+      position: reference.value.position + const Duration(milliseconds: 100),
+    );
+    await tester.pump();
+    expect(tester.widget<FilledButton>(apply).onPressed, isNotNull);
+    await tap('comparison-manual-apply');
+    expect(gateway.projects.first.alignment, 'confirmed');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  test('completed candidate playback restarts at the selected cue', () async {
+    final videos = <FakeCueVideo>[];
+    final session = ComparisonManualSession(
+      savedProject(),
+      factory: (uri) {
+        final video = FakeCueVideo(uri, []);
+        videos.add(video);
+        return video;
+      },
+    );
+    await session.initialize();
+    const candidate = ComparisonMusicMapping(1000000);
+    expect(await session.cueCandidate(candidate, [candidate]), isTrue);
+    final cue = videos[1].value.position;
+    videos[1].value = videos[1].value.copyWith(
+      position: videos[1].value.duration,
+      isCompleted: true,
+    );
+    await session.toggle(1);
+    expect(videos[1].value.position, cue);
+    await session.close();
+  });
 
   testWidgets(
     'inconsistent music shows a visible warning and does not replace calibration',

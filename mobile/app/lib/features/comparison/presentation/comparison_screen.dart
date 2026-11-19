@@ -403,6 +403,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         if (candidate == null || !session.candidateAuditioned) return;
         await session.pause();
         if (!mounted ||
+            !session.candidateAuditioned ||
             !await controller.confirmAlignmentCandidate(candidate)) {
           return;
         }

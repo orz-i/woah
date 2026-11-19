@@ -5,6 +5,32 @@ import 'package:flutter/foundation.dart';
 import 'package:video_player/video_player.dart';
 import 'package:dance_domain/dance_domain.dart';
 
+class _CandidatePlayback {
+  _CandidatePlayback(this.role, this._last);
+
+  final int role;
+  Duration _last, _advanced = Duration.zero;
+  int _updates = 0;
+
+  bool observe(VideoPlayerValue value) {
+    final delta = value.position - _last;
+    _last = value.position;
+    if (!value.isPlaying ||
+        value.isBuffering ||
+        value.isCompleted ||
+        delta.isNegative) {
+      _advanced = Duration.zero;
+      _updates = 0;
+    } else if (delta > Duration.zero) {
+      _advanced += delta;
+      _updates++;
+    }
+    // The plugin acknowledges play before decoding starts. Require sustained
+    // clock movement, not a command acknowledgement or a single position jump.
+    return _updates >= 2 && _advanced >= const Duration(milliseconds: 200);
+  }
+}
+
 /// Independent source previews exist only while the shared comparison is closed.
 class ComparisonManualSession extends ChangeNotifier {
   ComparisonManualSession(
@@ -36,9 +62,11 @@ class ComparisonManualSession extends ChangeNotifier {
   bool rateCalibration = false, anchoring = false;
   int _playRequest = 0;
   Future<void>? _playTail;
-  bool _candidateCued = false;
+  ({int referenceUs, int targetUs})? _candidateCue;
+  _CandidatePlayback? _candidatePlayback;
   final List<bool> _auditioned = [false, false];
-  bool get candidateAuditioned => _candidateCued && _auditioned.every((v) => v);
+  bool get candidateAuditioned =>
+      _candidateCue != null && _auditioned.every((v) => v) && error == null;
   int anchorIndex = 0;
   (int, int)? firstAnchor, secondAnchor;
   void setRateCalibration(bool value) {
@@ -105,7 +133,16 @@ class ComparisonManualSession extends ChangeNotifier {
         );
   void _tick() {
     if (_closed) return;
-    if (videos.any((v) => v.value.hasError)) error = '预览无法打开，请返回后重新关联视频。';
+    if (videos.any((v) => v.value.hasError)) {
+      _candidatePlayback = null;
+      _auditioned.fillRange(0, 2, false);
+      error = '预览无法打开，请返回后重新关联视频。';
+    } else if (_candidatePlayback case final playback?) {
+      if (playback.observe(videos[playback.role].value)) {
+        _auditioned[playback.role] = true;
+        _candidatePlayback = null;
+      }
+    }
     notifyListeners();
   }
 
@@ -146,6 +183,7 @@ class ComparisonManualSession extends ChangeNotifier {
 
   Future<void> pause() async {
     _playRequest++;
+    _candidatePlayback = null;
     if (_closed) return;
     final playing = _playTail;
     if (playing != null) await playing;
@@ -156,6 +194,7 @@ class ComparisonManualSession extends ChangeNotifier {
   Future<void> toggle(int role) {
     if (!ready || _closed || anchoring) return Future.value();
     final request = ++_playRequest;
+    _candidatePlayback = null;
     bool current() => !_closed && request == _playRequest;
     final previous = _playTail;
     final work = () async {
@@ -168,11 +207,20 @@ class ComparisonManualSession extends ChangeNotifier {
         if (videos[role].value.isPlaying) {
           await videos[role].pause();
         } else {
-          if (position(role) >= duration(role) - 100000) await seek(role, 0);
+          final cue = _candidateCue;
+          if (videos[role].value.isCompleted ||
+              position(role) >= duration(role) - 100000) {
+            final replayAt = role == 0 ? cue?.referenceUs : cue?.targetUs;
+            await seek(role, replayAt ?? 0);
+            if (!_seekSucceeded[role]) return;
+          }
           if (current()) {
             await videos[role].play();
-            if (current() && _candidateCued && !videos[role].value.hasError) {
-              _auditioned[role] = true;
+            if (current() && cue != null && !_auditioned[role]) {
+              _candidatePlayback = _CandidatePlayback(
+                role,
+                videos[role].value.position,
+              );
               _tick();
             }
           }
@@ -199,13 +247,17 @@ class ComparisonManualSession extends ChangeNotifier {
     List<ComparisonMusicMapping> options,
   ) async {
     if (!ready || _closed || anchoring) return false;
-    _candidateCued = false;
+    _candidateCue = null;
+    _candidatePlayback = null;
     _auditioned.fillRange(0, 2, false);
-    final referenceEnd = max(0, duration(0) - 1000);
-    final targetEnd = max(0, duration(1) - 1000);
+    // Leave time for position samples from both players, even when the
+    // intersection of several candidate overlaps falls close to a video end.
+    const auditionTailUs = 500000;
+    final referenceEnd = max(0, duration(0) - auditionTailUs);
+    final targetEnd = max(0, duration(1) - auditionTailUs);
     final range = mapping.overlap(referenceEnd, targetEnd);
     if (range == null) {
-      error = '此候选没有可试听的共同区间。';
+      error = '此候选没有足够的共同区间可供试听。';
       _tick();
       return false;
     }
@@ -219,17 +271,18 @@ class ComparisonManualSession extends ChangeNotifier {
     // Use the same reference phrase for all candidates when possible.
     if (start >= end) (start, end) = range;
     final cue = start + (end - start) ~/ 2;
+    final targetCue = mapping.target(cue);
     anchoring = true;
     _tick();
     try {
       await pause();
-      await Future.wait([seek(0, cue), seek(1, mapping.target(cue))]);
+      await Future.wait([seek(0, cue), seek(1, targetCue)]);
       if (_closed) return false;
       if (!_seekSucceeded.every((succeeded) => succeeded) || error != null) {
         error = '候选乐段定位未完成，请重新选择后试听。';
         return false;
       }
-      _candidateCued = true;
+      _candidateCue = (referenceUs: cue, targetUs: targetCue);
       return true;
     } catch (_) {
       if (!_closed) error = '候选乐段定位未完成，请重新选择后试听。';
@@ -263,6 +316,7 @@ class ComparisonManualSession extends ChangeNotifier {
 
   Future<void> _seek(int role, int targetUs) {
     if (_closed) return Future.value();
+    if (_candidatePlayback?.role == role) _candidatePlayback = null;
     _seekSucceeded[role] = false;
     error = null;
     _scrub[role] = targetUs.clamp(0, max(0, duration(role) - 1000));
