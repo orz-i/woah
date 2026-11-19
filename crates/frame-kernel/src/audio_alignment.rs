@@ -71,17 +71,7 @@ pub fn align(
         // Refit this passage at a different rate, not a new, shorter passage
         // whose overlap might simply omit the conflicting end of the song.
         constant.status = 2;
-        let mut verified = Vec::new();
-        for pitch in [false, true] {
-            if let Some(model) = refine(t, l, best.seed(pitch), current)?
-                && strong_affine(model)
-                && model.support >= best.support * 0.95
-                && !local_conflict(t, l, model.seed(pitch), current)?
-            {
-                verified.push(model);
-            }
-        }
-        if let Some(model) = verified.into_iter().min_by(compare) {
+        if let Some(model) = refit_passage(t, l, best, current)? {
             return Ok(Alignment {
                 status: 0,
                 candidates: vec![model],
@@ -90,8 +80,37 @@ pub fn align(
         return Ok(constant);
     }
     if constant.status == 3 && constant.candidates.len() > 1 {
-        // Do not turn two equally plausible same-speed passages into an
-        // automatic choice just because a rate search finds one of them first.
+        // Preserve the passage choices, not their provisional same-speed maps.
+        // A global rate search can miss a runner-up; fit each passage in place
+        // and never promote the remaining choice to an automatic application.
+        let mut verified: Vec<Candidate> = Vec::new();
+        for candidate in constant.candidates {
+            let model = if candidate.support >= 6.0 {
+                refit_passage(t, l, candidate, current)?
+            } else if candidate.windows == 3
+                && candidate.residual <= 30.0
+                && !local_conflict(t, l, candidate.seed(false), current)?
+            {
+                // Short, stable passages can still be reviewed, but do not
+                // have enough evidence for the affine fitter's six seconds.
+                Some(candidate)
+            } else {
+                None
+            };
+            if let Some(model) = model
+                && verified.iter().all(|v| {
+                    (v.scale - model.scale).abs() >= 0.003
+                        || (v.offset - model.offset).abs() >= 150000
+                })
+            {
+                verified.push(model);
+            }
+        }
+        verified.sort_by(compare);
+        constant.candidates = verified;
+        if constant.candidates.is_empty() {
+            constant.status = 2;
+        }
         return Ok(constant);
     }
     Ok(affine(t, l, current)?.unwrap_or(constant))
@@ -332,6 +351,26 @@ fn strong_affine(candidate: Candidate) -> bool {
         && candidate.residual <= 35.0
         && candidate.support >= 6.0
 }
+
+fn refit_passage(
+    t: &Features,
+    l: &Features,
+    candidate: Candidate,
+    current: &dyn Fn() -> bool,
+) -> Result<Option<Candidate>, AudioError> {
+    let mut verified = Vec::new();
+    for pitch in [false, true] {
+        if let Some(model) = refine(t, l, candidate.seed(pitch), current)?
+            && strong_affine(model)
+            && model.support >= candidate.support * 0.95
+            && !local_conflict(t, l, model.seed(pitch), current)?
+        {
+            verified.push(model);
+        }
+    }
+    Ok(verified.into_iter().min_by(compare))
+}
+
 struct Votes {
     count: u32,
     x: f64,
@@ -563,6 +602,29 @@ fn local_conflict(
     s: Seed,
     current: &dyn Fn() -> bool,
 ) -> Result<bool, AudioError> {
+    if directional_conflict(t, l, s, current)? {
+        return Ok(true);
+    }
+    // An insertion in one source is a removal in the other. The overlap can
+    // otherwise clip the only reference frames that reveal an edge deletion.
+    directional_conflict(
+        l,
+        t,
+        Seed {
+            scale: 1.0 / s.scale,
+            offset: round(-(s.offset as f64) / s.scale),
+            pitch: s.pitch,
+        },
+        current,
+    )
+}
+
+fn directional_conflict(
+    t: &Features,
+    l: &Features,
+    s: Seed,
+    current: &dyn Fn() -> bool,
+) -> Result<bool, AudioError> {
     let (start, end) = range(t, l, s);
     let width = ((end - start) / 4).min(1_200_000);
     if width < 500_000 {
@@ -571,10 +633,20 @@ fn local_conflict(
     let travel = end - start - width;
     let intervals = ((travel + width - 1) / width).max(2);
     let shift = s.pitch.then(|| -s.scale.log2() * 8.0);
-    for i in 0..=intervals {
+    // A partial second after a late edit must not disappear into a 1.2 s
+    // average. Keep the longer probes for noise tolerance and also inspect
+    // the first/last 200 and 300 ms. The shortest probes require a stronger
+    // displaced peak so a brief noisy edge is not mistaken for an edit.
+    let probes = (0..=intervals)
+        .map(|i| (start + travel * i / intervals, width))
+        .chain(
+            [200_000, 300_000]
+                .into_iter()
+                .flat_map(|edge_width| [(start, edge_width), (end - edge_width, edge_width)]),
+        );
+    for (from, probe_width) in probes {
         check(current)?;
-        let from = start + travel * i / intervals;
-        let reference: Vec<_> = (from..from + width)
+        let reference: Vec<_> = (from..from + probe_width)
             .step_by(20_000)
             .filter_map(|time| {
                 let a = t
@@ -587,12 +659,12 @@ fn local_conflict(
                 Some((a, target))
             })
             .collect();
-        if reference.len() < 15 {
+        let minimum_frames = if probe_width < 300_000 { 10 } else { 15 };
+        if reference.len() < minimum_frames {
             continue; // No musical evidence here, not evidence of a shift.
         }
         let score = |lag: i32| {
             let mut sum = 0.0;
-            let mut audible = 0;
             for &(a, at) in &reference {
                 if let Some(b) = usize::try_from(round(at + f64::from(lag)))
                     .ok()
@@ -600,23 +672,21 @@ fn local_conflict(
                     .filter(|b| !b.peaks.is_empty())
                 {
                     sum += similarity(a, b, shift);
-                    audible += 1;
                 }
             }
-            (sum / reference.len() as f64, audible)
+            sum / reference.len() as f64
         };
-        let near = (-1..=1).map(score).map(|v| v.0).fold(0.0, f64::max);
+        let near = (-1..=1).map(score).fold(0.0, f64::max);
         if near >= 0.94 {
             continue;
         }
         // A clearly better local lag outside 30 ms is inconsistent with this
-        // mapping. Do not infer drift from a flat or weak correlation peak.
-        if near < 0.35 && score(0).1 * 2 >= reference.len() {
-            return Ok(true);
-        }
+        // mapping. A weak correlation alone can be temporary recording noise,
+        // not evidence of a different timeline; require a strong displaced peak.
+        let minimum_score = if probe_width < 300_000 { 0.8 } else { 0.65 };
         for lag in (-80i32..=80).filter(|lag| lag.abs() > 3) {
-            let (far, _) = score(lag);
-            if far >= 0.65 && far - near >= 0.06 {
+            let far = score(lag);
+            if far >= minimum_score && far - near >= 0.06 {
                 return Ok(true);
             }
         }
@@ -814,6 +884,18 @@ mod tests {
         b.add(pcm).unwrap();
         b.finish()
     }
+
+    fn stretch(pcm: &[f32], scale: f64) -> Vec<f32> {
+        (0..((pcm.len() - 1) as f64 * scale) as usize)
+            .map(|i| {
+                let position = i as f64 / scale;
+                let index = position as usize;
+                let fraction = (position - index as f64) as f32;
+                pcm[index] * (1.0 - fraction) + pcm[index + 1] * fraction
+            })
+            .collect()
+    }
+
     #[test]
     fn known_music_offset_and_affine_rate_preserve_truth() {
         let r = features(&music(20.0, 1.0), 30000);
@@ -918,6 +1000,141 @@ mod tests {
                     .any(|c| c.offset.abs_diff(expected) < 20_000),
                 "{result:?}"
             );
+        }
+    }
+
+    #[test]
+    fn repeated_passages_are_refitted_without_losing_the_review_choices() {
+        let seconds = 30.0;
+        let pcm = music(seconds, 0.25);
+        let reference = features(&pcm, 0);
+        for scale in [0.995, 1.004] {
+            let passage = stretch(&pcm, scale);
+            let offsets = [
+                1_000_000.0,
+                (2 * RATE + passage.len()) as f64 * 1e6 / RATE as f64,
+            ];
+            let mut target = vec![0.0; RATE];
+            target.extend(&passage);
+            target.resize(target.len() + RATE, 0.0);
+            target.extend(&passage);
+            let result = align(&reference, &features(&target, 0), &|| true).unwrap();
+            assert_eq!(result.status, 3, "{scale}: {result:?}");
+            assert_eq!(result.candidates.len(), 2, "{scale}: {result:?}");
+            for expected_offset in offsets {
+                assert!(
+                    result.candidates.iter().any(|candidate| {
+                        [0.0, seconds * 1e6].iter().all(|&time| {
+                            (candidate.scale * time + candidate.offset as f64
+                                - (scale * time + expected_offset))
+                                .abs()
+                                < 35_000.0
+                        })
+                    }),
+                    "{scale}, offset {expected_offset}: {result:?}",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn short_stable_repeats_still_offer_review_without_an_affine_fit() {
+        let pcm = music(3.5, 1.0);
+        let mut target = vec![0.0; RATE];
+        target.extend(&pcm);
+        target.resize(target.len() + RATE, 0.0);
+        let second_offset = target.len() as i64 * 1_000_000 / RATE as i64;
+        target.extend(&pcm);
+        let result = align(&features(&pcm, 0), &features(&target, 0), &|| true).unwrap();
+        assert_eq!(result.status, 3, "{result:?}");
+        for offset in [1_000_000, second_offset] {
+            assert!(
+                result
+                    .candidates
+                    .iter()
+                    .any(|candidate| candidate.offset.abs_diff(offset) < 20_000),
+                "{offset}: {result:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn a_rejected_repeat_does_not_promote_the_other_choice_to_automatic() {
+        let pcm = music(30.0, 0.25);
+        let reference = features(&pcm, 0);
+        let passage = stretch(&pcm, 0.995);
+        let mut target = vec![0.0; RATE];
+        target.extend(&passage);
+        target.resize(target.len() + RATE, 0.0);
+        let cut = passage.len() - RATE / 2;
+        target.extend(&passage[..cut]);
+        target.resize(target.len() + 400 * 16, 0.0);
+        target.extend(&passage[cut..]);
+        let target = features(&target, 0);
+        let provisional = constant(&reference, &target, &|| true).unwrap();
+        assert_eq!(provisional.status, 3, "{provisional:?}");
+        assert!(provisional.candidates.len() > 1, "{provisional:?}");
+        let result = align(&reference, &target, &|| true).unwrap();
+        assert_eq!(result.status, 3, "{result:?}");
+        assert_eq!(result.candidates.len(), 1, "{result:?}");
+        let best = result.candidates[0];
+        for time in [0.0, 30_000_000.0] {
+            assert!(
+                (best.scale * time + best.offset as f64 - (0.995 * time + 1_000_000.0)).abs()
+                    < 35_000.0,
+                "{best:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn temporary_recording_noise_is_not_a_timeline_discontinuity() {
+        let pcm = music(23.0, 1.0);
+        let clean = features(&pcm, 0);
+        for at in [0, 10, 21] {
+            let mut noisy = pcm.clone();
+            let mut seed = 11u64;
+            for sample in noisy.iter_mut().skip(at * RATE).take(2 * RATE) {
+                seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+                *sample += ((seed >> 32) as f64 / u32::MAX as f64 * 2.0 - 1.0) as f32 * 0.5;
+            }
+            let noisy = features(&noisy, 0);
+            for (reference, target) in [(&clean, &noisy), (&noisy, &clean)] {
+                let result = align(reference, target, &|| true).unwrap();
+                assert_eq!(result.status, 0, "noise at {at}s: {result:?}");
+                let best = result.candidates[0];
+                for time in [0.0, 23_000_000.0] {
+                    assert!(
+                        (best.scale * time + best.offset as f64 - time).abs() < 35_000.0,
+                        "noise at {at}s: {best:?}",
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn subsecond_edge_edits_cannot_hide_in_a_longer_verification_window() {
+        let pcm = music(20.0, 1.0);
+        let reference = features(&pcm, 0);
+        for at_ms in [250, 500, 19_500, 19_750] {
+            for gap_ms in [80, 400] {
+                let cut = at_ms * 16;
+                let mut target = pcm[..cut].to_vec();
+                target.resize(cut + gap_ms * 16, 0.0);
+                target.extend(&pcm[cut..]);
+                let result = align(&reference, &features(&target, 0), &|| true).unwrap();
+                assert_ne!(
+                    result.status, 0,
+                    "{gap_ms}ms insertion at {at_ms}ms: {result:?}",
+                );
+            }
+        }
+        for at_ms in [250, 500, 19_000] {
+            let cut = at_ms * 16;
+            let target = [&pcm[..cut], &pcm[cut + 400 * 16..]].concat();
+            let result = align(&reference, &features(&target, 0), &|| true).unwrap();
+            assert_ne!(result.status, 0, "400ms removal at {at_ms}ms: {result:?}");
         }
     }
 }
