@@ -437,6 +437,10 @@ struct MusicCandidateDto: Hashable, CustomStringConvertible {
   var supportedSeconds: Double
   var residualMs: Double
   var timeScale: Double? = nil
+  var referenceStartUs: Int64
+  var referenceEndUs: Int64
+  var targetStartUs: Int64
+  var targetEndUs: Int64
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -447,6 +451,10 @@ struct MusicCandidateDto: Hashable, CustomStringConvertible {
     let supportedSeconds = pigeonVar_list[3] as! Double
     let residualMs = pigeonVar_list[4] as! Double
     let timeScale: Double? = nilOrValue(pigeonVar_list[5])
+    let referenceStartUs = pigeonVar_list[6] as! Int64
+    let referenceEndUs = pigeonVar_list[7] as! Int64
+    let targetStartUs = pigeonVar_list[8] as! Int64
+    let targetEndUs = pigeonVar_list[9] as! Int64
 
     return MusicCandidateDto(
       offsetUs: offsetUs,
@@ -454,7 +462,11 @@ struct MusicCandidateDto: Hashable, CustomStringConvertible {
       consistentWindows: consistentWindows,
       supportedSeconds: supportedSeconds,
       residualMs: residualMs,
-      timeScale: timeScale
+      timeScale: timeScale,
+      referenceStartUs: referenceStartUs,
+      referenceEndUs: referenceEndUs,
+      targetStartUs: targetStartUs,
+      targetEndUs: targetEndUs
     )
   }
   func toList() -> [Any?] {
@@ -465,13 +477,17 @@ struct MusicCandidateDto: Hashable, CustomStringConvertible {
       supportedSeconds,
       residualMs,
       timeScale,
+      referenceStartUs,
+      referenceEndUs,
+      targetStartUs,
+      targetEndUs,
     ]
   }
   static func == (lhs: MusicCandidateDto, rhs: MusicCandidateDto) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return ComparisonPigeonInternal.deepEquals(lhs.offsetUs, rhs.offsetUs) && ComparisonPigeonInternal.deepEquals(lhs.score, rhs.score) && ComparisonPigeonInternal.deepEquals(lhs.consistentWindows, rhs.consistentWindows) && ComparisonPigeonInternal.deepEquals(lhs.supportedSeconds, rhs.supportedSeconds) && ComparisonPigeonInternal.deepEquals(lhs.residualMs, rhs.residualMs) && ComparisonPigeonInternal.deepEquals(lhs.timeScale, rhs.timeScale)
+    return ComparisonPigeonInternal.deepEquals(lhs.offsetUs, rhs.offsetUs) && ComparisonPigeonInternal.deepEquals(lhs.score, rhs.score) && ComparisonPigeonInternal.deepEquals(lhs.consistentWindows, rhs.consistentWindows) && ComparisonPigeonInternal.deepEquals(lhs.supportedSeconds, rhs.supportedSeconds) && ComparisonPigeonInternal.deepEquals(lhs.residualMs, rhs.residualMs) && ComparisonPigeonInternal.deepEquals(lhs.timeScale, rhs.timeScale) && ComparisonPigeonInternal.deepEquals(lhs.referenceStartUs, rhs.referenceStartUs) && ComparisonPigeonInternal.deepEquals(lhs.referenceEndUs, rhs.referenceEndUs) && ComparisonPigeonInternal.deepEquals(lhs.targetStartUs, rhs.targetStartUs) && ComparisonPigeonInternal.deepEquals(lhs.targetEndUs, rhs.targetEndUs)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -482,10 +498,14 @@ struct MusicCandidateDto: Hashable, CustomStringConvertible {
     ComparisonPigeonInternal.deepHash(value: supportedSeconds, hasher: &hasher)
     ComparisonPigeonInternal.deepHash(value: residualMs, hasher: &hasher)
     ComparisonPigeonInternal.deepHash(value: timeScale, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: referenceStartUs, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: referenceEndUs, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: targetStartUs, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: targetEndUs, hasher: &hasher)
   }
 
   public var description: String {
-    return "MusicCandidateDto(offsetUs: \(String(describing: offsetUs)), score: \(String(describing: score)), consistentWindows: \(String(describing: consistentWindows)), supportedSeconds: \(String(describing: supportedSeconds)), residualMs: \(String(describing: residualMs)), timeScale: \(String(describing: timeScale)))"
+    return "MusicCandidateDto(offsetUs: \(String(describing: offsetUs)), score: \(String(describing: score)), consistentWindows: \(String(describing: consistentWindows)), supportedSeconds: \(String(describing: supportedSeconds)), residualMs: \(String(describing: residualMs)), timeScale: \(String(describing: timeScale)), referenceStartUs: \(String(describing: referenceStartUs)), referenceEndUs: \(String(describing: referenceEndUs)), targetStartUs: \(String(describing: targetStartUs)), targetEndUs: \(String(describing: targetEndUs)))"
   }
 }
 

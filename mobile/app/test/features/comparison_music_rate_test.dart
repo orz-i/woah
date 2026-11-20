@@ -356,6 +356,10 @@ void main() {
             consistentWindows: 5,
             supportedSeconds: 12,
             residualMs: 5,
+            referenceStartUs: 2000000,
+            referenceEndUs: 4000000,
+            targetStartUs: 3600000,
+            targetEndUs: 5200000,
           ),
         ],
       );
@@ -389,6 +393,10 @@ void main() {
             consistentWindows: 2,
             supportedSeconds: 12,
             residualMs: 90,
+            referenceStartUs: 0,
+            referenceEndUs: 0,
+            targetStartUs: 0,
+            targetEndUs: 0,
           ),
         ],
       );

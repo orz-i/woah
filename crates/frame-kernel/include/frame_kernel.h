@@ -55,6 +55,7 @@ int64_t frame_kernel_audio_finish(uint64_t id, uint8_t *output, size_t capacity)
 typedef struct FrameKernelMusicCandidate {
     int64_t offset; double scale, score; uint32_t windows, reserved;
     double support, residual;
+    int64_t reference_start_us, reference_end_us, target_start_us, target_end_us;
 } FrameKernelMusicCandidate;
 /* status: 0 matched, 1 no match, 2 inconsistent, 3 ambiguous, 4 cancelled,
    5 invalid. At most 3 candidates. Callback is synchronous, 1 continue/0 cancel. */

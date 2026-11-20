@@ -33,7 +33,10 @@ def main():
     if not cmake:
         sdk=Path(os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT') or
                  str(Path(os.environ.get('LOCALAPPDATA',''))/'Android/Sdk'))
-        candidates=sorted(sdk.glob('cmake/*/bin/cmake.exe'))
+        candidates = sorted(
+            list(sdk.glob('cmake/*/bin/cmake'))
+            + list(sdk.glob('cmake/*/bin/cmake.exe'))
+        )
         if candidates: cmake=str(candidates[-1])
     if not cmake: raise SystemExit('CMake is required (Android SDK CMake is supported)')
     build=CORE/'target/bridge'/args.abi

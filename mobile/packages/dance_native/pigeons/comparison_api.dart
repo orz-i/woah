@@ -97,6 +97,10 @@ class MusicCandidateDto {
   double supportedSeconds;
   double residualMs;
   double? timeScale;
+  int referenceStartUs;
+  int referenceEndUs;
+  int targetStartUs;
+  int targetEndUs;
   MusicCandidateDto({
     required this.offsetUs,
     required this.score,
@@ -104,6 +108,10 @@ class MusicCandidateDto {
     required this.supportedSeconds,
     required this.residualMs,
     this.timeScale,
+    required this.referenceStartUs,
+    required this.referenceEndUs,
+    required this.targetStartUs,
+    required this.targetEndUs,
   });
 }
 

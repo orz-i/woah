@@ -14,7 +14,9 @@ final class IOSComparisonMusicAligner {
       return MusicAlignmentDto(status: result.status, message: result.message, candidates: result.candidates.map {
         MusicCandidateDto(offsetUs: $0.offsetUs, score: $0.score,
           consistentWindows: $0.consistentWindows, supportedSeconds: $0.supportedSeconds,
-          residualMs: $0.residualMs, timeScale: $0.timeScale)
+          residualMs: $0.residualMs, timeScale: $0.timeScale,
+          referenceStartUs: $0.referenceStartUs, referenceEndUs: $0.referenceEndUs,
+          targetStartUs: $0.targetStartUs, targetEndUs: $0.targetEndUs)
       })
     } catch IOSComparisonMusicError.noAudio {
       try iosComparisonMusicCheck(isCancelled)

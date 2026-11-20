@@ -5,8 +5,41 @@ import 'package:flutter/foundation.dart';
 import 'package:video_player/video_player.dart';
 import 'package:dance_domain/dance_domain.dart';
 
+class _CandidatePlayback {
+  _CandidatePlayback(this.role, this._last, this.startUs, this.endUs);
+
+  final int role;
+  final int startUs, endUs;
+  Duration _last, _advanced = Duration.zero;
+  int _updates = 0;
+
+  bool observe(VideoPlayerValue value) {
+    final delta = value.position - _last;
+    _last = value.position;
+    if (!value.isPlaying ||
+        value.isBuffering ||
+        value.isCompleted ||
+        delta.isNegative) {
+      _advanced = Duration.zero;
+      _updates = 0;
+    } else if (delta > Duration.zero) {
+      final previousUs = (_last - delta).inMicroseconds;
+      final positionUs = value.position.inMicroseconds;
+      final advancedUs = (min(endUs, positionUs) - max(startUs, previousUs))
+          .toInt();
+      if (advancedUs > 0) {
+        _advanced += Duration(microseconds: advancedUs);
+        _updates++;
+      }
+    }
+    // The plugin acknowledges play before decoding starts. Require sustained
+    // clock movement, not a command acknowledgement or a single position jump.
+    return _updates >= 2 && _advanced >= const Duration(milliseconds: 200);
+  }
+}
+
 /// Independent source previews exist only while the shared comparison is closed.
-class ComparisonManualSession extends ChangeNotifier {
+final class ComparisonManualSession extends ChangeNotifier {
   ComparisonManualSession(
     this.project, {
     VideoPlayerController Function(String)? factory,
@@ -34,6 +67,27 @@ class ComparisonManualSession extends ChangeNotifier {
   final List<bool> _seekSucceeded = [false, false];
   bool ready = false, _closed = false;
   bool rateCalibration = false, anchoring = false;
+  int _playRequest = 0;
+  Future<void>? _playTail;
+  ({int referenceUs, int targetUs, int referenceEndUs, int targetEndUs})?
+  _candidateCue;
+  ComparisonMusicMapping? _candidateMapping;
+  _CandidatePlayback? _candidatePlayback;
+  final List<bool> _auditioned = [false, false];
+  bool get candidateAuditioned =>
+      _candidateCue != null &&
+      _candidateMapping != null &&
+      _auditioned.every((v) => v) &&
+      error == null;
+  bool hasAuditioned(ComparisonMusicMapping mapping) =>
+      !_closed && identical(_candidateMapping, mapping) && candidateAuditioned;
+  bool belongsTo(ComparisonProject value) =>
+      !_closed &&
+      project.id == value.id &&
+      project.teacher?.uri == value.teacher?.uri &&
+      project.teacher?.durationUs == value.teacher?.durationUs &&
+      project.learner?.uri == value.learner?.uri &&
+      project.learner?.durationUs == value.learner?.durationUs;
   int anchorIndex = 0;
   (int, int)? firstAnchor, secondAnchor;
   void setRateCalibration(bool value) {
@@ -100,7 +154,16 @@ class ComparisonManualSession extends ChangeNotifier {
         );
   void _tick() {
     if (_closed) return;
-    if (videos.any((v) => v.value.hasError)) error = '预览无法打开，请返回后重新关联视频。';
+    if (videos.any((v) => v.value.hasError)) {
+      _candidatePlayback = null;
+      _auditioned.fillRange(0, 2, false);
+      error = '预览无法打开，请返回后重新关联视频。';
+    } else if (_candidatePlayback case final playback?) {
+      if (playback.observe(videos[playback.role].value)) {
+        _auditioned[playback.role] = true;
+        _candidatePlayback = null;
+      }
+    }
     notifyListeners();
   }
 
@@ -140,18 +203,119 @@ class ComparisonManualSession extends ChangeNotifier {
   }
 
   Future<void> pause() async {
+    _playRequest++;
+    _candidatePlayback = null;
+    if (_closed) return;
+    final playing = _playTail;
+    if (playing != null) await playing;
     if (_closed) return;
     await Future.wait(videos.map((v) => v.pause()));
   }
 
-  Future<void> toggle(int role) async {
-    if (!ready || _closed) return;
-    await videos[1 - role].pause();
-    if (videos[role].value.isPlaying) {
-      await videos[role].pause();
-    } else {
-      if (position(role) >= duration(role) - 100000) await seek(role, 0);
-      await videos[role].play();
+  Future<void> toggle(int role) {
+    if (!ready || _closed || anchoring) return Future.value();
+    final request = ++_playRequest;
+    _candidatePlayback = null;
+    bool current() => !_closed && request == _playRequest;
+    final previous = _playTail;
+    final work = () async {
+      if (previous != null) await previous;
+      if (!current()) return;
+      error = null;
+      try {
+        await videos[1 - role].pause();
+        if (!current()) return;
+        if (videos[role].value.isPlaying) {
+          await videos[role].pause();
+        } else {
+          final cue = _candidateCue;
+          if (videos[role].value.isCompleted ||
+              position(role) >= duration(role) - 100000) {
+            final replayAt = role == 0 ? cue?.referenceUs : cue?.targetUs;
+            await seek(role, replayAt ?? 0);
+            if (!_seekSucceeded[role]) return;
+          }
+          if (current()) {
+            await videos[role].play();
+            if (current() && cue != null && !_auditioned[role]) {
+              _candidatePlayback = _CandidatePlayback(
+                role,
+                videos[role].value.position,
+                role == 0 ? cue.referenceUs : cue.targetUs,
+                role == 0 ? cue.referenceEndUs : cue.targetEndUs,
+              );
+              _tick();
+            }
+          }
+        }
+      } catch (_) {
+        if (current()) {
+          error = '试听未完成，请重试。';
+          _tick();
+        }
+      }
+    }();
+    late final Future<void> completion;
+    completion = work.whenComplete(() {
+      if (identical(_playTail, completion)) _playTail = null;
+    });
+    _playTail = completion;
+    return completion;
+  }
+
+  /// Cue both sources, but play them one at a time so the user can hear each
+  /// candidate. The shared session and saved mapping stay untouched.
+  Future<bool> cueCandidate(
+    ComparisonMusicMapping mapping,
+    List<ComparisonMusicMapping> options,
+  ) async {
+    if (!ready || _closed || anchoring) return false;
+    if (!options.contains(mapping) ||
+        !mapping.hasVerifiedAudition ||
+        mapping.referenceEndUs! > duration(0) ||
+        mapping.targetEndUs! > duration(1) ||
+        (mapping.target(mapping.referenceStartUs!) - mapping.targetStartUs!)
+                .abs() >
+            5000 ||
+        (mapping.target(mapping.referenceEndUs!) - mapping.targetEndUs!).abs() >
+            5000) {
+      error = '此候选没有有效的已核验试听区间。';
+      _tick();
+      return false;
+    }
+    _candidateCue = null;
+    _candidateMapping = null;
+    _candidatePlayback = null;
+    _auditioned.fillRange(0, 2, false);
+    // The cue is drawn only from the exact source intervals returned with this
+    // candidate; never infer audition locations from video overlap.
+    final cue = mapping.referenceStartUs!;
+    final targetCue = mapping.targetStartUs!;
+    final targetEnd = mapping.targetEndUs!;
+    anchoring = true;
+    _tick();
+    try {
+      await pause();
+      await Future.wait([seek(0, cue), seek(1, targetCue)]);
+      if (_closed) return false;
+      if (!_seekSucceeded.every((succeeded) => succeeded) || error != null) {
+        error = '候选乐段定位未完成，请重新选择后试听。';
+        return false;
+      }
+      _candidateCue = (
+        referenceUs: cue,
+        targetUs: targetCue,
+        referenceEndUs: mapping.referenceEndUs!,
+        targetEndUs: targetEnd,
+      );
+      _candidateMapping = mapping;
+      return true;
+    } catch (_) {
+      if (!_closed) error = '候选乐段定位未完成，请重新选择后试听。';
+      return false;
+    } finally {
+      anchoring = false;
+      _tick();
     }
   }
 
@@ -178,6 +342,7 @@ class ComparisonManualSession extends ChangeNotifier {
 
   Future<void> _seek(int role, int targetUs) {
     if (_closed) return Future.value();
+    if (_candidatePlayback?.role == role) _candidatePlayback = null;
     _seekSucceeded[role] = false;
     error = null;
     _scrub[role] = targetUs.clamp(0, max(0, duration(role) - 1000));
@@ -227,6 +392,8 @@ class ComparisonManualSession extends ChangeNotifier {
       videos[i].removeListener(_tick);
     }
     await Future.wait([for (final work in _workers) ?work]);
+    final playing = _playTail;
+    if (playing != null) await playing;
     await Future.wait(videos.map((v) => v.dispose()));
     super.dispose();
   }

@@ -41,6 +41,8 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   bool _allowPop = false, _exiting = false;
   double? _scrub;
   ComparisonManualSession? _manualSession;
+  List<ComparisonMusicMapping>? _reviewOptions;
+  ComparisonMusicMapping? _reviewSelection;
   bool _finishingManual = false, _orientationOverridden = false;
   bool _rotating = false;
   bool _pictureReference = true, _finishingPicture = false;
@@ -218,17 +220,74 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     );
   }
 
-  Future<void> _manual() async {
+  Future<void> _manual({bool review = false}) async {
+    final options = controller.alignmentOptions;
+    if (review && options.isEmpty) return;
     if (_manualSession != null || !await controller.enterManualCalibration()) {
       return;
     }
     if (!mounted || _manualSession != null || !controller.calibrating) return;
+    if (review && !identical(options, controller.alignmentOptions)) {
+      await controller.leaveManualCalibration(applied: false);
+      return;
+    }
     final session = ComparisonManualSession(
       controller.project,
       factory: widget.manualVideoFactory,
     );
-    setState(() => _manualSession = session);
+    setState(() {
+      _manualSession = session;
+      _reviewOptions = review ? options : null;
+      _reviewSelection = null;
+    });
     unawaited(session.initialize());
+  }
+
+  Future<void> _cueCandidate(ComparisonMusicMapping mapping) async {
+    final session = _manualSession;
+    final options = _reviewOptions;
+    if (session == null ||
+        options == null ||
+        session.anchoring ||
+        _finishingManual) {
+      return;
+    }
+    setState(() => _reviewSelection = null);
+    if (await session.cueCandidate(mapping, options) &&
+        mounted &&
+        identical(session, _manualSession)) {
+      setState(() => _reviewSelection = mapping);
+    }
+  }
+
+  Widget _reviewControls(BuildContext context) {
+    final options = _reviewOptions!;
+    final session = _manualSession!;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('选择候选后，先分别播放参考和目标。确认是同一拍后再采用。'),
+        Wrap(
+          spacing: 8,
+          children: [
+            for (var i = 0; i < options.length; i++)
+              ChoiceChip(
+                key: ValueKey('comparison-candidate-$i'),
+                label: Text(
+                  '${i + 1} · ${_signedOffset(options[i].offsetUs)}'
+                  '${options[i].timeScale == 1 ? '' : ' · ${(1 / options[i].timeScale).toStringAsFixed(3)}×'}',
+                ),
+                selected: identical(_reviewSelection, options[i]),
+                onSelected:
+                    session.ready && !session.anchoring && !_finishingManual
+                    ? (_) => _cueCandidate(options[i])
+                    : null,
+              ),
+          ],
+        ),
+      ],
+    );
   }
 
   Future<void> _adjustPicture() async {
@@ -336,10 +395,22 @@ class _ComparisonScreenState extends State<ComparisonScreen>
 
   Future<void> _finishManual(bool apply) async {
     final session = _manualSession;
-    if (session == null || _finishingManual) return;
+    if (session == null || _finishingManual || session.anchoring) return;
     setState(() => _finishingManual = true);
     try {
-      if (apply) {
+      if (apply && _reviewOptions != null) {
+        final candidate = _reviewSelection;
+        if (candidate == null || !session.candidateAuditioned) return;
+        await session.pause();
+        if (!mounted ||
+            !session.candidateAuditioned ||
+            !await controller.confirmAlignmentCandidate(
+              candidate,
+              session: session,
+            )) {
+          return;
+        }
+      } else if (apply) {
         final anchors = await session.anchors();
         if (!mounted) return;
         final first = session.rateCalibration ? session.firstAnchor : anchors;
@@ -355,7 +426,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       }
       // Remove both preview Texture widgets and their listeners before releasing
       // their producers. The shared GL surface is opened only after that frame.
-      setState(() => _manualSession = null);
+      if (!mounted) return;
+      setState(() {
+        _manualSession = null;
+        _reviewOptions = null;
+        _reviewSelection = null;
+      });
       await WidgetsBinding.instance.endOfFrame;
       await session.close();
       if (!mounted) return;
@@ -682,6 +758,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                     learnerPicture: controller.project.learnerPicture,
                     saving: _finishingManual,
                     error: controller.error,
+                    reviewControls: _reviewOptions == null
+                        ? null
+                        : _reviewControls,
+                    candidateSelected: _reviewSelection != null,
                     onApply: () => _finishManual(true),
                     onCancel: () => _finishManual(false),
                   )
@@ -879,25 +959,37 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       );
     },
   );
-  String get _offsetLabel =>
-      '${controller.project.offsetUs >= 0 ? '+' : ''}${(controller.project.offsetUs / 1e6).toStringAsFixed(3)}s';
+  static String _signedOffset(int offsetUs) =>
+      '${offsetUs >= 0 ? '+' : ''}${(offsetUs / 1e6).toStringAsFixed(3)}s';
 
   String get _alignmentLabel => switch (controller.project.alignment) {
     'auto' => '自动校准',
     'manual' => '手动校准',
-    'candidate' || 'auto_review' => '自动校准 · 可微调',
+    'confirmed' => '已确认乐段',
+    'candidate' || 'auto_review' => '上次校准 · 待复核',
     _ => '需手动校准',
   };
 
   Widget _musicSummary() {
     final paired = controller.project.hasPair;
     final aligned = controller.project.alignment != 'unmatched';
+    final hasOptions = controller.alignmentOptions.isNotEmpty;
+    final legacyReview = const [
+      'candidate',
+      'auto_review',
+    ].contains(controller.project.alignment);
+    final retry =
+        paired &&
+        !hasOptions &&
+        controller.project.teacher!.hasAudio &&
+        controller.project.learner!.hasAudio &&
+        (!aligned || legacyReview || controller.alignmentNotice != null);
     return Row(
       children: [
         Icon(
           Icons.graphic_eq_rounded,
           size: 18,
-          color: aligned
+          color: aligned && !hasOptions && !legacyReview
               ? AppTheme.of(context).editorSelection
               : AppTheme.of(context).flowTextSecondary,
         ),
@@ -908,8 +1000,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 ? '正在自动校准…'
                 : !paired
                 ? '先选择参考和目标视频'
+                : hasOptions
+                ? '音乐位置待确认'
                 : _alignmentLabel +
-                      (aligned ? ' · $_offsetLabel' : '') +
+                      (aligned
+                          ? ' · ${_signedOffset(controller.project.offsetUs)}'
+                          : '') +
                       (aligned &&
                               (controller.project.timeScale - 1).abs() > .0001
                           ? ' · 目标音乐 ${(1 / controller.project.timeScale).toStringAsFixed(3)}×'
@@ -926,13 +1022,27 @@ class _ComparisonScreenState extends State<ComparisonScreen>
             onPressed: controller.cancelMatching,
             child: const Text('取消'),
           )
-        else
+        else ...[
+          if (hasOptions)
+            IconButton(
+              key: const ValueKey('comparison-review-music'),
+              tooltip: '试听候选乐段',
+              onPressed: controller.busy ? null : () => _manual(review: true),
+              icon: const Icon(Icons.headphones_rounded, size: 20),
+            )
+          else if (retry)
+            IconButton(
+              tooltip: '重新匹配音乐',
+              onPressed: controller.busy ? null : controller.matchMusic,
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+            ),
           IconButton(
             key: const ValueKey('comparison-calibration'),
             tooltip: '手动校准',
             onPressed: paired && !controller.busy ? _manual : null,
             icon: const Icon(Icons.tune_rounded, size: 20),
           ),
+        ],
       ],
     );
   }
@@ -1051,6 +1161,17 @@ class _ComparisonScreenState extends State<ComparisonScreen>
               ),
             if (controller.project.hasPair || controller.matching)
               _musicSummary(),
+            if (!controller.matching && controller.alignmentNotice != null)
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  controller.alignmentNotice!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.of(context).flowTextSecondary,
+                  ),
+                ),
+              ),
             ComparisonTimeline(
               durationUs: duration,
               positionUs: position.round(),

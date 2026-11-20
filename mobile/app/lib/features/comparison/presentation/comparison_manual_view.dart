@@ -21,6 +21,8 @@ class ComparisonManualView extends StatelessWidget {
     this.teacherPicture = const ComparisonPicture(),
     this.learnerPicture = const ComparisonPicture(),
     this.error,
+    this.reviewControls,
+    this.candidateSelected = false,
   });
   final ComparisonManualSession session;
   final VoidCallback onApply, onCancel;
@@ -29,6 +31,8 @@ class ComparisonManualView extends StatelessWidget {
   final bool mirrorTeacher, mirrorLearner;
   final ComparisonPicture teacherPicture, learnerPicture;
   final String? error;
+  final WidgetBuilder? reviewControls;
+  final bool candidateSelected;
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: session,
@@ -76,7 +80,17 @@ class ComparisonManualView extends StatelessWidget {
                   : Column(
                       children: [
                         Expanded(child: preview),
-                        _footer(context),
+                        if (reviewControls == null)
+                          _footer(context)
+                        else
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: bounds.maxHeight * .55,
+                            ),
+                            child: SingleChildScrollView(
+                              child: _footer(context),
+                            ),
+                          ),
                       ],
                     ),
             ),
@@ -92,35 +106,40 @@ class ComparisonManualView extends StatelessWidget {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: double.infinity,
-          child: SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('只调位置')),
-              ButtonSegment(value: true, label: Text('校准速度差')),
-            ],
-            style: ButtonStyle(
-              foregroundColor: WidgetStateProperty.resolveWith(
-                (states) => states.contains(WidgetState.selected)
-                    ? AppTheme.of(context).editorSelection
-                    : AppTheme.of(context).flowTextSecondary,
+        if (reviewControls case final controls?)
+          controls(context)
+        else
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('只调位置')),
+                ButtonSegment(value: true, label: Text('校准速度差')),
+              ],
+              style: ButtonStyle(
+                foregroundColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? AppTheme.of(context).editorSelection
+                      : AppTheme.of(context).flowTextSecondary,
+                ),
+                backgroundColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? AppTheme.of(context).editorSelectionSubtle
+                      : Colors.transparent,
+                ),
+                side: const WidgetStatePropertyAll(BorderSide.none),
+                textStyle: const WidgetStatePropertyAll(
+                  TextStyle(fontSize: 13),
+                ),
               ),
-              backgroundColor: WidgetStateProperty.resolveWith(
-                (states) => states.contains(WidgetState.selected)
-                    ? AppTheme.of(context).editorSelectionSubtle
-                    : Colors.transparent,
-              ),
-              side: const WidgetStatePropertyAll(BorderSide.none),
-              textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
+              selected: {session.rateCalibration},
+              onSelectionChanged: saving || session.anchoring
+                  ? null
+                  : (v) => session.setRateCalibration(v.first),
+              showSelectedIcon: false,
             ),
-            selected: {session.rateCalibration},
-            onSelectionChanged: saving || session.anchoring
-                ? null
-                : (v) => session.setRateCalibration(v.first),
-            showSelectedIcon: false,
           ),
-        ),
-        if (session.rateCalibration)
+        if (reviewControls == null && session.rateCalibration)
           Row(
             children: [
               for (var i = 0; i < 2; i++)
@@ -169,8 +188,12 @@ class ComparisonManualView extends StatelessWidget {
                     session.ready &&
                         session.error == null &&
                         !saving &&
-                        !session.anchoring
-                    ? session.rateCalibration && session.anchorIndex == 0
+                        !session.anchoring &&
+                        (reviewControls == null ||
+                            (candidateSelected && session.candidateAuditioned))
+                    ? reviewControls == null &&
+                              session.rateCalibration &&
+                              session.anchorIndex == 0
                           ? () => session.recordFirstAnchor()
                           : onApply
                     : null,
@@ -183,6 +206,8 @@ class ComparisonManualView extends StatelessWidget {
                 label: Text(
                   saving
                       ? '正在保存…'
+                      : reviewControls != null
+                      ? '采用此乐段'
                       : session.rateCalibration && session.anchorIndex == 0
                       ? '记录前段音乐点'
                       : '完成校准',
@@ -331,15 +356,24 @@ class ComparisonManualView extends StatelessWidget {
                             semanticFormatterCallback: (v) =>
                                 comparisonTime(v.round()),
                             onChangeStart:
-                                session.ready && !saving && !session.anchoring
+                                session.ready &&
+                                    !saving &&
+                                    !session.anchoring &&
+                                    reviewControls == null
                                 ? (_) => unawaited(session.pause())
                                 : null,
                             onChanged:
-                                session.ready && !saving && !session.anchoring
+                                session.ready &&
+                                    !saving &&
+                                    !session.anchoring &&
+                                    reviewControls == null
                                 ? (v) => session.scrub(role, v.round())
                                 : null,
                             onChangeEnd:
-                                session.ready && !saving && !session.anchoring
+                                session.ready &&
+                                    !saving &&
+                                    !session.anchoring &&
+                                    reviewControls == null
                                 ? (v) => session.seek(role, v.round())
                                 : null,
                           ),
@@ -362,6 +396,9 @@ class ComparisonManualView extends StatelessWidget {
                     icon: const Icon(Icons.chevron_right, size: 22),
                   ),
                 ];
+                if (reviewControls != null) {
+                  return Row(children: controls.take(2).toList());
+                }
                 if (bounds.maxWidth >= 280) return Row(children: controls);
                 return Column(
                   mainAxisSize: MainAxisSize.min,
