@@ -404,7 +404,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         await session.pause();
         if (!mounted ||
             !session.candidateAuditioned ||
-            !await controller.confirmAlignmentCandidate(candidate)) {
+            !await controller.confirmAlignmentCandidate(
+              candidate,
+              session: session,
+            )) {
           return;
         }
       } else if (apply) {

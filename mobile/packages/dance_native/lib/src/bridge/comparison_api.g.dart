@@ -408,6 +408,10 @@ class MusicCandidateDto {
     required this.supportedSeconds,
     required this.residualMs,
     this.timeScale,
+    required this.referenceStartUs,
+    required this.referenceEndUs,
+    required this.targetStartUs,
+    required this.targetEndUs,
   });
 
   int offsetUs;
@@ -422,6 +426,14 @@ class MusicCandidateDto {
 
   double? timeScale;
 
+  int referenceStartUs;
+
+  int referenceEndUs;
+
+  int targetStartUs;
+
+  int targetEndUs;
+
   List<Object?> _toList() {
     return <Object?>[
       offsetUs,
@@ -430,6 +442,10 @@ class MusicCandidateDto {
       supportedSeconds,
       residualMs,
       timeScale,
+      referenceStartUs,
+      referenceEndUs,
+      targetStartUs,
+      targetEndUs,
     ];
   }
 
@@ -445,6 +461,10 @@ class MusicCandidateDto {
       supportedSeconds: result[3]! as double,
       residualMs: result[4]! as double,
       timeScale: result[5] as double?,
+      referenceStartUs: result[6]! as int,
+      referenceEndUs: result[7]! as int,
+      targetStartUs: result[8]! as int,
+      targetEndUs: result[9]! as int,
     );
   }
 
@@ -457,7 +477,7 @@ class MusicCandidateDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(offsetUs, other.offsetUs) && _deepEquals(score, other.score) && _deepEquals(consistentWindows, other.consistentWindows) && _deepEquals(supportedSeconds, other.supportedSeconds) && _deepEquals(residualMs, other.residualMs) && _deepEquals(timeScale, other.timeScale);
+    return _deepEquals(offsetUs, other.offsetUs) && _deepEquals(score, other.score) && _deepEquals(consistentWindows, other.consistentWindows) && _deepEquals(supportedSeconds, other.supportedSeconds) && _deepEquals(residualMs, other.residualMs) && _deepEquals(timeScale, other.timeScale) && _deepEquals(referenceStartUs, other.referenceStartUs) && _deepEquals(referenceEndUs, other.referenceEndUs) && _deepEquals(targetStartUs, other.targetStartUs) && _deepEquals(targetEndUs, other.targetEndUs);
   }
 
   @override
@@ -466,7 +486,7 @@ class MusicCandidateDto {
 
   @override
   String toString() {
-    return 'MusicCandidateDto(offsetUs: $offsetUs, score: $score, consistentWindows: $consistentWindows, supportedSeconds: $supportedSeconds, residualMs: $residualMs, timeScale: $timeScale)';
+    return 'MusicCandidateDto(offsetUs: $offsetUs, score: $score, consistentWindows: $consistentWindows, supportedSeconds: $supportedSeconds, residualMs: $residualMs, timeScale: $timeScale, referenceStartUs: $referenceStartUs, referenceEndUs: $referenceEndUs, targetStartUs: $targetStartUs, targetEndUs: $targetEndUs)';
   }
 }
 

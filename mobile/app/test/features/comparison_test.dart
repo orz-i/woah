@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:app/app/theme.dart';
 import 'package:app/features/comparison/data/comparison_gateway.dart';
 import 'package:app/features/comparison/presentation/comparison_controller.dart';
+import 'package:app/features/comparison/presentation/comparison_manual_session.dart';
 import 'package:app/features/comparison/presentation/comparison_screen.dart';
 import 'package:app/features/comparison/presentation/comparison_timeline.dart';
 import 'package:dance_domain/dance_domain.dart';
@@ -46,6 +47,10 @@ MusicAlignmentDto matched() => MusicAlignmentDto(
       consistentWindows: 3,
       supportedSeconds: 10,
       residualMs: 0,
+      referenceStartUs: 1000000,
+      referenceEndUs: 3000000,
+      targetStartUs: 4000000,
+      targetEndUs: 6000000,
     ),
   ],
 );
@@ -873,7 +878,7 @@ void main() {
     },
   );
   test(
-    'ambiguous music keeps the saved calibration until a candidate is confirmed',
+    'ambiguous mappings cannot be applied without auditioning that candidate',
     () async {
       final gateway = FakeComparisonGateway(saved: [savedProject()])
         ..alignmentResult = MusicAlignmentDto(
@@ -886,6 +891,10 @@ void main() {
               consistentWindows: 3,
               supportedSeconds: 10,
               residualMs: 0,
+              referenceStartUs: 1000000,
+              referenceEndUs: 3000000,
+              targetStartUs: 2000000,
+              targetEndUs: 4000000,
             ),
             MusicCandidateDto(
               offsetUs: 3000000,
@@ -893,6 +902,10 @@ void main() {
               consistentWindows: 3,
               supportedSeconds: 10,
               residualMs: 0,
+              referenceStartUs: 1000000,
+              referenceEndUs: 3000000,
+              targetStartUs: 4000000,
+              targetEndUs: 6000000,
             ),
           ],
         );
@@ -909,14 +922,18 @@ void main() {
         3000000,
       ]);
       final selected = controller.alignmentOptions.last;
-      expect(await controller.confirmAlignmentCandidate(selected), isFalse);
-      expect(await controller.enterManualCalibration(), isTrue);
-      expect(await controller.confirmAlignmentCandidate(selected), isTrue);
-      expect(controller.project.offsetUs, 3000000);
-      expect(controller.project.alignment, 'confirmed');
-      expect(controller.alignmentOptions, isEmpty);
-      expect(gateway.projects.first.offsetUs, 3000000);
-      await controller.leaveManualCalibration(applied: true);
+      final session = ComparisonManualSession(
+        controller.project,
+        factory: (uri) => FakeCueVideo(uri, gateway.events),
+      );
+      expect(
+        await controller.confirmAlignmentCandidate(selected, session: session),
+        isFalse,
+      );
+      await session.close();
+      expect(controller.project.offsetUs, 2000000);
+      expect(controller.project.alignment, 'manual');
+      expect(gateway.projects.first.offsetUs, 2000000);
     },
   );
 

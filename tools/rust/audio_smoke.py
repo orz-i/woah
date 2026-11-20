@@ -11,7 +11,9 @@ import sys
 class Candidate(c.Structure):
     _fields_ = [('offset', c.c_int64), ('scale', c.c_double), ('score', c.c_double),
                 ('windows', c.c_uint32), ('reserved', c.c_uint32),
-                ('support', c.c_double), ('residual', c.c_double)]
+                ('support', c.c_double), ('residual', c.c_double),
+                ('reference_start_us', c.c_int64), ('reference_end_us', c.c_int64),
+                ('target_start_us', c.c_int64), ('target_end_us', c.c_int64)]
 
 
 class Alignment(c.Structure):
@@ -48,7 +50,7 @@ def main():
     lib.frame_kernel_audio_align.argtypes = [c.POINTER(c.c_uint8), c.c_size_t,
                                            c.POINTER(c.c_uint8), c.c_size_t, Callback, c.c_void_p]
     lib.frame_kernel_audio_align.restype = Alignment
-    assert c.sizeof(Candidate) == 48 and c.sizeof(Alignment) == 152
+    assert c.sizeof(Candidate) == 80 and c.sizeof(Alignment) == 248
 
     def features(pcm, origin):
         handle = lib.frame_kernel_audio_create(origin)
@@ -80,6 +82,8 @@ def main():
         a, b = 1/rate, 790000-30000/rate
         errors = [abs(best.scale*t+best.offset-(a*t+b)) for t in (3000000, 6000000, 9000000)]
         assert max(errors) < 35000, (rate, errors)
+        assert best.reference_start_us < best.reference_end_us
+        assert best.target_start_us < best.target_end_us
         proofs.append({'rate': rate, 'status': result.status, 'offset': best.offset,
                        'scale': best.scale, 'max_truth_error_us': max(errors),
                        'pcm_sha256': hashlib.sha256(pcm.tobytes()).hexdigest(),

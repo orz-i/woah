@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import '../data/comparison_gateway.dart';
+import 'comparison_manual_session.dart';
 
 class ComparisonController extends ChangeNotifier {
   final ComparisonGateway gateway;
@@ -327,11 +328,33 @@ class ComparisonController extends ChangeNotifier {
           null;
       final mappings = [
         for (final item in result.candidates)
-          ComparisonMusicMapping(item.offsetUs, item.timeScale ?? 1),
+          ComparisonMusicMapping(
+            item.offsetUs,
+            item.timeScale ?? 1,
+            item.referenceStartUs,
+            item.referenceEndUs,
+            item.targetStartUs,
+            item.targetEndUs,
+          ),
       ];
+      bool validCandidate(ComparisonMusicMapping mapping) {
+        if (!mapping.valid || !mapping.hasVerifiedAudition) return false;
+        final referenceStart = mapping.referenceStartUs!;
+        final referenceEnd = mapping.referenceEndUs!;
+        final targetStart = mapping.targetStartUs!;
+        final targetEnd = mapping.targetEndUs!;
+        if (referenceEnd > project.teacher!.durationUs ||
+            targetEnd > project.learner!.durationUs ||
+            (mapping.target(referenceStart) - targetStart).abs() > 5000 ||
+            (mapping.target(referenceEnd) - targetEnd).abs() > 5000) {
+          return false;
+        }
+        return hasOverlap(mapping);
+      }
+
       if (result.status == 'matched' &&
           mappings.isNotEmpty &&
-          hasOverlap(mappings.first)) {
+          validCandidate(mappings.first)) {
         final applied = await _applyMusicMapping(
           mappings.first,
           alignment: 'auto',
@@ -339,8 +362,8 @@ class ComparisonController extends ChangeNotifier {
         if (!_closed && revision == _revision && applied) {
           message = '已自动完成音乐速率和位置校准。';
         }
-      } else if (result.status == 'ambiguous' && mappings.any(hasOverlap)) {
-        _alignmentOptions = List.unmodifiable(mappings.where(hasOverlap));
+      } else if (result.status == 'ambiguous' && mappings.any(validCandidate)) {
+        _alignmentOptions = List.unmodifiable(mappings.where(validCandidate));
         message = '音乐对应不唯一，请试听后确认。';
       } else {
         alignmentNotice =
@@ -374,11 +397,24 @@ class ComparisonController extends ChangeNotifier {
     if (!_closed && revision == _revision) _notify();
   }
 
-  Future<bool> confirmAlignmentCandidate(ComparisonMusicMapping mapping) async {
+  Future<bool> confirmAlignmentCandidate(
+    ComparisonMusicMapping mapping, {
+    required ComparisonManualSession session,
+  }) async {
     if (_closed ||
         !calibrating ||
         _mappingWork != null ||
-        !_alignmentOptions.contains(mapping)) {
+        !session.belongsTo(project) ||
+        !session.hasAuditioned(mapping) ||
+        !_alignmentOptions.contains(mapping) ||
+        !mapping.hasVerifiedAudition ||
+        mapping.referenceEndUs! > project.teacher!.durationUs ||
+        mapping.targetEndUs! > project.learner!.durationUs ||
+        (mapping.target(mapping.referenceStartUs!) - mapping.targetStartUs!)
+                .abs() >
+            5000 ||
+        (mapping.target(mapping.referenceEndUs!) - mapping.targetEndUs!).abs() >
+            5000) {
       return false;
     }
     final applied = await _applyMusicMapping(mapping, alignment: 'confirmed');

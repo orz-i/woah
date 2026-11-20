@@ -459,7 +459,11 @@ data class MusicCandidateDto (
   val consistentWindows: Long,
   val supportedSeconds: Double,
   val residualMs: Double,
-  val timeScale: Double? = null
+  val timeScale: Double? = null,
+  val referenceStartUs: Long,
+  val referenceEndUs: Long,
+  val targetStartUs: Long,
+  val targetEndUs: Long
 )
  {
   companion object {
@@ -470,7 +474,11 @@ data class MusicCandidateDto (
       val supportedSeconds = pigeonVar_list[3] as Double
       val residualMs = pigeonVar_list[4] as Double
       val timeScale = pigeonVar_list[5] as Double?
-      return MusicCandidateDto(offsetUs, score, consistentWindows, supportedSeconds, residualMs, timeScale)
+      val referenceStartUs = pigeonVar_list[6] as Long
+      val referenceEndUs = pigeonVar_list[7] as Long
+      val targetStartUs = pigeonVar_list[8] as Long
+      val targetEndUs = pigeonVar_list[9] as Long
+      return MusicCandidateDto(offsetUs, score, consistentWindows, supportedSeconds, residualMs, timeScale, referenceStartUs, referenceEndUs, targetStartUs, targetEndUs)
     }
   }
   fun toList(): List<Any?> {
@@ -481,6 +489,10 @@ data class MusicCandidateDto (
       supportedSeconds,
       residualMs,
       timeScale,
+      referenceStartUs,
+      referenceEndUs,
+      targetStartUs,
+      targetEndUs,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -491,7 +503,7 @@ data class MusicCandidateDto (
       return true
     }
     val other = other as MusicCandidateDto
-    return ComparisonApiPigeonUtils.deepEquals(this.offsetUs, other.offsetUs) && ComparisonApiPigeonUtils.deepEquals(this.score, other.score) && ComparisonApiPigeonUtils.deepEquals(this.consistentWindows, other.consistentWindows) && ComparisonApiPigeonUtils.deepEquals(this.supportedSeconds, other.supportedSeconds) && ComparisonApiPigeonUtils.deepEquals(this.residualMs, other.residualMs) && ComparisonApiPigeonUtils.deepEquals(this.timeScale, other.timeScale)
+    return ComparisonApiPigeonUtils.deepEquals(this.offsetUs, other.offsetUs) && ComparisonApiPigeonUtils.deepEquals(this.score, other.score) && ComparisonApiPigeonUtils.deepEquals(this.consistentWindows, other.consistentWindows) && ComparisonApiPigeonUtils.deepEquals(this.supportedSeconds, other.supportedSeconds) && ComparisonApiPigeonUtils.deepEquals(this.residualMs, other.residualMs) && ComparisonApiPigeonUtils.deepEquals(this.timeScale, other.timeScale) && ComparisonApiPigeonUtils.deepEquals(this.referenceStartUs, other.referenceStartUs) && ComparisonApiPigeonUtils.deepEquals(this.referenceEndUs, other.referenceEndUs) && ComparisonApiPigeonUtils.deepEquals(this.targetStartUs, other.targetStartUs) && ComparisonApiPigeonUtils.deepEquals(this.targetEndUs, other.targetEndUs)
   }
 
   override fun hashCode(): Int {
@@ -502,10 +514,14 @@ data class MusicCandidateDto (
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.supportedSeconds)
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.residualMs)
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.timeScale)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.referenceStartUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.referenceEndUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.targetStartUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.targetEndUs)
     return result
   }
   override fun toString(): String {
-    return "MusicCandidateDto(offsetUs=$offsetUs, score=$score, consistentWindows=$consistentWindows, supportedSeconds=$supportedSeconds, residualMs=$residualMs, timeScale=$timeScale)"
+    return "MusicCandidateDto(offsetUs=$offsetUs, score=$score, consistentWindows=$consistentWindows, supportedSeconds=$supportedSeconds, residualMs=$residualMs, timeScale=$timeScale, referenceStartUs=$referenceStartUs, referenceEndUs=$referenceEndUs, targetStartUs=$targetStartUs, targetEndUs=$targetEndUs)"
   }
 }
 

@@ -8,6 +8,10 @@ struct IOSComparisonMusicCandidate {
   let supportedSeconds: Double
   let residualMs: Double
   var timeScale: Double = 1
+  let referenceStartUs: Int64
+  let referenceEndUs: Int64
+  let targetStartUs: Int64
+  let targetEndUs: Int64
 }
 struct IOSComparisonMusicResult {
   let status: String
@@ -49,7 +53,9 @@ enum IOSComparisonMusicMatcher {
     }
     let candidates = [result.candidates.0, result.candidates.1, result.candidates.2].prefix(Int(result.count)).map {
       IOSComparisonMusicCandidate(offsetUs: $0.offset, score: $0.score, consistentWindows: Int64($0.windows),
-        supportedSeconds: $0.support, residualMs: $0.residual, timeScale: $0.scale)
+        supportedSeconds: $0.support, residualMs: $0.residual, timeScale: $0.scale,
+        referenceStartUs: $0.reference_start_us, referenceEndUs: $0.reference_end_us,
+        targetStartUs: $0.target_start_us, targetEndUs: $0.target_end_us)
     }
     return IOSComparisonMusicResult(status: status, message: message, candidates: candidates)
   }

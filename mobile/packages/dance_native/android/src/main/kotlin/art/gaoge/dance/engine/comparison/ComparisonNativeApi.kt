@@ -177,7 +177,8 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
                     " candidates="+result.candidates.joinToString { "offset_us="+it.offsetUs+" time_scale="+it.timeScale+" score="+it.score+
                         " windows="+it.consistentWindows+" span_s="+it.supportedSeconds+" residual_ms="+it.residualMs })
                 MusicAlignmentDto(result.status,result.message,result.candidates.map {
-                    MusicCandidateDto(it.offsetUs,it.score,it.consistentWindows,it.supportedSeconds,it.residualMs,it.timeScale)
+                    MusicCandidateDto(it.offsetUs,it.score,it.consistentWindows,it.supportedSeconds,it.residualMs,it.timeScale,
+                        it.referenceStartUs,it.referenceEndUs,it.targetStartUs,it.targetEndUs)
                 })
             } catch (error: ComparisonAlignmentCancelled) {
                 debug("music status=cancelled")

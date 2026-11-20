@@ -48,6 +48,10 @@ class ProbeGateway extends NativeComparisonGateway {
             consistentWindows: 3,
             supportedSeconds: 10,
             residualMs: 0,
+            referenceStartUs: 2000000,
+            referenceEndUs: 4000000,
+            targetStartUs: 3800000,
+            targetEndUs: 5600000,
           ),
         ],
       );

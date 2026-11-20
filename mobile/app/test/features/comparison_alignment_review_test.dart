@@ -22,6 +22,10 @@ MusicAlignmentDto ambiguous() => MusicAlignmentDto(
         consistentWindows: 3,
         supportedSeconds: 8,
         residualMs: 0,
+        referenceStartUs: 1000000,
+        referenceEndUs: 3200000,
+        targetStartUs: offset + 1000000,
+        targetEndUs: offset + 3200000,
       ),
   ],
 );
@@ -105,13 +109,39 @@ void main() {
       await controller.initialize();
       expect(await controller.enterManualCalibration(), isTrue);
       final candidate = controller.alignmentOptions.last;
+      final previews = <FakeCueVideo>[];
+      final session = ComparisonManualSession(
+        controller.project,
+        factory: (uri) {
+          final video = FakeCueVideo(uri, gateway.events);
+          previews.add(video);
+          return video;
+        },
+      );
+      await session.initialize();
+      expect(
+        await session.cueCandidate(candidate, controller.alignmentOptions),
+        isTrue,
+      );
+      await session.toggle(0);
+      advanceAudition(previews[0]);
+      await session.toggle(1);
+      advanceAudition(previews[1]);
+      expect(session.hasAuditioned(candidate), isTrue);
       gateway.failSave = true;
-      expect(await controller.confirmAlignmentCandidate(candidate), isFalse);
+      expect(
+        await controller.confirmAlignmentCandidate(candidate, session: session),
+        isFalse,
+      );
       expect(controller.project.offsetUs, 2000000);
       expect(controller.alignmentOptions, isNotEmpty);
       gateway.failSave = false;
-      expect(await controller.confirmAlignmentCandidate(candidate), isTrue);
+      expect(
+        await controller.confirmAlignmentCandidate(candidate, session: session),
+        isTrue,
+      );
       expect(controller.project.offsetUs, 10000000);
+      await session.close();
       await controller.leaveManualCalibration(applied: true);
     },
   );
@@ -122,9 +152,17 @@ void main() {
     addTearDown(controller.dispose);
     await controller.initialize();
     final old = controller.alignmentOptions.last;
+    final session = ComparisonManualSession(
+      controller.project,
+      factory: (uri) => FakeCueVideo(uri, gateway.events),
+    );
     await controller.newProject();
     expect(controller.alignmentOptions, isEmpty);
-    expect(await controller.confirmAlignmentCandidate(old), isFalse);
+    expect(
+      await controller.confirmAlignmentCandidate(old, session: session),
+      isFalse,
+    );
+    await session.close();
   });
 
   test(
@@ -157,8 +195,22 @@ void main() {
       );
       await session.initialize();
       final options = [
-        const ComparisonMusicMapping(1000000),
-        const ComparisonMusicMapping(10000000),
+        const ComparisonMusicMapping(
+          1000000,
+          1,
+          1000000,
+          3200000,
+          2000000,
+          4200000,
+        ),
+        const ComparisonMusicMapping(
+          10000000,
+          1,
+          1000000,
+          3200000,
+          11000000,
+          13200000,
+        ),
       ];
       expect(await session.cueCandidate(options.first, options), isTrue);
       final reference = session.position(0);
@@ -207,7 +259,14 @@ void main() {
       );
       await session.initialize();
       videos[1].failSeek = true;
-      final candidate = const ComparisonMusicMapping(1000000);
+      final candidate = const ComparisonMusicMapping(
+        1000000,
+        1,
+        1000000,
+        3200000,
+        2000000,
+        4200000,
+      );
       expect(await session.cueCandidate(candidate, [candidate]), isFalse);
       expect(session.error, isNotNull);
       expect(videos.every((v) => !v.value.isPlaying), isTrue);
@@ -376,7 +435,14 @@ void main() {
       },
     );
     await session.initialize();
-    const candidate = ComparisonMusicMapping(1000000);
+    const candidate = ComparisonMusicMapping(
+      1000000,
+      1,
+      1000000,
+      3200000,
+      2000000,
+      4200000,
+    );
     expect(await session.cueCandidate(candidate, [candidate]), isTrue);
     final cue = videos[1].value.position;
     videos[1].value = videos[1].value.copyWith(

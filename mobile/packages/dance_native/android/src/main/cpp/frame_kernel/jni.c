@@ -856,13 +856,15 @@ JNIEXPORT jdoubleArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_musi
     FrameKernelAlignment result=frame_kernel_audio_align((const uint8_t*)r,(size_t)rn,(const uint8_t*)t,(size_t)tn,audio_current,&check);
     (*env)->ReleaseByteArrayElements(env,reference,r,JNI_ABORT);(*env)->ReleaseByteArrayElements(env,target,t,JNI_ABORT);
     if((*env)->ExceptionCheck(env)) return NULL;
-    jdouble data[20]={result.status,result.count};
+    jdouble data[32]={result.status,result.count};
     for(uint32_t i=0;i<result.count && i<3;i++) {
-        FrameKernelMusicCandidate c=result.candidates[i];int k=2+(int)i*6;
+        FrameKernelMusicCandidate c=result.candidates[i];int k=2+(int)i*10;
         data[k]=(double)c.offset;data[k+1]=c.scale;data[k+2]=c.score;data[k+3]=c.windows;data[k+4]=c.support;data[k+5]=c.residual;
+        data[k+6]=(double)c.reference_start_us;data[k+7]=(double)c.reference_end_us;
+        data[k+8]=(double)c.target_start_us;data[k+9]=(double)c.target_end_us;
     }
-    jdoubleArray out=(*env)->NewDoubleArray(env,2+(jsize)result.count*6);
-    if(out) (*env)->SetDoubleArrayRegion(env,out,0,2+(jsize)result.count*6,data);return out;
+    jdoubleArray out=(*env)->NewDoubleArray(env,2+(jsize)result.count*10);
+    if(out) (*env)->SetDoubleArrayRegion(env,out,0,2+(jsize)result.count*10,data);return out;
 }
 
 JNIEXPORT jlongArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_frameStepNative(JNIEnv *env,jobject self,jlong fs,jlong fe,jlong rs,jlong re,jboolean forward,jlong ps,jlong pe) {

@@ -5,7 +5,25 @@ import 'time_kernel.dart';
 class ComparisonMusicMapping {
   final int offsetUs;
   final double timeScale;
-  const ComparisonMusicMapping(this.offsetUs, [this.timeScale = 1]);
+  final int? referenceStartUs, referenceEndUs, targetStartUs, targetEndUs;
+  const ComparisonMusicMapping(
+    this.offsetUs, [
+    this.timeScale = 1,
+    this.referenceStartUs,
+    this.referenceEndUs,
+    this.targetStartUs,
+    this.targetEndUs,
+  ]);
+
+  bool get hasVerifiedAudition =>
+      referenceStartUs != null &&
+      referenceEndUs != null &&
+      targetStartUs != null &&
+      targetEndUs != null &&
+      referenceStartUs! >= 0 &&
+      targetStartUs! >= 0 &&
+      referenceEndUs! - referenceStartUs! >= 650000 &&
+      targetEndUs! > targetStartUs!;
 
   bool get valid =>
       timeScale.isFinite &&

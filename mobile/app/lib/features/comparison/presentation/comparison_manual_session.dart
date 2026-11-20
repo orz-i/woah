@@ -6,9 +6,10 @@ import 'package:video_player/video_player.dart';
 import 'package:dance_domain/dance_domain.dart';
 
 class _CandidatePlayback {
-  _CandidatePlayback(this.role, this._last);
+  _CandidatePlayback(this.role, this._last, this.startUs, this.endUs);
 
   final int role;
+  final int startUs, endUs;
   Duration _last, _advanced = Duration.zero;
   int _updates = 0;
 
@@ -22,8 +23,14 @@ class _CandidatePlayback {
       _advanced = Duration.zero;
       _updates = 0;
     } else if (delta > Duration.zero) {
-      _advanced += delta;
-      _updates++;
+      final previousUs = (_last - delta).inMicroseconds;
+      final positionUs = value.position.inMicroseconds;
+      final advancedUs = (min(endUs, positionUs) - max(startUs, previousUs))
+          .toInt();
+      if (advancedUs > 0) {
+        _advanced += Duration(microseconds: advancedUs);
+        _updates++;
+      }
     }
     // The plugin acknowledges play before decoding starts. Require sustained
     // clock movement, not a command acknowledgement or a single position jump.
@@ -32,7 +39,7 @@ class _CandidatePlayback {
 }
 
 /// Independent source previews exist only while the shared comparison is closed.
-class ComparisonManualSession extends ChangeNotifier {
+final class ComparisonManualSession extends ChangeNotifier {
   ComparisonManualSession(
     this.project, {
     VideoPlayerController Function(String)? factory,
@@ -62,11 +69,25 @@ class ComparisonManualSession extends ChangeNotifier {
   bool rateCalibration = false, anchoring = false;
   int _playRequest = 0;
   Future<void>? _playTail;
-  ({int referenceUs, int targetUs})? _candidateCue;
+  ({int referenceUs, int targetUs, int referenceEndUs, int targetEndUs})?
+  _candidateCue;
+  ComparisonMusicMapping? _candidateMapping;
   _CandidatePlayback? _candidatePlayback;
   final List<bool> _auditioned = [false, false];
   bool get candidateAuditioned =>
-      _candidateCue != null && _auditioned.every((v) => v) && error == null;
+      _candidateCue != null &&
+      _candidateMapping != null &&
+      _auditioned.every((v) => v) &&
+      error == null;
+  bool hasAuditioned(ComparisonMusicMapping mapping) =>
+      !_closed && identical(_candidateMapping, mapping) && candidateAuditioned;
+  bool belongsTo(ComparisonProject value) =>
+      !_closed &&
+      project.id == value.id &&
+      project.teacher?.uri == value.teacher?.uri &&
+      project.teacher?.durationUs == value.teacher?.durationUs &&
+      project.learner?.uri == value.learner?.uri &&
+      project.learner?.durationUs == value.learner?.durationUs;
   int anchorIndex = 0;
   (int, int)? firstAnchor, secondAnchor;
   void setRateCalibration(bool value) {
@@ -220,6 +241,8 @@ class ComparisonManualSession extends ChangeNotifier {
               _candidatePlayback = _CandidatePlayback(
                 role,
                 videos[role].value.position,
+                role == 0 ? cue.referenceUs : cue.targetUs,
+                role == 0 ? cue.referenceEndUs : cue.targetEndUs,
               );
               _tick();
             }
@@ -247,31 +270,28 @@ class ComparisonManualSession extends ChangeNotifier {
     List<ComparisonMusicMapping> options,
   ) async {
     if (!ready || _closed || anchoring) return false;
-    _candidateCue = null;
-    _candidatePlayback = null;
-    _auditioned.fillRange(0, 2, false);
-    // Leave time for position samples from both players, even when the
-    // intersection of several candidate overlaps falls close to a video end.
-    const auditionTailUs = 500000;
-    final referenceEnd = max(0, duration(0) - auditionTailUs);
-    final targetEnd = max(0, duration(1) - auditionTailUs);
-    final range = mapping.overlap(referenceEnd, targetEnd);
-    if (range == null) {
-      error = '此候选没有足够的共同区间可供试听。';
+    if (!options.contains(mapping) ||
+        !mapping.hasVerifiedAudition ||
+        mapping.referenceEndUs! > duration(0) ||
+        mapping.targetEndUs! > duration(1) ||
+        (mapping.target(mapping.referenceStartUs!) - mapping.targetStartUs!)
+                .abs() >
+            5000 ||
+        (mapping.target(mapping.referenceEndUs!) - mapping.targetEndUs!).abs() >
+            5000) {
+      error = '此候选没有有效的已核验试听区间。';
       _tick();
       return false;
     }
-    var (start, end) = range;
-    for (final option in options) {
-      final other = option.overlap(referenceEnd, targetEnd);
-      if (other == null) continue;
-      start = max(start, other.$1);
-      end = min(end, other.$2);
-    }
-    // Use the same reference phrase for all candidates when possible.
-    if (start >= end) (start, end) = range;
-    final cue = start + (end - start) ~/ 2;
-    final targetCue = mapping.target(cue);
+    _candidateCue = null;
+    _candidateMapping = null;
+    _candidatePlayback = null;
+    _auditioned.fillRange(0, 2, false);
+    // The cue is drawn only from the exact source intervals returned with this
+    // candidate; never infer audition locations from video overlap.
+    final cue = mapping.referenceStartUs!;
+    final targetCue = mapping.targetStartUs!;
+    final targetEnd = mapping.targetEndUs!;
     anchoring = true;
     _tick();
     try {
@@ -282,7 +302,13 @@ class ComparisonManualSession extends ChangeNotifier {
         error = '候选乐段定位未完成，请重新选择后试听。';
         return false;
       }
-      _candidateCue = (referenceUs: cue, targetUs: targetCue);
+      _candidateCue = (
+        referenceUs: cue,
+        targetUs: targetCue,
+        referenceEndUs: mapping.referenceEndUs!,
+        targetEndUs: targetEnd,
+      );
+      _candidateMapping = mapping;
       return true;
     } catch (_) {
       if (!_closed) error = '候选乐段定位未完成，请重新选择后试听。';

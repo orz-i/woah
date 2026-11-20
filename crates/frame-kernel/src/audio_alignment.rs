@@ -2,6 +2,9 @@
 use crate::audio_features::{AudioError, Features, Frame};
 use std::collections::{BTreeMap, BTreeSet};
 
+mod evidence;
+use evidence::{Decision, Evidence, VerificationWork, verify, verify_scope};
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Candidate {
@@ -12,12 +15,37 @@ pub struct Candidate {
     pub reserved: u32,
     pub support: f64,
     pub residual: f64,
+    pub audition: Audition,
 }
 #[derive(Clone, Debug)]
 pub struct Alignment {
     pub status: u32,
     pub candidates: Vec<Candidate>,
 }
+
+/// Verified half-open positions in each source. Never the video overlap.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Audition {
+    pub reference_start_us: i64,
+    pub reference_end_us: i64,
+    pub target_start_us: i64,
+    pub target_end_us: i64,
+}
+
+#[derive(Default, Debug, Clone)]
+struct Proposals {
+    candidates: Vec<Candidate>,
+    preferred: bool,
+    search_complete: bool,
+}
+
+struct ScopedProposal {
+    candidate: Candidate,
+    pitch: bool,
+    reference_scope: (i64, i64),
+}
+
 // Status: 0 matched, 1 no match, 2 inconsistent, 3 ambiguous. Errors are separate.
 fn check(current: &dyn Fn() -> bool) -> Result<(), AudioError> {
     if current() {
@@ -61,83 +89,262 @@ pub fn align(
     current: &dyn Fn() -> bool,
 ) -> Result<Alignment, AudioError> {
     check(current)?;
-    let mut constant = constant(t, l, current)?;
-    if constant.status == 0 {
-        let best = constant.candidates[0];
-        if !local_conflict(t, l, best.seed(false), current)? {
-            return Ok(constant);
+    let constant = constant(t, l, current)?;
+    let mut book = CandidateBook::default();
+    let mut work = VerificationWork::new(t, l);
+    let preferred = constant.preferred.then(|| constant.candidates[0]);
+    let competitive = |c: Candidate| {
+        let best = constant.candidates.first().map_or(1.0, |best| best.score);
+        c.score >= 0.54 && c.score + 0.22 >= best
+    };
+    for (i, candidate) in constant.candidates.iter().copied().enumerate() {
+        if !competitive(candidate) {
+            continue;
         }
-        // Three long windows can hide a small steady drift or a late edit.
-        // Refit this passage at a different rate, not a new, shorter passage
-        // whose overlap might simply omit the conflicting end of the song.
-        constant.status = 2;
-        if let Some(model) = refit_passage(t, l, best, current)? {
-            return Ok(Alignment {
-                status: 0,
-                candidates: vec![model],
-            });
-        }
-        return Ok(constant);
-    }
-    if constant.status == 3 && constant.candidates.len() > 1 {
-        return verify_constant_review(t, l, constant, current);
-    }
-    if let Some(model) = affine(t, l, current)? {
-        return Ok(model);
-    }
-    if constant.status == 3 {
-        // A single provisional choice is still confirmable in the UI. Do not
-        // bypass verification just because the global rate search found none.
-        return verify_constant_review(t, l, constant, current);
-    }
-    Ok(constant)
-}
-
-fn verify_constant_review(
-    t: &Features,
-    l: &Features,
-    mut result: Alignment,
-    current: &dyn Fn() -> bool,
-) -> Result<Alignment, AudioError> {
-    // Preserve the passage choices, not their provisional same-speed maps.
-    // Never promote a remaining review choice to an automatic application.
-    let mut verified: Vec<Candidate> = Vec::new();
-    for candidate in result.candidates {
-        let model = if candidate.support >= 6.0 {
-            refit_passage(t, l, candidate, current)?
-        } else if candidate.windows == 3
-            && candidate.residual <= 30.0
-            && !local_conflict(t, l, candidate.seed(false), current)?
-        {
-            // Short stable passages cannot meet the affine fitter's six seconds.
-            Some(candidate)
+        let linear =
+            candidate.windows == 3 && candidate.residual <= 30.0 && candidate.score >= 0.60;
+        let base = if linear || (i == 0 && constant.preferred) {
+            Some(book.consider(t, l, candidate, false, &mut work, current)?)
         } else {
             None
         };
-        if let Some(model) = model
-            && verified.iter().all(|v| {
-                (v.scale - model.scale).abs() >= 0.003 || (v.offset - model.offset).abs() >= 150000
-            })
-        {
-            verified.push(model);
+        if base != Some(Decision::Supported) || candidate.residual > 20.0 {
+            // Use both pitch modes for each plausible passage, not just the
+            // mode that happened to produce its first offset proposal.
+            for pitch in [false, true] {
+                if let Some(model) = refine(t, l, candidate.seed(pitch), current)?
+                    && strong_affine(model)
+                    && same_passage(t, l, candidate, model, 180_000.0)
+                    && model.support >= candidate.support * 0.95
+                {
+                    book.consider(t, l, model, pitch, &mut work, current)?;
+                }
+            }
         }
     }
-    verified.sort_by(compare);
-    result.candidates = verified;
-    if result.candidates.is_empty() {
-        result.status = 2;
+
+    if book.accepted.is_empty() {
+        let proposals = affine(t, l, current)?;
+        book.consider_all(t, l, proposals, &mut work, current)?;
     }
-    Ok(result)
+    // Do not treat a successful fast path as proof of uniqueness. Compare the
+    // strongest supported passage against residual music in both sources.
+    if let Some((candidate, evidence)) = book.best() {
+        for proposal in alternative_passages(t, l, candidate, evidence, current)? {
+            if !strong_affine(proposal.candidate) {
+                continue;
+            }
+            let verified = verify_scope(
+                t,
+                l,
+                proposal.candidate.seed(proposal.pitch),
+                Some(proposal.reference_scope),
+                &mut work,
+                current,
+            )?;
+            book.record(t, l, proposal.candidate, proposal.pitch, verified);
+        }
+    }
+    let conflicted_preferred = preferred.is_some_and(|candidate| {
+        book.conflicted
+            .iter()
+            .any(|c| !same_passage(t, l, candidate, *c, 30_000.0))
+    });
+    // Search-level competition is only a review decision after another
+    // passage has produced evidence (support or conflict). Echoes and noisy
+    // aliases can create a close ranking proposal without being a second
+    // usable alignment.
+    let provisional_review = (conflicted_preferred && !book.accepted.is_empty())
+        || (preferred.is_some() && !constant.search_complete && !book.accepted.is_empty());
+    let plausible_without_support = constant
+        .candidates
+        .iter()
+        .any(|candidate| candidate.score >= 0.45 && candidate.support >= 2.0);
+    check(current)?;
+    Ok(book.publish(
+        provisional_review,
+        work.exhausted() || !constant.search_complete,
+        plausible_without_support,
+    ))
+}
+
+#[derive(Default)]
+struct CandidateBook {
+    accepted: Vec<(Candidate, Evidence)>,
+    checked: Vec<(Candidate, bool, Decision)>,
+    conflicted: Vec<Candidate>,
+}
+
+impl CandidateBook {
+    fn consider(
+        &mut self,
+        t: &Features,
+        l: &Features,
+        candidate: Candidate,
+        pitch: bool,
+        work: &mut VerificationWork,
+        current: &dyn Fn() -> bool,
+    ) -> Result<Decision, AudioError> {
+        // Pitch compensation may raise a candidate's score, but it cannot
+        // erase a confirmed conflict for the same time mapping.
+        if self.checked.iter().any(|(v, _, decision)| {
+            *decision == Decision::Conflict && same_passage(t, l, *v, candidate, 35_000.0)
+        }) {
+            return Ok(Decision::Conflict);
+        }
+        if let Some((_, _, decision)) = self
+            .checked
+            .iter()
+            .find(|(v, p, _)| pitch == *p && same_passage(t, l, *v, candidate, 5_000.0))
+        {
+            return Ok(*decision);
+        }
+        let evidence = verify(t, l, candidate.seed(pitch), work, current)?;
+        self.record(t, l, candidate, pitch, evidence);
+        Ok(evidence.decision)
+    }
+
+    fn record(
+        &mut self,
+        t: &Features,
+        l: &Features,
+        candidate: Candidate,
+        pitch: bool,
+        evidence: Evidence,
+    ) {
+        if self.checked.iter().any(|(old, old_pitch, decision)| {
+            *old_pitch == pitch
+                && *decision == evidence.decision
+                && old.offset == candidate.offset
+                && (old.scale - candidate.scale).abs() < 1e-7
+        }) {
+            return;
+        }
+        self.checked.push((candidate, pitch, evidence.decision));
+        match evidence.decision {
+            Decision::Supported => {
+                if let Some(old) = self
+                    .accepted
+                    .iter_mut()
+                    .find(|(v, _)| same_passage(t, l, *v, candidate, 70_000.0))
+                {
+                    if evidence.quality > old.1.quality + 0.025 {
+                        *old = (candidate, evidence);
+                    }
+                } else {
+                    self.accepted.push((candidate, evidence));
+                }
+            }
+            Decision::Conflict => {
+                // A later verification of the same mapping can reveal an
+                // edit missed by an earlier pitch-compensated hypothesis.
+                self.accepted
+                    .retain(|(accepted, _)| !same_passage(t, l, *accepted, candidate, 35_000.0));
+                self.conflicted.push(candidate);
+            }
+            Decision::Insufficient => {}
+        }
+    }
+
+    fn consider_all(
+        &mut self,
+        t: &Features,
+        l: &Features,
+        proposals: Vec<(Candidate, bool)>,
+        work: &mut VerificationWork,
+        current: &dyn Fn() -> bool,
+    ) -> Result<(), AudioError> {
+        for (candidate, pitch) in proposals {
+            if strong_affine(candidate) {
+                self.consider(t, l, candidate, pitch, work, current)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn best(&self) -> Option<(Candidate, Evidence)> {
+        self.accepted.iter().copied().max_by(|a, b| {
+            a.1.support_us
+                .cmp(&b.1.support_us)
+                .then(a.1.quality.total_cmp(&b.1.quality))
+        })
+    }
+
+    fn publish(
+        mut self,
+        provisional_review: bool,
+        exhausted: bool,
+        plausible_without_support: bool,
+    ) -> Alignment {
+        let best_span = self.best().map_or(0, |(_, e)| e.support_us);
+        self.accepted
+            .retain(|(_, e)| e.support_us * 5 >= best_span * 4);
+        self.accepted.sort_by(|a, b| {
+            b.1.quality
+                .total_cmp(&a.1.quality)
+                .then(compare(&a.0, &b.0))
+        });
+        let some_conflict = !self.conflicted.is_empty();
+        let review = provisional_review
+            || self.accepted.len() > 1
+            || self.accepted.first().is_some_and(|(best, evidence)| {
+                // A second repeatedly proposed and since rejected passage is not
+                // a license to promote the remaining candidate automatically.
+                self.conflicted.iter().any(|c| {
+                    c.support * 1e6 >= evidence.support_us as f64 * 0.8
+                        && (c.scale - best.scale).abs() < 0.07
+                        && (c.offset - best.offset).abs() > 300_000
+                })
+            });
+        let status = if exhausted || self.accepted.is_empty() {
+            if some_conflict || exhausted || plausible_without_support {
+                2
+            } else {
+                1
+            }
+        } else if review {
+            3
+        } else {
+            0
+        };
+        let candidates = if status == 0 || status == 3 {
+            self.accepted
+                .into_iter()
+                .take(3)
+                .map(|(mut c, e)| {
+                    c.support = e.support_us as f64 / 1e6;
+                    c.audition = e
+                        .audition
+                        .expect("supported map has a verified playback interval");
+                    c
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        Alignment { status, candidates }
+    }
+}
+
+fn same_passage(t: &Features, l: &Features, a: Candidate, b: Candidate, margin: f64) -> bool {
+    let (start, end) = range(t, l, a.seed(false));
+    let (other_start, other_end) = range(t, l, b.seed(false));
+    let from = start.max(other_start);
+    let until = end.min(other_end);
+    from < until
+        && [from, until].into_iter().all(|time| {
+            ((a.scale - b.scale) * time as f64 + (a.offset - b.offset) as f64).abs() <= margin
+        })
 }
 
 fn constant(
     t: &Features,
     l: &Features,
     current: &dyn Fn() -> bool,
-) -> Result<Alignment, AudioError> {
-    let none = || Alignment {
-        status: 1,
-        candidates: vec![],
+) -> Result<Proposals, AudioError> {
+    let none = || Proposals {
+        search_complete: true,
+        ..Proposals::default()
     };
     if t.frames.len() < 200 || l.frames.len() < 200 {
         return Ok(none());
@@ -254,6 +461,7 @@ fn constant(
             support: (end - start) as f64 / 1e6,
             residual,
             reserved: 0,
+            ..Candidate::default()
         });
     }
     candidates.sort_by(compare);
@@ -272,38 +480,12 @@ fn constant(
     let Some(best) = selected.first() else {
         return Ok(none());
     };
-    let runner = selected.get(1).map_or(0.0, |r| r.score);
-    let room = best.score >= 0.54
-        && best.support >= 8.0
-        && best.windows == 3
-        && best.residual <= 20.0
-        && best.score - runner >= 0.15;
-    let status = if best.score < 0.64 && !room {
-        1
-    } else if best.residual > 60.0 {
-        2
-    } else if best.windows < 3
-        || selected
-            .iter()
-            .skip(1)
-            .any(|v| v.score >= best.score - 0.08 && v.score > 0.60)
-    {
-        3
-    } else {
-        0
-    };
-    if status == 3 {
-        let best_score = best.score;
-        selected.truncate(
-            selected
-                .iter()
-                .take_while(|v| v.score >= best_score - 0.08 && v.score > 0.60)
-                .count(),
-        );
-    }
-    Ok(Alignment {
-        status,
+    let room =
+        best.score >= 0.54 && best.support >= 8.0 && best.windows == 3 && best.residual <= 20.0;
+    Ok(Proposals {
+        preferred: (best.score >= 0.64 || room) && best.windows == 3,
         candidates: selected,
+        search_complete: true,
     })
 }
 
@@ -364,25 +546,6 @@ fn strong_affine(candidate: Candidate) -> bool {
         && candidate.windows == 4
         && candidate.residual <= 35.0
         && candidate.support >= 6.0
-}
-
-fn refit_passage(
-    t: &Features,
-    l: &Features,
-    candidate: Candidate,
-    current: &dyn Fn() -> bool,
-) -> Result<Option<Candidate>, AudioError> {
-    let mut verified = Vec::new();
-    for pitch in [false, true] {
-        if let Some(model) = refine(t, l, candidate.seed(pitch), current)?
-            && strong_affine(model)
-            && model.support >= candidate.support * 0.95
-            && !local_conflict(t, l, model.seed(pitch), current)?
-        {
-            verified.push(model);
-        }
-    }
-    Ok(verified.into_iter().min_by(compare))
 }
 
 struct Votes {
@@ -452,12 +615,12 @@ fn affine(
     t: &Features,
     l: &Features,
     current: &dyn Fn() -> bool,
-) -> Result<Option<Alignment>, AudioError> {
+) -> Result<Vec<(Candidate, bool)>, AudioError> {
     if (t.end() - t.start()).min(l.end() - l.start()) < 6000000
         || t.frames.len() < 600
         || l.frames.len() < 600
     {
-        return Ok(None);
+        return Ok(Vec::new());
     }
     let mut index: BTreeMap<i32, Vec<i64>> = BTreeMap::new();
     for i in (0..t.frames.len()).step_by(4) {
@@ -475,7 +638,7 @@ fn affine(
         }
     }
     if index.len() < 12 {
-        return Ok(None);
+        return Ok(Vec::new());
     }
     let mut seeds = Vec::new();
     for step in 0..=60 {
@@ -566,44 +729,62 @@ fn affine(
         }
     }
     results.sort_by(|a, b| compare(&a.0, &b.0));
-    let mut selected: Vec<(Candidate, bool)> = Vec::new();
-    for (c, pitch) in results {
-        if selected.iter().all(|(v, _)| {
-            (v.scale - c.scale).abs() >= 0.003 || (v.offset - c.offset).abs() >= 150000
-        }) {
-            selected.push((c, pitch));
-        }
-        if selected.len() == 3 {
-            break;
-        }
-    }
-    let Some(&(best, _)) = selected.first() else {
-        return Ok(None);
-    };
-    let status = if !strong_affine(best) {
-        2
-    } else {
-        selected.retain(|(v, _)| v.score >= best.score - 0.08 && strong_affine(*v));
-        let review = selected.len() > 1;
-        let mut verified = Vec::new();
-        for (candidate, pitch) in selected {
-            if !local_conflict(t, l, candidate.seed(pitch), current)? {
-                verified.push((candidate, pitch));
+    Ok(results)
+}
+
+fn alternative_passages(
+    t: &Features,
+    l: &Features,
+    best: Candidate,
+    evidence: Evidence,
+    current: &dyn Fn() -> bool,
+) -> Result<Vec<ScopedProposal>, AudioError> {
+    let (from, until) = evidence.reference_span;
+    let mapped = |time: i64| round(time as f64 * best.scale + best.offset as f64);
+    let mut results = Vec::new();
+    for (reverse, side, start, end) in [
+        (false, l, mapped(from), mapped(until)),
+        (true, t, from, until),
+    ] {
+        let Some((lo, hi)) = musical_bounds(side) else {
+            continue;
+        };
+        // Smaller residual regions cannot supply enough support to rival the
+        // original passage, even at the maximum supported rate ratio.
+        let minimum = 6_000_000.max((end - start) / 3);
+        for (a, b) in [(lo, start), (end, hi)] {
+            if b - a < minimum {
+                continue;
+            }
+            check(current)?;
+            let first = side.frames.partition_point(|frame| frame.time < a);
+            let last = side.frames.partition_point(|frame| frame.time < b);
+            let unused = Features {
+                frames: side.frames[first..last].to_vec(),
+            };
+            let proposals = if reverse {
+                affine(&unused, l, current)?
+            } else {
+                affine(t, &unused, current)?
+            };
+            for (candidate, pitch) in proposals {
+                let scope = if reverse {
+                    (a, b)
+                } else {
+                    (
+                        round((a as f64 - candidate.offset as f64) / candidate.scale),
+                        round((b as f64 - candidate.offset as f64) / candidate.scale),
+                    )
+                };
+                results.push(ScopedProposal {
+                    candidate,
+                    pitch,
+                    reference_scope: scope,
+                });
             }
         }
-        selected = verified;
-        if selected.is_empty() {
-            2
-        } else if review {
-            3 // Removing a conflicting choice must not auto-apply its runner-up.
-        } else {
-            0
-        }
-    };
-    Ok(Some(Alignment {
-        status,
-        candidates: selected.into_iter().map(|(v, _)| v).collect(),
-    }))
+    }
+    Ok(results)
 }
 
 fn range(t: &Features, l: &Features, s: Seed) -> (i64, i64) {
@@ -613,169 +794,6 @@ fn range(t: &Features, l: &Features, s: Seed) -> (i64, i64) {
         t.end()
             .min(((l.end() - s.offset) as f64 / s.scale).floor() as i64),
     )
-}
-
-/// Probe short windows all the way to the shared interval's edges. Large
-/// windows used for ranking are deliberately tolerant of silence and noise,
-/// but can average away even several seconds of a conflicting passage.
-fn local_conflict(
-    t: &Features,
-    l: &Features,
-    s: Seed,
-    current: &dyn Fn() -> bool,
-) -> Result<bool, AudioError> {
-    if directional_conflict(t, l, s, current)? {
-        return Ok(true);
-    }
-    // An insertion in one source is a removal in the other. The overlap can
-    // otherwise clip the only reference frames that reveal an edge deletion.
-    directional_conflict(
-        l,
-        t,
-        Seed {
-            scale: 1.0 / s.scale,
-            offset: round(-(s.offset as f64) / s.scale),
-            pitch: s.pitch,
-        },
-        current,
-    )
-}
-
-fn directional_conflict(
-    t: &Features,
-    l: &Features,
-    s: Seed,
-    current: &dyn Fn() -> bool,
-) -> Result<bool, AudioError> {
-    let Some((t_start, t_end)) = musical_bounds(t) else {
-        return Ok(false);
-    };
-    let Some((l_start, l_end)) = musical_bounds(l) else {
-        return Ok(false);
-    };
-    // Leading/trailing silence is not a conflicting passage. Restrict only
-    // verification probes to musical evidence, not the fitted map or support.
-    // Internal silent edits remain inside these bounds and are still checked.
-    let start = t_start.max(((l_start - s.offset) as f64 / s.scale).ceil() as i64);
-    let end = t_end.min(((l_end - s.offset) as f64 / s.scale).floor() as i64);
-    let width = ((end - start) / 4).min(1_200_000);
-    if width < 500_000 {
-        return Ok(false);
-    }
-    let travel = end - start - width;
-    let intervals = ((travel + width - 1) / width).max(2);
-    let mut peak_times = None;
-    // Keep long probes for drift and noise tolerance. Overlapping 400 ms
-    // probes also detect a short edit which crosses a long-window boundary
-    // and returns to the original lag before the next long window.
-    let probes = (0..=intervals)
-        .map(|i| (start + travel * i / intervals, width, true))
-        .chain([200_000, 300_000].into_iter().flat_map(|edge_width| {
-            [
-                (start, edge_width, true),
-                (end - edge_width, edge_width, true),
-            ]
-        }))
-        .chain(
-            (start..=end - 400_000)
-                .step_by(200_000)
-                .map(|from| (from, 400_000, false)),
-        );
-    for (from, probe_width, wide) in probes {
-        check(current)?;
-        let probe = Probe::new(t, l, s, from, probe_width);
-        let minimum_frames = if probe_width < 300_000 { 10 } else { 15 };
-        if probe.frames.len() < minimum_frames {
-            continue; // No musical evidence here, not evidence of a shift.
-        }
-        let (near, near_peaks) = probe.near();
-        if near >= 0.94 {
-            continue;
-        }
-        if probe_width < 500_000 && near_peaks > 0.95 {
-            continue; // Short probes need raw spectral evidence of displacement.
-        }
-        // A clearly better local lag outside 30 ms is inconsistent with this
-        // mapping. A weak correlation alone can be temporary recording noise,
-        // not evidence of a different timeline; require a strong displaced peak.
-        // Short edge probes also need improved raw peak correspondence: a
-        // spectrally similar steady note alone cannot establish a different lag.
-        let minimum_score = if probe_width == 200_000 {
-            0.8
-        } else if wide {
-            0.65
-        } else {
-            0.72
-        };
-        for lag in (-80i32..=80).filter(|lag| lag.abs() > 3) {
-            let far = probe.score(lag);
-            if far >= minimum_score
-                && far - near >= 0.06
-                && (probe_width >= 500_000 || probe.displaced_peaks(lag, near_peaks, 0.05))
-            {
-                return Ok(true);
-            }
-        }
-        // Larger edits need displaced evidence too, not a return to rejecting
-        // weak/noisy windows. Propose lags from spectral peaks across the whole
-        // target, then verify a bounded set at full time/spectral resolution.
-        // A seconds-long jump needs a larger raw peak advantage than a nearby
-        // shift. Dense noise can upset the spectrum while leaving most of the
-        // underlying notes at their correct positions.
-        const WIDE_PEAK_MARGIN: f64 = 0.15;
-        if !wide || near_peaks > 1.0 - WIDE_PEAK_MARGIN {
-            continue;
-        }
-        let index = match &peak_times {
-            Some(index) => index,
-            None => peak_times.insert(PeakTimes::new(l, s, current)?),
-        };
-        // A distant clean copy of a noisy repeated phrase is only a proposal.
-        // Require the same lag in disjoint adjacent context, not just a single
-        // window. At a clip boundary use a shorter second probe on the inside.
-        let flank_width = if from == start || from + probe_width == end {
-            300_000
-        } else {
-            width
-        };
-        let flanks = [from - flank_width, from + probe_width]
-            .into_iter()
-            .filter(|&at| at >= start && at + flank_width <= end);
-        let mut context = None;
-        for lag in index.lags(&probe.frames, current)? {
-            check(current)?;
-            for refined in (lag - 5..=lag + 5).filter(|lag| lag.abs() > 80) {
-                let far = probe.score(refined);
-                // An entire song exposes more spectral aliases. Require the
-                // raw peak pattern to independently favor the displaced lag.
-                if far >= minimum_score
-                    && far - near >= 0.06
-                    && probe.displaced_peaks(refined, near_peaks, WIDE_PEAK_MARGIN)
-                {
-                    let context = context.get_or_insert_with(|| {
-                        flanks
-                            .clone()
-                            .map(|at| Probe::new(t, l, s, at, flank_width))
-                            .filter(|flank| flank.frames.len() >= 12)
-                            .map(|flank| {
-                                let near = flank.near();
-                                (flank, near)
-                            })
-                            .collect::<Vec<_>>()
-                    });
-                    if context.iter().any(|(flank, (near, near_peaks))| {
-                        let far = flank.score(refined);
-                        far >= 0.65
-                            && far - near >= 0.06
-                            && flank.displaced_peaks(refined, *near_peaks, WIDE_PEAK_MARGIN)
-                    }) {
-                        return Ok(true);
-                    }
-                }
-            }
-        }
-    }
-    Ok(false)
 }
 
 struct Probe<'a> {
@@ -827,37 +845,41 @@ impl<'a> Probe<'a> {
     }
 
     fn peak_agreement(&self, lag: i32) -> f64 {
-        self.pairs(lag)
-            .map(|(a, b)| {
-                let count = a.peaks.len().min(2);
-                let matches = a
-                    .peaks
-                    .iter()
-                    .take(count)
-                    .filter(|&&peak| {
-                        b.peaks.iter().take(3).any(|&other| {
-                            (f64::from(peak) - f64::from(other) * self.frequency_scale).abs() <= 2.0
-                        })
-                    })
-                    .count();
-                matches as f64 / count as f64
-            })
-            .sum::<f64>()
-            / self.frames.len() as f64
+        self.measure(lag).1
     }
 
-    fn near(&self) -> (f64, f64) {
+    fn measure(&self, lag: i32) -> (f64, f64, f64) {
+        // Extra peaks in a recording are not evidence that its original notes
+        // disappeared. Either source can contain the cleaner observation.
+        let mut forward = 0.0;
+        let mut backward = 0.0;
+        let mut score = 0.0;
+        let mut audible = 0;
+        let match_peaks = |a: &Frame, b: &Frame, scale: f64| {
+            let n = a.peaks.len().min(2);
+            a.peaks
+                .iter()
+                .take(n)
+                .filter(|&&peak| {
+                    b.peaks
+                        .iter()
+                        .any(|&other| (f64::from(peak) - f64::from(other) * scale).abs() <= 2.0)
+                })
+                .count() as f64
+                / n as f64
+        };
+        for (a, b) in self.pairs(lag) {
+            forward += match_peaks(a, b, self.frequency_scale);
+            backward += match_peaks(b, a, 1.0 / self.frequency_scale);
+            score += similarity(a, b, self.shift);
+            audible += 1;
+        }
+        let samples = self.frames.len().max(1) as f64;
         (
-            (-1..=1).map(|lag| self.score(lag)).fold(0.0, f64::max),
-            (-1..=1)
-                .map(|lag| self.peak_agreement(lag))
-                .fold(0.0, f64::max),
+            score / samples,
+            forward.max(backward) / samples,
+            f64::from(audible) / samples,
         )
-    }
-
-    fn displaced_peaks(&self, lag: i32, near: f64, margin: f64) -> bool {
-        let far = self.peak_agreement(lag);
-        far >= 0.75 && far - near >= margin
     }
 }
 
@@ -945,11 +967,12 @@ impl PeakTimes {
         Ok(Self { pairs })
     }
 
-    fn lags(
+    fn bounded_lags(
         &self,
         reference: &[(&Frame, f64)],
+        work: &mut VerificationWork,
         current: &dyn Fn() -> bool,
-    ) -> Result<Vec<i32>, AudioError> {
+    ) -> Result<Option<Vec<i32>>, AudioError> {
         let mut votes: BTreeMap<i32, u32> = BTreeMap::new();
         for &(frame, at) in reference.iter().step_by(2) {
             check(current)?;
@@ -972,6 +995,9 @@ impl PeakTimes {
                         for ra in (a - 1).max(0)..=(a + 1).min(255) {
                             for rb in (b - 1).max(0)..=(b + 1).min(255) {
                                 if let Some(times) = self.pairs.get(&key(ra, rb, distance as i32)) {
+                                    if !work.spend(times.len()) {
+                                        return Ok(None);
+                                    }
                                     for &time in times {
                                         let lag = round((time as f64 - at) / 5.0) as i32 * 5;
                                         if lag.abs() > 80 {
@@ -999,7 +1025,7 @@ impl PeakTimes {
                 break;
             }
         }
-        Ok(selected)
+        Ok(Some(selected))
     }
 }
 
@@ -1160,6 +1186,7 @@ fn refine(
         reserved: 0,
         support: (end - start) as f64 / 1e6,
         residual,
+        audition: Audition::default(),
     }))
 }
 
@@ -1264,8 +1291,8 @@ mod tests {
             calls.set(calls.get() + 1);
             calls.get() < 3
         };
-        assert_eq!(
-            local_conflict(
+        assert!(matches!(
+            verify(
                 &reference,
                 &reference,
                 Candidate {
@@ -1273,10 +1300,11 @@ mod tests {
                     ..Candidate::default()
                 }
                 .seed(false),
+                &mut VerificationWork::new(&reference, &reference),
                 &current
             ),
             Err(AudioError::Cancelled),
-        );
+        ));
     }
 
     #[test]
@@ -1392,7 +1420,6 @@ mod tests {
         target.extend(&passage[cut..]);
         let target = features(&target, 0);
         let provisional = constant(&reference, &target, &|| true).unwrap();
-        assert_eq!(provisional.status, 3, "{provisional:?}");
         assert!(provisional.candidates.len() > 1, "{provisional:?}");
         let result = align(&reference, &target, &|| true).unwrap();
         assert_eq!(result.status, 3, "{result:?}");
@@ -1626,8 +1653,7 @@ mod tests {
         target.extend(&pcm[12 * RATE..]);
         let target = features(&target, 0);
         let provisional = constant(&reference, &target, &|| true).unwrap();
-        assert_eq!(provisional.status, 3, "{provisional:?}");
-        assert_eq!(provisional.candidates.len(), 1, "{provisional:?}");
+        assert!(!provisional.preferred, "{provisional:?}");
         let result = align(&reference, &target, &|| true).unwrap();
         assert!(result.status != 0 && result.status != 3, "{result:?}");
     }
@@ -1646,7 +1672,11 @@ mod tests {
         ));
         let index = PeakTimes::new(&reference, seed, &|| true).unwrap();
         assert_eq!(
-            index.lags(&[(&reference.frames[0], 0.0)], &|| false),
+            index.bounded_lags(
+                &[(&reference.frames[0], 0.0)],
+                &mut VerificationWork::new(&reference, &reference),
+                &|| false
+            ),
             Err(AudioError::Cancelled),
         );
     }
@@ -1689,7 +1719,14 @@ mod tests {
             .enumerate()
             .map(|(i, frame)| (frame, (50_000 + i * 2) as f64))
             .collect();
-        assert_eq!(index.lags(&probe, &|| true).unwrap().first(), Some(&2_000));
+        assert_eq!(
+            index
+                .bounded_lags(&probe, &mut VerificationWork::new(&track, &track), &|| true)
+                .unwrap()
+                .unwrap()
+                .first(),
+            Some(&2_000)
+        );
     }
 
     #[test]
