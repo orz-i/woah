@@ -312,6 +312,122 @@ pub unsafe extern "C" fn frame_kernel_dance_probe_alternate_detail(
     )
 }
 
+/// Touch-centered crop mode: 0 first, 1 smaller on no hit, 2 expanded
+/// on artificial-edge truncation. A zero viewport is invalid.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_dance_touch_view(
+    t: Transform,
+    x: f32,
+    y: f32,
+    mode: u32,
+) -> crate::composition::Viewport {
+    crate::dance_touch::view(t, x, y, mode).unwrap_or_default()
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct TouchRows {
+    pub rows: *const InstanceDetection,
+    pub count: usize,
+    pub masks: *const u8,
+    pub mask_len: usize,
+    pub features: *const f32,
+    pub feature_len: usize,
+    pub transform: Transform,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct TouchOutput {
+    pub rows: *mut InstanceDetection,
+    pub capacity: usize,
+    pub masks: *mut u8,
+    pub mask_len: usize,
+    pub features: *mut f32,
+    pub feature_len: usize,
+}
+
+#[repr(C)]
+pub struct TouchResult {
+    pub index: i32,
+    pub count: u32,
+}
+
+/// Merge the exact same-PTS local observation for an explicit failed touch.
+/// Output buffers are unchanged unless a unique remapped seed is selected.
+/// # Safety
+/// Input/output arrays must be valid for their declared lengths, and output
+/// arrays must be mutually disjoint and not overlap either input.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_dance_touch_merge(
+    full: TouchRows,
+    local: TouchRows,
+    roi: crate::composition::Viewport,
+    x: f32,
+    y: f32,
+    out: TouchOutput,
+) -> TouchResult {
+    let error = |index| TouchResult { index, count: 0 };
+    if !valid_lengths(full.transform, full.count, full.mask_len, full.feature_len)
+        || !valid_lengths(
+            local.transform,
+            local.count,
+            local.mask_len,
+            local.feature_len,
+        )
+        || !valid_lengths(full.transform, out.capacity, out.mask_len, out.feature_len)
+        || out.capacity < full.count
+    {
+        return error(-3);
+    }
+    // SAFETY: lengths are bounded above; callers own the readable arrays.
+    let (Some(fd), Some(fm), Some(ff), Some(ld), Some(lm), Some(lf)) = (
+        unsafe { borrowed(full.rows, full.count) },
+        unsafe { borrowed(full.masks, full.mask_len) },
+        unsafe { borrowed(full.features, full.feature_len) },
+        unsafe { borrowed(local.rows, local.count) },
+        unsafe { borrowed(local.masks, local.mask_len) },
+        unsafe { borrowed(local.features, local.feature_len) },
+    ) else {
+        return error(-3);
+    };
+    let full = crate::dance_cutout::CutoutObservation {
+        detections: fd,
+        masks: fm,
+        features: ff,
+        transform: full.transform,
+    };
+    let local = crate::dance_cutout::CutoutObservation {
+        detections: ld,
+        masks: lm,
+        features: lf,
+        transform: local.transform,
+    };
+    let merged = match crate::dance_touch::merge(full, local, roi, x, y) {
+        Ok(merged) => merged,
+        Err(index) => return error(index),
+    };
+    let n = merged.rows.len();
+    if n > out.capacity {
+        return error(-3);
+    }
+    // SAFETY: bounded capacities and the caller's disjoint writable regions.
+    let (Some(rows), Some(masks), Some(features)) = (
+        unsafe { write(out.rows, out.capacity) },
+        unsafe { write(out.masks, out.mask_len) },
+        unsafe { write(out.features, out.feature_len) },
+    ) else {
+        return error(-3);
+    };
+    rows[..n].copy_from_slice(&merged.rows);
+    masks[..merged.masks.len()].copy_from_slice(&merged.masks);
+    features[..merged.features.len()].copy_from_slice(&merged.features);
+    TouchResult {
+        index: merged.selected as i32,
+        count: n as u32,
+    }
+}
+
 /// # Safety
 /// Buffers must be readable/writable at the given lengths and disjoint.
 #[unsafe(no_mangle)]

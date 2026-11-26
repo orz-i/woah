@@ -139,6 +139,40 @@ final class IOSComparisonCutoutAnalysis {
     func select(_ seed: IOSComparisonCutoutSeed) -> Int {
       masks.withUnsafeBufferPointer { Int(frame_kernel_cutout_select($0.baseAddress,$0.count,transform,seed.x,seed.y)) }
     }
+    private func withTouchRows<T>(_ body:(FrameKernelTouchRows)->T)->T{
+      rows.withUnsafeBufferPointer{r in masks.withUnsafeBufferPointer{m in
+        appearance.withUnsafeBufferPointer{f in
+          body(FrameKernelTouchRows(rows:r.baseAddress,count:r.count,masks:m.baseAddress,
+            mask_len:m.count,features:f.baseAddress,feature_len:f.count,transform:transform))
+        }
+      }}
+    }
+    func touchMerge(_ local:Self,roi:FrameKernelViewport,seed:IOSComparisonCutoutSeed)throws->(Self,Int){
+      guard pts==local.pts,pts==seed.ptsUs,stamp.agrees(with:local.stamp) else{
+        throw IOSComparisonCutoutAnalysisError.invalidFrame
+      }
+      let cap=min(256,rows.count+local.rows.count)
+      var outRows=[FrameKernelInstanceDetection](repeating:FrameKernelInstanceDetection(),count:cap)
+      var outMasks=[UInt8](repeating:0,count:cap*area)
+      var outFeatures=[Float](repeating:0,count:cap*Self.appearanceBins)
+      let result=withTouchRows{full in local.withTouchRows{detail in
+        outRows.withUnsafeMutableBufferPointer{r in outMasks.withUnsafeMutableBufferPointer{m in
+          outFeatures.withUnsafeMutableBufferPointer{f in
+            frame_kernel_dance_touch_merge(full,detail,roi,seed.x,seed.y,
+              FrameKernelTouchOutput(rows:r.baseAddress,capacity:r.count,masks:m.baseAddress,
+                mask_len:m.count,features:f.baseAddress,feature_len:f.count))
+          }
+        }}
+      }}
+      let index=Int(result.index),count=Int(result.count)
+      if index<0{
+        guard count==0,(-5 ... -1).contains(index) else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+        return (self,index)
+      }
+      guard index>=rows.count,index<count,count<=cap else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      return (Self(pts:pts,stamp:stamp,rows:Array(outRows.prefix(count)),masks:Array(outMasks.prefix(count*area)),
+        transform:transform,appearance:Array(outFeatures.prefix(count*Self.appearanceBins))),index)
+    }
     func withDetail(_ local:Self,roi:FrameKernelViewport)throws->Self{
       guard pts==local.pts,stamp.agrees(with:local.stamp) else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
       var allRows=rows,allMasks=masks,allAppearance=appearance
@@ -236,6 +270,46 @@ final class IOSComparisonCutoutAnalysis {
     return (try Observation(pts:pts,stamp:stamp,result:result),result.preprocess.input)
   }
 
+  private func detailImage(_ original:Observation,_ roi:FrameKernelViewport,_ pixel:CVPixelBuffer,
+                           orientation:CGAffineTransform)throws->(CGImage,IOSComparisonSourceStamp){
+    guard let stamp=IOSComparisonSourceStamp(pixel),original.stamp.agrees(with:stamp) else{
+      throw IOSComparisonCutoutAnalysisError.invalidFrame
+    }
+    let image=IOSComparisonCompositor.oriented(pixel,transform:orientation)
+    let extent=image.extent,sw=CGFloat(original.transform.source_width),sh=CGFloat(original.transform.source_height)
+    let w=CGFloat(roi.width),h=CGFloat(roi.height)
+    guard w>0,h>0,roi.x>=0,roi.top>=0,CGFloat(roi.x)+w<=sw,CGFloat(roi.top)+h<=sh else{
+      throw IOSComparisonCutoutAnalysisError.invalidFrame
+    }
+    let region=CGRect(x:CGFloat(roi.x)*extent.width/sw,
+      y:(sh-CGFloat(roi.top)-h)*extent.height/sh,width:w*extent.width/sw,height:h*extent.height/sh)
+    let cropped=image.cropped(to:region)
+      .transformed(by:CGAffineTransform(translationX:-region.minX,y:-region.minY))
+      .transformed(by:CGAffineTransform(scaleX:w/region.width,y:h/region.height))
+    guard let cg=context.createCGImage(cropped,from:CGRect(x:0,y:0,width:w,height:h)) else{
+      throw IOSComparisonCutoutAnalysisError.invalidFrame
+    }
+    return (cg,stamp)
+  }
+
+  private func resolveTouch(_ original:Observation,seed:IOSComparisonCutoutSeed,
+    isCancelled:()->Bool,local:(FrameKernelViewport)throws->Observation)throws->(Observation,Int){
+    let primary=original.select(seed)
+    if primary != -1{return (original,primary)}
+    var mode:UInt32=0
+    for attempt in 0..<2{
+      if isCancelled(){throw CancellationError()}
+      let roi=frame_kernel_dance_touch_view(original.transform,seed.x,seed.y,mode)
+      guard roi.width>0,roi.height>0 else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      let (merged,index)=try original.touchMerge(local(roi),roi:roi,seed:seed)
+      if isCancelled(){throw CancellationError()}
+      if index>=0{return (merged,index)}
+      if attempt==0 && (index == -1 || index == -4){mode=index == -1 ? 1:2}
+      else{return (original,index)}
+    }
+    return (original,-1)
+  }
+
   func inspect(url: URL,seed: IOSComparisonCutoutSeed,isCancelled: () -> Bool) throws -> Inspection {
     guard seed.ptsUs >= 0,seed.x.isFinite,seed.y.isFinite,
           (0..<1).contains(seed.x),(0..<1).contains(seed.y) else { throw IOSComparisonCutoutAnalysisError.invalidSelection }
@@ -259,8 +333,12 @@ final class IOSComparisonCutoutAnalysis {
       guard let pts=IOSComparisonTimeCore.map(CMSampleBufferGetOutputPresentationTimeStamp(sample)) else { continue }
       if pts<seed.ptsUs { continue }
       guard pts==seed.ptsUs,let pixel=CMSampleBufferGetImageBuffer(sample) else { break }
-      let (observation,input)=try infer(pixel:pixel,orientation:video.preferredTransform,pts:pts,confidence:0.25)
-      let index=observation.select(seed)
+      let (original,input)=try infer(pixel:pixel,orientation:video.preferredTransform,pts:pts,confidence:0.25)
+      let (observation,index)=try resolveTouch(original,seed:seed,isCancelled:isCancelled){roi in
+        let (cg,stamp)=try detailImage(original,roi,pixel,orientation:video.preferredTransform)
+        let result=try runner.run(image:cg,preferredBackend:.xnnpack,confidenceThreshold:0.25)
+        return try Observation(pts:pts,stamp:stamp,result:result)
+      }
       guard index>=0 else { throw IOSComparisonCutoutAnalysisError.invalidSelection }
       let (png,w,h)=try observation.thumbnail(index:index,input:input)
       if isCancelled() { throw CancellationError() }
@@ -386,25 +464,9 @@ final class IOSComparisonCutoutAnalysis {
     var detailDecodeMs=0.0,detailInferenceMs=0.0
     func localObservation(_ original:Observation,_ roi:FrameKernelViewport,_ pixel:CVPixelBuffer)throws->Observation{
         try check()
-        guard let stamp=IOSComparisonSourceStamp(pixel),original.stamp.agrees(with:stamp) else{
-          throw IOSComparisonCutoutAnalysisError.invalidFrame
-        }
         let before=ProcessInfo.processInfo.systemUptime
-        let image=IOSComparisonCompositor.oriented(pixel,transform:orientation)
-        let extent=image.extent,sw=CGFloat(original.transform.source_width),sh=CGFloat(original.transform.source_height)
-        let w=CGFloat(roi.width),h=CGFloat(roi.height)
-        guard w>0,h>0,roi.x>=0,roi.top>=0,CGFloat(roi.x)+w<=sw,CGFloat(roi.top)+h<=sh else{
-          throw IOSComparisonCutoutAnalysisError.invalidFrame
-        }
         // Source pixels, never the already downscaled inference tensor.
-        let region=CGRect(x:CGFloat(roi.x)*extent.width/sw,
-          y:(sh-CGFloat(roi.top)-h)*extent.height/sh,width:w*extent.width/sw,height:h*extent.height/sh)
-        let cropped=image.cropped(to:region)
-          .transformed(by:CGAffineTransform(translationX:-region.minX,y:-region.minY))
-          .transformed(by:CGAffineTransform(scaleX:w/region.width,y:h/region.height))
-        guard let cg=self.context.createCGImage(cropped,from:CGRect(x:0,y:0,width:w,height:h)) else{
-          throw IOSComparisonCutoutAnalysisError.invalidFrame
-        }
+        let (cg,stamp)=try self.detailImage(original,roi,pixel,orientation:orientation)
         detailDecodeMs+=(ProcessInfo.processInfo.systemUptime-before)*1000
         try check()
         let inferStart=ProcessInfo.processInfo.systemUptime
@@ -509,8 +571,15 @@ final class IOSComparisonCutoutAnalysis {
         cache.removeValue(forKey:prior.pts)
       }
     }
-    try decode(anchor,anchor+1){o,_ in
-      let selected=o.select(seed)
+    try decode(anchor,anchor+1){original,pixel in
+      let o:Observation,selected:Int
+      if inspection?.seed==seed{
+        (o,selected)=(original,original.select(seed))
+      }else{
+        (o,selected)=try resolveTouch(original,seed:seed,isCancelled:isCancelled){roi in
+          try localObservation(original,roi,pixel)
+        }
+      }
       guard selected>=0,inspection?.seed != seed || inspection?.index==selected else{
         throw IOSComparisonCutoutAnalysisError.invalidSelection
       }

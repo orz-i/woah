@@ -24,6 +24,31 @@ class ComparisonCutoutTest {
         assertContentEquals(byteArrayOf(0,66,255.toByte(),255.toByte(),0,66,255.toByte(),255.toByte()),
             FrameKernel.cutoutAlphaNative(mask,letterboxed,4,2))
     }
+    @Test fun explicitTouchRecoveryKeepsCanonicalRowsAndRejectsCompetingMasks() {
+        val scene=floatArrayOf(1f,0f,0f,160f,160f,160f,16f)
+        val roi=FrameKernel.danceTouchViewNative(scene,.5f,.5f,0)
+        assertContentEquals(intArrayOf(55,55,51,51),roi)
+        val local=floatArrayOf(160f/51f,0f,0f,51f,51f,160f,16f)
+        val row=floatArrayOf(15f,12f,35f,39f,.9f)
+        val mask=ByteArray(256){i->if(i/16 in 4..11 && i%16 in 5..10)255.toByte() else 0}
+        val bins=FrameKernel.DANCE_APPEARANCE_BINS
+        val f=FloatArray(bins).also{it[1]=1f}
+        val outputRows=FloatArray(15);val outputMasks=ByteArray(768);val outputF=FloatArray(3*bins)
+        fun merge(fullMask:ByteArray,detailRows:FloatArray,detailMasks:ByteArray,detailF:FloatArray)=
+            FrameKernel.danceTouchMergeNative(row,fullMask,scene,f,detailRows,detailMasks,local,detailF,
+                roi,.5f,.5f,outputRows,outputMasks,outputF)
+        val background=ByteArray(256)
+        assertContentEquals(intArrayOf(1,2),merge(background,row,mask,f))
+        assertContentEquals(row,outputRows.copyOfRange(0,5))
+        assertContentEquals(background,outputMasks.copyOfRange(0,256))
+        assertEquals(1,FrameKernel.cutoutSelectNative(outputMasks.copyOf(512),scene,.5f,.5f))
+        val previous=outputMasks.copyOf()
+        assertContentEquals(intArrayOf(-5,0),merge(ByteArray(256){255.toByte()},row,mask,f))
+        assertContentEquals(previous,outputMasks)
+        assertContentEquals(intArrayOf(-2,0),merge(background,row+row,mask+mask,f+f))
+        assertContentEquals(previous,outputMasks)
+    }
+
     @Test fun fixedAnchorAndSourcePtsDoNotSilentlyFollowAnotherFrame() {
         val p=ComparisonCutoutPlacement(FloatRect(.1f,.2f,.5f,.8f),.25,.85,.6,true)
         val q=p.quad(1000,500,1.5)

@@ -223,6 +223,21 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         }
         fun select(seed: ComparisonCutoutSeed) =
             FrameKernel.cutoutSelectNative(masks,transform,seed.x,seed.y)
+        fun touchMerge(local:Observation,roi:IntArray,seed:ComparisonCutoutSeed):Pair<Observation,Int> {
+            require(pts==local.pts && pts==seed.ptsUs)
+            val cap=minOf(256,bounds.size+local.bounds.size)
+            val outRows=FloatArray(cap*5);val outMasks=ByteArray(cap*area)
+            val bins=FrameKernel.DANCE_APPEARANCE_BINS
+            val outFeatures=FloatArray(cap*bins)
+            val result=FrameKernel.danceTouchMergeNative(rows,masks,transform,appearance,
+                local.rows,local.masks,local.transform,local.appearance,roi,seed.x,seed.y,outRows,outMasks,outFeatures)
+            require(result.size==2)
+            val (index,count)=result
+            if(index<0){require(count==0 && index in -5..-1);return this to index}
+            require(index in bounds.size until count && count<=cap)
+            return Observation(pts,transform,outRows.copyOf(count*5),outMasks.copyOf(count*area),
+                outFeatures.copyOf(count*bins)) to index
+        }
         fun track(session:FrameKernel.DanceCutoutTrack,seed:Int=-1)=session.step(pts,seed,rows,masks,transform,appearance)
         fun stepOrDetail(session:FrameKernel.DanceCutoutTrack,roi:IntArray,scheduled:Boolean)=session.stepOrDetail(pts,rows,masks,transform,appearance,roi,scheduled)
         fun finishDetail(session:FrameKernel.DanceCutoutTrack,fullCount:Int)=session.finishDetail(pts,fullCount,rows,masks,transform,appearance)
@@ -260,6 +275,25 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     internal data class Inspection(val seed: ComparisonCutoutSeed, val observation: Observation,
         val index: Int, val preview: ComparisonCutoutPreviewDto, val sourceDigest: ByteArray)
 
+    private fun resolveTouch(o:Observation,seed:ComparisonCutoutSeed,current:()->Boolean,
+                             local:(IntArray)->Observation):Pair<Observation,Int> {
+        val primary=o.select(seed)
+        if(primary!=-1)return o to primary
+        var mode=0
+        repeat(2){attempt->
+            checkCurrent(current)
+            val roi=FrameKernel.danceTouchViewNative(o.transform,seed.x,seed.y,mode)
+            require(roi.size==4 && roi[2]>0 && roi[3]>0)
+            val result=o.touchMerge(local(roi),roi,seed)
+            checkCurrent(current)
+            if(result.second>=0)return result
+            if(attempt==0 && result.second in listOf(-1,-4)){
+                mode=if(result.second==-1)1 else 2
+            }else return o to result.second
+        }
+        return o to -1
+    }
+
     private fun digest(frame: ByteBuffer): ByteArray = MessageDigest.getInstance("SHA-256").let {
         it.update(frame.duplicate().apply{rewind()});it.digest()
     }
@@ -272,17 +306,27 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             if(rotated)description.width else description.height)
         return CanonicalYuvInferenceDecoder(context,uri,description.rotation,startUs=seed.ptsUs).use { decoder ->
             decoder.prepare()
-            val rgba=decoder.decodeRgbaAtPts(seed.ptsUs,mapper)
-            checkCurrent(current)
-            val detected=segmenter.segmentGlReadbackRgbaSync(rgba,mapper,seed.ptsUs)
-            val observation=Observation(seed.ptsUs,detected.persons,mapper,rgba)
-            val index=observation.select(seed)
-            require(index>=0) { "未能明确选中人物，请长按人物身体中央重试" }
-            val raw=ByteArray(mapper.modelInputSize*mapper.modelInputSize*4)
-            rgba.duplicate().apply{rewind();get(raw)}
-            val preview=observation.thumbnail(index,raw)
-            checkCurrent(current)
-            Inspection(seed,observation,index,preview,digest(rgba))
+            var inspected:Inspection?=null
+            decoder.decodeRgbaWithDetailAtPts(seed.ptsUs,mapper){rgba,crop->
+                checkCurrent(current)
+                val detected=segmenter.segmentGlReadbackRgbaSync(rgba,mapper,seed.ptsUs)
+                val original=Observation(seed.ptsUs,detected.persons,mapper,rgba)
+                val sourceDigest=digest(rgba)
+                val (observation,index)=resolveTouch(original,seed,current){roi->
+                    val localMapper=ModelCoordinateMapper(roi[2],roi[3])
+                    val frame=crop(localMapper,roi)
+                    val result=segmenter.segmentGlReadbackRgbaSync(frame,localMapper,seed.ptsUs,
+                        confidenceThreshold=.25f)
+                    Observation(seed.ptsUs,result.persons,localMapper,frame)
+                }
+                require(index>=0) { "未能明确选中人物，请长按人物身体中央重试" }
+                val raw=ByteArray(mapper.modelInputSize*mapper.modelInputSize*4)
+                rgba.duplicate().apply{rewind();get(raw)}
+                val preview=observation.thumbnail(index,raw)
+                checkCurrent(current)
+                inspected=Inspection(seed,observation,index,preview,sourceDigest)
+            }
+            requireNotNull(inspected)
         }
     }
 
@@ -357,7 +401,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 if(measure)detected.stageTimingsMs.forEach{(name,ms)->addTime(name,ms*1_000_000)}
                 timed("observation"){Observation(pts,detected.persons,mapper,frame)}
             }
-            observationEvidence?.invoke(observation)
+            // The selected anchor is captured after touch recovery below.
+            if(pts!=seed.ptsUs)observationEvidence?.invoke(observation)
             consume(observation,crop)
         }
         fun add(o:Observation,index:Int,initial:Boolean) {
@@ -522,9 +567,17 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         }
         try {
             // Seed first, then grow both directions around the playhead.
-            decode(anchor,anchor+1){observation,_->
-                val chosen=observation.select(seed)
-                require(chosen>=0 && (inspection?.takeIf{it.seed==seed}?.index ?: chosen)==chosen) { "未能明确选中人物" }
+            decode(anchor,anchor+1,true){original,crop->
+                val existing=inspection?.takeIf{it.seed==seed}
+                val (observation,chosen)=if(existing!=null)original to original.select(seed)
+                else resolveTouch(original,seed,current){roi->
+                    val localMapper=ModelCoordinateMapper(roi[2],roi[3])
+                    val frame=if(crop!=null)crop(localMapper,roi) else reader.read(original.pts,localMapper,roi)
+                    val result=segmenter.segmentGlReadbackRgbaSync(frame,localMapper,original.pts,confidenceThreshold=.25f)
+                    Observation(original.pts,result.persons,localMapper,frame)
+                }
+                require(chosen>=0 && (existing?.index ?: chosen)==chosen) { "未能明确选中人物" }
+                observationEvidence?.invoke(observation)
                 val b=observation.bounds[chosen]
                 placement=ComparisonCutoutPlacement(FloatRect(b.left/sw,b.top/sh,b.right/sw,b.bottom/sh),
                     if(reference).27 else .73,.88,.70,mirror)
@@ -532,6 +585,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 require(timed("track"){observation.track(forward,chosen)==chosen && observation.track(reverse,chosen)==chosen})
                 add(observation,chosen,true)
             }
+            reader.close()
             backwards(first,anchor,true)
             try{decode(anchor+1,last+1,true){o,crop->addTracked(o,forward,true,crop)}}finally{reader.close()}
             require(small.size==nearby.size && small[seed.ptsUs]!=null)

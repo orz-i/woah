@@ -43,6 +43,10 @@ internal object FrameKernel {
     }
     external fun danceDetailRemapNative(local:FloatArray,mask:ByteArray,localTransform:FloatArray,
         scene:FloatArray,roi:IntArray,full:FloatArray,fullMasks:ByteArray,output:ByteArray):FloatArray?
+    external fun danceTouchViewNative(transform:FloatArray,x:Float,y:Float,mode:Int):IntArray
+    external fun danceTouchMergeNative(fullRows:FloatArray,fullMasks:ByteArray,fullTransform:FloatArray,fullFeatures:FloatArray,
+        localRows:FloatArray,localMasks:ByteArray,localTransform:FloatArray,localFeatures:FloatArray,
+        roi:IntArray,x:Float,y:Float,outRows:FloatArray,outMasks:ByteArray,outFeatures:FloatArray):IntArray
     external fun cutoutSelectNative(masks:ByteArray,transform:FloatArray,x:Float,y:Float):Int
     external fun cutoutThumbnailNative(mask:ByteArray,transform:FloatArray,rgba:ByteArray,bottomUp:Boolean):IntArray?
     external fun cutoutGridNative(width:Int,height:Int,frames:Int,previewFrames:Int):IntArray

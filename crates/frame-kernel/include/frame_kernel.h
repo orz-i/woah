@@ -305,6 +305,26 @@ int32_t frame_kernel_dance_step_or_detail_scheduled(uint64_t session,int64_t at,
 int32_t frame_kernel_dance_finish_detail(uint64_t session,int64_t at,size_t full_count,
     const FrameKernelInstanceDetection *detections,size_t count,const uint8_t *masks,size_t mask_len,
     FrameKernelTransform transform,const float *features,size_t features_len);
+/* Explicit touch fallback only after a canonical miss. Mode 0 first crop,
+   1 smaller on no hit, 2 expanded on artificial-edge truncation.
+   All observations must refer to the same exact source sample. */
+FrameKernelViewport frame_kernel_dance_touch_view(FrameKernelTransform transform,float x,float y,uint32_t mode);
+typedef struct FrameKernelTouchRows {
+    const FrameKernelInstanceDetection *rows; size_t count;
+    const uint8_t *masks; size_t mask_len;
+    const float *features; size_t feature_len;
+    FrameKernelTransform transform;
+} FrameKernelTouchRows;
+typedef struct FrameKernelTouchOutput {
+    FrameKernelInstanceDetection *rows; size_t capacity;
+    uint8_t *masks; size_t mask_len;
+    float *features; size_t feature_len;
+} FrameKernelTouchOutput;
+typedef struct FrameKernelTouchResult { int32_t index; uint32_t count; } FrameKernelTouchResult;
+/* -1 no local touch; -2 ambiguous; -3 invalid; -4 crop truncation;
+   -5 rejected remap/seed. Only success writes the caller-owned outputs. */
+FrameKernelTouchResult frame_kernel_dance_touch_merge(FrameKernelTouchRows full,FrameKernelTouchRows local,
+    FrameKernelViewport roi,float x,float y,FrameKernelTouchOutput out);
 int32_t frame_kernel_dance_detail_remap(FrameKernelInstanceDetection local,const uint8_t *mask,size_t mask_len,
     FrameKernelTransform local_transform,FrameKernelTransform scene,FrameKernelViewport roi,
     const FrameKernelInstanceDetection *full,size_t count,const uint8_t *full_masks,size_t full_len,

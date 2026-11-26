@@ -3414,3 +3414,165 @@ small targets, and better current-frame segmentation observations
 for genuine residual long gaps. Do not broaden alternate identity
 admission, use an alternate model for independent identity tracking,
 or promote release status based on these data.
+
+## Stage C9.4: shared touch-centered initial selection
+
+### Scope and implementation
+
+This addresses an explicit user touch on a visible subject for which
+the canonical full-frame mask selection returns -1. Normal full-frame
+success is returned unchanged. An ambiguous (-2) or invalid (-3)
+full-frame selection is not retried. The pinned YOLO11n-seg model,
+confidence .25 at selection, existing 29-bin appearance descriptor,
+association, detail recovery, cache/export admission and privacy
+profile are unchanged. No second model or tracker dependency.
+
+The shared FrameKernel `dance_touch` module and checked C ABI plan
+a source-oriented crop centered at the normalized touch. First crop
+side is .32 of the scene's longest edge, clamped at source boundaries.
+If no local mask covers the touch, the second crop is .20; if the
+first uniquely hit instance is truncated at an artificial crop edge,
+the second instead expands to .50. At most two extra inferences.
+Do not retry ambiguity, duplicate/remap rejection or invalid input.
+
+The local selection must have exactly one threshold-level mask hit
+(not a bounding box match or highest score among overlapping masks),
+strong confidence, and the existing crop completeness check. Merge
+all remappable local competitors with all original full-frame rows
+using the existing shared detail remap and duplicate veto. Require
+the mapped original local hit to be the unique scene hit and have
+a valid, nonempty appearance descriptor. Never replace an original
+full-frame hit, create an automatic seed, or learn from old pixels.
+The C ABI writes its output arrays only on successful selection.
+
+Android obtains the crop from the same borrowed decoded Image in
+inspection and initial analysis where available, with the existing
+exact-PTS reader for other cases. iOS reuses the oriented original
+CVPixelBuffer and the existing source stamp/crop logic. Inspection
+reuses its verified merged observation at the anchor; both forward
+and reverse directions are seeded from that same observation. The
+existing comparison archive compatibility key gains `touch-seed-v1`.
+Android opt-in observation capture includes the actual selected
+anchor observation (which may have appended local rows); all other
+samples remain full-frame observations. No change to ordinary
+privacy inference or default backend.
+
+### Host development evidence
+
+`probe_touch_selection.py` invokes the same shared touch ABI,
+with source-only marked points as independent simulated user touches.
+The existing six C5/C7.3/C8.3 development clips and the two C9.3
+stress clips supply 80 marked positions. These are previously
+reviewed clips, not a new release holdout or dense identity truth.
+Every normal selection is returned byte-exact; annotations' other
+points and approximate contours are used only for scoring.
+
+The first two-scale prototype (.32 then .20 on no hit, no expansion)
+recovered two of 14 failed selections; five local hits were rejected
+by remapping/completeness. Allowing expansion only when the first
+hit was artificially truncated recovers two more. The final shared
+core reproduces the four recovery cases.
+
+| Scene | Marked touches | Canonical selections | Recovered |
+| --- | ---: | ---: | ---: |
+| Baganda | 12 | 9 | 2 |
+| Danzón | 12 | 12 | 0 |
+| Basque | 11 | 10 | 0 |
+| Swing | 12 | 12 | 0 |
+| Outdoor ensemble | 12 | 12 | 0 |
+| Stage solo | 12 | 7 | 2 |
+| Overhead crowd | 5 | 0 | 0 |
+| Low-light partner | 4 | 4 | 0 |
+| Total | 80 | 66 | 4 |
+
+65/80 -> 69/80 marked selected-point hits; one incumbent selected
+mask did not meet the tolerant projected-grid point check and was
+preserved, not replaced. No marked distractor hit. All four added
+masks were reviewed against the original source and selected-performer
+description; some coverage/edge artifacts persist. Seven remaining
+touches have no local hit, two fail remap/completeness, one is
+ambiguous. 26 additional local inferences across 14 initial misses;
+median approximately 26ms per host inference/merge, excluding source
+read/crop. Not a mobile latency measurement.
+
+Each of the four recovered touches was separately used as the sole
+explicit anchor on its original 300-frame clip. The full sequential
+source replay reproduces each recovered seed, with the existing
+unchanged bidirectional Tracker, full observations and scheduled
+detail recovery. No subsequent annotation or reseed enters tracking.
+
+| Scene, alternate user anchor | Visible | Selected checks | Longest gap |
+| --- | ---: | ---: | ---: |
+| Baganda 7s | 288/300 | 11/12 | 120ms |
+| Baganda 9s | 275/300 | 11/12 | 720ms |
+| Stage solo 0s | 249/300 | 12/12 | 840ms |
+| Stage solo 6s | 237/300 | 7/12 | 1120ms |
+
+Zero marked distractor hits in these four independent replays.
+These are newly viable initial selections, not improvements over
+a different, previously successful anchor. Do not claim complete
+export, uniformly good tracking, or that more pixels alone solve
+the overhead case. A separate exploratory sweep of crop fractions
+.08–.50 on the original overhead anchor found no touched instance
+with either Nano or Small even at .20 confidence. The overhead
+problem remains an observation/model-domain limitation.
+
+Reproduce the final shared-core host replay:
+
+```sh
+cd crates/frame-kernel
+cargo build --locked --release
+cd ../..
+python tools/comparison/probe_touch_selection.py \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --media /path/to/c83-media \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c94-stage --expand-truncated --track
+```
+
+Use the same command with C5/C7.3 and C9.3 stress manifests and
+their verified local source transcodes. No weights, images or
+raw masks added to the repository.
+
+### Actual native validation
+
+The Android host/JNI test `ComparisonCutoutTest` passes all 12
+cases, including explicit touch merge preserving the original rows,
+rejecting an existing canonical selection and competing local hits,
+and leaving outputs unchanged on rejection. Gradle also rebuilt
+the Android Rust/JNI artifacts and compiled Debug Kotlin. No physical
+Android device was connected in this stage; no Android real-media,
+effective delegate or GPU claim.
+
+iOS actual simulator (iPhone 15 Pro simulator, iOS 17.0) A/B:
+same C8.3 pair, 12s, 25fps, both source PTS 6s, reference touch
+[.46,.60], target [.422,.54]. The previously installed C9.1 QA app
+returns the reference still but fails target inspection; cannot
+start canvas analysis. The new Debug simulator build returns both
+stills, and visual review confirms the intended target dancer.
+The reference thumbnail dimensions/byte count/alpha category counts
+match the old report; no claim of byte-exact PNG comparison.
+New target thumbnail 102x225, with real transparent and opaque
+pixels. First playable 4.645s, full analysis 51.002s, reference
+300/300 and target 257/300 visible, 6/6 sampled canvas positions
+match exact source PTS. Incomplete archive and export rejected,
+ordinary playback restored. One real background control at
+[.97,.04] on the same target/PTS remains rejected before analysis.
+No physical iPhone claim; these are single-run simulator timings.
+
+Default Rust regression 161 passed / 1 ignored; Clippy for
+default and host-model-probe features and formatting passed.
+Python comparison regression 38 passed. The shared touch ABI
+is an additive interface; previous alternate-model experiment
+stays host-only. Android CPU4 default/GPU QA only, Debug/draft,
+and strict incomplete export refusal remain unchanged.
+
+**C9.4 disposition:** retain the shared initial touch fallback in
+the existing comparison cutout mode. It solves an observed real
+initial selection failure on iOS and four host selection cases
+without replacing a canonical success or adding another model.
+Android physical regression, physical iPhone, broader independent
+touch accuracy, and remaining long-gap/edge quality are still
+open. Next: verify Android same-touch A/B, then target residual
+long gaps and small/occluded instance observations without
+relaxing identity or export policy. Do not promote release.
