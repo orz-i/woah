@@ -2888,3 +2888,200 @@ foreground artifact/edge quality and explicit local correction.
 Do not repeatedly retune the incumbent ownership rule on this
 pair. A fresh independent holdout and physical iPhone evidence
 are still required before release promotion.
+
+## Stage C9.1: short-gap weak current-mask recovery
+
+### Diagnose before relaxing anything
+
+Reuse the four captured C8.3 native full-observation streams. On
+both Android backends the stage dancer is correctly observed at 8.92s,
+absent at 8.96s, and has a plausible weak current observation at 9.00s.
+CPU/GPU confidence 0.22951/0.24365; bounding-box IoU against the last
+canonical observation 0.860/0.865, raw-mask IoU 0.764/0.766, normalized
+center distance 0.031/0.030, actual previous appearance similarity
+0.992, anchor similarity ~0.9675, initial negative max ~0.6076.
+The existing weak rule requires immediate observed continuity, so
+does not admit this current observation after the missed sample.
+The initial conservative output-only experiment used the smoothed
+recent histogram (threshold 0.85); it recovered two masks per native
+backend but did not recover 9s. A temporary host-only trace showed
+the actual recent EMA score was 0.840 on both, versus 0.992 against
+the last actual accepted observation. The lighting transition has
+made the smoothed histogram lag; this is not evidence for a
+general threshold relaxation. Diagnostic logging was removed.
+
+### Retained policy
+
+Maintain the exact compact 29-float feature of the latest canonical
+observation in the existing appearance memory, distinct from its
+unchanged EMA/anchor/bank. No new model, descriptor ABI, persistent
+identity table, or privacy profile. Normal selected association and
+its commits, local ROI transaction, backoff and thresholds remain
+unchanged. Only on a canonical missing output with no pending full
+confirmation, test an optional **current** weak full-frame mask:
+
+- Last canonical observation was strong; after 1–2 intervening
+  unavailable samples, at most 120ms since that observation.
+  The current confidence is in the existing [0.20,0.25) weak band.
+- Bbox IoU >=0.60 and raw-mask IoU >=0.65 against the last actual
+  observation; normalized center displacement <=0.18.
+- Anchor and exact last canonical appearance similarities >=0.90;
+  anchor similarity exceeds maximum initial competing appearance
+  by >=0.12.
+- A competing current candidate overlapping the last selected box
+  (>=0.25) and mask (>=0.20), or recent competing track with mask
+  overlap >=0.20 or bbox overlap >=0.60, vetoes the rescue. Require
+  a unique eligible candidate. No predicted mask, no new seed.
+- Do not preempt the existing successful full or local ROI result.
+  Where ROI is requested, remember this candidate index only within
+  the same-PTS transaction; prefer a confirmed local mask, and
+  withhold the weak output if a provisional local candidate has
+  contradictory geometry. If ROI is unavailable, budget exhausted,
+  skipped or fails to produce an accepted result, the eligible weak
+  current mask can be returned. A rescued skipped request returns
+  the actual candidate index rather than the missing/skipped status;
+  the skipped-missing count is not a count of all throttled requests.
+- Commit exactly the existing canonical full-only state regardless
+  of this optional output. The rescued mask does not update
+  reliable time, motion, selected appearance or competitor state.
+  It cannot chain weak-only recovery beyond the original strong
+  observation. Existing privacy behavior and caches unchanged
+  except cutout archive compatibility key weak-gap-overlay-v1.
+
+The two new Rust tests cover both source timestamp directions,
+ROI priority, non-mutation of state and last reliable time,
+expiration, competing current masks and preceding weak history.
+The original tracker still has its ordinary immediately continuous
+weak path; this addition does not modify its eligibility.
+
+### Paired exact native full-only replay
+
+| Fixture | CPU | GPU | Selected landmark checks |
+| --- | ---: | ---: | ---: |
+| C8.3 outdoor | 300 -> 300/300 | 300 -> 300/300 | 12/12 unchanged |
+| C8.3 stage | 252 -> 255/300 | 252 -> 255/300 | both 8/12 -> 9/12 |
+| C7.3 Basque | 298 -> 298/300 | 281 -> 281/300 | both 10/11 unchanged |
+| C7.3 Swing | 240 -> 240/300 | 243 -> 243/300 | both 10/12 unchanged |
+
+Across the 2400 exact full-only source positions of the two pairs
+and both backends, all 2166 prior selected trace records are exactly
+retained; six newly selected current weak candidates (three per
+stage backend), none lost/changed. Both recover the marked 9s
+sample. Longest stage missing interval still 0.40s; no observed
+distractor hits. This is exact observation replay, not complete
+native ROI execution.
+
+### Full scheduled host association A/B
+
+Using compatible baseline/current libraries and identical full
+observations, sharing local inference inputs wherever ROI matches.
+Eight development clips, 3300 source samples:
+
+| Scene | C8.3 policy | C9.1 policy | Prior visible alpha byte exact |
+| --- | ---: | ---: | ---: |
+| Basque | 280/300 | 280/300 | 280/280 |
+| Swing | 254/300 | 254/300 | 254/254 |
+| Baganda | 290/300 | 290/300 | 290/290 |
+| Danzón | 300/300 | 300/300 | 300/300 |
+| Breaking | 660/750 | 660/750 | 660/660 |
+| Vogue | 583/750 | 583/750 | 583/583 |
+| Outdoor ensemble | 300/300 | 300/300 | 300/300 |
+| Stage solo | 264/300 | 268/300 | 264/264 |
+
+All 2931 prior valid alpha buffers retained byte-exact, none lost
+or changed. Stage solo adds four current masks (1.92s, 9s, 9.96s,
+10s) and both previously missing marked points (10/12 -> 12/12).
+56 actual ROI requests, 21 accepted local masks, both unchanged.
+No marked distractor hit introduced. This is a development regression,
+not a fresh holdout or universal guarantee against identity mistakes.
+
+### Edge/artifact diagnosis (no production morphology)
+
+The separate diagnostic `probe_mask_artifacts.py` tests zeroing
+tiny threshold-128 disconnected components of area <1% of the
+current foreground, and compares an exact same selected raw mask
+projected to the 640x360 annotation grid against the actual 384
+grid (only when the original projected bytes match the saved alpha).
+The original C8.3 native captures and frozen approximate contours
+are used. The experiment removes only 0.229–0.252% of reference
+foreground pixels and 0.059–0.060% of solo pixels. At the four
+ensemble contours, IoU improvement is at most 0.00094 (0.094
+percentage points); boundary F1 sometimes decreases. Dense
+same-mask projection changes annotated IoU by less than 0.001 at
+the exact comparable samples. Neither is a material silhouette
+quality improvement. Attached drums/person fragments and incomplete
+limbs in the raw segmentation cannot be reliably repaired by these
+generic operations. No morphology/edge production change retained;
+future edge work needs better instance segmentation/foreground
+evidence and independent edge annotations rather than more grid
+upsampling or blanket erosion.
+
+Reproduce exact native association and host full scheduled replay
+with the existing two-library tools and C8.3/C7.3 manifests.
+For the diagnostic use the C8.3 full observation and alpha files:
+```sh
+python tools/comparison/probe_mask_artifacts.py \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --evidence /path/to/c83-device \
+  --replay /path/to/c91-native-c83.json \
+  --library /path/to/c83/libframe_kernel.dylib \
+  --output /tmp/c91-edge.json
+```
+The diagnostic verifies manifest, baseline library and observation
+stream hashes against the replay. No images or observations committed.
+
+### Actual mobile validation
+
+Android effective GPU full scheduled pipeline on the identical C8.3
+pair now has 300/300 + 278/300, versus 300/300 + 275/300.
+All 575 prior valid alpha buffers byte-exact, zero lost/changed,
+three new solo masks. Selected checks 23/24 -> 24/24, marked
+distractors 0/24 unchanged. The previously absent 9s sample
+has approximate contour IoU 0.821 and boundary F1 0.829.
+Solo mean approximate IoU/F1 over all four marked contours
+increased from 0.534/0.402 to 0.739/0.609 because of recovery
+of the missing contour, not improvement to already present edges.
+Longest absent span remains 0.40s. Actual ROI attempts/adopted
+46/23 unchanged, no detail errors. Inference capture disabled
+for this run, so no comparative speed claim against capture-enabled C8.3.
+
+iOS actual simulator pair 300/300 + 285/300, versus
+300/300 + 283/300. All 48 sampled normal and isolated-reference
+canvas positions match exact source PTS. All 24 isolated reference
+captures and 23 of 24 normal captures are pixel-identical to C8.3.
+The remaining normal capture at 9s now renders the intended solo
+dancer. Full analysis 51.504s, first preview 4.850s (single run,
+not a throughput benchmark). Incomplete export/archive refusal
+and ordinary playback restoration passed. No raw iOS alpha or
+physical iPhone claim.
+
+Rust final full regression 159 passed/1 ignored, Clippy all
+targets clean. Android 31 focused comparison/export and frozen
+privacy reference tests passed. Flutter production code unchanged;
+only native archive compatibility identifiers changed outside Rust.
+
+Android CPU4 also completed with 300/300 + 279/300 (prior
+300/300 + 276/300), all 576 prior valid alpha buffers byte-exact,
+three additional current solo masks and none lost. Both Android
+backends now hit all 24 selected landmarks, zero marked distractors.
+CPU solo approximate IoU/F1 over four contours including missing
+increased 0.536/0.398 -> 0.741/0.605; recovered 9s contour
+0.820/0.826. Existing alpha pixels unchanged. CPU/GPU combined
+1151/1151 prior valid buffers preserved, six added. Both report
+effective requested backend. New pair analysis 166.020s CPU and
+49.674s GPU; not a controlled timing comparison (old runs enabled
+capture). No complete independent pair export, no dense identity or
+edge truth claim.
+
+**C9.1 disposition:** retain the narrow verified weak-mask rescue
+and the edge diagnostic only. This improves a particular short-gap
+failure without relaxing identity or global detector thresholds.
+Residual solo gaps: 21 CPU / 22 GPU / 15 simulator frames, and
+attached non-subject artifacts and partial silhouettes remain.
+Do not treat this as release quality acceptance. Keep Debug/draft,
+CPU4 default, GPU QA only and incomplete export refusal. Next work
+should target the segmentation observation bottleneck (compare
+candidate instance-mask models or a bounded selected-subject
+refinement with actual independent edge/recall evidence), rather
+than repeated incremental tracker-threshold or morphology tuning.
+Physical iPhone and independent release validation remain open.

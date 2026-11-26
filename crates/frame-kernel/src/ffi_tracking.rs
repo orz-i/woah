@@ -243,7 +243,11 @@ pub(crate) fn step_dance_session(
         *detail_pending = None;
         detail_backoff.reset();
     }
-    result
+    if result == -1 {
+        policy.weak_output.take().map_or(-1, |i| i as i32)
+    } else {
+        result
+    }
 }
 /// Transactional preview: commit the full-frame observation immediately if
 /// valid, otherwise keep its next state for a bounded current-frame retry.
@@ -290,7 +294,11 @@ fn step_or_detail_impl(
             *detail_pending = None;
             detail_backoff.reset();
         }
-        return result;
+        return if result == -1 {
+            policy.weak_output.take().map_or(-1, |i| i as i32)
+        } else {
+            result
+        };
     };
     let count = o.detections.len();
     let mut trial = tracker.clone();
@@ -305,9 +313,10 @@ fn step_or_detail_impl(
             && trial_policy.pending.is_none()
             && detail_backoff.skip(at)
         {
+            let weak = trial_policy.weak_output.take();
             *tracker = trial;
             *policy = trial_policy;
-            return -4;
+            return weak.map_or(-4, |i| i as i32);
         }
         *roi = view;
         *detail_trial = Some(DetailTrial {
@@ -367,6 +376,7 @@ pub(crate) fn finish_detail(
     {
         return -2;
     }
+    let full_rows = o.detections;
     let mut result = -1;
     let mut next_pending = None;
     if o.detections.len() > full_count {
@@ -414,7 +424,12 @@ pub(crate) fn finish_detail(
             });
         }
     }
-    let base = detail_trial.take().unwrap();
+    let mut base = detail_trial.take().unwrap();
+    let weak = base.policy.weak_output.take().filter(|&i| {
+        next_pending
+            .as_ref()
+            .is_none_or(|p| crate::geometry::overlap_iou(p.bounds, full_rows[i].bounds) >= 0.60)
+    });
     if base.scheduled {
         detail_backoff.observe(at, result >= 0 || next_pending.is_some());
     } else {
@@ -423,7 +438,11 @@ pub(crate) fn finish_detail(
     *tracker = base.tracker;
     *policy = base.policy;
     *detail_pending = next_pending;
-    result
+    if result == -1 {
+        weak.map_or(-1, |i| i as i32)
+    } else {
+        result
+    }
 }
 
 pub(crate) unsafe fn borrowed<'a, T>(p: *const T, n: usize) -> Option<&'a [T]> {
@@ -789,6 +808,201 @@ mod cutout_tracking_tests {
             detail_backoff: Default::default(),
         }
     }
+    #[test]
+    fn weak_gap_fallback_is_current_output_only_and_prefers_roi() {
+        use crate::{
+            appearance::APPEARANCE_BINS, composition::Viewport, dance_cutout::CutoutObservation,
+        };
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 0.,
+            source_width: 160,
+            source_height: 160,
+            input_size: 160,
+            proto_size: 16,
+        };
+        let d = InstanceDetection {
+            bounds: Rect {
+                left: 60.,
+                top: 50.,
+                right: 90.,
+                bottom: 100.,
+            },
+            confidence: 0.9,
+        };
+        let weak = InstanceDetection {
+            confidence: 0.23,
+            ..d
+        };
+        let masks = [255u8; 256];
+        let mut f = [0.; APPEARANCE_BINS];
+        f[0] = 1.;
+        let weak_rows = [weak];
+        let current = || CutoutObservation {
+            detections: &weak_rows,
+            masks: &masks,
+            transform: t,
+            features: &f,
+        };
+        let strong_rows = [d];
+        let preferred = create_dance_session();
+        assert_eq!(
+            step_dance_session(preferred, 0, 0, &strong_rows, &masks, t, &f),
+            0
+        );
+        assert_eq!(
+            step_dance_session(preferred, 40_000, -1, &[], &[], t, &[]),
+            -1
+        );
+        let mut roi = Viewport::default();
+        assert_eq!(
+            step_or_detail_scheduled(preferred, 80_000, current(), &mut roi),
+            -3
+        );
+        let appended = [weak, d];
+        let both = [255u8; 512];
+        let ff = [f, f].concat();
+        assert_eq!(
+            finish_detail(
+                preferred,
+                80_000,
+                1,
+                CutoutObservation {
+                    detections: &appended,
+                    masks: &both,
+                    transform: t,
+                    features: &ff
+                }
+            ),
+            1
+        );
+        assert_eq!(destroy_dance_session(preferred), 0);
+        for direction in [1, -1] {
+            let anchor = 2_000_000;
+            let base = create_dance_session();
+            let lane = create_dance_session();
+            for id in [base, lane] {
+                assert_eq!(
+                    step_dance_session(id, anchor, 0, &strong_rows, &masks, t, &f),
+                    0
+                );
+                assert_eq!(
+                    step_dance_session(id, anchor + direction * 40_000, -1, &[], &[], t, &[]),
+                    -1
+                );
+            }
+            let at = anchor + direction * 80_000;
+            assert_eq!(step_dance_session(base, at, -1, &[], &[], t, &[]), -1);
+            let mut roi = Viewport::default();
+            assert_eq!(step_or_detail_scheduled(lane, at, current(), &mut roi), -3);
+            // Full-only rescue is deferred until the ROI transaction finishes.
+            assert_eq!(finish_detail(lane, at, 1, current()), 0);
+            {
+                let aa = super::session(base).unwrap();
+                let bb = super::session(lane).unwrap();
+                let a = aa.lock().unwrap();
+                let b = bb.lock().unwrap();
+                let x = &a.tracker.tracks[0];
+                let y = &b.tracker.tracks[0];
+                assert_eq!(x.observed_bounds, y.observed_bounds);
+                assert_eq!(x.frames_since_observation, y.frames_since_observation);
+                assert_eq!(x.state, y.state);
+                assert_eq!(x.confidence, y.confidence);
+                assert_eq!(
+                    x.appearance.as_ref().unwrap().last_seen,
+                    y.appearance.as_ref().unwrap().last_seen
+                );
+                assert_eq!(
+                    x.appearance.as_ref().unwrap().bank,
+                    y.appearance.as_ref().unwrap().bank
+                );
+                assert!(y.render_mask.is_none());
+            }
+            // The weak output cannot extend the identity's reliable time.
+            assert_eq!(
+                step_dance_session(
+                    lane,
+                    anchor + direction * 120_000,
+                    -1,
+                    &weak_rows,
+                    &masks,
+                    t,
+                    &f
+                ),
+                0
+            );
+            assert_eq!(
+                step_dance_session(
+                    lane,
+                    anchor + direction * 160_000,
+                    -1,
+                    &weak_rows,
+                    &masks,
+                    t,
+                    &f
+                ),
+                -1
+            );
+            for id in [base, lane] {
+                assert_eq!(destroy_dance_session(id), 0);
+            }
+        }
+    }
+
+    #[test]
+    fn weak_gap_rejects_competing_current_masks_and_weak_seed_history() {
+        use crate::appearance::APPEARANCE_BINS;
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 0.,
+            source_width: 160,
+            source_height: 160,
+            input_size: 160,
+            proto_size: 16,
+        };
+        let d = InstanceDetection {
+            bounds: Rect {
+                left: 60.,
+                top: 50.,
+                right: 90.,
+                bottom: 100.,
+            },
+            confidence: 0.9,
+        };
+        let weak = InstanceDetection {
+            confidence: 0.23,
+            ..d
+        };
+        let masks = [255u8; 256];
+        let mut f = [0.; APPEARANCE_BINS];
+        f[0] = 1.;
+        let lane = create_dance_session();
+        assert_eq!(step_dance_session(lane, 0, 0, &[d], &masks, t, &f), 0);
+        assert_eq!(step_dance_session(lane, 40_000, -1, &[], &[], t, &[]), -1);
+        let pair = [weak, weak];
+        let both = [255u8; 512];
+        let ff = [f, f].concat();
+        assert_eq!(
+            step_dance_session(lane, 80_000, -1, &pair, &both, t, &ff),
+            -1
+        );
+        assert_eq!(destroy_dance_session(lane), 0);
+        let lane = create_dance_session();
+        assert_eq!(step_dance_session(lane, 0, 0, &[d], &masks, t, &f), 0);
+        assert_eq!(
+            step_dance_session(lane, 40_000, -1, &[weak], &masks, t, &f),
+            0
+        );
+        assert_eq!(step_dance_session(lane, 80_000, -1, &[], &[], t, &[]), -1);
+        assert_eq!(
+            step_dance_session(lane, 120_000, -1, &[weak], &masks, t, &f),
+            -1
+        );
+        assert_eq!(destroy_dance_session(lane), 0);
+    }
+
     #[test]
     fn detail_backoff_commits_only_full_state_and_protects_pending_confirmation() {
         use crate::{

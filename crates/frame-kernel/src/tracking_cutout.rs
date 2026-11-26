@@ -194,6 +194,79 @@ fn incumbent_continuity(
     own >= 0.45 && own - rival >= 0.15
 }
 
+/// Output-only rescue after a short interruption. The regular association
+/// already committed its missing state; this function never changes it.
+/// Use only a CURRENT weak observation with strong geometric and immutable
+/// identity support, never the old mask or a newly learned identity.
+pub(crate) fn weak_gap_overlay(
+    tracker: &Tracker,
+    clock: &CutoutClock,
+    at: i64,
+    detections: &[Detection],
+    features: &[Appearance],
+) -> Option<usize> {
+    let track = tracker.tracks.iter().find(|t| t.id == clock.chosen)?;
+    let memory = track.appearance.as_ref()?;
+    let age = at.checked_sub(memory.last_seen)?;
+    // At least one intervening missing sample; at most two, and no
+    // chaining through weak observations. Last canonical match was strong.
+    if !(2..=3).contains(&track.frames_since_observation)
+        || !(1..=120_000).contains(&age)
+        || track.confidence < STRONG_CONF
+    {
+        return None;
+    }
+    let mut selected = None;
+    for (j, (d, f)) in detections.iter().zip(features).enumerate() {
+        if !(MIN_CONF..STRONG_CONF).contains(&d.confidence) || !present(f) {
+            continue;
+        }
+        let (bi, mi) = overlaps(track, d);
+        if bi < 0.60 || mi < 0.65 || distance(track.observed_bounds, d.bounds) > scale(track) * 0.18
+        {
+            continue;
+        }
+        let anchor = similarity(&memory.anchor, f);
+        let last = similarity(&memory.last_observed, f);
+        let negative = clock
+            .initial_competitors
+            .iter()
+            .map(|n| similarity(n, f))
+            .fold(0., f32::max);
+        if anchor < 0.90 || last < 0.90 || anchor - negative < 0.12 {
+            continue;
+        }
+        // Any competing current mask near the last selected silhouette is
+        // sufficient reason not to rescue. Retain recent competing ownership,
+        // even if the competitor itself is missing in this sample.
+        if detections.iter().enumerate().any(|(k, other)| {
+            if k == j || other.confidence < MIN_CONF {
+                return false;
+            }
+            let (b, m) = overlaps(track, other);
+            b >= 0.25 && m >= 0.20
+        }) || tracker.tracks.iter().any(|other| {
+            if other.id == clock.chosen {
+                return false;
+            }
+            let Some(m) = other.appearance.as_ref() else {
+                return false;
+            };
+            if at - m.last_seen > CONTINUITY_US {
+                return false;
+            }
+            let (b, raw) = overlaps(other, d);
+            raw >= 0.20 || b >= 0.60
+        }) {
+            continue;
+        }
+        if selected.replace(j).is_some() {
+            return None;
+        }
+    }
+    selected
+}
+
 impl Tracker {
     pub(crate) fn initialize_appearance(
         &mut self,
@@ -388,6 +461,7 @@ impl Tracker {
                 memory.learn(f[c]);
             }
             memory.last_seen = at;
+            memory.last_observed = f[c];
             commit(t, &d[c], at);
         }
         // New distinct, unclaimed people get ordinary stable IDs. Never

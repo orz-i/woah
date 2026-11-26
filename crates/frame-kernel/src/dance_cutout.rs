@@ -27,6 +27,8 @@ pub(crate) struct CutoutPolicy {
     pub clock: Option<CutoutClock>,
     // Unconfirmed observations cannot enter the selected identity memory.
     pub pending: Option<crate::tracking_cutout::PendingMatch>,
+    // Current-frame output-only fallback, never identity/motion evidence.
+    pub weak_output: Option<usize>,
 }
 #[cfg(test)]
 struct DanceCutout {
@@ -163,6 +165,11 @@ pub(crate) fn step(
         .checked_add(1)?;
     let selected =
         tracker.update_cutout(&observations, &values, elapsed, &clock, &mut policy.pending)?;
+    policy.weak_output = if selected.is_none() && policy.pending.is_none() {
+        crate::tracking_cutout::weak_gap_overlay(tracker, &clock, elapsed, &observations, &values)
+    } else {
+        None
+    };
     clock.last = at;
     clock.direction = delta.signum();
     policy.clock = Some(clock);

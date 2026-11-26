@@ -128,6 +128,9 @@ pub(crate) fn present(a: &Appearance) -> bool {
 pub(crate) struct AppearanceMemory {
     pub anchor: Appearance,
     pub recent: Appearance,
+    // Exact feature of the last canonical observation, separate from the
+    // smoothed appearance used for normal identity association.
+    pub last_observed: Appearance,
     pub bank: Vec<Appearance>,
     pub last_seen: i64,
 }
@@ -136,6 +139,7 @@ impl AppearanceMemory {
         Self {
             anchor: value,
             recent: value,
+            last_observed: value,
             bank: vec![value],
             last_seen: at,
         }
