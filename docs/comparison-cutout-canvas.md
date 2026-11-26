@@ -1896,3 +1896,126 @@ across the two backend runs, with 114 added and none lost. CPU pair
 analysis increased from 92.580s to 141.111s, first preview 10.801s.
 Both complete run reports and per-frame reviews were checked; device
 QA alpha files are temporary local evidence only.
+
+## Stage C7.1: reuse exact source decoding for detail observations
+
+C6 proved the bounded detail overlay's quality gain but repeatedly
+created source decoders for current-frame ROI inference. C7.1 changes
+source-frame ownership/transport only. The shared Tracker, model,
+thresholds, 160/quarter-frame attempt budget, mask projection and
+non-mutating detail overlay contract are unchanged.
+
+- Android serial CPU forward spans borrow the decoded YUV Image until
+  the current observation and optional detail crop finish. The crop
+  uses the same Rust YUV converter and exact display-oriented source
+  geometry, never the model-sized full-frame RGB. The source Image is
+  released in the existing finally block (including cancellation);
+  a scoped crop function rejects access after the callback returns.
+  Only one extra model-sized direct buffer is allocated lazily.
+- Android GPU keeps the existing two-buffer full-frame prefetch.
+  Instead of starting another codec for every ROI, each decode span
+  lazily opens an auxiliary codec, advances sequentially to ascending
+  requested PTS, and flushes/seeks for reverse PTS or gaps >1.2s.
+  Exact PTS and source dimensions are still checked. A failed reuse
+  is retried once with a fresh decoder, then the old full-only fallback
+  applies. Close the auxiliary reader at the end of each span; never
+  retain it across a published partial preview or across lanes.
+  This avoids repeated codec creation and GOP decoding on forward
+  ROI sequences, but does not eliminate all additional GPU decoding.
+- iOS forward analysis crops the current source CVPixelBuffer while
+  still in the decode scope. For reverse samples, retain at most
+  four exact source pixel buffers from a lazily read ascending block,
+  with a 24 MiB stride*height payload budget (an unusually large
+  requested frame is used alone). Release passed/unused samples,
+  discard the block at reverse-span exit. Verify the original stamp
+  and exact PTS, use the same orientation and crop transform.
+  Neither platform persists source pixels or changes inference policy.
+- Detail stage telemetry separates inline crops, auxiliary reader
+  opens, reused reads, seeks/cache hits and decode/inference time.
+  The archive key adds source-reuse-v1 conservatively; no old mask
+  archive is silently mixed with a changed source transport.
+- Android instrumentation accepts `-e detailReuse false` to run the
+  previous per-request decoder mode with the same compiled model and
+  tracking core. The new `detailSourceReuseParity` case checks actual
+  YUV crop byte parity across rotations 0/90/180/270, ascending reads,
+  reverse seek, scoped crop lifetime and decoder release on a thrown
+  cancellation. Manual rotation here exercises the decoder's
+  display-coordinate mapping, not a complete rotated-container UX test.
+
+### Paired C6 / C7.1 evidence
+
+Same C5 two 12-second fixtures, 25fps/300 samples per lane, original
+3s seed, same model SHA, unchanged FrameKernel. Prior C6 data is
+`084074a5`; comparisons are across runs, not a thermally controlled
+repeated benchmark.
+
+On iOS simulator C7.1 kept 285/300 + 300/300 current-mask outputs,
+69 attempts and 54 accepted, 0 detail failures. Of 69 requests,
+68 were inline, one reverse reader opened (four frames read).
+Crop/decode 1.627s and local inference 3.579s. Full-pair analysis
+68.033 -> 55.627s; first preview 6.701 -> 4.640s. All 24 exact-PTS
+captured canvas images are pixel-identical to C6. Incomplete export
+and archive were rejected, ordinary playback restored.
+
+The actual Android GPU pair finished in 65.278s vs C6 103.039s;
+first preview 6.478s vs 7.596s. On the Baganda lane, detail request
+count/accepted stayed 73/58, no failures; auxiliary decoder opens
+fell from 73 to 3, with 70 reused reads and 3 seeks. Detail decode
+time 27.971 -> 3.906s (excludes separate 0.327s open and 0.022s seek
+measurements); local inference 6.088 -> 5.943s. Both 300-PTS alpha
+record files are byte-identical to C6, including 15 missing markers
+in Baganda and all valid Danzón outputs. The target needs no detail
+reader. Full GPU inference and prefetch remain unchanged.
+
+An additional iOS actual reverse-heavy test moved both user anchors
+to 11.0s (new seed points from raw source). The same 12s pair finished
+with 274/300 + 300/300, 50.576s analysis; 24 exact PTS samples,
+incomplete export/archive refusal and ordinary playback restoration
+passed. Baganda performed 68 detail attempts, 42 accepted, 0 failed:
+13 inline and 55 reverse; 17 reverse readers, 38 cache hits, 68 source
+samples loaded. This exercises the actual reverse cache rather than
+assuming all requests occur after the seed. Different anchor means
+different selection/trajectory; no direct C6 quality/performance
+comparison is claimed for this probe.
+
+The Android CPU pair finished in 98.027s vs C6 141.111s (30.5%
+lower); first preview 9.744s vs 10.801s. Baganda 69 attempts, 56
+accepted, 0 failures; 67 inline crops and two reverse requests
+using one auxiliary decoder, one seek. Detail decode 1.562s,
+auxiliary open 0.090s, seek 0.009s, local inference 7.992s.
+CPU and GPU both retained the exact same complete Alpha files as C6:
+all four SHA-256 comparisons match (1200 source PTS records, including
+missing markers). CPU reference/target 287/300 + 300/300; GPU
+285/300 + 300/300. No new identity or edge-quality claim is made.
+Both runs used the same OnePlus 8T, but battery sensor C6 28.6->31.0 C
+and C7.1 27.9->30.9 C; not repeated controlled-temperature benchmarks.
+Relative to the C5 full-only run, C7.1 retains a quality gain with
+remaining overhead (CPU 92.580->98.027s, GPU 57.105->65.278s,
+iOS sim 44.310->55.627s). No model or backend policy change.
+
+The new Android real source parity test passed all four manual display
+rotations: 12 inline and 16 reused crop byte comparisons against fresh
+per-frame readers, all reverse seek comparisons exact; escaped crop
+function rejected and thrown cancellation released the borrowed image
+on all four orientations. This is decoder-level cancellation/lifetime
+evidence, not actual active ROI inference cancellation or a full rotated
+container canvas end-to-end test. Android 28 focused comparison/export
+tests and both actual device instrumented tests passed. iOS actual
+short repair/cancel/restore/export regression passed: 90 frames,
+3.000s, 440Hz, unchanged outside patch, real subject correction,
+local file (simulator). iOS physical device remains untested.
+No change to shared Rust tracking/core; no new gate or model.
+Keep Debug/draft, CPU4 default and GPU isolated QA. Next C7.2:
+profile remaining inference/decoder service cost, especially low-yield
+detail requests on older B5 clips, without losing full-only or C6
+quality. Fresh independent holdout still required for release.
+
+Reproduce with the same C5 fixture and seed staging as C6; use
+`-e detailReuse true` (default), or `false` for old reopen behavior
+on the same build. Compare all four streamed alpha files with C6 using
+`cmp` or SHA-256; review_holdout.py supports the same baseline option.
+For the direct Android test run the isolated package instrumentation
+method ComparisonCutoutBackendInstrumentedTest#detailSourceReuseParity
+with `-e detailSourceQa true` after staging reference.mp4. iOS reverse
+probe uses the same QA config with anchorUs=11000000, referenceSeed
+[.55,.60], targetSeed [.37,.52].

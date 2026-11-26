@@ -71,7 +71,7 @@ class ComparisonCutoutBackendInstrumentedTest {
     private fun ms(start:Long)= (System.nanoTime()-start)/1_000_000.0
 
     private suspend fun runBackend(context:Context,sources:List<Source>,backend:LiteRtAccelerator,threads:Int,
-        evidenceRoot:File?=null,detailEnabled:Boolean=true):Run {
+        evidenceRoot:File?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true):Run {
         val start=System.nanoTime()
         YoloLiteRtSegmenter(context,requestedAccelerator=backend,cpuNumThreads=threads).use { segmenter ->
             segmenter.initialize()
@@ -94,7 +94,7 @@ class ComparisonCutoutBackendInstrumentedTest {
                 sources.forEachIndexed { i,src ->
                     works.add(analysis.begin(src.file.absolutePath,src.description,0,src.times.last(),
                         max(0,src.seed.ptsUs-500_000),min(src.times.last(),src.seed.ptsUs+499_999),
-                        src.seed,src.reference,!src.reference,segmenter,{true},inspected[i],detailEnabled=detailEnabled))
+                        src.seed,src.reference,!src.reference,segmenter,{true},inspected[i],detailEnabled=detailEnabled,detailReuse=detailReuse))
                 }
                 val firstMs=ms(first)
                 val lanes=ArrayList<Lane>()
@@ -235,6 +235,66 @@ class ComparisonCutoutBackendInstrumentedTest {
             Log.i("WoahCutoutBackendQa",report.toString())
         }
     }
+    /** Real decoder pixels, not a mock coordinate test. Compare all four
+     * display orientations with fresh C6 readers, including reverse seeks
+     * and scoped cancellation. Only opted-in QA fixture data is used. */
+    @Test fun detailSourceReuseParity(){
+        val args=InstrumentationRegistry.getArguments()
+        assumeTrue(args.getString("detailSourceQa")=="true")
+        val context=ApplicationProvider.getApplicationContext<Context>()
+        val file=File(context.filesDir,"comparison-real-dance-qa/reference.mp4")
+        val src=source(file,true,3_000_000,12_000_000,.565f,.47f,1800)
+        check(src.times.size>=150)
+        val pts=listOf(src.times[20],src.times[80],src.times[120],src.times[50])
+        val rotationResults=JSONArray()
+        fun bytes(buffer:ByteBuffer)=ByteArray(buffer.capacity()).also{buffer.duplicate().apply{rewind();get(it)}}
+        for(rotation in listOf(0,90,180,270)){
+            val swap=rotation%180!=0
+            val sw=if(swap)src.description.height else src.description.width
+            val sh=if(swap)src.description.width else src.description.height
+            val scene=art.gaoge.dance.engine.geometry.ModelCoordinateMapper(sw,sh)
+            val roi=intArrayOf(sw/5,sh/6,sw/2,sh/2)
+            val local=art.gaoge.dance.engine.geometry.ModelCoordinateMapper(roi[2],roi[3])
+            fun decoder(start:Long)=art.gaoge.dance.engine.media.CanonicalYuvInferenceDecoder(context,file.absolutePath,rotation,startUs=start)
+            val fresh=pts.associateWith{at->decoder(at).use{d->
+                d.prepare();bytes(d.decodeDetailAtPts(at,local,roi,sw,sh))
+            }}
+            decoder(pts.first()).use{d->
+                d.prepare()
+                var escaped:((art.gaoge.dance.engine.geometry.ModelCoordinateMapper,IntArray)->ByteBuffer)?=null
+                for(at in pts.take(3)){
+                    d.decodeRgbaWithDetailAtPts(at,scene){_,crop->
+                        check(bytes(crop(local,roi)).contentEquals(fresh.getValue(at))){"Inline crop changed at rotation $rotation"}
+                        escaped=crop
+                    }
+                    check(runCatching{escaped!!(local,roi)}.isFailure)
+                }
+                d.seekDetailTo(pts.last())
+                check(bytes(d.decodeDetailAtPts(pts.last(),local,roi,sw,sh)).contentEquals(fresh.getValue(pts.last()))){"Seek crop changed"}
+                // A cancellation while borrowing the image must release the
+                // codec output before the caller continues/tears down.
+                val cancelled=runCatching{
+                    d.decodeRgbaWithDetailAtPts(src.times[51],scene){_,_->
+                        throw kotlinx.coroutines.CancellationException("QA")
+                    }
+                }
+                check(cancelled.exceptionOrNull() is kotlinx.coroutines.CancellationException)
+                check(d.decodeRgbaAtPts(src.times[52],scene).capacity()==640*640*4)
+            }
+            decoder(pts.first()).use{d->
+                d.prepare()
+                for((i,at) in pts.withIndex()){
+                    if(i==3)d.seekDetailTo(at)
+                    check(bytes(d.decodeDetailAtPts(at,local,roi,sw,sh)).contentEquals(fresh.getValue(at))){"Reused detail crop changed"}
+                }
+            }
+            rotationResults.put(JSONObject().put("rotation",rotation).put("inlineExact",3).put("readerExact",4)
+                .put("reverseSeekExact",true).put("cancelBorrowReleased",true))
+        }
+        File(context.filesDir,"comparison-real-dance-qa/detail-source-report.json")
+            .writeText(JSONObject().put("passed",true).put("rotations",rotationResults).toString(2))
+    }
+
     /** Real independent clips, fixed PTS/seed, no automatic reseeding. The
      * masks are test-only local evidence for review, not identity ground truth. */
     @Test fun realDanceQuality():Unit=runBlocking {
@@ -267,7 +327,7 @@ class ComparisonCutoutBackendInstrumentedTest {
         }
         for(backend in backends){
             val row=try {
-                runBackend(context,sources,backend,4,root,args.getString("detailEnabled")!="false").evidence
+                runBackend(context,sources,backend,4,root,args.getString("detailEnabled")!="false",args.getString("detailReuse")!="false").evidence
             }catch(e:Exception){
                 JSONObject().put("requested",backend.name).put("status","failed").put("errorClass",e.javaClass.simpleName)
             }

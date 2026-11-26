@@ -307,7 +307,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     fun begin(uri: String, description: ComparisonVideoDescription, start: Long,endInclusive: Long,
         firstPreview:Long,lastPreview:Long,seed: ComparisonCutoutSeed, reference: Boolean, mirror: Boolean,
         segmenter: YoloLiteRtSegmenter,current: () -> Boolean, inspection: Inspection? = null,
-        fixedGrid:Pair<Int,Int>?=null,detailEnabled:Boolean=true): Work {
+        fixedGrid:Pair<Int,Int>?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true): Work {
         val measure=art.gaoge.dance.engine.BuildConfig.DEBUG
         val wallStart=System.nanoTime()
         val timing=linkedMapOf<String,Long>()
@@ -345,7 +345,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         // Prefetch only for effective GPU, keeping CPU on its serial path.
         val prefetch=segmenter.effectiveAccelerator==art.gaoge.dance.engine.litert.LiteRtAccelerator.GPU
         val decodeBuffers=if(prefetch) Array(2){ByteBuffer.allocateDirect(mapper.modelInputSize*mapper.modelInputSize*4)} else null
-        fun observe(pts:Long,frame:ByteBuffer,consume:(Observation)->Unit){
+        fun observe(pts:Long,frame:ByteBuffer,crop:((ModelCoordinateMapper,IntArray)->ByteBuffer)?,
+                    consume:(Observation,((ModelCoordinateMapper,IntArray)->ByteBuffer)?)->Unit){
             checkCurrent(current)
             val inspected=inspection?.takeIf { it.seed==seed && pts==seed.ptsUs }
             require(inspected==null || inspected.sourceDigest.contentEquals(digest(frame))) { "选人画面已变化，请重新选择" }
@@ -355,7 +356,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 if(measure)detected.stageTimingsMs.forEach{(name,ms)->addTime(name,ms*1_000_000)}
                 timed("observation"){Observation(pts,detected.persons,mapper,frame)}
             }
-            consume(observation)
+            consume(observation,crop)
         }
         fun add(o:Observation,index:Int,initial:Boolean) {
             checkCurrent(current)
@@ -365,11 +366,57 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             timed("alphaStore"){layers.add(o.pts,aw,ah,alpha,fixed)}
             if(initial)small[o.pts]=alpha?.let{ComparisonCutoutLayer(o.pts,aw,ah,it,fixed)}
         }
-        // Budget applies across both directions and all chunks. Re-decode
-        // only exact PTS requested by shared Tracker, never spool RGB.
+        // Exact source reuse is scoped to a decode span, never to a durable
+        // project. CPU can sample the currently borrowed Image; GPU keeps its
+        // proven RGBA prefetch and lazily opens a second sequential reader.
         val detailBudget=minOf(160,maxOf(1,(times.size+3)/4))
         var detailAttempts=0;var detailAccepted=0;var detailFailures=0
-        fun addTracked(o:Observation,session:FrameKernel.DanceCutoutTrack,initial:Boolean){
+        var detailInline=0;var detailOpens=0;var detailSeeks=0;var detailReuseHits=0
+        // A single auxiliary codec per span. Descending PTS requires flush
+        // and seek; a failed reuse is retried once with a fresh codec.
+        val reader=object:AutoCloseable{
+            var decoder:CanonicalYuvInferenceDecoder?=null
+            var previous:Long?=null
+            fun closeCurrent(){
+                decoder?.close();decoder=null;previous=null
+            }
+            fun read(pts:Long,local:ModelCoordinateMapper,roi:IntArray):ByteBuffer{
+                if(!detailReuse){
+                    detailOpens++
+                    return CanonicalYuvInferenceDecoder(context,uri,description.rotation,startUs=pts).use{
+                        timed("detailOpen"){it.prepare()}
+                        // Own the result after decoder closes (same direct buffer
+                        // as previous C6 path; no borrowed Image survives).
+                        timed("detailDecode"){it.decodeDetailAtPts(pts,local,roi,sw,sh)}
+                    }
+                }
+                for(attempt in 0..1){
+                    try{
+                        checkCurrent(current)
+                        val d=decoder ?: CanonicalYuvInferenceDecoder(context,uri,description.rotation,startUs=pts).also{
+                            decoder=it;detailOpens++;timed("detailOpen"){it.prepare()}
+                        }
+                        if(previous!=null){
+                            if(pts<=previous!! || pts-previous!!>1_200_000L){
+                                timed("detailSeek"){d.seekDetailTo(pts)};detailSeeks++
+                            }
+                            detailReuseHits++
+                        }
+                        val frame=timed("detailDecode"){d.decodeDetailAtPts(pts,local,roi,sw,sh)}
+                        previous=pts
+                        return frame
+                    }catch(e:CancellationException){throw e}
+                    catch(e:Exception){
+                        closeCurrent()
+                        if(attempt==1)throw e
+                    }
+                }
+                error("Detail decode exhausted")
+            }
+            override fun close(){closeCurrent()}
+        }
+        fun addTracked(o:Observation,session:FrameKernel.DanceCutoutTrack,initial:Boolean,
+                       crop:((ModelCoordinateMapper,IntArray)->ByteBuffer)?=null){
             checkCurrent(current)
             if(!detailEnabled || detailAttempts>=detailBudget){
                 add(o,timed("track"){o.track(session)},initial);return
@@ -380,14 +427,13 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             detailAttempts++
             val merged=try{
                 val cropMapper=ModelCoordinateMapper(roi[2],roi[3])
-                CanonicalYuvInferenceDecoder(context,uri,description.rotation,startUs=o.pts).use{decoder->
-                    decoder.prepare()
-                    val frame=timed("detailDecode"){decoder.decodeDetailAtPts(o.pts,cropMapper,roi,sw,sh)}
-                    checkCurrent(current)
-                    val local=timed("detailInference"){segmenter.segmentGlReadbackRgbaSync(frame,cropMapper,o.pts,
-                        confidenceThreshold=.25f)}
-                    o.withDetail(Observation(o.pts,local.persons,cropMapper,frame),roi)
-                }
+                val frame=if(detailReuse && crop!=null){
+                    detailInline++;timed("detailDecode"){crop(cropMapper,roi)}
+                }else reader.read(o.pts,cropMapper,roi)
+                checkCurrent(current)
+                val local=timed("detailInference"){segmenter.segmentGlReadbackRgbaSync(frame,cropMapper,o.pts,
+                    confidenceThreshold=.25f)}
+                o.withDetail(Observation(o.pts,local.persons,cropMapper,frame),roi)
             }catch(e:CancellationException){throw e}
             catch(e:Exception){detailFailures++;o}
             checkCurrent(current)
@@ -395,7 +441,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             if(index>=o.bounds.size)detailAccepted++
             add(merged,index,initial)
         }
-        fun decode(from:Int,to:Int,consume:(Observation)->Unit) {
+        fun decode(from:Int,to:Int,inlineDetail:Boolean=false,consume:(Observation,((ModelCoordinateMapper,IntArray)->ByteBuffer)?)->Unit) {
             if(from>=to)return
             val buffers=decodeBuffers
             if(buffers==null || to-from==1){
@@ -404,7 +450,13 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                     for(i in from until to){
                         checkCurrent(current)
                         val pts=times[i]
-                        observe(pts,timed("decodeAndConvert"){decoder.decodeRgbaAtPts(pts,mapper)},consume)
+                        if(detailReuse && detailEnabled && inlineDetail){
+                            val start=System.nanoTime()
+                            decoder.decodeRgbaWithDetailAtPts(pts,mapper){frame,crop->
+                                addTime("decodeAndConvert",System.nanoTime()-start)
+                                observe(pts,frame,crop,consume)
+                            }
+                        }else observe(pts,timed("decodeAndConvert"){decoder.decodeRgbaAtPts(pts,mapper)},null,consume)
                     }
                 }
                 return
@@ -434,7 +486,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                     // The next task owns the other buffer. We consume this
                     // frame completely before its slot can be reused.
                     if(i+1<to)next=submit(i+1)
-                    observe(decoded.pts,decoded.buffer,consume)
+                    observe(decoded.pts,decoded.buffer,null,consume)
                 }
             }finally{
                 // Wait for an in-flight decode, then close on its own thread.
@@ -454,18 +506,20 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             if(from>=to)return
             ComparisonCutoutDisk(context.cacheDir,MAX_PREFIX_BYTES).use { spool ->
                 val records=ArrayList<ComparisonCutoutDisk.Record>()
-                decode(from,to){records.add(timed("prefixWrite"){spool.append(it.encode())})}
+                decode(from,to){observation,_->records.add(timed("prefixWrite"){spool.append(observation.encode())})}
                 prefixBytes+=spool.bytes
-                for(record in records.asReversed()){
-                    checkCurrent(current)
-                    val prior=timed("prefixRead"){Observation.decode(spool.read(record))}
-                    addTracked(prior,reverse,initial)
-                }
+                try{
+                    for(record in records.asReversed()){
+                        checkCurrent(current)
+                        val prior=timed("prefixRead"){Observation.decode(spool.read(record))}
+                        addTracked(prior,reverse,initial)
+                    }
+                }finally{reader.close()}
             }
         }
         try {
             // Seed first, then grow both directions around the playhead.
-            decode(anchor,anchor+1){observation->
+            decode(anchor,anchor+1){observation,_->
                 val chosen=observation.select(seed)
                 require(chosen>=0 && (inspection?.takeIf{it.seed==seed}?.index ?: chosen)==chosen) { "未能明确选中人物" }
                 val b=observation.bounds[chosen]
@@ -476,12 +530,12 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 add(observation,chosen,true)
             }
             backwards(first,anchor,true)
-            decode(anchor+1,last+1){addTracked(it,forward,true)}
+            try{decode(anchor+1,last+1,true){o,crop->addTracked(o,forward,true,crop)}}finally{reader.close()}
             require(small.size==nearby.size && small[seed.ptsUs]!=null)
             val preview=ComparisonCutoutTrackCache(small) // no fingerprint: cannot export a partial
             small.clear()
             return Work(preview,times.size,layers,finishWork={
-                decode(last+1,times.size){addTracked(it,forward,false)}
+                try{decode(last+1,times.size,true){o,crop->addTracked(o,forward,false,crop)}}finally{reader.close()}
                 backwards(0,first,false)
                 layers.seal(seed.ptsUs)
                 require(fingerprint==timed("fingerprint"){ComparisonCutoutFingerprint.read(context,uri,current)}) { "源视频已变化" }
@@ -495,7 +549,9 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                         .put("wallMs",(System.nanoTime()-wallStart)/1_000_000)
                         .put("prefixBytes",prefixBytes).put("alphaBytesPerFrame",aw*ah)
                         .put("detailAttempts",detailAttempts).put("detailAccepted",detailAccepted).put("detailFailures",detailFailures)
-                        .put("detailEnabled",detailEnabled).put("stageMs",stages).toString())
+                        .put("detailEnabled",detailEnabled).put("detailReuse",detailReuse)
+                        .put("detailInline",detailInline).put("detailDecoderOpens",detailOpens)
+                        .put("detailSeeks",detailSeeks).put("detailReuseHits",detailReuseHits).put("stageMs",stages).toString())
                 }
                 ComparisonCutoutTrackCache(layers,fingerprint)
             },cleanup={try{forward.close()}finally{reverse.close()}})

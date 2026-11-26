@@ -338,7 +338,7 @@ final class IOSComparisonCutoutAnalysis {
       try entries.add(o.pts,stamp:o.stamp,layer:layer,placement:placement)
       if initial{small[o.pts]=IOSComparisonCachedCutout(stamp:o.stamp,layer:layer)}
     }
-    func decode(_ from:Int,_ to:Int,_ consume:(Observation)throws->Void)throws{
+    func decode(_ from:Int,_ to:Int,_ consume:(Observation,CVPixelBuffer)throws->Void)throws{
       if from>=to{return}
       let scoped=url.isFileURL && url.startAccessingSecurityScopedResource()
       defer{if scoped{url.stopAccessingSecurityScopedResource()}}
@@ -369,7 +369,7 @@ final class IOSComparisonCutoutAnalysis {
             observation=inspected.observation
           }else{observation=try self.infer(pixel:pixel,orientation:orientation,pts:pts,confidence:pts==seed.ptsUs ? 0.25:0.20).0}
           cursor+=1
-          try consume(observation)
+          try consume(observation,pixel)
           return true
         }
         if !found{break}
@@ -378,35 +378,21 @@ final class IOSComparisonCutoutAnalysis {
     }
     let detailBudget=min(160,max(1,(times.count+3)/4))
     var detailAttempts=0,detailAccepted=0,detailFailures=0
-    func localObservation(_ original:Observation,_ roi:FrameKernelViewport)throws->Observation{
-      let scoped=url.isFileURL && url.startAccessingSecurityScopedResource()
-      defer{if scoped{url.stopAccessingSecurityScopedResource()}}
-      let reader=try AVAssetReader(asset:asset)
-      defer{reader.cancelReading()}
-      let output=AVAssetReaderTrackOutput(track:video,outputSettings:[
-        kCVPixelBufferPixelFormatTypeKey as String:kCVPixelFormatType_32BGRA,
-        kCVPixelBufferIOSurfacePropertiesKey as String:[:]])
-      output.alwaysCopiesSampleData=false
-      let begin=CMTimeMaximum(video.timeRange.start,CMTime(value:max(0,original.pts-1),timescale:1_000_000))
-      reader.timeRange=CMTimeRange(start:begin,end:CMTimeRangeGetEnd(video.timeRange))
-      guard reader.canAdd(output) else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
-      reader.add(output)
-      guard reader.startReading() else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
-      while let sample=output.copyNextSampleBuffer(){
+    var detailInline=0,detailReaderOpens=0,detailCacheHits=0,detailReadSamples=0
+    var detailDecodeMs=0.0,detailInferenceMs=0.0
+    func localObservation(_ original:Observation,_ roi:FrameKernelViewport,_ pixel:CVPixelBuffer)throws->Observation{
         try check()
-        guard let pts=IOSComparisonTimeCore.map(CMSampleBufferGetOutputPresentationTimeStamp(sample)) else{continue}
-        if pts<original.pts{continue}
-        guard pts==original.pts,let pixel=CMSampleBufferGetImageBuffer(sample),
-          let stamp=IOSComparisonSourceStamp(pixel),original.stamp.agrees(with:stamp) else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+        guard let stamp=IOSComparisonSourceStamp(pixel),original.stamp.agrees(with:stamp) else{
+          throw IOSComparisonCutoutAnalysisError.invalidFrame
+        }
+        let before=ProcessInfo.processInfo.systemUptime
         let image=IOSComparisonCompositor.oriented(pixel,transform:orientation)
         let extent=image.extent,sw=CGFloat(original.transform.source_width),sh=CGFloat(original.transform.source_height)
         let w=CGFloat(roi.width),h=CGFloat(roi.height)
         guard w>0,h>0,roi.x>=0,roi.top>=0,CGFloat(roi.x)+w<=sw,CGFloat(roi.top)+h<=sh else{
           throw IOSComparisonCutoutAnalysisError.invalidFrame
         }
-        // Tracker coordinates use the display-oriented full inference image;
-        // convert that ROI back to the original source pixel extent, not the
-        // already letterboxed input. CI uses bottom-left coordinates.
+        // Source pixels, never the already downscaled inference tensor.
         let region=CGRect(x:CGFloat(roi.x)*extent.width/sw,
           y:(sh-CGFloat(roi.top)-h)*extent.height/sh,width:w*extent.width/sw,height:h*extent.height/sh)
         let cropped=image.cropped(to:region)
@@ -415,12 +401,70 @@ final class IOSComparisonCutoutAnalysis {
         guard let cg=self.context.createCGImage(cropped,from:CGRect(x:0,y:0,width:w,height:h)) else{
           throw IOSComparisonCutoutAnalysisError.invalidFrame
         }
+        detailDecodeMs+=(ProcessInfo.processInfo.systemUptime-before)*1000
+        try check()
+        let inferStart=ProcessInfo.processInfo.systemUptime
         let result=try self.runner.run(image:cg,preferredBackend:.xnnpack,confidenceThreshold:0.25)
-        return try Observation(pts:pts,stamp:stamp,result:result)
-      }
-      throw IOSComparisonCutoutAnalysisError.invalidFrame
+        detailInferenceMs+=(ProcessInfo.processInfo.systemUptime-inferStart)*1000
+        return try Observation(pts:original.pts,stamp:stamp,result:result)
     }
-    func addTracked(_ o:Observation,_ track:Track,_ initial:Bool)throws{
+    // Reverse inference observations are already spooled without source RGB.
+    // Read only on demand, in small ascending blocks, retain at most four
+    // original frames (24 MiB). No pixel buffer leaves this reverse span.
+    func loadReverse(_ lower:Int,_ wanted:Int)throws->[Int64:CVPixelBuffer]{
+      try check()
+      let readStart=ProcessInfo.processInfo.systemUptime
+      defer{detailDecodeMs+=(ProcessInfo.processInfo.systemUptime-readStart)*1000}
+      let scoped=url.isFileURL && url.startAccessingSecurityScopedResource()
+      defer{if scoped{url.stopAccessingSecurityScopedResource()}}
+      let reader=try AVAssetReader(asset:asset)
+      defer{reader.cancelReading()}
+      detailReaderOpens+=1
+      let output=AVAssetReaderTrackOutput(track:video,outputSettings:[
+        kCVPixelBufferPixelFormatTypeKey as String:kCVPixelFormatType_32BGRA,
+        kCVPixelBufferIOSurfacePropertiesKey as String:[:]])
+      output.alwaysCopiesSampleData=false
+      let first=max(lower,wanted-3)
+      let begin=CMTimeMaximum(video.timeRange.start,CMTime(value:max(0,times[first]-1),timescale:1_000_000))
+      reader.timeRange=CMTimeRange(start:begin,end:CMTimeRangeGetEnd(video.timeRange))
+      guard reader.canAdd(output) else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      reader.add(output)
+      guard reader.startReading() else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      let budget=24*1024*1024
+      var cache:[Int64:CVPixelBuffer]=[:],order:[Int64]=[],bytes=0
+      func size(_ pixel:CVPixelBuffer)->Int{CVPixelBufferGetBytesPerRow(pixel)*CVPixelBufferGetHeight(pixel)}
+      var cursor=first
+      while cursor<=wanted{
+        try check()
+        let ok=try autoreleasepool{()->Bool in
+          guard let sample=output.copyNextSampleBuffer() else{return false}
+          guard let pts=IOSComparisonTimeCore.map(CMSampleBufferGetOutputPresentationTimeStamp(sample)) else{return true}
+          if pts<times[cursor]{return true}
+          guard pts==times[cursor],let pixel=CMSampleBufferGetImageBuffer(sample) else{
+            throw IOSComparisonCutoutAnalysisError.invalidFrame
+          }
+          detailReadSamples+=1
+          let n=size(pixel)
+          guard n>0 else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+          while !order.isEmpty && bytes+n>budget{
+            let key=order.removeFirst()
+            if let old=cache.removeValue(forKey:key){bytes-=size(old)}
+          }
+          // An unusually large frame is used only for its requested PTS,
+          // never held alongside any other frame.
+          if n<=budget || cursor==wanted{
+            cache[pts]=pixel;order.append(pts);bytes+=n
+          }
+          cursor+=1
+          return true
+        }
+        if !ok{break}
+      }
+      guard cursor==wanted+1,cache[times[wanted]] != nil else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      return cache
+    }
+    func addTracked(_ o:Observation,_ track:Track,_ initial:Bool,
+                    source:()throws->CVPixelBuffer)throws{
       try check()
       if !detailEnabled || detailAttempts>=detailBudget{
         try add(o,track.step(o),initial);return
@@ -430,7 +474,7 @@ final class IOSComparisonCutoutAnalysis {
       detailAttempts+=1
       var merged=o
       do{
-        let local=try localObservation(o,roi)
+        let local=try localObservation(o,roi,source())
         merged=try o.withDetail(local,roi:roi)
       }catch is CancellationError{throw CancellationError()}
       catch{detailFailures+=1}
@@ -444,14 +488,23 @@ final class IOSComparisonCutoutAnalysis {
       let spool=try IOSComparisonCutoutDisk(budget:Self.maximumPrefixBytes)
       defer{spool.close()}
       var records:[IOSComparisonCutoutDisk.Record]=[]
-      try decode(from,to){records.append(try spool.append($0.encode()))}
-      for record in records.reversed(){
+      try decode(from,to){o,_ in records.append(try spool.append(o.encode()))}
+      var cache:[Int64:CVPixelBuffer]=[:]
+      for (i,record) in records.enumerated().reversed(){
         try check()
         let prior=try Observation.decode(spool.read(record))
-        try addTracked(prior,reverse,initial)
+        try addTracked(prior,reverse,initial){
+          if let pixel=cache[prior.pts]{detailCacheHits+=1;return pixel}
+          cache.removeAll()
+          cache=try loadReverse(from,from+i)
+          guard let pixel=cache[prior.pts] else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+          return pixel
+        }
+        // Future reverse requests can never use this (or a later) sample.
+        cache.removeValue(forKey:prior.pts)
       }
     }
-    try decode(anchor,anchor+1){o in
+    try decode(anchor,anchor+1){o,_ in
       let selected=o.select(seed)
       guard selected>=0,inspection?.seed != seed || inspection?.index==selected else{
         throw IOSComparisonCutoutAnalysisError.invalidSelection
@@ -470,16 +523,20 @@ final class IOSComparisonCutoutAnalysis {
       try add(o,selected,true)
     }
     try backwards(first,anchor,true)
-    try decode(anchor+1,last+1){try addTracked($0,forward,true)}
+    try decode(anchor+1,last+1){o,pixel in
+      try addTracked(o,forward,true){detailInline+=1;return pixel}
+    }
     guard small.count==nearby.count,small[seed.ptsUs]?.layer != nil else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
     let preview=IOSComparisonCutoutTrackCache(entries:small,times:nearby)
     small.removeAll()
     return Work(preview:preview,total:times.count,disk:entries){
-      try decode(last+1,times.count){try addTracked($0,forward,false)}
+      try decode(last+1,times.count){o,pixel in
+        try addTracked(o,forward,false){detailInline+=1;return pixel}
+      }
       try backwards(0,first,false)
       try entries.seal(anchor:seed.ptsUs)
       #if DEBUG
-      NSLog("WoahCutoutDetail role=%@ frames=%d attempts=%d accepted=%d failures=%d",reference ? "reference":"target",times.count,detailAttempts,detailAccepted,detailFailures)
+      NSLog("WoahCutoutDetail role=%@ frames=%d attempts=%d accepted=%d failures=%d inline=%d readerOpens=%d cacheHits=%d readSamples=%d decodeMs=%.1f inferenceMs=%.1f",reference ? "reference":"target",times.count,detailAttempts,detailAccepted,detailFailures,detailInline,detailReaderOpens,detailCacheHits,detailReadSamples,detailDecodeMs,detailInferenceMs)
       #endif
 
       guard try IOSComparisonCutoutFingerprint.read(url,current:{!isCancelled()})==fingerprint else{

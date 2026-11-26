@@ -51,6 +51,7 @@ class CanonicalYuvInferenceDecoder(
         }
     }
     private val conversionWorkspace = CanonicalYuvToRgba.Workspace(modelInputSize)
+    private val detailBuffer by lazy { ByteBuffer.allocateDirect(modelInputSize*modelInputSize*4) }
 
     var runtimeInfo: RuntimeInfo? = null
         private set
@@ -87,9 +88,14 @@ class CanonicalYuvInferenceDecoder(
         )
 
         val decoder = MediaCodec.createDecoderByType(mime)
-        decoder.configure(inputFormat, null, null, 0)
-        decoder.start()
-        codec = decoder
+        try {
+            decoder.configure(inputFormat, null, null, 0)
+            decoder.start()
+            codec = decoder
+        }catch(error:Throwable){
+            try{decoder.release()}catch(_:Throwable){}
+            throw error
+        }
         outputFormat = null
         updateRuntimeInfo(decoder.name, inputFormat)
     }
@@ -122,6 +128,38 @@ class CanonicalYuvInferenceDecoder(
         return decodeRgbaFrame(targetPtsUs,mapper,true,rgbaBuffer,roi+intArrayOf(sceneWidth,sceneHeight)).rgbaBuffer
     }
 
+    /** Borrow the exact source image only during this synchronous callback.
+     * No Image or crop function may be used after the codec buffer is released. */
+    internal fun decodeRgbaWithDetailAtPts(
+        pts:Long,mapper:ModelCoordinateMapper,
+        consume:(ByteBuffer,(ModelCoordinateMapper,IntArray)->ByteBuffer)->Unit
+    ) {
+        decodeRgbaFrame(pts,mapper,true,onSource={image,rgba->
+            var active=true
+            try {
+                consume(rgba){local,roi->
+                    check(active)
+                    require(roi.size==4 && local.srcWidth==roi[2] && local.srcHeight==roi[3])
+                    CanonicalYuvToRgba.convert(image,detailBuffer,local,rotationDegrees,
+                        colorInt(outputFormat,MediaFormat.KEY_COLOR_STANDARD),
+                        colorInt(outputFormat,MediaFormat.KEY_COLOR_RANGE),conversionWorkspace,
+                        roi+intArrayOf(mapper.srcWidth,mapper.srcHeight))
+                    detailBuffer
+                }
+            }finally{active=false}
+        })
+    }
+
+    /** Reposition an already-running synchronous codec after all borrowed
+     * images have been released. The next decode still requires exact PTS. */
+    internal fun seekDetailTo(pts:Long){
+        require(pts>=0)
+        val decoder=checkNotNull(codec)
+        extractor.seekTo(pts,MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+        decoder.flush()
+        inputEos=false;outputEos=false
+    }
+
     /**
      * Decodes the first display frame at or after [targetPtsUs]. This is used by one-shot
      * analysis where a millisecond trim boundary is not guaranteed to be an exact source PTS.
@@ -140,7 +178,8 @@ class CanonicalYuvInferenceDecoder(
         mapper: ModelCoordinateMapper,
         requireExactPts: Boolean,
         destination:ByteBuffer=rgbaBuffer,
-        detail:IntArray?=null
+        detail:IntArray?=null,
+        onSource:((Image,ByteBuffer)->Unit)?=null
     ): DecodedRgbaFrame {
         val decoder = codec ?: error("Canonical inference decoder not prepared")
         var emptyOutputCount = 0
@@ -181,6 +220,7 @@ class CanonicalYuvInferenceDecoder(
                                 colorRange = colorInt(outputFormat, MediaFormat.KEY_COLOR_RANGE),
                                 workspace = conversionWorkspace,detail=detail
                             )
+                            onSource?.invoke(image,destination)
                             return DecodedRgbaFrame(ptsUs = ptsUs, rgbaBuffer = destination)
                         }
                     } finally {
