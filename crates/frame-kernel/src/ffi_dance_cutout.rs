@@ -336,6 +336,83 @@ pub struct TouchRows {
     pub transform: Transform,
 }
 
+/// Experimental host-only gap evidence. Each supplied frame is a real
+/// current observation; only the two endpoints are already selected.
+#[cfg(feature = "host-model-probe")]
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct GapRows {
+    pub pts: i64,
+    pub observed: TouchRows,
+    pub selected: i32,
+}
+
+/// Confirm the entire missing interval without mutating any tracker or masks.
+/// On rejection the caller-owned output is not written.
+/// # Safety
+/// All frame descriptors and their input arrays must be valid for the declared
+/// lengths; the output must be disjoint from every input.
+#[cfg(feature = "host-model-probe")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_dance_probe_gap(
+    frames: *const GapRows,
+    count: usize,
+    out: *mut i32,
+    out_len: usize,
+) -> i32 {
+    use crate::dance_gap::{self, GapFrame, Reject};
+    if !(3..=dance_gap::MAX_FRAMES).contains(&count) || out_len != count {
+        return Reject::Invalid as i32;
+    }
+    // SAFETY: caller owns the readable descriptor array of the bounded count.
+    let Some(rows) = (unsafe { borrowed(frames, count) }) else {
+        return Reject::Invalid as i32;
+    };
+    let mut bytes = 0usize;
+    let mut observations = Vec::with_capacity(count);
+    for frame in rows {
+        let o = frame.observed;
+        if !valid_lengths(o.transform, o.count, o.mask_len, o.feature_len) {
+            return Reject::Invalid as i32;
+        }
+        let Some(next) = bytes.checked_add(o.mask_len) else {
+            return Reject::Invalid as i32;
+        };
+        bytes = next;
+        if bytes > dance_gap::MAX_MASK_BYTES {
+            return Reject::Invalid as i32;
+        }
+        // SAFETY: checked bounded lengths, readable input owned by caller.
+        let (Some(d), Some(m), Some(f)) = (
+            unsafe { borrowed(o.rows, o.count) },
+            unsafe { borrowed(o.masks, o.mask_len) },
+            unsafe { borrowed(o.features, o.feature_len) },
+        ) else {
+            return Reject::Invalid as i32;
+        };
+        observations.push(GapFrame {
+            pts: frame.pts,
+            selected: frame.selected,
+            observed: crate::dance_cutout::CutoutObservation {
+                detections: d,
+                masks: m,
+                transform: o.transform,
+                features: f,
+            },
+        });
+    }
+    let indices = match dance_gap::confirm(&observations) {
+        Ok(indices) => indices,
+        Err(reason) => return reason as i32,
+    };
+    // SAFETY: checked size and caller promises a unique writable output.
+    let Some(output) = (unsafe { write(out, out_len) }) else {
+        return Reject::Invalid as i32;
+    };
+    output.copy_from_slice(&indices);
+    0
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct TouchOutput {

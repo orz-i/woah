@@ -85,7 +85,7 @@ def local(lib,runner,cap,i,view,o):
 
 
 def replay(lib,runner,path,obs,anchor,seed,enabled,scheduled=False,local_cache=None,
-           alternate_runner=None):
+           alternate_runner=None,trace=None):
     records={};attempts=[];accepted=[];skipped=[]
     alternate_attempts=[];alternate_accepted=[];alternate_eligible=[];alternate_ms=[]
     if alternate_runner is not None and (not enabled or not scheduled or
@@ -104,13 +104,16 @@ def replay(lib,runner,path,obs,anchor,seed,enabled,scheduled=False,local_cache=N
             o=obs[i];pts,ds,masks,t,f=o
             raw=(m.Detection*len(ds))(*ds)
             argv=(raw,len(ds),m.ptr(masks),masks.size,t,m.ptr(f,m.PF),f.size)
+            detail_state="not_requested"
             if enabled and selected<0 and len(attempts)<budget:
                 view=View()
                 step_detail=lib.frame_kernel_dance_step_or_detail_scheduled if scheduled else lib.frame_kernel_dance_step_or_detail
                 j=step_detail(h,pts,*argv,c.byref(view))
                 if j==-4:
+                    detail_state="backoff"
                     skipped.append(int(pts));j=-1
                 if j==-3:
+                    detail_state="attempted"
                     attempts.append(int(pts))
                     original_count=len(ds)
                     key=(i,view.x,view.top,view.width,view.height)
@@ -163,6 +166,8 @@ def replay(lib,runner,path,obs,anchor,seed,enabled,scheduled=False,local_cache=N
                 alpha=np.empty((h_,w),np.uint8)
                 assert lib.frame_kernel_cutout_alpha(m.ptr(masks[j]),masks[j].size,t,w,h_,m.ptr(alpha),alpha.size)==0
             records[i]=(int(pts),alpha if alpha is not None and alpha.any() else None)
+            if trace is not None:
+                trace(i,j,(pts,ds,masks,t,f),detail_state)
         try:
             step(handles[0],anchor,seed);step(handles[1],anchor,seed)
             near=[i for i,o in enumerate(obs) if obs[anchor][0]-500000<=o[0]<obs[anchor][0]+500000]

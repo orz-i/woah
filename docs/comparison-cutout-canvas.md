@@ -3576,3 +3576,167 @@ touch accuracy, and remaining long-gap/edge quality are still
 open. Next: verify Android same-touch A/B, then target residual
 long gaps and small/occluded instance observations without
 relaxing identity or export policy. Do not promote release.
+
+## Stage C9.5: bounded two-sided current-observation gap recovery
+
+### Diagnosis and design
+
+The C9.4 host stage-solo alternate touch at 6s leaves 63 missing
+samples, including a 1.12s consecutive gap. The missing-span
+diagnostic examines the canonical full/local rows without changing
+the selected output, track state or original detector policy.
+In the long stage gap, there is a geometrically consistent strong
+current instance on each sample (representative confidence .56–.89,
+expected box IoU .58–.98), but its color descriptor can have
+similarity as low as approximately .19 to the immutable selected
+anchor as lighting changes. This is an association-evidence problem
+rather than an absence of detector output on every sample.
+It is not true of every other scene: the crowded Basque/Swing
+gaps have competing or geometrically discontinuous observations.
+
+A first diagnostic requiring simultaneous similarity to both
+incumbent endpoints, to the original anchor, and contrast against
+the original competing appearances adds only three samples across
+the initial C7.3/C8.3 replays including the alternate 6s anchor,
+without reducing their longest gap. Do not adopt that rule.
+
+The second hypothesis confirms an entire missing span using a
+unique chain of *current* raw instance masks between two original
+strong selected endpoints. It does not produce a synthetic mask,
+interpolate a rendered silhouette, re-seed a tracker, carry an
+alternate output forward, or modify canonical track/appearance/
+ROI scheduling state. It never replaces an existing visible
+sample. Every adjacent link must uniquely match in both
+directions, with strong confidence >=.25, box IoU >=.55,
+threshold-128 raw mask IoU >=.55, and current appearance
+similarity >=.88. An overlapping competing mask with confidence
+>=.20, box IoU >=.35 and >=.25 containment of the smaller
+thresholded mask vetoes the interval. The last reached row must
+be the original accepted right endpoint; no partial chain.
+Maximum endpoint span 1.2s, adjacent source PTS delta 80ms,
+73 source samples and 64 MiB of raw mask evidence; malformed
+observations, mixed transforms, weak/missing endpoints, ambiguity,
+and over-budget windows fail closed. Only original accepted
+endpoints are used, not earlier recovered output.
+
+This is a new, explicitly bounded temporal evidence hypothesis,
+not a relaxation of any canonical identity threshold. In
+particular it does not require each intermediate mask to match
+the immutable anchor color, which may allow gradual identity drift
+in difficult occlusions even with reciprocal continuity. Sparse
+labels and visual review do not prove absence of such drift.
+
+The shared FrameKernel implementation lives in dance_gap.rs and
+its checked frame_kernel_dance_probe_gap ABI, compiled only with
+host-model-probe. The default core has no experimental export.
+No Kotlin/Swift application, archive, preview or export admission
+change in this stage. The replay tool checks the Rust-selected
+indices against an independent Python reference and verifies
+every previously visible alpha byte-for-byte. The core only
+returns indices to existing raw observations; the existing alpha
+projection remains the renderer. All recovery cases here use
+full-frame current observations, without an extra model inference.
+
+### Full source host replay
+
+Same previously reviewed C5/C7.3/C8.3 six 300-frame clips and
+C9.3 80-frame low-light partner stress case; no new holdout or
+dense identity truth. The alternate stage anchors are separate
+replays of the same source, not independent new media.
+
+| Scene | Baseline | Confirmed gap replay | Longest missing |
+| --- | ---: | ---: | ---: |
+| Baganda | 290/300 | 292/300 | 120 -> 120ms |
+| Danzon | 300/300 | 300/300 | 0 -> 0ms |
+| Basque | 280/300 | 281/300 | 720 -> 720ms |
+| Swing | 254/300 | 259/300 | 520 -> 520ms |
+| Outdoor ensemble | 300/300 | 300/300 | 0 -> 0ms |
+| Stage solo | 268/300 | 281/300 | 320 -> 280ms |
+| Total original six roles | 1692/1800 | 1713/1800 | |
+| Stage solo, alternate 0s touch | 249/300 | 280/300 | 840 -> 280ms |
+| Stage solo, alternate 6s touch | 237/300 | 280/300 | 1120 -> 240ms |
+| Low-light partner | 78/80 | 78/80 | 80 -> 80ms |
+
+All original 1692 visible masks on the six normal anchors
+byte-exact, 21 added. The original six selected landmark checks
+improve 68/71 -> 69/71. On the two alternate anchors, 31 and 43
+additional masks respectively, all old masks unchanged; the
+6s touch selected checks improve 7/12 -> 10/12, the 0s touch
+remains 12/12. Zero marked distractor hits in the host replays.
+Visual review of the difficult stage gap and sampled crowded
+recovery masks shows the intended person, with some existing
+partial coverage and edge artifacts. Crowded and low-light long
+gaps are not resolved by this rule.
+
+### Offline replay of prior real Android observations
+
+Use the existing C8.3 same-run CPU/GPU raw instance/appearance
+streams and actual selected-alpha captures on the OnePlus KB2000.
+Check the observation stream hashes against the previous native
+replay, manifest/media hashes, device/backend metadata, exact PTS
+and alpha grid. An incumbent endpoint is eligible only if exactly
+one strong raw row projects byte-for-byte to that selected alpha.
+No local source re-inference, reconstructed identity, or matching
+by approximate alpha. The later C9.1 alpha capture is also compared
+against the C8.3 raw streams, explicitly marked cross-run and
+exploratory; the exact-endpoint check does not establish that the
+raw data of missing frames would be byte-identical across runs.
+
+| Evidence | Backend | Original stage solo | Gap replay | Longest missing |
+| --- | --- | ---: | ---: | ---: |
+| C8.3 same run | CPU | 276/300 | 286/300 | 400 -> 120ms |
+| C8.3 same run | GPU | 275/300 | 285/300 | 400 -> 200ms |
+| C9.1 cross run | CPU | 279/300 | 289/300 | 400 -> 120ms |
+| C9.1 cross run | GPU | 278/300 | 288/300 | 400 -> 160ms |
+
+Reference lane stays 300/300 for both backends in both arms.
+All original native alphas byte-exact, +10 stage samples per
+backend/arm, zero added marked distractor hits. All 20 new
+same-run stage samples were visually reviewed: target dancer
+remains the subject. These are offline evaluations of previously
+collected native observations, not a new Android on-device run
+or new mobile performance data.
+
+### Reproduction and disposition
+
+Build the host-only experimental core (keep it separately from
+the default library):
+
+```sh
+cd crates/frame-kernel
+cargo build --locked --release --features host-model-probe
+cd ../..
+python tools/comparison/probe_gap_observations.py \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --media /path/to/c83-media \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --role target --touch-pts 6000000 --output /tmp/c95-gap
+python tools/comparison/replay_native_gap_observations.py \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --media /path/to/c83-media --evidence /path/to/c83-device \
+  --provenance /path/to/c91-native-c83.json \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c95-native
+```
+
+An optional --alpha-evidence directory explicitly selects the
+cross-run arm. The experimental dylib used in these runs has
+SHA-256 af5260696350bba3d50b478364a384dee11a5d668bb858470f177477d9a22539.
+No source footage, alpha buffers or observation captures committed.
+Rust experimental full suite 166 passed / 1 ignored, including
+4 new gap tests; default and experimental Clippy, formatting,
+and 38 Python comparison tests pass. Default release dylib
+rebuilt and verified absent of both experimental entry points.
+
+**C9.5 disposition:** retain the shared bounded recovery experiment
+and native-evidence replay; this is a meaningful reduction in
+observed continuous missing-mask gaps, particularly illumination
+changes, without another model or a new tracker. Native production
+integration is not yet proven. Before enabling in the app, verify
+a bounded per-direction missing-observation buffer, exact PTS
+write-once output, forward/reverse ordering, cancellation, memory
+budget, and flush at immutable preview/archive boundaries. Do not
+rewrite already published preview or existing alpha. Evaluate
+independent crossing/occlusion sequences for gradual identity drift
+and the C9.4 same-touch Android A/B when a physical device is
+connected; physical iPhone and release acceptance remain open.
