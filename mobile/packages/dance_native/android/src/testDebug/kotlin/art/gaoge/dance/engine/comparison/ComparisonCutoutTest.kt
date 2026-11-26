@@ -166,16 +166,24 @@ class ComparisonCutoutTest {
             val right=ByteArray(160*160){if(it%160>=80)255.toByte() else 0}
             fun person(mask:ByteArray,box:FloatRect,conf:Float)=art.gaoge.dance.engine.inference.PersonDetection(box,conf,
                 art.gaoge.dance.engine.inference.NativeMask(160,160,ByteBuffer.wrap(mask),640,640))
+            // Native decoder RGB is bottom-up. Left dark and right white
+            // distinguish the selected person without retaining RGB in spool.
+            val frame=ByteBuffer.allocateDirect(640*640*4)
+            for(y in 0 until 640)for(x in 0 until 640){
+                val c=if(x<320)16.toByte() else 240.toByte()
+                frame.put(c).put(c).put(c).put(255.toByte())
+            }
+            frame.rewind()
             fun observation(i:Int):ComparisonCutoutAnalysis.Observation {
                 val a=person(left,FloatRect(0f,0f,320f,640f),if(i==31||i==32).22f else .8f)
                 val b=person(right,FloatRect(320f,0f,640f,640f),.8f)
                 return ComparisonCutoutAnalysis.Observation(i*33333L,
-                    if(i%2==0)listOf(a,b) else listOf(b,a),mapper)
+                    if(i%2==0)listOf(a,b) else listOf(b,a),mapper,frame)
             }
             ComparisonCutoutDisk(dir,16L*1024*1024).use { disk ->
                 val records=(0..96).map{disk.append(observation(it).encode())}
-                FrameKernel.CutoutTrack().use { direct ->
-                    FrameKernel.CutoutTrack().use { spilled ->
+                FrameKernel.DanceCutoutTrack().use { direct ->
+                    FrameKernel.DanceCutoutTrack().use { spilled ->
                         for(i in 96 downTo 0) {
                             val original=observation(i)
                             val decoded=ComparisonCutoutAnalysis.Observation.decode(disk.read(records[i]))
@@ -183,6 +191,9 @@ class ComparisonCutoutTest {
                             assertContentEquals(original.rows,decoded.rows)
                             assertContentEquals(original.masks,decoded.masks)
                             assertContentEquals(original.transform,decoded.transform)
+                            assertContentEquals(original.appearance,decoded.appearance)
+                            assertEquals(1f,decoded.appearance[i%2*FrameKernel.DANCE_APPEARANCE_BINS])
+                            assertEquals(1f,decoded.appearance[(1-i%2)*FrameKernel.DANCE_APPEARANCE_BINS+4])
                             val seed=if(i==96)0 else -1
                             val expected=original.track(direct,seed)
                             val actual=decoded.track(spilled,seed)

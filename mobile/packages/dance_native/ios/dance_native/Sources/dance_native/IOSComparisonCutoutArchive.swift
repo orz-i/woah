@@ -11,7 +11,7 @@ struct IOSComparisonCutoutArchiveKey:Sendable {
   let mirrorR:Bool,mirrorT:Bool
   let referenceDigest:Data,targetDigest:Data,modelDigest:Data,buildDigest:Data
   var encoded:String {
-    ["ios-cutout-v1","xnnpack",ProcessInfo.processInfo.operatingSystemVersionString,
+    ["ios-cutout-v1/dance-association-v2","xnnpack",ProcessInfo.processInfo.operatingSystemVersionString,
       buildDigest.base64EncodedString(),String(origin),String(offset),String(scale.bitPattern),
       String(window.lowerBound),String(window.upperBound),String(mirrorR),String(mirrorT),
       referenceDigest.base64EncodedString(),targetDigest.base64EncodedString(),modelDigest.base64EncodedString()].joined(separator:"|")

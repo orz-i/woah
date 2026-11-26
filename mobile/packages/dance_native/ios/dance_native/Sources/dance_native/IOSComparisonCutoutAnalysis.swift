@@ -24,13 +24,15 @@ final class IOSComparisonCutoutAnalysis {
   private let context = CIContext(options: [.cacheIntermediates: false])
 
   private final class Track {
-    let id = frame_kernel_tracking_create(frame_kernel_tracking_defaults())
-    deinit { if id != 0 { _ = frame_kernel_tracking_destroy(id) } }
+    let id = frame_kernel_dance_cutout_create()
+    deinit { if id != 0 { _ = frame_kernel_dance_cutout_destroy(id) } }
     func step(_ observation: Observation, seed: Int = -1) throws -> Int {
       guard id != 0 else { throw IOSComparisonCutoutAnalysisError.invalidTracking }
       let result = observation.rows.withUnsafeBufferPointer { rows in observation.masks.withUnsafeBufferPointer { masks in
-        frame_kernel_cutout_track_step(id,observation.pts,Int32(seed),rows.baseAddress,rows.count,
-          masks.baseAddress,masks.count,observation.transform)
+        observation.appearance.withUnsafeBufferPointer { appearance in
+          frame_kernel_dance_cutout_step(id,observation.pts,Int32(seed),rows.baseAddress,rows.count,
+            masks.baseAddress,masks.count,observation.transform,appearance.baseAddress,appearance.count)
+        }
       } }
       guard result >= -1 else { throw IOSComparisonCutoutAnalysisError.invalidTracking }
       return Int(result)
@@ -43,6 +45,8 @@ final class IOSComparisonCutoutAnalysis {
     let rows: [FrameKernelInstanceDetection]
     let masks: [UInt8]
     let transform: FrameKernelTransform
+    let appearance: [Float]
+    static let appearanceBins=Int(FRAME_KERNEL_DANCE_APPEARANCE_BINS)
     let area = 160*160
 
     init(pts: Int64, stamp: IOSComparisonSourceStamp, result: IOSYoloInferenceResult) throws {
@@ -58,10 +62,20 @@ final class IOSComparisonCutoutAnalysis {
       masks = result.detections.flatMap(\.mask)
       transform = FrameKernelTransform(scale: p.scale,pad_left: p.padLeft,pad_top: p.padTop,
         source_width: UInt32(p.sourceWidth),source_height: UInt32(p.sourceHeight),input_size: UInt32(p.inputSize),proto_size: 160)
+      let count=rows.count,rawMasks=masks,mapping=transform
+      var descriptor=[Float](repeating:0,count:count*Self.appearanceBins)
+      let status=p.input.withUnsafeBufferPointer { rgb in rawMasks.withUnsafeBufferPointer { masks in
+        descriptor.withUnsafeMutableBufferPointer { out in
+          frame_kernel_dance_appearance_planar(rgb.baseAddress,rgb.count,masks.baseAddress,masks.count,
+            count,mapping,out.baseAddress,out.count)
+        }
+      } }
+      guard status==0 else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      appearance=descriptor
     }
 
-    private init(pts:Int64,stamp:IOSComparisonSourceStamp,rows:[FrameKernelInstanceDetection],masks:[UInt8],transform:FrameKernelTransform){
-      self.pts=pts;self.stamp=stamp;self.rows=rows;self.masks=masks;self.transform=transform
+    private init(pts:Int64,stamp:IOSComparisonSourceStamp,rows:[FrameKernelInstanceDetection],masks:[UInt8],transform:FrameKernelTransform,appearance:[Float]){
+      self.pts=pts;self.stamp=stamp;self.rows=rows;self.masks=masks;self.transform=transform;self.appearance=appearance
     }
     func encode()->Data {
       var data=IOSCutoutBytes()
@@ -73,7 +87,9 @@ final class IOSComparisonCutoutAnalysis {
         data.putFloat(row.bounds.left);data.putFloat(row.bounds.top);data.putFloat(row.bounds.right)
         data.putFloat(row.bounds.bottom);data.putFloat(row.confidence)
       }
-      data.putBytes(masks);return data.data
+      data.putBytes(masks)
+      for value in appearance{data.putFloat(value)}
+      return data.data
     }
     static func decode(_ bytes:Data)throws->Observation {
       var data=IOSCutoutBytes(bytes)
@@ -83,14 +99,16 @@ final class IOSComparisonCutoutAnalysis {
         source_width:try data.get(UInt32.self),source_height:try data.get(UInt32.self),
         input_size:try data.get(UInt32.self),proto_size:try data.get(UInt32.self))
       let count=Int(try data.get(UInt32.self))
-      guard pts>=0,w>0,h>0,count<=256,transform.proto_size==160, data.remaining==count*(20+160*160) else {
+      guard pts>=0,w>0,h>0,count<=256,transform.proto_size==160, data.remaining==count*(20+160*160+Self.appearanceBins*4) else {
         throw IOSComparisonCutoutAnalysisError.invalidFrame
       }
       let rows=try (0..<count).map{_ in
         FrameKernelInstanceDetection(bounds:FrameKernelRect(left:try data.getFloat(),top:try data.getFloat(),
           right:try data.getFloat(),bottom:try data.getFloat()),confidence:try data.getFloat())
       }
-      return Observation(pts:pts,stamp:stamp,rows:rows,masks:try data.getBytes(count*160*160),transform:transform)
+      let masks=try data.getBytes(count*160*160)
+      let appearance=try (0..<count*Self.appearanceBins).map{_ in try data.getFloat()}
+      return Observation(pts:pts,stamp:stamp,rows:rows,masks:masks,transform:transform,appearance:appearance)
     }
 
     func select(_ seed: IOSComparisonCutoutSeed) -> Int {

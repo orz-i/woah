@@ -157,6 +157,15 @@
         "distractor": [
           0.55,
           0.25
+        ],
+        "additionalDistractors": [
+          {
+            "point": [
+              0.36,
+              0.25
+            ],
+            "description": "White-shirt spectator; additional C1 regression checkpoint."
+          }
         ]
       }
     ],

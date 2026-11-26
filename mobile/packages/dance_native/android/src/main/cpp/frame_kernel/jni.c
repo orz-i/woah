@@ -816,6 +816,55 @@ JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutTrackS
     if(p)(*env)->ReleaseByteArrayElements(env,masks,p,JNI_ABORT);
     return result;
 }
+/* Selected dance identity. Only the compact descriptor is retained by native
+ * analysis; RGBA is borrowed from the decoder and never stored in the spool. */
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceAppearanceNative(
+    JNIEnv *env,jobject self,jobject frame,jbyteArray masks,jfloatArray transform) {
+    (void)self;FrameKernelTransform t;
+    if(!frame||!masks||!read_transform(env,transform,&t)||!t.proto_size||t.proto_size>1024||t.input_size>1024){invalid(env);return NULL;}
+    size_t area=(size_t)t.proto_size*t.proto_size;
+    jsize bytes=(*env)->GetArrayLength(env,masks);
+    if((size_t)bytes%area || (size_t)bytes/area>256){invalid(env);return NULL;}
+    size_t count=(size_t)bytes/area,len=count*FRAME_KERNEL_DANCE_APPEARANCE_BINS;
+    const uint8_t *rgb=(*env)->GetDirectBufferAddress(env,frame);
+    jlong rgb_len=(*env)->GetDirectBufferCapacity(env,frame);
+    if(!rgb||rgb_len<0){invalid(env);return NULL;}
+    jbyte *m=bytes?(*env)->GetByteArrayElements(env,masks,NULL):NULL;
+    jfloat f[256*FRAME_KERNEL_DANCE_APPEARANCE_BINS];
+    if(bytes&&!m)return NULL;
+    int32_t result=frame_kernel_dance_appearance_rgba(rgb,(size_t)rgb_len,1,(const uint8_t*)m,(size_t)bytes,count,t,f,len);
+    if(m)(*env)->ReleaseByteArrayElements(env,masks,m,JNI_ABORT);
+    if(result){invalid(env);return NULL;}
+    jfloatArray out=(*env)->NewFloatArray(env,(jsize)len);
+    if(out&&len)(*env)->SetFloatArrayRegion(env,out,0,(jsize)len,f);
+    return out;
+}
+JNIEXPORT jlong JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutCreateNative(JNIEnv *env,jobject self){
+    (void)self;uint64_t id=frame_kernel_dance_cutout_create();if(!id)invalid(env);return (jlong)id;
+}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutDestroyNative(JNIEnv *env,jobject self,jlong id){
+    (void)self;if(frame_kernel_dance_cutout_destroy((uint64_t)id))invalid(env);
+}
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutStepNative(
+    JNIEnv *env,jobject self,jlong id,jlong pts,jint seed,jfloatArray rows,jbyteArray masks,jfloatArray transform,jfloatArray features) {
+    (void)self;FrameKernelTransform t;
+    if(!rows||!masks||!features||!read_transform(env,transform,&t))return -2;
+    jsize n=(*env)->GetArrayLength(env,rows),bytes=(*env)->GetArrayLength(env,masks),nf=(*env)->GetArrayLength(env,features);
+    if(n%5||n>256*5||nf!=n/5*FRAME_KERNEL_DANCE_APPEARANCE_BINS)return -2;
+    FrameKernelInstanceDetection d[256];
+    jfloat *v=n?(*env)->GetFloatArrayElements(env,rows,NULL):NULL;
+    jbyte *m=bytes?(*env)->GetByteArrayElements(env,masks,NULL):NULL;
+    jfloat *f=nf?(*env)->GetFloatArrayElements(env,features,NULL):NULL;
+    jint result=-2;
+    if((n&&!v)||(bytes&&!m)||(nf&&!f))goto done_dance;
+    for(jsize i=0;i<n/5;i++)d[i]=(FrameKernelInstanceDetection){{v[5*i],v[5*i+1],v[5*i+2],v[5*i+3]},v[5*i+4]};
+    result=frame_kernel_dance_cutout_step((uint64_t)id,pts,seed,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf);
+ done_dance:
+    if(v)(*env)->ReleaseFloatArrayElements(env,rows,v,JNI_ABORT);
+    if(m)(*env)->ReleaseByteArrayElements(env,masks,m,JNI_ABORT);
+    if(f)(*env)->ReleaseFloatArrayElements(env,features,f,JNI_ABORT);
+    return result;
+}
 JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutSelectNative(JNIEnv *env,jobject self,jbyteArray masks,jfloatArray transform,jfloat x,jfloat y) {
     (void)self; FrameKernelTransform t;
     if(!masks || !read_transform(env,transform,&t)) return -3;

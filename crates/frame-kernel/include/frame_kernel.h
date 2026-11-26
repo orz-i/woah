@@ -272,6 +272,21 @@ int32_t frame_kernel_tracking_step(uint64_t session, uint32_t action, int64_t ti
 int32_t frame_kernel_cutout_track_step(uint64_t session, int64_t at, int32_t seed,
     const FrameKernelInstanceDetection *detections, size_t count, const uint8_t *masks, size_t len,
     FrameKernelTransform transform);
+/* Dance-comparison only. Appearance descriptor uses 29 floats per instance
+   (all zero for insufficient mask pixels). RGBA is model-sized, planar RGB
+   uses normalized top-down CHW. Returned step index is current raw mask only. */
+#define FRAME_KERNEL_DANCE_APPEARANCE_BINS 29
+uint64_t frame_kernel_dance_cutout_create(void);
+int32_t frame_kernel_dance_cutout_destroy(uint64_t session);
+int32_t frame_kernel_dance_appearance_rgba(const uint8_t *rgba, size_t rgba_len,
+    uint32_t bottom_up, const uint8_t *masks, size_t mask_len, size_t count,
+    FrameKernelTransform transform, float *out, size_t out_len);
+int32_t frame_kernel_dance_appearance_planar(const float *rgb, size_t rgb_len,
+    const uint8_t *masks, size_t mask_len, size_t count,
+    FrameKernelTransform transform, float *out, size_t out_len);
+int32_t frame_kernel_dance_cutout_step(uint64_t session, int64_t at, int32_t seed,
+    const FrameKernelInstanceDetection *detections, size_t count, const uint8_t *masks,
+    size_t mask_len, FrameKernelTransform transform, const float *features, size_t features_len);
 /* Snapshot v1 uses little-endian fixed-width fields, as documented in
    tracking-session-v1.md. Null/zero queries the required size. A successful
    copy returns its byte count; -1 invalid handle/buffer, -2 insufficient space.

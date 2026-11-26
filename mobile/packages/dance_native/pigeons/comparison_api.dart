@@ -292,7 +292,8 @@ abstract class DanceComparisonApi {
   bool saveCutout(String projectId);
   @async
   ComparisonCutoutResultDto? restoreCutout(
-    String projectId, ComparisonCanvasLayoutDto? layout,
+    String projectId,
+    ComparisonCanvasLayoutDto? layout,
   );
   @async
   void forgetCutout(String projectId);

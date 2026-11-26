@@ -77,6 +77,10 @@ def assess(records, annotations, end):
             "selectedPointHit": point_check(mask, a["selected"]),
             "distractorHit": point_check(mask, a["distractor"]) if "distractor" in a else None,
             "visibleMask": mask is not None,
+            "additionalDistractorHits": [
+                {"description": item["description"], "hit": point_check(mask, item["point"])}
+                for item in a.get("additionalDistractors", [])
+            ],
         })
     spans = missing_spans(records, end)
     return {
@@ -89,6 +93,8 @@ def assess(records, annotations, end):
         "checkpointCount": len(points),
         "distractorHits": sum(p["distractorHit"] is True for p in points),
         "distractorChecks": sum(p["distractorHit"] is not None for p in points),
+        "additionalDistractorHits": sum(d["hit"] for p in points for d in p["additionalDistractorHits"]),
+        "additionalDistractorChecks": sum(len(p["additionalDistractorHits"]) for p in points),
         "checkpoints": points,
     }
 
@@ -156,6 +162,9 @@ def sheets(source, records, out, role, backend, annotations, end):
                     if label in checkpoints[pts]:
                         x,y=checkpoints[pts][label]
                         cv2.circle(frame,(round(x*frame.shape[1]),round(y*frame.shape[0])),5,color,2)
+                for item in checkpoints[pts].get("additionalDistractors",[]):
+                    x,y=item["point"]
+                    cv2.circle(frame,(round(x*frame.shape[1]),round(y*frame.shape[0])),5,(0,0,255),2)
             y,x=divmod(i,3)
             sheet[y*192:y*192+180,x*324:x*324+320]=cv2.resize(frame,(320,180))
             text=f"{pts/1e6:g}s {'MASK' if mask is not None else 'MISSING'}"

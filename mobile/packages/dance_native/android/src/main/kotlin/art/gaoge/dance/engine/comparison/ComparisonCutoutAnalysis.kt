@@ -141,10 +141,13 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     }
 
     internal class Observation private constructor(val pts:Long,val transform:FloatArray,
-        val rows:FloatArray,val masks:ByteArray) {
+        val rows:FloatArray,val masks:ByteArray,val appearance:FloatArray) {
         val area=transform[6].toInt()*transform[6].toInt()
         val bounds=rows.asList().chunked(5).map { FloatRect(it[0],it[1],it[2],it[3]) }
-        constructor(pts:Long,persons:List<PersonDetection>,mapper:ModelCoordinateMapper):this(pts,
+        private constructor(pts:Long,transform:FloatArray,rows:FloatArray,masks:ByteArray,frame:ByteBuffer?):this(
+            pts,transform,rows,masks,frame?.let{FrameKernel.danceAppearanceNative(it,masks,transform)}
+                ?: FloatArray(rows.size/5*FrameKernel.DANCE_APPEARANCE_BINS))
+        constructor(pts:Long,persons:List<PersonDetection>,mapper:ModelCoordinateMapper,frame:ByteBuffer?=null):this(pts,
             floatArrayOf(mapper.scale,mapper.padLeft,mapper.padTop,mapper.srcWidth.toFloat(),
                 mapper.srcHeight.toFloat(),mapper.modelInputSize.toFloat(),mapper.protoSize.toFloat()),
             FloatArray(persons.size*5).apply { persons.forEachIndexed { i,d ->
@@ -158,11 +161,12 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                     require(m.width==mapper.protoSize && m.height==mapper.protoSize)
                     m.buffer.duplicate().apply{rewind();get(this@bytes,i*area,area)}
                 }
-            })
+            },frame)
         fun encode():ByteArray {
-            val data=ByteBuffer.allocate(8+7*4+4+rows.size*4+masks.size)
+            val data=ByteBuffer.allocate(8+7*4+4+rows.size*4+masks.size+appearance.size*4)
             data.putLong(pts);transform.forEach{data.putFloat(it)}
             data.putInt(rows.size);rows.forEach{data.putFloat(it)};data.put(masks)
+            appearance.forEach{data.putFloat(it)}
             return data.array()
         }
         companion object {
@@ -172,16 +176,18 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 val t=FloatArray(7){data.float}
                 val n=data.int
                 require(pts>=0 && t.all{it.isFinite()} && t[6]==160f && n in 0..1280 && n%5==0 &&
-                    data.remaining()==n*4+n/5*160*160)
+                    data.remaining()==n*4+n/5*(160*160+FrameKernel.DANCE_APPEARANCE_BINS*4))
                 val rows=FloatArray(n){data.float}
-                val masks=ByteArray(data.remaining());data.get(masks)
-                return Observation(pts,t,rows,masks)
+                val masks=ByteArray(n/5*160*160);data.get(masks)
+                val appearance=FloatArray(n/5*FrameKernel.DANCE_APPEARANCE_BINS){data.float}
+                return Observation(pts,t,rows,masks,appearance)
             }
         }
         fun select(seed: ComparisonCutoutSeed) =
             FrameKernel.cutoutSelectNative(masks,transform,seed.x,seed.y)
         fun track(session: FrameKernel.CutoutTrack, seed: Int = -1) =
             session.step(pts,seed,rows,masks,transform)
+        fun track(session:FrameKernel.DanceCutoutTrack,seed:Int=-1)=session.step(pts,seed,rows,masks,transform,appearance)
         private fun mask(index: Int) = masks.copyOfRange(index*area,(index+1)*area)
         fun alpha(index: Int, width: Int,height: Int) =
             FrameKernel.cutoutAlphaNative(mask(index),transform,width,height)
@@ -217,7 +223,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             val rgba=decoder.decodeRgbaAtPts(seed.ptsUs,mapper)
             checkCurrent(current)
             val detected=segmenter.segmentGlReadbackRgbaSync(rgba,mapper,seed.ptsUs)
-            val observation=Observation(seed.ptsUs,detected.persons,mapper)
+            val observation=Observation(seed.ptsUs,detected.persons,mapper,rgba)
             val index=observation.select(seed)
             require(index>=0) { "未能明确选中人物，请长按人物身体中央重试" }
             val raw=ByteArray(mapper.modelInputSize*mapper.modelInputSize*4)
@@ -275,8 +281,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         val aw=(sw*scale).roundToInt().coerceAtLeast(1)
         val ah=(sh*scale).roundToInt().coerceAtLeast(1)
         val layers=ComparisonCutoutDiskTrack(context.cacheDir,times)
-        val forward=try{FrameKernel.CutoutTrack()}catch(e:Throwable){layers.close();throw e}
-        val reverse=try{FrameKernel.CutoutTrack()}catch(e:Throwable){forward.close();layers.close();throw e}
+        val forward=try{FrameKernel.DanceCutoutTrack()}catch(e:Throwable){layers.close();throw e}
+        val reverse=try{FrameKernel.DanceCutoutTrack()}catch(e:Throwable){forward.close();layers.close();throw e}
         val small=HashMap<Long,ComparisonCutoutLayer?>()
         var placement:ComparisonCutoutPlacement?=null
         var prefixBytes=0L
@@ -302,7 +308,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                         val detected=timed("segmentTotal"){segmenter.segmentGlReadbackRgbaSync(frame,mapper,pts,
                             confidenceThreshold=if(pts==seed.ptsUs) .25f else .20f)}
                         if(measure)detected.stageTimingsMs.forEach{(name,ms)->addTime(name,ms*1_000_000)}
-                        timed("observation"){Observation(pts,detected.persons,mapper)}
+                        timed("observation"){Observation(pts,detected.persons,mapper,frame)}
                     }
                     consume(observation)
                 }

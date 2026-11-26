@@ -1112,3 +1112,120 @@ entry with WOAH_CUTOUT_REAL_QA=true and stage real-reference.mp4 /
 real-target.mp4 in its QA Documents folder. The iOS report explicitly
 checks the incomplete export/cache rejection rather than asserting
 all frames have an alpha. Do not commit local evidence media.
+
+## Stage C1: independent dance identity association (2026-11-26)
+
+The B5 failure exposed a mismatch between privacy coverage tracking
+and selected-subject extraction. The experimental comparison flow now
+uses a dedicated FrameKernel `DanceCutout` lane and a separate C
+handle registry. The legacy tracking ABI and all privacy tracking
+policies remain unchanged. Both mobile adapters call the same new
+Rust implementation.
+
+- Mask-scoped 29-bin visible-color histogram from the *actual* model
+  input, using only reliable mask pixels inside the letterbox content.
+  Android bottom-up RGBA and iOS top-down normalized RGB have a shared
+  feature implementation and a transport-parity test. No face embedding,
+  named identity recognition, new inference model or stored RGB is used.
+- Retain the immutable selected anchor and initial competing-person
+  color descriptors. Learn up to 12 positive exemplars only from
+  close, strong, sufficiently distinct observations; keep a slowly
+  adapting recent descriptor. Reject a candidate contradicted by
+  the anchor competitors independently of its old-box overlap.
+- Combine appearance, box and current-mask overlap, local velocity
+  and candidate competition. Use two consecutive current observations
+  for reacquisition after gaps over 160ms; stop automatic reacquisition
+  after four seconds without a supported observation. Never render
+  a predicted, cached previous-frame or missing mask. This is a
+  development policy, not validated general-purpose re-identification.
+- Preserve exact source PTS and one independent forward/reverse lane
+  per selection. The reverse scratch record adds 29 floats per
+  detection (116 bytes); no raw color frames are retained in the spool.
+  The archive compatibility key changes to dance-association-v2 so
+  previously analyzed alpha cannot bypass the new algorithm.
+- Existing incomplete archive and export refusal remains. No GPU
+  default promotion or removal of the experimental Debug restriction.
+
+Same-observation host comparison is reproducible using
+`tools/comparison/compare_dance_identity.py`, which verifies the fixture
+SHA-256 and calls both the legacy and new shared C association on
+identical detector observations. The thresholds were developed using
+the two B5 clips, so these results are development-set evidence, not
+a held-out generalization test.
+
+| Host shared implementation | Legacy | C1 |
+| --- | ---: | ---: |
+| Breaking output samples | 170/750 | 648/750 |
+| Breaking selected point checks | 2/10 | 9/10 |
+| Breaking longest missing run | 14.240s | 1.000s |
+| Vogue output samples | 62/750 | 563/750 |
+| Vogue selected point checks | 2/10 | 9/10 |
+| Vogue longest missing run | 23.000s | 2.520s |
+
+On the original one-second source and mirror derivative with the
+host-valid first-frame seed, both legacy and C1 retained 30/30 per
+role. The 400ms mirrored host touch was not a valid strong detector
+seed; the short comparison was rerun at 0 rather than changing the
+selection threshold.
+
+Real device results below use the same independent 30-second B5
+clips and 750 source samples per role, not artificially repeated
+videos. These are **output-mask counts, not correct-identity counts**.
+The Android GPU and CPU now both correctly cover the selected dancer
+at the prior explicit Breaking 18s and 20s wrong-person checks.
+However inspection of the new selected-mask overlay revealed another
+incorrect association to the white-shirt spectator at 27s on both
+Android backends. The original 27s distractor point was on a different
+spectator; an additional point at (.36,.25) is now tracked in the
+manifest and reported separately from the original ten point checks.
+This is a remaining identity failure, not a passed release gate.
+The new approach also cannot recover all low-light/fast-pose detector
+misses or certify edge quality. iOS real-scene output is verified via
+the player/texture path, not dense mask identity annotation.
+
+Reproduce the host comparison:
+```sh
+python tools/comparison/compare_dance_identity.py \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --manifest testdata/comparison/real-dance-b5.json \
+  --media /path/to/exact/tested/mp4s --output /tmp/dance-identity-c1 --sheets
+```
+Repeat the existing B5 Android instrumentation and iOS real-scene
+smoke with the new build. Raw QA masks and contact sheets stay local.
+
+### C1 native measurements
+
+| Backend | Breaking B5 -> C1 (750) | Vogue B5 -> C1 (750) | Full analysis B5 -> C1 |
+| --- | ---: | ---: | ---: |
+| Android CPU4 | 409 -> 668 | 146 -> 550 | 181.587 -> 212.572s |
+| Android GPU (QA) | 259 -> 651 | 151 -> 541 | 115.884 -> 168.673s |
+| iOS XNNPACK simulator | 472 -> 554 | 114 -> 572 | 104.872 -> 114.702s |
+
+Android longest missing runs (Breaking / Vogue): CPU 6.040 / 19.680s
+-> 0.360 / 2.480s; GPU 9.760 / 18.960s -> 1.200 / 2.480s.
+The original ten selected-point checks hit 7/10 (Breaking) and 8/10
+(Vogue) on each Android backend; the original distractor points hit
+0/10 on each clip, but the supplemental Breaking 27s spectator check
+fails on both backends. CPU/GPU visibility disagreements on Breaking
+fell from 228 to 25; jointly visible mean IoU is 0.99086 (minimum
+0.39529). Vogue has nine visibility disagreements and conditional
+mean IoU 0.99307. These are not proof of identity correctness.
+The full analysis timings increased, with more emitted masks and
+appearance processing; runs were not thermally controlled. No speed
+improvement is claimed. C1 iOS native smoke also confirmed incomplete
+archive/export refusal and ordinary playback restoration; it did not
+produce a completed C1 export of either incomplete real-dance clip.
+
+Validation: full Rust suite 142 passed, 1 ignored; five focused C1
+tests passed including the additional RGBA/planar transport parity test;
+Clippy all-targets clean; Android focused 27 passed and native real-scene
+instrumentation passed; iOS simulator build and real-scene smoke passed;
+Python scripts compile. Fixed the existing handwritten Pigeon schema
+Dart formatting failure and checked all handwritten Dart formatting.
+
+Disposition: keep C1 experimental and PR draft. Next identity stage
+should preserve competing-person ownership over time and provide a
+user-confirmed local re-anchor/repair path, then evaluate held-out
+multi-person dance footage with dense identity/edge annotations.
+Do not promote GPU or remove incomplete-analysis refusal based on
+output-mask counts.
