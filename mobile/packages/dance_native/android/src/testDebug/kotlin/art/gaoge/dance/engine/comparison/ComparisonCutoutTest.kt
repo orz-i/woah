@@ -44,16 +44,18 @@ class ComparisonCutoutTest {
     @Test fun weakCurrentObservationCanContinueBothDirectionsButNotSeed() {
         val t = floatArrayOf(1f,0f,0f,4f,4f,4f,4f)
         val m = ByteArray(16) { if(it%4<2) 255.toByte() else 0 }
+        val appearance=FloatArray(FrameKernel.DANCE_APPEARANCE_BINS).also{it[0]=1f}
         fun row(conf: Float) = floatArrayOf(0f,0f,2f,4f,conf)
-        FrameKernel.CutoutTrack().use { track ->
-            assertEquals(0,track.step(100_000,0,row(.8f),m,t))
-            assertEquals(0,track.step(133_333,-1,row(.22f),m,t))
-            assertEquals(-1,track.step(166_667,-1,floatArrayOf(),byteArrayOf(),t))
-            assertEquals(-1,track.step(200_000,-1,row(.22f),m,t))
+        FrameKernel.DanceCutoutTrack().use { track ->
+            assertFailsWith<IllegalStateException>{track.step(100_000,0,row(.22f),m,t,appearance)}
+            assertEquals(0,track.step(100_000,0,row(.8f),m,t,appearance))
+            assertEquals(0,track.step(133_333,-1,row(.22f),m,t,appearance))
+            assertEquals(-1,track.step(166_667,-1,floatArrayOf(),byteArrayOf(),t,floatArrayOf()))
+            assertEquals(-1,track.step(200_000,-1,row(.22f),m,t,appearance))
         }
-        FrameKernel.CutoutTrack().use { track ->
-            assertEquals(0,track.step(100_000,0,row(.8f),m,t))
-            assertEquals(0,track.step(66_667,-1,row(.22f),m,t))
+        FrameKernel.DanceCutoutTrack().use { track ->
+            assertEquals(0,track.step(100_000,0,row(.8f),m,t,appearance))
+            assertEquals(0,track.step(66_667,-1,row(.22f),m,t,appearance))
         }
     }
     @Test fun cacheRequiresExactSourcePtsAndWindowIncludesPredecessorAndAnchor() {

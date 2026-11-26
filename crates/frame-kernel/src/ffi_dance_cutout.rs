@@ -1,57 +1,30 @@
-//! Dedicated handle registry and checked C transport for selected dance identity.
+//! Checked C transport for the shared Tracker cutout association profile.
 use crate::{
-    dance_cutout::{APPEARANCE_BINS, DanceCutout, appearance_features},
-    ffi_tracking::next_session_id,
+    appearance::{APPEARANCE_BINS, appearance_features},
+    ffi_tracking::{borrowed, create_dance_session, destroy_dance_session, step_dance_session},
     geometry::Transform,
     instances::InstanceDetection,
 };
-use std::{
-    collections::BTreeMap,
-    sync::{Arc, Mutex, OnceLock},
-};
-type Owner = Arc<Mutex<DanceCutout>>;
-static LANES: OnceLock<Mutex<BTreeMap<u64, Owner>>> = OnceLock::new();
-fn registry() -> &'static Mutex<BTreeMap<u64, Owner>> {
-    LANES.get_or_init(|| Mutex::new(BTreeMap::new()))
-}
-unsafe fn read<'a, T>(ptr: *const T, n: usize) -> Option<&'a [T]> {
-    if n == 0 {
-        return Some(&[]);
-    }
-    if ptr.is_null() {
-        return None;
-    }
-    // SAFETY: all callers guarantee a readable region of the checked length.
-    Some(unsafe { std::slice::from_raw_parts(ptr, n) })
-}
 unsafe fn write<'a, T>(ptr: *mut T, n: usize) -> Option<&'a mut [T]> {
     if n == 0 {
         return Some(&mut []);
     }
-    if ptr.is_null() {
+    if ptr.is_null()
+        || n > isize::MAX as usize / std::mem::size_of::<T>()
+        || !(ptr as usize).is_multiple_of(std::mem::align_of::<T>())
+    {
         return None;
     }
-    // SAFETY: caller guarantees unique, writable storage of the checked length.
+    // SAFETY: caller owns the unique writable buffer of the declared length.
     Some(unsafe { std::slice::from_raw_parts_mut(ptr, n) })
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn frame_kernel_dance_cutout_create() -> u64 {
-    let Some(id) = next_session_id() else {
-        return 0;
-    };
-    let Ok(mut entries) = registry().lock() else {
-        return 0;
-    };
-    entries.insert(id, Arc::new(Mutex::new(DanceCutout::default())));
-    id
+    create_dance_session()
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn frame_kernel_dance_cutout_destroy(id: u64) -> i32 {
-    registry()
-        .lock()
-        .ok()
-        .and_then(|mut r| r.remove(&id))
-        .map_or(-1, |_| 0)
+    destroy_dance_session(id)
 }
 fn valid_lengths(t: Transform, count: usize, mask_len: usize, features_len: usize) -> bool {
     t.valid()
@@ -80,8 +53,8 @@ pub unsafe extern "C" fn frame_kernel_dance_appearance_rgba(
     }
     // SAFETY: lengths are checked above and owned by the caller.
     let (Some(rgb), Some(masks), Some(out)) = (
-        unsafe { read(rgba, rgba_len) },
-        unsafe { read(masks, mask_len) },
+        unsafe { borrowed(rgba, rgba_len) },
+        unsafe { borrowed(masks, mask_len) },
         unsafe { write(out, out_len) },
     ) else {
         return -1;
@@ -122,8 +95,8 @@ pub unsafe extern "C" fn frame_kernel_dance_appearance_planar(
     }
     // SAFETY: lengths are checked above and owned by the caller.
     let (Some(rgb), Some(masks), Some(out)) = (
-        unsafe { read(rgb, rgb_len) },
-        unsafe { read(masks, mask_len) },
+        unsafe { borrowed(rgb, rgb_len) },
+        unsafe { borrowed(masks, mask_len) },
         unsafe { write(out, out_len) },
     ) else {
         return -1;
@@ -163,24 +136,37 @@ pub unsafe extern "C" fn frame_kernel_dance_cutout_step(
     }
     // SAFETY: lengths are checked above and owned by the caller.
     let (Some(d), Some(m), Some(f)) = (
-        unsafe { read(detections, count) },
-        unsafe { read(masks, mask_len) },
-        unsafe { read(features, features_len) },
+        unsafe { borrowed(detections, count) },
+        unsafe { borrowed(masks, mask_len) },
+        unsafe { borrowed(features, features_len) },
     ) else {
         return -2;
     };
-    let Some(owner) = registry().lock().ok().and_then(|r| r.get(&id).cloned()) else {
-        return -2;
-    };
-    let Ok(mut lane) = owner.lock() else {
-        return -2;
-    };
-    lane.step(at, seed, d, m, t, f).unwrap_or(-2)
+    step_dance_session(id, at, seed, d, m, t, f)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn shared_registry_preserves_session_mode_boundaries() {
+        let privacy = crate::frame_kernel_tracking_create(crate::frame_kernel_tracking_defaults());
+        let cutout = frame_kernel_dance_cutout_create();
+        assert_ne!(privacy, cutout);
+        assert_eq!(frame_kernel_dance_cutout_destroy(privacy), -1);
+        assert_eq!(crate::frame_kernel_tracking_destroy(cutout), -1);
+        // SAFETY: zero-length buffer queries borrow no memory.
+        unsafe {
+            assert_eq!(
+                crate::frame_kernel_tracking_snapshot(cutout, std::ptr::null_mut(), 0),
+                -1
+            );
+        }
+        assert_eq!(crate::frame_kernel_tracking_destroy(privacy), 0);
+        assert_eq!(frame_kernel_dance_cutout_destroy(cutout), 0);
+        assert_eq!(frame_kernel_dance_cutout_destroy(cutout), -1);
+    }
+
     #[test]
     fn top_down_planar_and_bottom_up_rgba_are_identical() {
         let t = Transform {

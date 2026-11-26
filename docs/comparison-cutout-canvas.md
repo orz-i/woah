@@ -1229,3 +1229,91 @@ user-confirmed local re-anchor/repair path, then evaluate held-out
 multi-person dance footage with dense identity/edge annotations.
 Do not promote GPU or remove incomplete-analysis refusal based on
 output-mask counts.
+
+## Stage C2: converge selected-subject association on the shared Tracker
+
+C1 demonstrated useful appearance evidence but created an independent selected
+identity state machine, velocity estimator, raw-mask IoU and session registry.
+C2 removes that architectural duplication. The comparison-specific adapter
+now holds the seed, monotonic source-PTS direction and unconfirmed recovery
+candidate; it delegates to the existing `Tracker` and common `Track` objects.
+The appearance module is independent of the caller. Each track can carry an
+optional appearance memory. The privacy profile does not set this memory and
+its existing geometric association, occlusion-group, coverage and prediction
+policy are not changed.
+
+- Reuses Track IDs, initialization, canonical Kalman/XYAH prediction,
+  bound_prediction, raw-mask overlap, one-to-one assignment, reciprocal
+  ranking and observation commit. The prior dedicated dance identity struct
+  and exponential velocity predictor are removed.
+- The cutout association profile maintains competing people as ordinary Track
+  IDs, uses strong reciprocal ownership to reserve their current instances,
+  and only then considers the selected row. A selected candidate still
+  requires appearance and geometry support and the existing two-observation
+  recovery policy. No previous/predicted render mask is emitted by cutout.
+  This uses the existing assignment/track primitives, not the privacy
+  occlusion-class policy. Appearance is not enabled in privacy tracking.
+- Both C ABI modes now share the same bounded session registry; cross-mode
+  tracking calls and destruction are rejected. Old mobile-only JNI/Kotlin
+  adapters for the pre-C1 legacy cutout association are removed. The old
+  reference C ABI is retained only for host A/B and its existing Rust
+  regression cases; it is not a second runtime used by the canvas.
+- B4 persisted alpha archives use a new shared-identity-v3 compatibility
+  key; pre-C2 results cannot bypass the changed association profile.
+  No appearance descriptor is added to the durable archive.
+
+The additional regression with two same-appearance people verifies that a
+continuous competing owner retains its ID when detection order changes and
+it moves into the selected person's previous location. While the selected
+person is missing the output is unavailable rather than the competitor's mask.
+
+### Same-observation host comparison
+
+Use the previous C1 release dylib built from c420f2ff and the current release
+dylib. The script decodes/segments each sample once and passes **identical
+current** appearance and detector observations to both implementations:
+```sh
+python tools/comparison/compare_dance_identity.py \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --baseline-library /path/to/c1/libframe_kernel.dylib \
+  --manifest testdata/comparison/real-dance-b5.json \
+  --media /path/to/exact/tested/mp4s --output /tmp/dance-identity-c2 --sheets
+```
+Report records both binary hashes. The two development fixtures are not
+independent holdout evidence. With the prior C1 binary and C2, Breaking
+648/750 -> 648/750 current masks, longest gap 1.000 -> 0.640s, 9/10
+selected-point hits unchanged; Vogue 563/750 -> 556/750, longest gap
+2.520 -> 2.680s, 9/10 hits unchanged. The original short source and mirror
+pair each retained 30/30 masks at the valid first-frame anchor. These
+metrics are output availability and sparse visual checks, not identity
+ground truth. User-confirmed local re-anchor remains a follow-up.
+
+### Native C2 observations
+
+| Backend | C1 Breaking -> C2 | C1 Vogue -> C2 |
+| --- | ---: | ---: |
+| Android GPU QA | 651 -> 632/750 | 541 -> 532/750 |
+| iOS simulator XNNPACK | 554 -> 585/750 | 572 -> 593/750 |
+
+Android GPU analysis 171.339s (C1 168.673s), longest missing span
+0.720s / 2.640s. Breaking selected-point hits 8/10 (C1 7/10),
+Vogue 8/10 (unchanged). The earlier wrong-person checkpoints at
+18s, 20s and the supplemental 27s check now hit the selected dancer
+without hitting the annotated spectator on GPU. The new conservative
+competing-owner policy rejects some formerly emitted masks; not every
+lost or accepted sample has ground-truth identity annotation. iOS
+analysis 115.686s, actual partial preview and complete analysis, and
+refusal to export an incomplete canvas all passed.
+
+Rust full regression: 144 passed, 1 ignored; Clippy all targets passed.
+Android focused 27 tests passed. Four Android native reference corpus
+tests (JNI session, state/mask prediction, full tracking transitions
+and scene motion) passed against the frozen references. The previous
+iOS CI deployment lockfile mismatch was traced to the podspec's Rust
+source-file list; the Podfile.lock checksum was updated without changing
+dependency versions and local pod install --deployment passed.
+
+The independent development clips still have gaps, and neither
+continuous identity ground truth nor independent held-out quality
+acceptance has been established. Keep GPU opt-in and draft/Debug
+restrictions. C2 is a shared-core migration, not a release acceptance.

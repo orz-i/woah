@@ -2,9 +2,11 @@
 //! safe tracking modules; IDs never expose a native pointer to mobile runtimes.
 use crate::{
     association_score::AssociationWeights,
+    dance_cutout::CutoutPolicy,
     geometry::{Rect, Transform, overlap_iou},
     instances::InstanceDetection,
     tracking::*,
+    tracking_mask::raw_mask_iou,
 };
 use std::{
     collections::BTreeMap,
@@ -109,6 +111,7 @@ struct Session {
     tracker: Tracker,
     snapshot: Vec<u8>,
     cutout: Option<CutoutClock>,
+    dance: Option<CutoutPolicy>,
 }
 #[derive(Clone, Copy)]
 struct CutoutClock {
@@ -141,6 +144,9 @@ pub extern "C" fn frame_kernel_tracking_create(options: TrackingOptions) -> u64 
     let Some(config) = options.checked() else {
         return 0;
     };
+    create_session(config, None)
+}
+fn create_session(config: TrackingConfig, dance: Option<CutoutPolicy>) -> u64 {
     let Ok(mut sessions) = registry().lock() else {
         return 0;
     };
@@ -156,22 +162,59 @@ pub extern "C" fn frame_kernel_tracking_create(options: TrackingOptions) -> u64 
             tracker: Tracker::new(config),
             snapshot: Vec::new(),
             cutout: None,
+            dance,
         })),
     );
     id
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn frame_kernel_tracking_destroy(id: u64) -> i32 {
-    if registry()
-        .lock()
-        .ok()
-        .and_then(|mut r| r.remove(&id))
-        .is_some()
-    {
-        0
-    } else {
-        -1
+    destroy_session(id, false)
+}
+pub(crate) fn create_dance_session() -> u64 {
+    create_session(TrackingConfig::default(), Some(CutoutPolicy::default()))
+}
+pub(crate) fn destroy_dance_session(id: u64) -> i32 {
+    destroy_session(id, true)
+}
+fn destroy_session(id: u64, dance: bool) -> i32 {
+    let Ok(mut r) = registry().lock() else {
+        return -1;
+    };
+    let Some(owner) = r.get(&id) else { return -1 };
+    let mode = owner.lock().ok().map(|s| s.dance.is_some());
+    if mode != Some(dance) {
+        return -1;
     }
+    r.remove(&id);
+    0
+}
+pub(crate) fn step_dance_session(
+    id: u64,
+    at: i64,
+    seed: i32,
+    d: &[InstanceDetection],
+    m: &[u8],
+    t: Transform,
+    f: &[f32],
+) -> i32 {
+    let Some(owner) = session(id) else { return -2 };
+    let Ok(mut s) = owner.lock() else { return -2 };
+    let Session { tracker, dance, .. } = &mut *s;
+    let Some(policy) = dance else { return -2 };
+    crate::dance_cutout::step(
+        tracker,
+        policy,
+        at,
+        seed,
+        crate::dance_cutout::CutoutObservation {
+            detections: d,
+            masks: m,
+            transform: t,
+            features: f,
+        },
+    )
+    .unwrap_or(-2)
 }
 pub(crate) unsafe fn borrowed<'a, T>(p: *const T, n: usize) -> Option<&'a [T]> {
     if n == 0 {
@@ -219,7 +262,7 @@ pub unsafe extern "C" fn frame_kernel_tracking_selection(
     };
     let Some(owner) = session(id) else { return -1 };
     let Ok(mut s) = owner.lock() else { return -1 };
-    if s.cutout.is_some() {
+    if s.cutout.is_some() || s.dance.is_some() {
         return -1;
     }
     s.tracker.protected_ids = protected.iter().copied().collect();
@@ -263,7 +306,7 @@ pub unsafe extern "C" fn frame_kernel_tracking_step(
     };
     let Some(owner) = session(id) else { return -1 };
     let Ok(mut s) = owner.lock() else { return -1 };
-    if s.cutout.is_some() {
+    if s.cutout.is_some() || s.dance.is_some() {
         return -1;
     }
     let result = match action {
@@ -289,6 +332,9 @@ pub unsafe extern "C" fn frame_kernel_tracking_snapshot(
 ) -> i64 {
     let Some(owner) = session(id) else { return -1 };
     let Ok(s) = owner.lock() else { return -1 };
+    if s.dance.is_some() {
+        return -1;
+    }
     let Ok(n) = i64::try_from(s.snapshot.len()) else {
         return -1;
     };
@@ -310,22 +356,6 @@ pub unsafe extern "C" fn frame_kernel_tracking_snapshot(
 // calls do not use this entry point or its lower inference threshold.
 const CUTOUT_SEED_CONF: f32 = 0.25;
 const CUTOUT_CONTINUE_CONF: f32 = 0.20;
-
-fn raw_mask_iou(a: &Mask, b: &Mask) -> f32 {
-    if a.transform != b.transform || a.width != b.width || a.height != b.height {
-        return 0.0;
-    }
-    let (mut intersection, mut union) = (0u32, 0u32);
-    for (&x, &y) in a.pixels.iter().zip(b.pixels.iter()) {
-        intersection += u32::from(x >= 128 && y >= 128);
-        union += u32::from(x >= 128 || y >= 128);
-    }
-    if union == 0 {
-        0.0
-    } else {
-        intersection as f32 / union as f32
-    }
-}
 
 fn weak_continuation(track: &Track, candidates: &[Detection], elapsed: i64) -> Option<usize> {
     if elapsed <= 0
@@ -503,6 +533,9 @@ pub unsafe extern "C" fn frame_kernel_cutout_track_step(
         .collect();
     let Some(owner) = session(id) else { return -2 };
     let Ok(mut s) = owner.lock() else { return -2 };
+    if s.dance.is_some() {
+        return -2;
+    }
     cutout_step(&mut s, at, seed, values).unwrap_or(-2)
 }
 
@@ -540,6 +573,7 @@ mod cutout_tracking_tests {
             tracker: Tracker::new(TrackingConfig::default()),
             snapshot: Vec::new(),
             cutout: None,
+            dance: None,
         }
     }
     #[test]

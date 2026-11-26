@@ -73,6 +73,22 @@ fn interpolate(mask: &Mask, w: Warp, x: usize, y: usize) -> f32 {
     (sample(mask, x0, y0) * wx0 + sample(mask, x1, y0) * wx1) * wy0
         + (sample(mask, x0, y1) * wx0 + sample(mask, x1, y1) * wx1) * wy1
 }
+pub(crate) fn raw_mask_iou(a: &Mask, b: &Mask) -> f32 {
+    if a.transform != b.transform || a.width != b.width || a.height != b.height {
+        return 0.0;
+    }
+    let (mut intersection, mut union) = (0u32, 0u32);
+    for (&x, &y) in a.pixels.iter().zip(b.pixels.iter()) {
+        intersection += u32::from(x >= 128 && y >= 128);
+        union += u32::from(x >= 128 || y >= 128);
+    }
+    if union == 0 {
+        0.0
+    } else {
+        intersection as f32 / union as f32
+    }
+}
+
 pub fn mask_iou(a: Option<&Mask>, b: Option<&Mask>, stride: usize) -> f32 {
     let (Some(a), Some(b)) = (a, b) else {
         return 0.0;

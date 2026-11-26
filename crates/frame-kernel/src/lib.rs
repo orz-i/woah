@@ -4,6 +4,7 @@
 //! The C ABI is the only unsafe boundary; algorithms operate on checked slices.
 #![doc = include_str!("../README.md")]
 
+pub mod appearance;
 pub mod association;
 pub mod association_score;
 pub mod audio_alignment;
@@ -36,6 +37,7 @@ pub mod region_continuation;
 pub mod temporal_region;
 pub mod timeline;
 pub mod tracking;
+mod tracking_cutout;
 pub mod tracking_evidence;
 pub mod tracking_groups;
 pub mod tracking_lifecycle;

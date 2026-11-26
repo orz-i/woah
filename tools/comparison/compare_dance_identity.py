@@ -47,15 +47,18 @@ def observe(lib,runner,path,frames,anchor):
         yield pts,detections,masks,t,features
 
 
-def replay(lib,runner,path,frames,anchor,point):
-    old=[lib.frame_kernel_tracking_create(lib.frame_kernel_tracking_defaults()) for _ in range(2)]
+def replay(lib,runner,path,frames,anchor,point,baseline=None):
+    old=[(baseline.frame_kernel_dance_cutout_create() if baseline else
+          lib.frame_kernel_tracking_create(lib.frame_kernel_tracking_defaults())) for _ in range(2)]
     new=[lib.frame_kernel_dance_cutout_create() for _ in range(2)]
     assert all(old+new)
     results=[[],[]];prefix=[]
     def step(o,dir_,seed=-1,save=True):
         pts,ds,masks,t,features=o
         raw=(m.Detection*len(ds))(*ds)
-        a=lib.frame_kernel_cutout_track_step(old[dir_],pts,seed,raw,len(ds),m.ptr(masks),masks.size,t)
+        a=(baseline.frame_kernel_dance_cutout_step(old[dir_],pts,seed,raw,len(ds),m.ptr(masks),
+            masks.size,t,m.ptr(features,m.PF),features.size) if baseline else
+            lib.frame_kernel_cutout_track_step(old[dir_],pts,seed,raw,len(ds),m.ptr(masks),masks.size,t))
         b=lib.frame_kernel_dance_cutout_step(new[dir_],pts,seed,raw,len(ds),m.ptr(masks),
             masks.size,t,m.ptr(features,m.PF),features.size)
         assert a>=-1 and b>=-1
@@ -83,7 +86,9 @@ def replay(lib,runner,path,frames,anchor,point):
                 prefix.clear()
             else:step(o,0)
     finally:
-        for id_ in old:lib.frame_kernel_tracking_destroy(id_)
+        for id_ in old:
+            if baseline:baseline.frame_kernel_dance_cutout_destroy(id_)
+            else:lib.frame_kernel_tracking_destroy(id_)
         for id_ in new:lib.frame_kernel_dance_cutout_destroy(id_)
     return [sorted(r,key=lambda x:x[0]) for r in results]
 
@@ -91,6 +96,7 @@ def replay(lib,runner,path,frames,anchor,point):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--library",required=True,type=Path)
+    p.add_argument("--baseline-library",type=Path,help="optional prior DanceCutout build; same observations and features for both")
     p.add_argument("--manifest",required=True,type=Path)
     p.add_argument("--media",required=True,type=Path)
     p.add_argument("--output",required=True,type=Path)
@@ -104,16 +110,21 @@ def main():
     model=m.ROOT/"models/litert/yolo11n-seg-fp16.tflite"
     assert hashlib.sha256(model.read_bytes()).hexdigest()==manifest["modelSha256"]==m.MODEL_SHA
     lib=m.api(args.library);bind(lib)
+    baseline=m.api(args.baseline_library) if args.baseline_library else None
+    if baseline:bind(baseline)
     runner=Interpreter(model_path=str(model),num_threads=4);runner.allocate_tensors()
     args.output.mkdir(parents=True,exist_ok=True)
-    report={"manualPointsAreNotGroundTruth":True,"roles":{}}
+    report={"manualPointsAreNotGroundTruth":True,"roles":{},
+            "baseline":"priorDanceCutout" if baseline else "legacyPrivacyAdapter",
+            "candidateLibrarySha256":hashlib.sha256(args.library.read_bytes()).hexdigest()}
+    if baseline:report["baselineLibrarySha256"]=hashlib.sha256(args.baseline_library.read_bytes()).hexdigest()
     for role,source in manifest["sources"].items():
         start=time.monotonic()
         path=args.media/source["file"]
         if hashlib.sha256(path.read_bytes()).hexdigest()!=source["testedMp4Sha256"]:
             raise ValueError(f"{role}: fixture bytes differ")
         checks=manifest["annotations"][role]
-        legacy,dance=replay(lib,runner,path,frames,anchor,source["seed"])
+        legacy,dance=replay(lib,runner,path,frames,anchor,source["seed"],baseline)
         assert len(legacy)==len(dance)==frames
         row={"legacy":assess(legacy,checks,end),"dance":assess(dance,checks,end),
              "seconds":round(time.monotonic()-start,3)}

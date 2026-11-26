@@ -19,15 +19,6 @@ internal object FrameKernel {
     external fun paneNative(width:Int,height:Int,gap:Int,reference:Boolean,sideBySide:Boolean):IntArray
     external fun fitNative(pane:IntArray,aspect:Double):IntArray
     external fun quadNative(pane:IntArray,fit:IntArray,zoom:Double,panX:Double,panY:Double):FloatArray
-    private external fun cutoutTrackCreateNative():Long
-    private external fun cutoutTrackStepNative(id:Long,pts:Long,seed:Int,rows:FloatArray,masks:ByteArray,transform:FloatArray):Int
-    class CutoutTrack:AutoCloseable {
-        private var id=cutoutTrackCreateNative()
-        @Synchronized fun step(pts:Long,seed:Int,rows:FloatArray,masks:ByteArray,transform:FloatArray):Int {
-            check(id!=0L);return cutoutTrackStepNative(id,pts,seed,rows,masks,transform).also { check(it>=-1) }
-        }
-        @Synchronized override fun close(){if(id!=0L){trackingDestroyNative(id);id=0L}}
-    }
     const val DANCE_APPEARANCE_BINS=29
     external fun danceAppearanceNative(frame:ByteBuffer,masks:ByteArray,transform:FloatArray):FloatArray
     private external fun danceCutoutCreateNative():Long

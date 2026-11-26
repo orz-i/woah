@@ -185,8 +185,6 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         }
         fun select(seed: ComparisonCutoutSeed) =
             FrameKernel.cutoutSelectNative(masks,transform,seed.x,seed.y)
-        fun track(session: FrameKernel.CutoutTrack, seed: Int = -1) =
-            session.step(pts,seed,rows,masks,transform)
         fun track(session:FrameKernel.DanceCutoutTrack,seed:Int=-1)=session.step(pts,seed,rows,masks,transform,appearance)
         private fun mask(index: Int) = masks.copyOfRange(index*area,(index+1)*area)
         fun alpha(index: Int, width: Int,height: Int) =
