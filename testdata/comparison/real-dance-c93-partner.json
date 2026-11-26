@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "purpose": "C9.3 source-only independent stress sample, sparse visible landmarks; no dense identity truth",
+  "frozenCommit": "7f15e5aab4d9ecee138064810fd091faeeba506b",
+  "modelSha256": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+  "durationUs": 3200000,
+  "cadence": 25,
+  "dimensions": [
+    960,
+    540
+  ],
+  "framesPerRole": 80,
+  "anchorUs": 1000000,
+  "contourCoordinateSize": [
+    640,
+    360
+  ],
+  "sources": {
+    "reference": {
+      "file": "salsa-short.mp4",
+      "title": "Salsa_Dancing_Fundamentals.webm",
+      "author": "Floresaj",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "descriptionUrl": "https://commons.wikimedia.org/wiki/File:Salsa_Dancing_Fundamentals.webm",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/e/ed/Salsa_Dancing_Fundamentals.webm",
+      "downloadSha256": "f44c133fdfec50debce4fd17f668e43b0b0dba8ebb7db4d332b0f2c2564ac0b3",
+      "testedMp4Sha256": "fe6c5a29f935ebee051e0865665c7b478777776291749eb2fe36b875571fbc36",
+      "startSeconds": 10.4,
+      "seed": [
+        0.586,
+        0.278
+      ],
+      "subjectDescription": "rear dancer in dark teal/blue top, not the foreground partner wearing burgundy"
+    }
+  },
+  "annotations": {
+    "reference": [
+      {
+        "ptsUs": 0,
+        "selected": [
+          0.62917,
+          0.3037
+        ],
+        "distractor": [
+          0.78125,
+          0.33333
+        ]
+      },
+      {
+        "ptsUs": 1000000,
+        "selected": [
+          0.58594,
+          0.27778
+        ],
+        "distractor": [
+          0.74531,
+          0.3
+        ]
+      },
+      {
+        "ptsUs": 2000000,
+        "selected": [
+          0.60625,
+          0.30741
+        ],
+        "distractor": [
+          0.77708,
+          0.33333
+        ]
+      },
+      {
+        "ptsUs": 3000000,
+        "selected": [
+          0.54167,
+          0.32963
+        ],
+        "distractor": [
+          0.6625,
+          0.33704
+        ]
+      }
+    ]
+  },
+  "notes": "Source-only marks set before inference. These clips were previously source-previewed but not used in C9.2/C9.3 development replay. Transcoded video only, 25 fps, 960x540, silent."
+}

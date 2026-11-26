@@ -263,6 +263,55 @@ pub unsafe extern "C" fn frame_kernel_dance_finish_detail(
         },
     )
 }
+/// Host-only alternate-model experiment. This does not finish the transaction.
+/// Return -5 for an eligible missing primary with no appended alternate rows,
+/// -1 for no eligible output, or the index of a newly appended strong mask.
+/// Always finish the original transaction with its original rows afterward.
+/// # Safety
+/// Arrays must be readable for their stated lengths.
+#[cfg(feature = "host-model-probe")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_dance_probe_alternate_detail(
+    id: u64,
+    at: i64,
+    full_count: usize,
+    primary_count: usize,
+    d: *const InstanceDetection,
+    count: usize,
+    m: *const u8,
+    mask_len: usize,
+    t: Transform,
+    f: *const f32,
+    feature_len: usize,
+) -> i32 {
+    if full_count > primary_count
+        || primary_count > count
+        || !valid_lengths(t, count, mask_len, feature_len)
+    {
+        return -2;
+    }
+    // SAFETY: checked lengths and caller-owned readable regions.
+    let (Some(d), Some(m), Some(f)) = (
+        unsafe { borrowed(d, count) },
+        unsafe { borrowed(m, mask_len) },
+        unsafe { borrowed(f, feature_len) },
+    ) else {
+        return -2;
+    };
+    crate::ffi_tracking::probe_alternate_detail(
+        id,
+        at,
+        full_count,
+        primary_count,
+        crate::dance_cutout::CutoutObservation {
+            detections: d,
+            masks: m,
+            transform: t,
+            features: f,
+        },
+    )
+}
+
 /// # Safety
 /// Buffers must be readable/writable at the given lengths and disjoint.
 #[unsafe(no_mangle)]

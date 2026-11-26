@@ -6,6 +6,10 @@ rust-version = "1.97.1"
 publish = false
 license = "MIT"
 
+[features]
+# Offline experiment; never enabled by mobile builds.
+host-model-probe = []
+
 [dependencies]
 rubato = "=5.0.1"
 

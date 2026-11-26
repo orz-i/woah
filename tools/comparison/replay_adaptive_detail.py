@@ -39,6 +39,11 @@ def bind_detail(lib):
     lib.frame_kernel_dance_finish_detail.argtypes=[c.c_uint64,m.I64,c.c_size_t,c.POINTER(m.Detection),
         c.c_size_t,m.P8,c.c_size_t,m.Transform,m.PF,c.c_size_t]
     lib.frame_kernel_dance_finish_detail.restype=c.c_int32
+    if hasattr(lib,"frame_kernel_dance_probe_alternate_detail"):
+        lib.frame_kernel_dance_probe_alternate_detail.argtypes=[
+            c.c_uint64,m.I64,c.c_size_t,c.c_size_t,c.POINTER(m.Detection),
+            c.c_size_t,m.P8,c.c_size_t,m.Transform,m.PF,c.c_size_t]
+        lib.frame_kernel_dance_probe_alternate_detail.restype=c.c_int32
     lib.frame_kernel_dance_detail_remap.argtypes=[m.Detection,m.P8,c.c_size_t,m.Transform,m.Transform,View,
         c.POINTER(m.Detection),c.c_size_t,m.P8,c.c_size_t,m.P8,c.c_size_t,c.POINTER(m.Detection)]
     lib.frame_kernel_dance_detail_remap.restype=c.c_int32
@@ -79,10 +84,17 @@ def local(lib,runner,cap,i,view,o):
     return merged,mm,ff
 
 
-def replay(lib,runner,path,obs,anchor,seed,enabled,scheduled=False,local_cache=None):
+def replay(lib,runner,path,obs,anchor,seed,enabled,scheduled=False,local_cache=None,
+           alternate_runner=None):
     records={};attempts=[];accepted=[];skipped=[]
+    alternate_attempts=[];alternate_accepted=[];alternate_eligible=[];alternate_ms=[]
+    if alternate_runner is not None and (not enabled or not scheduled or
+            not hasattr(lib,"frame_kernel_dance_probe_alternate_detail")):
+        raise ValueError("Alternate experiment requires scheduled host-model-probe library")
     cap=cv2.VideoCapture(str(path))
     budget=min(160,max(1,(len(obs)+3)//4))
+    # Fixed experimental upper bound: 6% of frames, at most 24 per role.
+    alternate_budget=min(24,max(1,(len(obs)*6+99)//100))
     start=time.monotonic()
     try:
         # Same anchor-neighborhood -> suffix -> reverse-prefix order as native.
@@ -108,9 +120,40 @@ def replay(lib,runner,path,obs,anchor,seed,enabled,scheduled=False,local_cache=N
                         ds,masks,f=local(lib,runner,cap,i,view,o)
                         if local_cache is not None:local_cache[key]=(ds,masks,f)
                     raw=(m.Detection*len(ds))(*ds)
+                    alt_index=-1
+                    alt_rows=None
+                    if alternate_runner is not None:
+                        primary_count=len(ds)
+                        probe=lib.frame_kernel_dance_probe_alternate_detail
+                        status=probe(h,pts,original_count,primary_count,raw,primary_count,
+                                     m.ptr(masks),masks.size,t,m.ptr(f,m.PF),f.size)
+                        if status not in (-1,-5):
+                            raise ValueError(f"Invalid primary probe: {status}")
+                        if status==-5:
+                            alternate_eligible.append(int(pts))
+                            if len(alternate_attempts)<alternate_budget:
+                                alternate_attempts.append(int(pts))
+                                tick=time.monotonic()
+                                alt_rows=local(lib,alternate_runner,cap,i,view,(pts,ds,masks,t,f))
+                                ads,am,af=alt_rows
+                                # Keep all canonical full and local rows as competitors.
+                                if len(ads)>primary_count:
+                                    ar=(m.Detection*len(ads))(*ads)
+                                    alt_index=probe(h,pts,original_count,primary_count,ar,len(ads),
+                                                    m.ptr(am),am.size,t,m.ptr(af,m.PF),af.size)
+                                    if alt_index!=-1 and not primary_count<=alt_index<len(ads):
+                                        raise ValueError(f"Invalid alternate probe: {alt_index}")
+                                alternate_ms.append((time.monotonic()-tick)*1000)
+                    # Only the primary rows enter the one canonical commit.
                     j=lib.frame_kernel_dance_finish_detail(h,pts,original_count,raw,len(ds),m.ptr(masks),masks.size,
                         t,m.ptr(f,m.PF),f.size)
                     if j>=original_count:accepted.append(int(pts))
+                    if alt_index>=0:
+                        if j!=-1:
+                            raise ValueError("Alternate attempted to replace a primary output")
+                        alternate_accepted.append(int(pts))
+                        ds,masks,f=alt_rows
+                        j=alt_index
             else:j=lib.frame_kernel_dance_cutout_step(h,pts,selected,*argv)
             assert j>=-1,(i,j)
             alpha=None
@@ -132,8 +175,13 @@ def replay(lib,runner,path,obs,anchor,seed,enabled,scheduled=False,local_cache=N
         finally:
             for h in handles:lib.frame_kernel_dance_cutout_destroy(h)
     finally:cap.release()
-    return [records[i] for i in range(len(obs))],{"attempts":len(attempts),"accepted":len(accepted),
+    stats={"attempts":len(attempts),"accepted":len(accepted),
         "attemptedPts":attempts,"acceptedPts":accepted,"skippedPts":skipped,"skipped":len(skipped),"seconds":round(time.monotonic()-start,3)}
+    if alternate_runner is not None:
+        stats.update(alternateBudget=alternate_budget,alternateEligiblePts=alternate_eligible,
+                     alternateAttemptedPts=alternate_attempts,alternateAcceptedPts=alternate_accepted,
+                     alternateMs=alternate_ms)
+    return [records[i] for i in range(len(obs))],stats
 
 
 def main():

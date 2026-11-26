@@ -338,34 +338,37 @@ fn step_or_detail_impl(
     }
 }
 
-/// Confirm current-frame local candidates against the SAME prior identity
-/// table. Commit the already-computed full-only state, never the detail
-/// trial. A compact current-match confirmation is the only local evidence
-/// carried forward; it cannot change track IDs, Kalman or appearance memory.
-pub(crate) fn finish_detail(
-    id: u64,
+struct DetailDecision {
+    selected: i32,
+    weak: Option<usize>,
+    pending: Option<crate::tracking_cutout::PendingMatch>,
+}
+impl DetailDecision {
+    fn output(&self) -> i32 {
+        if self.selected == -1 {
+            self.weak.map_or(-1, |i| i as i32)
+        } else {
+            self.selected
+        }
+    }
+}
+
+/// Evaluate a detail observation using a throwaway copy of the prior state.
+/// The caller owns the one canonical transaction commit.
+fn evaluate_detail(
+    s: &Session,
     at: i64,
     full_count: usize,
     o: crate::dance_cutout::CutoutObservation<'_>,
-) -> i32 {
+) -> Option<DetailDecision> {
     use crate::{
         appearance::{APPEARANCE_BINS, feature},
         tracking_cutout::PendingMatch,
     };
-    let Some(owner) = session(id) else { return -2 };
-    let Ok(mut s) = owner.lock() else { return -2 };
-    let Session {
-        tracker,
-        dance,
-        detail_trial,
-        detail_pending,
-        detail_backoff,
-        ..
-    } = &mut *s;
-    let Some(policy) = dance else { return -2 };
-    let Some(base) = detail_trial.as_ref() else {
-        return -2;
-    };
+    let tracker = &s.tracker;
+    let policy = s.dance.as_ref()?;
+    let base = s.detail_trial.as_ref()?;
+    let detail_pending = &s.detail_pending;
     if at != base.at
         || full_count != base.count
         || full_count > o.detections.len()
@@ -374,7 +377,7 @@ pub(crate) fn finish_detail(
             .as_ref()
             .is_none_or(|c| c.transform != o.transform)
     {
-        return -2;
+        return None;
     }
     let full_rows = o.detections;
     let mut result = -1;
@@ -389,22 +392,18 @@ pub(crate) fn finish_detail(
             .checked_sub(policy.clock.as_ref().unwrap().anchor)
             .and_then(i64::checked_abs)
             .and_then(|v| v.checked_add(1));
-        let Some(elapsed) = at_elapsed else { return -2 };
+        let elapsed = at_elapsed?;
         let rows = o.detections;
         let features = o.features;
         let selected =
             crate::dance_cutout::step(&mut trial, &mut trial_policy, at, -1, o).unwrap_or(-2);
         if selected < -1 {
-            return -2;
+            return None;
         }
         if selected >= full_count as i32 {
             let index = selected as usize;
-            let Some(d) = rows.get(index) else { return -2 };
-            let Some(f) =
-                feature(&features[index * APPEARANCE_BINS..(index + 1) * APPEARANCE_BINS])
-            else {
-                return -2;
-            };
+            let d = rows.get(index)?;
+            let f = feature(&features[index * APPEARANCE_BINS..(index + 1) * APPEARANCE_BINS])?;
             result = selected;
             next_pending = Some(PendingMatch {
                 at: elapsed,
@@ -424,25 +423,96 @@ pub(crate) fn finish_detail(
             });
         }
     }
-    let mut base = detail_trial.take().unwrap();
-    let weak = base.policy.weak_output.take().filter(|&i| {
+    let weak = base.policy.weak_output.filter(|&i| {
         next_pending
             .as_ref()
             .is_none_or(|p| crate::geometry::overlap_iou(p.bounds, full_rows[i].bounds) >= 0.60)
     });
+    Some(DetailDecision {
+        selected: result,
+        weak,
+        pending: next_pending,
+    })
+}
+
+/// Confirm current-frame local candidates against the SAME prior identity
+/// table. Commit the already-computed full-only state, never the detail
+/// trial. A compact current-match confirmation is the only local evidence
+/// carried forward; it cannot change track IDs, Kalman or appearance memory.
+pub(crate) fn finish_detail(
+    id: u64,
+    at: i64,
+    full_count: usize,
+    o: crate::dance_cutout::CutoutObservation<'_>,
+) -> i32 {
+    let Some(owner) = session(id) else { return -2 };
+    let Ok(mut s) = owner.lock() else { return -2 };
+    let Some(decision) = evaluate_detail(&s, at, full_count, o) else {
+        return -2;
+    };
+    let output = decision.output();
+    let mut base = s.detail_trial.take().unwrap();
+    base.policy.weak_output = None;
     if base.scheduled {
-        detail_backoff.observe(at, result >= 0 || next_pending.is_some());
+        s.detail_backoff
+            .observe(at, decision.selected >= 0 || decision.pending.is_some());
     } else {
-        detail_backoff.reset();
+        s.detail_backoff.reset();
     }
-    *tracker = base.tracker;
-    *policy = base.policy;
-    *detail_pending = next_pending;
-    if result == -1 {
-        weak.map_or(-1, |i| i as i32)
-    } else {
-        result
+    s.tracker = base.tracker;
+    s.dance = Some(base.policy);
+    s.detail_pending = decision.pending;
+    output
+}
+
+/// Experimental, non-mutating alternate-model probe. Only an already
+/// requested primary detail transaction may be inspected. Keep every
+/// primary observation in the trial, reject a primary output or provisional
+/// match, and accept only a strong appended observation via the incumbent
+/// association rule. The normal finish_detail call still commits the exact
+/// primary transaction; this probe never creates confirmation or backoff.
+#[cfg(feature = "host-model-probe")]
+pub(crate) fn probe_alternate_detail(
+    id: u64,
+    at: i64,
+    full_count: usize,
+    primary_count: usize,
+    o: crate::dance_cutout::CutoutObservation<'_>,
+) -> i32 {
+    let Some(owner) = session(id) else { return -2 };
+    let Ok(s) = owner.lock() else { return -2 };
+    if full_count > primary_count || primary_count > o.detections.len() {
+        return -2;
     }
+    let area = (o.transform.proto_size as usize).pow(2);
+    let primary = crate::dance_cutout::CutoutObservation {
+        detections: &o.detections[..primary_count],
+        masks: &o.masks[..primary_count * area],
+        transform: o.transform,
+        features: &o.features[..primary_count * crate::appearance::APPEARANCE_BINS],
+    };
+    let Some(primary) = evaluate_detail(&s, at, full_count, primary) else {
+        return -2;
+    };
+    if primary.output() >= 0
+        || primary.pending.is_some()
+        || s.detail_trial.as_ref().unwrap().policy.pending.is_some()
+    {
+        return -1;
+    }
+    if primary_count == o.detections.len() {
+        // Primary is genuinely unavailable and no pending match to protect.
+        return -5;
+    }
+    let Some(alternate) = evaluate_detail(&s, at, full_count, o) else {
+        return -2;
+    };
+    if alternate.selected < primary_count as i32
+        || o.detections[alternate.selected as usize].confidence < crate::dance_cutout::STRONG_CONF
+    {
+        return -1;
+    }
+    alternate.selected
 }
 
 pub(crate) unsafe fn borrowed<'a, T>(p: *const T, n: usize) -> Option<&'a [T]> {
@@ -1106,6 +1176,117 @@ mod cutout_tracking_tests {
                 } else {
                     assert_eq!(selected, base);
                 }
+            }
+            assert_eq!(destroy_dance_session(a), 0);
+            assert_eq!(destroy_dance_session(b), 0);
+        }
+    }
+
+    #[cfg(feature = "host-model-probe")]
+    #[test]
+    fn alternate_probe_is_output_only_and_preserves_primary_schedule() {
+        use crate::{
+            appearance::APPEARANCE_BINS, composition::Viewport, dance_cutout::CutoutObservation,
+        };
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 0.,
+            source_width: 160,
+            source_height: 160,
+            input_size: 160,
+            proto_size: 16,
+        };
+        let d = InstanceDetection {
+            bounds: Rect {
+                left: 60.,
+                top: 50.,
+                right: 90.,
+                bottom: 100.,
+            },
+            confidence: 0.9,
+        };
+        let masks = [255u8; 256];
+        let mut f = [0.; APPEARANCE_BINS];
+        f[0] = 1.;
+        let rows = [d];
+        let empty = CutoutObservation {
+            detections: &[],
+            masks: &[],
+            transform: t,
+            features: &[],
+        };
+        let observed = CutoutObservation {
+            detections: &rows,
+            masks: &masks,
+            transform: t,
+            features: &f,
+        };
+        let pair = [d, d];
+        let both_masks = [255u8; 512];
+        let both_features = [f, f].concat();
+        let ambiguous = CutoutObservation {
+            detections: &pair,
+            masks: &both_masks,
+            transform: t,
+            features: &both_features,
+        };
+        for direction in [1, -1] {
+            let a = create_dance_session();
+            let b = create_dance_session();
+            let anchor = 2_000_000;
+            for id in [a, b] {
+                assert_eq!(step_dance_session(id, anchor, 0, &rows, &masks, t, &f), 0);
+            }
+            let mut view_a = Viewport::default();
+            let mut view_b = Viewport::default();
+            for i in 1..=8 {
+                let at = anchor + direction * i * 40_000;
+                let primary = step_or_detail_scheduled(a, at, empty, &mut view_a);
+                assert_eq!(step_or_detail_scheduled(b, at, empty, &mut view_b), primary);
+                assert_eq!(view_a, view_b);
+                if primary == -3 {
+                    assert_eq!(probe_alternate_detail(b, at + 1, 0, 0, empty), -2);
+                    assert_eq!(probe_alternate_detail(b, at, 1, 0, empty), -2);
+                    assert_eq!(probe_alternate_detail(b, at, 0, 0, empty), -5);
+                    assert_eq!(probe_alternate_detail(b, at, 0, 0, ambiguous), -1);
+                    // The established tracker accepts recent current evidence,
+                    // but later requires a two-observation confirmation. The
+                    // probe cannot learn one from previous alternate outputs.
+                    assert_eq!(
+                        probe_alternate_detail(b, at, 0, 0, observed),
+                        if i <= 4 { 0 } else { -1 }
+                    );
+                    assert_eq!(probe_alternate_detail(b, at, 0, 1, observed), -1);
+                    assert_eq!(finish_detail(a, at, 0, empty), -1);
+                    assert_eq!(finish_detail(b, at, 0, empty), -1);
+                    assert_eq!(probe_alternate_detail(b, at, 0, 0, observed), -2);
+                } else {
+                    assert_eq!(primary, -4);
+                    assert_eq!(probe_alternate_detail(b, at, 0, 0, observed), -2);
+                }
+                let owner_a = super::session(a).unwrap();
+                let owner_b = super::session(b).unwrap();
+                let x = owner_a.lock().unwrap();
+                let y = owner_b.lock().unwrap();
+                let x_track = &x.tracker.tracks[0];
+                let y_track = &y.tracker.tracks[0];
+                assert_eq!(x_track.state, y_track.state);
+                assert_eq!(x_track.observed_bounds, y_track.observed_bounds);
+                assert_eq!(
+                    x_track.frames_since_observation,
+                    y_track.frames_since_observation
+                );
+                assert_eq!(
+                    x_track.appearance.as_ref().unwrap().last_seen,
+                    y_track.appearance.as_ref().unwrap().last_seen
+                );
+                assert_eq!(
+                    x_track.appearance.as_ref().unwrap().bank,
+                    y_track.appearance.as_ref().unwrap().bank
+                );
+                assert!(y.detail_pending.is_none());
+                assert!(y_track.render_mask.is_none());
             }
             assert_eq!(destroy_dance_session(a), 0);
             assert_eq!(destroy_dance_session(b), 0);

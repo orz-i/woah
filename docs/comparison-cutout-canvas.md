@@ -3256,3 +3256,161 @@ before considering a native candidate model or modifying the app.
 Do not promote release status, tune incumbent tracker thresholds
 against these same clips, or claim device improvement from host
 metrics. The C9.1 production configuration remains unchanged.
+
+## Stage C9.3: output-only alternate-model rescue
+
+### Transaction and isolation
+
+Keep the primary Nano full-frame and scheduled local-detail pipeline.
+Extract its existing detail decision from the one canonical commit.
+The opt-in `host-model-probe` Cargo feature exposes a checked, read-only
+same-PTS probe; the default library exports no experimental symbol.
+No Kotlin, Swift, Flutter, mobile model, archive, privacy profile,
+tracker threshold or production backend changes are introduced.
+
+For an already requested canonical local transaction:
+
+1. Evaluate the complete original full and primary local rows
+   against the prior shared Tracker and policy, without committing.
+2. Do not request the alternate if the primary can render (including
+   C9.1 weak output), has a provisional local match, or the canonical
+   full policy has a pending match. A backoff-skipped or unavailable
+   ROI does not create an extra request.
+3. In an eligible missing transaction, run the local Small model on
+   the same source sample and ROI. Keep all primary rows as competitors.
+   Use the existing remap checks, including crop completeness and
+   duplicate suppression. Accept only a newly appended strong
+   observation selected by the unchanged shared association in a
+   throwaway trial; no new provisional confirmation may be learned.
+4. Finish the transaction using **only the original rows**, regardless
+   of the alternate result. The alternate output may fill an otherwise
+   missing alpha but cannot mutate Kalman, appearance, identity IDs,
+   pending confirmation, canonical local backoff, or accepted output.
+5. Fixed host-experiment budget per role: ceil(6% of source frames),
+   capped at 24. Only a single extra inference per eligible existing
+   transaction. This is an experiment parameter, not a mobile default.
+
+The comparison tool reuses the exact full observations and primary
+local cache for both arms, optionally with the C9.1 core as the
+baseline. It requires every original valid alpha to be byte-exact,
+zero prior missing regressions, identical primary requested/adopted/
+skipped timestamps, and exact correspondence between newly selected
+alternate timestamps and newly visible source samples.
+
+### Complete development replay
+
+Same six 300-frame clips from C9.2, no retuning the model or tracker.
+Canonical baseline core SHA-256
+`a1af6e8759542abc383dbc4b89cbc4eff0165dd34394ed20753e792b8bf1b5bf`;
+experimental host core used for this replay
+`825a34d8f77d50a0638cfb0dad2864d7a2d115276d205197a64b326d98bc427e`.
+Model weight provenance is unchanged from C9.2.
+
+| Fixture | Canonical | Incremental | Eligible/attempted/adopted extra ROI | Selected landmarks |
+| --- | ---: | ---: | --- | --- |
+| C8.3 outdoor | 300/300 | 300/300 | 0/0/0 | 12/12 -> 12/12 |
+| C8.3 stage | 268/300 | 273/300 | 27/18/5 | 12/12 -> 12/12 |
+| C7.3 Basque | 280/300 | 281/300 | 15/15/1 | 10/11 -> 11/11 |
+| C7.3 Swing | 254/300 | 254/300 | 38/18/0 | 11/12 -> 11/12 |
+| C5 Baganda | 290/300 | 292/300 | 7/7/2 | 11/12 -> 11/12 |
+| C5 Danzón | 300/300 | 300/300 | 0/0/0 | 12/12 -> 12/12 |
+| Total | 1692/1800 | 1700/1800 | 87/58/8 | 68/71 -> 69/71 |
+
+All 1692 incumbent valid alphas byte-exact, no lost or modified masks,
+zero marked distractor hits, identical canonical primary detail
+requests, acceptances and skips. The eight added samples were
+visually checked against original source and cutout contact sheets:
+selected-performer agreement, but some raised-arm/limb coverage
+remains partial. None of the six longest missing spans improves.
+The total missing-frame count decreases from 108 to 100.
+There are 58 additional attempts for eight accepted masks; two
+clips reach the 18-attempt budget. Measured host incremental
+local-read/inference/remap/probe time: 7.443s across all attempts,
+median 127.53ms, p95 154.02ms. This is not mobile delegate latency
+or an end-to-end comparison; primary observations/local inference
+are shared for exactness.
+
+### Independent source-only stress samples
+
+Two public videos previously source-previewed but not used in the
+C9.2 or initial C9.3 replay were selected without looking at model
+outputs. Source-only points, selection touch, media hashes and
+attributions were fixed before running inference in
+`testdata/comparison/real-dance-c93-overhead.json`
+(SHA-256 `4a1749077fd94f86124fe7e6e3439f5f44f3341abb6e9da18e8f6ff9edb4cb71`)
+and `testdata/comparison/real-dance-c93-partner.json`
+(SHA-256 `757f8f20ae3e31b26a72ee8fdb79a7b1facb2db6fe20891b56df0c1990cf273d`).
+No new thresholds or policy changes were made after seeing them.
+Only sparse visual point checks, not dense identity/edge truth.
+
+| Stress scene | Canonical | Incremental | Added-model attempts/adopted | Selected points |
+| --- | ---: | ---: | --- | --- |
+| Overhead crowd (12s/300 frames) | selection unavailable | selection unavailable | 0/0 | 0/5 -> 0/5 |
+| Low-light partner overlap (3.2s/80 frames) | 78/80 | 78/80 | 2/0 | 4/4 -> 4/4 |
+
+In the overhead scene the canonical touch selection returns -1
+because no valid mask contains the chosen small performer; no
+session can be seeded and the alternate detail probe cannot run.
+The separate observation oracle finds zero eligible weak/strong
+target masks at all five labeled positions in both Nano and Small.
+This is a small-instance/initial-selection problem, not evidence
+that tracking thresholds should be relaxed. The low-light scene
+retains all 78 previously valid alphas byte-exact, neither of the
+two remaining gaps is recovered, and no marked distractor is hit.
+Its longest missing interval remains 80ms.
+
+Source credits and license URLs are in the manifests. The local
+overhead source is trimmed from 30s for 12s; partner from 10.4s
+for 3.2s to avoid montage cuts. Both are silent 960x540/25fps
+transcodes: `fps=25,scale=960:540:flags=lanczos,setpts=N/(25*TB)`,
+libx264 fast CRF18, yuv420p. No media or screenshots are committed.
+
+### Reproduce
+
+Build and keep a C9.1-compatible baseline host dylib separately.
+Build the experimental host-only library with:
+
+```sh
+cd crates/frame-kernel
+cargo build --locked --release --features host-model-probe
+cd ../..
+python tools/comparison/replay_instance_models.py \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --media /path/to/c83-media \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --baseline-library /path/to/c91/libframe_kernel.dylib \
+  --small-weights /path/to/yolo11s-seg.pt \
+  --mode incremental --save-added /tmp/c93-review \
+  --output /tmp/c93-report.json
+```
+
+The same command accepts the two new stress manifests and their
+verified local transcodes. Use the existing `probe_instance_models.py`
+to reproduce the small-instance observation diagnosis. Restore the
+ordinary build without the feature when finished.
+
+Default Rust regression: 159 passed / 1 ignored; experimental
+feature: 160 passed / 1 ignored, including a new bidirectional
+transaction test for missing primary, primary success/pending,
+ambiguity, invalid timestamps/count, no learned alternate
+confirmation, canonical backoff and identity state preservation.
+Both Clippy configurations and formatting pass. Default host
+release library rebuilt and checked for absence of the experimental
+symbol. Comparison Python regression: 38 passed.
+
+**C9.3 disposition:** retain the isolated incremental experiment
+and its exact replay tooling. It establishes additive recovery
+without modifying accepted primary masks, but the marginal gain
+(8/108 prior missing frames), low attempt yield, persistent
+longest gaps, and no improvement on independent stress clips do
+not justify a second production model dependency yet.
+No native model conversion, Android/iOS build or new device
+performance run was performed. The existing C9.1 production
+configuration, Debug/draft and incomplete export refusal stay in
+place; the normal core's refactored commit is covered by host
+regression, not a new mobile run. Next engineering priority:
+investigate touch-centered high-resolution initial selection for
+small targets, and better current-frame segmentation observations
+for genuine residual long gaps. Do not broaden alternate identity
+admission, use an alternate model for independent identity tracking,
+or promote release status based on these data.

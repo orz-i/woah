@@ -69,6 +69,7 @@ impl DanceCutout {
         )
     }
 }
+#[derive(Clone, Copy)]
 pub(crate) struct CutoutObservation<'a> {
     pub detections: &'a [InstanceDetection],
     pub masks: &'a [u8],
