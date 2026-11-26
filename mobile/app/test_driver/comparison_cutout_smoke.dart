@@ -45,6 +45,7 @@ Future<void> main() async {
 class _CutoutSmoke extends ChangeNotifier {
   static const extended = bool.fromEnvironment('WOAH_CUTOUT_EXTENDED_QA');
   static const fullLength = bool.fromEnvironment('WOAH_CUTOUT_FULL_QA');
+  static const cancelPartial = bool.fromEnvironment('WOAH_CUTOUT_CANCEL_QA');
   final api = DanceComparisonApi();
   final previewKey = GlobalKey();
   String status = 'waiting';
@@ -442,6 +443,22 @@ class _CutoutSmoke extends ChangeNotifier {
     return result;
   }
 
+  Future<ComparisonCutoutResultDto> waitForPartial() async {
+    final deadline = DateTime.now().add(const Duration(seconds: 45));
+    while (DateTime.now().isBefore(deadline)) {
+      final status = await host(api.getCutoutStatus());
+      if (status != null &&
+          status.analyzing == true &&
+          status.playback.phase == 'paused' &&
+          status.playback.teacherFrameUs != null &&
+          status.playback.learnerFrameUs != null) {
+        return status;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    throw StateError('Progressive preview never became playable');
+  }
+
   Future<void> probe(
     String id,
     String target,
@@ -519,7 +536,110 @@ class _CutoutSmoke extends ChangeNotifier {
       row['referenceStill'] = await inspect(true, ra, '$id-reference-still');
       row['targetStill'] = await inspect(false, ta, '$id-target-still');
       final watch = Stopwatch()..start();
-      final result = await host(api.prepareCutout(ra, ta, null));
+      final pending = host(api.prepareCutout(ra, ta, null));
+      // Install an error listener immediately while exercising the live preview.
+      unawaited(
+        pending.then<void>((_) {}, onError: (Object _, StackTrace _) {}),
+      );
+      if (fullLength) {
+        final partial = await waitForPartial();
+        final firstMs = watch.elapsedMilliseconds;
+        final a = partial.previewStartUs!, b = partial.previewEndUs!;
+        require(a == 9500000 && b == 10500000, 'Wrong initial range: $a–$b');
+        require(
+          partial.referenceFrames == 360 &&
+              partial.targetFrames == 360 &&
+              partial.referenceAnalyzed! < 360 &&
+              partial.targetAnalyzed! < 360,
+          'Initial coverage is not partial',
+        );
+        await ready(partial.playback);
+        final anchor = await capture('$id-partial-anchor');
+        require(
+          (anchor['leftPixels'] as int) > 80 &&
+              (anchor['rightPixels'] as int) > 80 &&
+              (anchor['topPixels'] as int) < 20,
+          'Initial dynamic canvas missing: $anchor',
+        );
+        var seeked = await ready(
+          await host(api.control(ComparisonCommand.seek, 0, 1)),
+        );
+        require(
+          seeked.positionUs >= a && seeked.positionUs < b,
+          'Preview escaped before A',
+        );
+        seeked = await ready(
+          await host(api.control(ComparisonCommand.seek, 12000000, 1)),
+        );
+        require(
+          seeked.positionUs >= a && seeked.positionUs < b,
+          'Preview escaped after B',
+        );
+        await ready(await host(api.control(ComparisonCommand.seek, a, 1)));
+        await host(api.control(ComparisonCommand.play, 0, 1));
+        await Future<void>.delayed(const Duration(milliseconds: 1600));
+        final playing = await host(api.getState());
+        require(
+          playing.positionUs >= a && playing.positionUs < b,
+          'Preview loop escaped: ${playing.positionUs}',
+        );
+        final paused = await ready(
+          await host(api.control(ComparisonCommand.pause, 0, 1)),
+        );
+        final live = await capture('$id-partial-playing');
+        require(
+          (live['leftPixels'] as int) > 80 &&
+              (live['rightPixels'] as int) > 80 &&
+              (live['topPixels'] as int) < 20,
+          'Partial playback missing subject: $live',
+        );
+        final spec = jsonEncode({
+          'schemaVersion': 1,
+          'id': 'partial_probe',
+          'teacher': {'uri': '${folder.path}/$source'},
+          'learner': {'uri': '${folder.path}/$target'},
+          'offsetUs': 0,
+          'timeScale': 1,
+        });
+        final prior = (await host(api.getExport()))?.jobId;
+        var blocked = false;
+        try {
+          await host(
+            api.startCutoutExport(spec, 0, 12000000, 320, 240, 8, true, true),
+          );
+        } catch (_) {
+          blocked = true;
+        }
+        require(
+          blocked && (await host(api.getExport()))?.jobId == prior,
+          'Partial export admitted',
+        );
+        final progress = await host(api.getCutoutStatus());
+        require(
+          progress != null &&
+              progress.referenceAnalyzed! >= partial.referenceAnalyzed! &&
+              progress.targetAnalyzed! >= partial.targetAnalyzed!,
+          'Analysis progress regressed',
+        );
+        row['progressive'] = {
+          'firstPlayableMs': firstMs,
+          'range': [a, b],
+          'initialAnalyzed': [
+            partial.referenceAnalyzed,
+            partial.targetAnalyzed,
+          ],
+          'laterAnalyzed': [
+            progress!.referenceAnalyzed,
+            progress.targetAnalyzed,
+          ],
+          'playedPositionUs': paused.positionUs,
+          'exportRejected': blocked,
+          'anchorPixels': anchor,
+          'livePixels': live,
+        };
+        publish(false);
+      }
+      final result = await pending;
       row['analysisMs'] = watch.elapsedMilliseconds;
       row['visibility'] = [
         result.referenceVisible,
@@ -535,6 +655,27 @@ class _CutoutSmoke extends ChangeNotifier {
             result.targetFrames >= (fullLength ? 360 : 29),
         'Some tracked frames were missing',
       );
+      if (fullLength) {
+        await ready(
+          await host(api.control(ComparisonCommand.seek, 10000000, 1)),
+        );
+        await capture('$id-final-anchor');
+        final partialBytes = File(
+          '${folder.path}/$id-partial-anchor.png',
+        ).readAsBytesSync();
+        final finalBytes = File(
+          '${folder.path}/$id-final-anchor.png',
+        ).readAsBytesSync();
+        require(
+          partialBytes.length == finalBytes.length &&
+              List.generate(
+                partialBytes.length,
+                (i) => partialBytes[i] == finalBytes[i],
+              ).every((x) => x),
+          'Initial/final anchor changed',
+        );
+        (row['progressive'] as Map<String, Object?>)['anchorIdentical'] = true;
+      }
       final start = window?.$1 ?? 0;
       if (window != null) {
         require(
@@ -721,6 +862,104 @@ class _CutoutSmoke extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, Object?>> cancellationProbe() async {
+    final reference = '${folder.path}/long-source.mp4';
+    final target = '${folder.path}/long-variant.mp4';
+    final practice = ComparisonPracticeDto(
+      mirrorTeacher: false,
+      mirrorLearner: true,
+      loopEnabled: false,
+    );
+    Future<ComparisonPlaybackDto> open(int position) async => ready(
+      await host(
+        api.open(
+          reference,
+          target,
+          0,
+          position,
+          1,
+          320,
+          240,
+          true,
+          practice,
+          1,
+        ),
+      ),
+    );
+    try {
+      final state = await open(10000000);
+      final ra = ComparisonCutoutSeedDto(
+        sourcePtsUs: state.teacherFrameUs!,
+        x: .355,
+        y: .855,
+      );
+      final ta = ComparisonCutoutSeedDto(
+        sourcePtsUs: state.learnerFrameUs!,
+        x: .324,
+        y: .86,
+      );
+      await inspect(true, ra, 'cancel-reference-still');
+      await inspect(false, ta, 'cancel-target-still');
+      final before = Stopwatch()..start();
+      // Attach terminal handling immediately. Cancellation must reject this
+      // request rather than silently publish a completed cache afterward.
+      final pending = host(
+        api.prepareCutout(ra, ta, null),
+      ).then<bool>((_) => false, onError: (Object _, StackTrace _) => true);
+      final partial = await waitForPartial();
+      final firstPlayableMs = before.elapsedMilliseconds;
+      await ready(partial.playback);
+      final partialPixels = await capture('cancel-partial');
+      require(
+        (partialPixels['leftPixels'] as int) > 80 &&
+            (partialPixels['rightPixels'] as int) > 80,
+        'Partial canvas missing',
+      );
+      final cancelWatch = Stopwatch()..start();
+      final ordinary = await ready(await host(api.clearCutout()));
+      final cancelMs = cancelWatch.elapsedMilliseconds;
+      require(
+        await pending,
+        'Cancelled analysis completed instead of rejecting',
+      );
+      require(
+        await host(api.getCutoutStatus()) == null,
+        'Cancelled progress still exposed',
+      );
+      final pixels = await capture('cancel-restored');
+      require(
+        (pixels['topPixels'] as int) > 200,
+        'Ordinary source not restored: $pixels',
+      );
+      await ready(await host(api.control(ComparisonCommand.seek, 0, 1)));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      require(
+        await host(api.getCutoutStatus()) == null,
+        'Late partial work resurrected',
+      );
+      // Opening again must not reuse a cancelled partial cache.
+      final reopened = await open(0);
+      require(
+        reopened.teacherFrameUs == 0 &&
+            reopened.learnerFrameUs == 0 &&
+            await host(api.getCutoutStatus()) == null,
+        'Reopen reused cancelled analysis',
+      );
+      return {
+        'passed': true,
+        'firstPlayableMs': firstPlayableMs,
+        'cancelMs': cancelMs,
+        'restoredPositionUs': ordinary.positionUs,
+        'restoredPixels': pixels,
+        'lateResultRejected': true,
+        'reopened': true,
+      };
+    } finally {
+      await host(api.close());
+      texture = null;
+    }
+  }
+
   Future<void> run() async {
     folder = Directory(
       '${Directory.systemTemp.parent.path}/Documents/comparison-cutout-fixtures',
@@ -735,6 +974,24 @@ class _CutoutSmoke extends ChangeNotifier {
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    if (cancelPartial) {
+      status = 'cancel-partial';
+      final file = File('${folder.path}/cancel-report.json');
+      try {
+        file.writeAsStringSync(
+          jsonEncode(await cancellationProbe()),
+          flush: true,
+        );
+      } catch (error) {
+        file.writeAsStringSync(
+          jsonEncode({'passed': false, 'error': '$error'}),
+          flush: true,
+        );
+      }
+      status = 'finished';
+      notifyListeners();
+      return;
     }
     if (fullLength) {
       require(

@@ -141,6 +141,13 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
       #endif
     } catch { throw IOSDiagnosticPrivacy.pigeon(error,stage: .comparison) }
   }
+  func getCutoutStatus() async throws -> ComparisonCutoutResultDto? {
+    #if DEBUG
+    return player?.cutoutStatus()
+    #else
+    return nil
+    #endif
+  }
   func setCutoutLayout(layout: ComparisonCanvasLayoutDto) async throws -> ComparisonPlaybackDto {
     do {
       #if DEBUG

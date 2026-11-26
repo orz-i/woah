@@ -30,15 +30,37 @@ class ComparisonController extends ChangeNotifier {
       cutoutPreparing = false,
       cutoutInspecting = false;
   ComparisonCutoutResultDto? cutoutResult;
+  bool cutoutAnalysisPending = false;
+  bool get cutoutPartial => cutoutResult?.analyzing == true;
+  (int, int)? get cutoutPlayableRange {
+    final a = cutoutResult?.previewStartUs, b = cutoutResult?.previewEndUs;
+    if (cutoutPartial && a != null && b != null && a >= 0 && b > a) {
+      return (a, b);
+    }
+    return cutoutPracticeRange;
+  }
+
   bool get cutoutActive => cutoutResult != null;
   bool get cutoutExportReady {
     final r = cutoutResult;
-    return r != null &&
+    return !cutoutAnalysisPending &&
+        r != null &&
+        r.analyzing != true &&
         r.referenceFrames > 0 &&
         r.targetFrames > 0 &&
         r.referenceVisible == r.referenceFrames &&
         r.targetVisible == r.targetFrames;
   }
+
+  bool _awaitingCanvasViewport = false;
+  bool get _canvasViewportReady =>
+      !_awaitingCanvasViewport &&
+      _activeResizes == 0 &&
+      _resize?.isActive != true;
+  bool get canEditCanvas =>
+      cutoutActive && !cutoutAnalysisPending && canPlay && _canvasViewportReady;
+  bool get canExportCanvas =>
+      cutoutExportReady && canPlay && _canvasViewportReady;
 
   bool cutoutEditing = false, cutoutApplying = false;
   ComparisonCanvasLayout get canvasLayout =>
@@ -122,6 +144,8 @@ class ComparisonController extends ChangeNotifier {
     cutoutEditing = false;
     cutoutApplying = false;
     cutoutResult = null;
+    cutoutAnalysisPending = false;
+    _awaitingCanvasViewport = false;
   }
 
   void _clearAlignmentReview() {
@@ -174,15 +198,26 @@ class ComparisonController extends ChangeNotifier {
   }
 
   void setViewport(int width, int height, bool horizontal) {
+    // The final analysis reply changes the toolbar and preview constraints.
+    // Wait for the actual new layout before enabling the edit/export actions.
+    final acknowledged =
+        _awaitingCanvasViewport &&
+        cutoutActive &&
+        !cutoutAnalysisPending &&
+        width >= 2 &&
+        height >= 2;
+    if (acknowledged) _awaitingCanvasViewport = false;
     if (_closed ||
         cutoutSelecting ||
         cutoutPreparing ||
         cutoutEditing ||
         cutoutApplying ||
+        cutoutAnalysisPending ||
         (cutoutActive && exporting) ||
         width < 2 ||
         height < 2 ||
         (_width == width && _height == height && _horizontal == horizontal)) {
+      if (acknowledged) _notify();
       return;
     }
     _width = width;
@@ -227,8 +262,13 @@ class ComparisonController extends ChangeNotifier {
         }
       } finally {
         _activeResizes--;
+        if (cutoutActive) _notify();
       }
     });
+    // Layout changes after partial -> full readiness can enqueue a resize
+    // after the frame with the new toolbar. Disable edit/export until both
+    // the debounce and the native resize have settled.
+    if (cutoutActive) _notify();
   }
 
   Future<void> _open() async {
@@ -264,7 +304,64 @@ class ComparisonController extends ChangeNotifier {
     }
   }
 
+  Future<void> _refreshCutoutProgress() async {
+    if (_closed ||
+        _polling ||
+        stepping ||
+        !cutoutAnalysisPending ||
+        gateway is! ComparisonProgressiveCutoutGateway) {
+      return;
+    }
+    final request = _cutoutRequest, control = _controlRequest;
+    _polling = true;
+    try {
+      final result = await (gateway as ComparisonProgressiveCutoutGateway)
+          .cutoutStatus();
+      if (_closed ||
+          request != _cutoutRequest ||
+          !cutoutAnalysisPending ||
+          result == null ||
+          result.analyzing != true) {
+        return;
+      }
+      if (control != _controlRequest) return;
+      final a = result.previewStartUs, b = result.previewEndUs;
+      if (a == null ||
+          b == null ||
+          a < 0 ||
+          b <= a ||
+          b > result.playback.durationUs) {
+        return;
+      }
+      if (result.playback.phase != 'paused' &&
+          result.playback.phase != 'playing' &&
+          result.playback.phase != 'buffering') {
+        if (!cutoutPartial) {
+          return; // Wait for the first actual composed texture.
+        }
+      }
+      playback = result.playback;
+      cutoutResult = result;
+      cutoutSelecting = false;
+      cutoutPreparing = false;
+      if (result.playback.error != null) error = result.playback.error;
+      if (project.positionUs != result.playback.positionUs) {
+        project = project.copyWith(positionUs: result.playback.positionUs);
+        _dirty = true;
+      }
+      _notify();
+    } catch (_) {
+      // The pending prepare reply owns failure/cleanup.
+    } finally {
+      _polling = false;
+    }
+  }
+
   Future<void> _refresh() async {
+    if (cutoutAnalysisPending) {
+      await _refreshCutoutProgress();
+      return;
+    }
     if (_closed ||
         cutoutSelecting ||
         cutoutPreparing ||
@@ -612,6 +709,7 @@ class ComparisonController extends ChangeNotifier {
   Future<(ComparisonExportPlan, ComparisonExportPlan?)?> prepareExport() async {
     if (!canPlay || _closed) return null;
     if (cutoutActive) {
+      if (!_canvasViewportReady) return null;
       if (!cutoutExportReady) {
         error = '存在人物缺失帧，不能导出完整画布，请重新选人或缩短 A/B 选段。';
         _notify();
@@ -952,6 +1050,7 @@ class ComparisonController extends ChangeNotifier {
     }
     final request = ++_cutoutRequest;
     cutoutPreparing = true;
+    cutoutAnalysisPending = true;
     error = null;
     _notify();
     try {
@@ -961,28 +1060,37 @@ class ComparisonController extends ChangeNotifier {
         canvasLayoutDto(canvasLayout),
       );
       if (_closed || request != _cutoutRequest) return;
+      _awaitingCanvasViewport = cutoutPartial;
+      cutoutAnalysisPending = false;
       playback = result.playback;
       cutoutResult = result;
       cutoutSelecting = false;
     } catch (_) {
       if (_closed || request != _cutoutRequest) return;
+      final hadPartial = cutoutPartial;
+      cutoutAnalysisPending = false;
+      _awaitingCanvasViewport = false;
+      if (hadPartial) {
+        cutoutResult = null;
+        cutoutSelecting = false;
+        try {
+          final state = await gateway.state();
+          if (!_closed && request == _cutoutRequest) playback = state;
+        } catch (_) {}
+      }
+      if (_closed || request != _cutoutRequest) return;
       error = '人物分析未完成。请缩短 A/B 选段（每路最多3600帧，受存储空间限制），或重新选择人物。';
     } finally {
       if (!_closed && request == _cutoutRequest) {
         cutoutPreparing = false;
+        cutoutAnalysisPending = false;
         _notify();
       }
     }
   }
 
   Future<bool> beginCanvasEditing() async {
-    if (_closed ||
-        !cutoutActive ||
-        cutoutEditing ||
-        cutoutApplying ||
-        !canPlay ||
-        _activeResizes > 0 ||
-        _resize?.isActive == true) {
+    if (_closed || !canEditCanvas) {
       return false;
     }
     final request = ++_cutoutRequest;
@@ -1049,6 +1157,8 @@ class ComparisonController extends ChangeNotifier {
     if (_closed || !cutoutMode || cutoutApplying) return;
     cutoutEditing = false;
     final request = ++_cutoutRequest;
+    cutoutAnalysisPending = false;
+    _awaitingCanvasViewport = false;
     final needsNative =
         cutoutSelecting || cutoutPreparing || cutoutInspecting || cutoutActive;
     if (!needsNative) {
@@ -1100,7 +1210,7 @@ class ComparisonController extends ChangeNotifier {
         cutoutApplying) {
       return;
     }
-    final selected = cutoutActive ? cutoutPracticeRange : null;
+    final selected = cutoutActive ? cutoutPlayableRange : null;
     if (selected != null) {
       positionUs = positionUs.clamp(selected.$1, selected.$2 - 1);
     }
@@ -1613,7 +1723,9 @@ class ComparisonController extends ChangeNotifier {
 
   Future<void> background() async {
     if (cutoutApplying || exporting) return;
-    if (cutoutSelecting || cutoutPreparing) await exitCutout();
+    if (cutoutSelecting || cutoutPreparing || cutoutAnalysisPending) {
+      await exitCutout();
+    }
     await pause();
     if (!adjusting) await save();
   }

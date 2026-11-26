@@ -215,108 +215,144 @@ final class IOSComparisonCutoutAnalysis {
     return result
   }
 
-  func analyze(url: URL,index: IOSComparisonFrameIndex,start: Int64,end: Int64,
-    seed: IOSComparisonCutoutSeed,reference: Bool,mirror: Bool,inspection: Inspection? = nil,isCancelled: () -> Bool) throws -> IOSComparisonCutoutTrackCache {
+  /// Both direction handles live until the lane finishes. The initial
+  /// immutable preview and the final disk cache contain the same alpha bytes.
+  final class Work: @unchecked Sendable {
+    let preview:IOSComparisonCutoutTrackCache
+    let total:Int
+    private let disk:IOSComparisonCutoutDiskTrack
+    private let completeWork:() throws -> IOSComparisonCutoutTrackCache
+    private var finished=false
+    init(preview:IOSComparisonCutoutTrackCache,total:Int,disk:IOSComparisonCutoutDiskTrack,
+         completeWork:@escaping () throws -> IOSComparisonCutoutTrackCache){
+      self.preview=preview;self.total=total;self.disk=disk;self.completeWork=completeWork
+    }
+    var analyzed:Int{disk.analyzedCount}
+    var visible:Int{disk.visibleCount}
+    func finish()throws->IOSComparisonCutoutTrackCache {
+      guard !finished else {throw IOSComparisonCutoutAnalysisError.invalidTracking}
+      let result=try completeWork();finished=true;return result
+    }
+  }
+
+  func begin(url: URL,index: IOSComparisonFrameIndex,start: Int64,end: Int64,
+    firstPreview:Int64,lastPreview:Int64,seed: IOSComparisonCutoutSeed,reference: Bool,mirror: Bool,
+    inspection: Inspection? = nil,isCancelled: @escaping () -> Bool) throws -> Work {
     func check() throws { if isCancelled() { throw CancellationError() } }
     try check()
     guard seed.x.isFinite, seed.y.isFinite, (0..<1).contains(seed.x), (0..<1).contains(seed.y) else {
       throw IOSComparisonCutoutAnalysisError.invalidSelection
     }
     let fingerprint=try IOSComparisonCutoutFingerprint.read(url,current:{!isCancelled()})
-    let times = try Self.window(index.presentationTimesUs,start: start,end: end,anchor: seed.ptsUs)
-    let scoped = url.isFileURL && url.startAccessingSecurityScopedResource()
-    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-    let asset = AVURLAsset(url: url,options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
-    guard let video = asset.tracks(withMediaType: .video).first else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
-    let orientation = video.preferredTransform
-    let reader = try AVAssetReader(asset: asset)
-    defer { reader.cancelReading() }
-    let output = AVAssetReaderTrackOutput(track: video,outputSettings: [
-      kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-      kCVPixelBufferIOSurfacePropertiesKey as String: [:]])
-    output.alwaysCopiesSampleData = false
-    // Keep original decode dependencies and include any rational first sample.
-    let begin = CMTimeMaximum(video.timeRange.start,CMTime(value: max(0,times[0]-1),timescale: 1_000_000))
-    reader.timeRange = CMTimeRange(start: begin,end: CMTimeRangeGetEnd(video.timeRange))
-    guard reader.canAdd(output) else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
-    reader.add(output)
-    guard reader.startReading() else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
-
-    let forward = Track(), reverse = Track()
-    let spool=try IOSComparisonCutoutDisk(budget:Self.maximumPrefixBytes)
+    let times=try Self.window(index.presentationTimesUs,start:start,end:end,anchor:seed.ptsUs)
+    let nearby=try Self.window(times,start:firstPreview,end:lastPreview,anchor:seed.ptsUs)
+    guard nearby.count<=256,let first=times.firstIndex(of:nearby[0]),
+          let last=times.firstIndex(of:nearby[nearby.count-1]),let anchor=times.firstIndex(of:seed.ptsUs) else {
+      throw IOSComparisonCutoutAnalysisError.unsupportedRange
+    }
+    let asset=AVURLAsset(url:url,options:[AVURLAssetPreferPreciseDurationAndTimingKey:true])
+    guard let video=asset.tracks(withMediaType:.video).first else {throw IOSComparisonCutoutAnalysisError.invalidFrame}
+    let orientation=video.preferredTransform
+    let forward=Track(),reverse=Track()
     let entries=try IOSComparisonCutoutDiskTrack(times:times)
-    var prefix:[IOSComparisonCutoutDisk.Record]=[]
-    var placement: IOSComparisonCutoutPlacement?
-    var cursor = 0
-
-    func add(_ observation: Observation,_ selected: Int) throws {
+    var small:[Int64:IOSComparisonCachedCutout]=[:]
+    var placement:IOSComparisonCutoutPlacement?
+    func add(_ o:Observation,_ selected:Int,_ initial:Bool) throws {
       try check()
-      var layer: IOSComparisonCutoutLayer?
-      if selected >= 0, let placement {
-        let sw = Double(observation.transform.source_width), sh = Double(observation.transform.source_height)
-        let scale = 256 / max(sw,sh)
-        let w = max(1,Int((sw*scale).rounded())), h = max(1,Int((sh*scale).rounded()))
-        let alpha = try observation.alpha(index: selected,width: w,height: h)
-        if alpha.contains(where: { $0 != 0 }) {
-          layer = IOSComparisonCutoutLayer(sourcePtsUs: observation.pts,width: w,height: h,alpha: alpha,placement: placement)
-        }
-      }
       guard let placement else {throw IOSComparisonCutoutAnalysisError.invalidTracking}
-      try entries.add(observation.pts,stamp:observation.stamp,layer:layer,placement:placement)
-    }
-    while cursor < times.count {
-      try check()
-      let found = try autoreleasepool { () throws -> Bool in
-        guard let sample = output.copyNextSampleBuffer() else { return false }
-        guard let pts = IOSComparisonTimeCore.map(CMSampleBufferGetOutputPresentationTimeStamp(sample)) else { return true }
-        if pts < times[cursor] { return true }
-        guard pts == times[cursor], let pixel = CMSampleBufferGetImageBuffer(sample),
-              let stamp = IOSComparisonSourceStamp(pixel) else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
-        let inspected=inspection.flatMap { $0.seed==seed && pts==seed.ptsUs ? $0 : nil }
-        let observation: Observation
-        if let inspected {
-          guard inspected.observation.stamp.agrees(with: stamp) else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
-          observation=inspected.observation
-        } else {
-          observation=try infer(pixel:pixel,orientation:orientation,pts:pts,confidence:pts==seed.ptsUs ? 0.25 : 0.20).0
+      var layer:IOSComparisonCutoutLayer?
+      if selected>=0 {
+        let sw=Double(o.transform.source_width),sh=Double(o.transform.source_height)
+        let scale=256/max(sw,sh),w=max(1,Int((sw*scale).rounded())),h=max(1,Int((sh*scale).rounded()))
+        let alpha=try o.alpha(index:selected,width:w,height:h)
+        if alpha.contains(where:{$0 != 0}){
+          layer=IOSComparisonCutoutLayer(sourcePtsUs:o.pts,width:w,height:h,alpha:alpha,placement:placement)
         }
-        cursor += 1
-        if pts < seed.ptsUs {
-          prefix.append(try spool.append(observation.encode()))
-        } else if pts == seed.ptsUs {
-          let selected = observation.select(seed)
-          guard selected >= 0, inspected == nil || inspected?.index == selected else { throw IOSComparisonCutoutAnalysisError.invalidSelection }
-          let box = observation.rows[selected].bounds
-          let sw = Float(observation.transform.source_width), sh = Float(observation.transform.source_height)
-          let anchor = SIMD4(box.left/sw,box.top/sh,box.right/sw,box.bottom/sh)
-          guard IOSComparisonTimeCore.cutoutQuad(width: 960,height: 540,aspect: Double(sw/sh),anchor: anchor,
-            x: reference ? 0.27 : 0.73,y: 0.88,subjectHeight: 0.70,mirror: mirror) != nil else {
-            throw IOSComparisonCutoutAnalysisError.invalidSelection
-          }
-          placement = IOSComparisonCutoutPlacement(anchor: anchor,x: reference ? 0.27 : 0.73,y: 0.88,
-            subjectHeight: 0.70,mirror: mirror,opacity: 1)
-          let f = try forward.step(observation,seed: selected), r = try reverse.step(observation,seed: selected)
-          guard f == selected,r == selected else { throw IOSComparisonCutoutAnalysisError.invalidTracking }
-          try add(observation,selected)
-          for record in prefix.reversed() {
-            try check()
-            let prior=try Observation.decode(spool.read(record))
-            try add(prior,reverse.step(prior))
-          }
-          prefix.removeAll();spool.close()
-        } else {
-          try add(observation,forward.step(observation))
-        }
-        return true
       }
-      guard found else { break }
+      try entries.add(o.pts,stamp:o.stamp,layer:layer,placement:placement)
+      if initial{small[o.pts]=IOSComparisonCachedCutout(stamp:o.stamp,layer:layer)}
     }
-    try check()
-    guard cursor==times.count else {throw IOSComparisonCutoutAnalysisError.invalidFrame}
-    try entries.seal(anchor:seed.ptsUs)
-    guard try IOSComparisonCutoutFingerprint.read(url,current:{!isCancelled()})==fingerprint else {
-      throw IOSComparisonCutoutAnalysisError.invalidFrame
+    func decode(_ from:Int,_ to:Int,_ consume:(Observation)throws->Void)throws{
+      if from>=to{return}
+      let scoped=url.isFileURL && url.startAccessingSecurityScopedResource()
+      defer{if scoped{url.stopAccessingSecurityScopedResource()}}
+      let reader=try AVAssetReader(asset:asset)
+      defer{reader.cancelReading()}
+      let output=AVAssetReaderTrackOutput(track:video,outputSettings:[
+        kCVPixelBufferPixelFormatTypeKey as String:kCVPixelFormatType_32BGRA,
+        kCVPixelBufferIOSurfacePropertiesKey as String:[:]])
+      output.alwaysCopiesSampleData=false
+      let begin=CMTimeMaximum(video.timeRange.start,CMTime(value:max(0,times[from]-1),timescale:1_000_000))
+      reader.timeRange=CMTimeRange(start:begin,end:CMTimeRangeGetEnd(video.timeRange))
+      guard reader.canAdd(output) else {throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      reader.add(output)
+      guard reader.startReading() else {throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      var cursor=from
+      while cursor<to{
+        try check()
+        let found=try autoreleasepool{()->Bool in
+          guard let sample=output.copyNextSampleBuffer() else{return false}
+          guard let pts=IOSComparisonTimeCore.map(CMSampleBufferGetOutputPresentationTimeStamp(sample)) else{return true}
+          if pts<times[cursor]{return true}
+          guard pts==times[cursor],let pixel=CMSampleBufferGetImageBuffer(sample),
+                let stamp=IOSComparisonSourceStamp(pixel) else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+          let inspected=inspection.flatMap{$0.seed==seed && pts==seed.ptsUs ? $0:nil}
+          let observation:Observation
+          if let inspected{
+            guard inspected.observation.stamp.agrees(with:stamp) else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+            observation=inspected.observation
+          }else{observation=try self.infer(pixel:pixel,orientation:orientation,pts:pts,confidence:pts==seed.ptsUs ? 0.25:0.20).0}
+          cursor+=1
+          try consume(observation)
+          return true
+        }
+        if !found{break}
+      }
+      guard cursor==to else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
     }
-    return IOSComparisonCutoutTrackCache(disk:entries,fingerprint:fingerprint)
+    func backwards(_ from:Int,_ to:Int,_ initial:Bool)throws{
+      if from>=to{return}
+      let spool=try IOSComparisonCutoutDisk(budget:Self.maximumPrefixBytes)
+      defer{spool.close()}
+      var records:[IOSComparisonCutoutDisk.Record]=[]
+      try decode(from,to){records.append(try spool.append($0.encode()))}
+      for record in records.reversed(){
+        try check()
+        let prior=try Observation.decode(spool.read(record))
+        try add(prior,reverse.step(prior),initial)
+      }
+    }
+    try decode(anchor,anchor+1){o in
+      let selected=o.select(seed)
+      guard selected>=0,inspection?.seed != seed || inspection?.index==selected else{
+        throw IOSComparisonCutoutAnalysisError.invalidSelection
+      }
+      let box=o.rows[selected].bounds
+      let sw=Float(o.transform.source_width),sh=Float(o.transform.source_height)
+      let fixed=SIMD4(box.left/sw,box.top/sh,box.right/sw,box.bottom/sh)
+      guard IOSComparisonTimeCore.cutoutQuad(width:960,height:540,aspect:Double(sw/sh),anchor:fixed,
+        x:reference ? 0.27:0.73,y:0.88,subjectHeight:0.70,mirror:mirror) != nil else{
+        throw IOSComparisonCutoutAnalysisError.invalidSelection
+      }
+      placement=IOSComparisonCutoutPlacement(anchor:fixed,x:reference ? 0.27:0.73,y:0.88,subjectHeight:0.70,mirror:mirror,opacity:1)
+      guard try forward.step(o,seed:selected)==selected,try reverse.step(o,seed:selected)==selected else{
+        throw IOSComparisonCutoutAnalysisError.invalidTracking
+      }
+      try add(o,selected,true)
+    }
+    try backwards(first,anchor,true)
+    try decode(anchor+1,last+1){try add($0,forward.step($0),true)}
+    guard small.count==nearby.count,small[seed.ptsUs]?.layer != nil else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+    let preview=IOSComparisonCutoutTrackCache(entries:small,times:nearby)
+    small.removeAll()
+    return Work(preview:preview,total:times.count,disk:entries){
+      try decode(last+1,times.count){try add($0,forward.step($0),false)}
+      try backwards(0,first,false)
+      try entries.seal(anchor:seed.ptsUs)
+      guard try IOSComparisonCutoutFingerprint.read(url,current:{!isCancelled()})==fingerprint else{
+        throw IOSComparisonCutoutAnalysisError.invalidFrame
+      }
+      return IOSComparisonCutoutTrackCache(disk:entries,fingerprint:fingerprint)
+    }
   }
 }

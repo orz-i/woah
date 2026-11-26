@@ -74,6 +74,13 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
   private var playbackError: String?
   private var cutoutRevision: UInt64 = 0
   private var cutoutTask: Task<IOSComparisonCutoutCache, Error>?
+  private var partialWork:(IOSComparisonCutoutAnalysis.Work,IOSComparisonCutoutAnalysis.Work)?
+  func cutoutStatus()->ComparisonCutoutResultDto?{
+    guard let (r,t)=partialWork,let window=cutoutWindow else{return nil}
+    return ComparisonCutoutResultDto(playback:state(),referenceVisible:Int64(r.visible),referenceFrames:Int64(r.total),
+      targetVisible:Int64(t.visible),targetFrames:Int64(t.total),analyzing:true,previewStartUs:window.lowerBound,
+      previewEndUs:window.upperBound,referenceAnalyzed:Int64(r.analyzed),targetAnalyzed:Int64(t.analyzed))
+  }
   private var cutoutCache: IOSComparisonCutoutCache?
   private var cutoutWindow: Range<Int64>?
   private var cutoutExportSuspended=false
@@ -114,7 +121,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     let oldInspection=inspectionTask; oldInspection?.cancel()
     _ = try? await oldInspection?.value
     inspectionTask=nil;referenceInspection=nil;targetInspection=nil
-    cutoutTask = nil; cutoutCache = nil;cutoutWindow=nil
+    cutoutTask = nil;partialWork=nil;cutoutCache = nil;cutoutWindow=nil
     try validate(offsetUs: offsetUs, scale: timeScale, width: width, height: height, speed: speed)
     referenceIndexTask?.cancel(); targetIndexTask?.cancel()
     referenceIndex = nil; targetIndex = nil
@@ -138,7 +145,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
 
   func control(command: ComparisonCommand, valueUs: Int64, speed newSpeed: Double) async throws -> ComparisonPlaybackDto {
     try requireReady()
-    guard (cutoutTask == nil && inspectionTask == nil) || command == .pause else { throw failure("人物分析进行中") }
+    guard (cutoutTask == nil && inspectionTask == nil) || partialWork != nil || command == .pause else { throw failure("人物分析进行中") }
     if command != .pause { referenceInspection=nil;targetInspection=nil }
     switch command {
     case .play:
@@ -180,6 +187,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
   func resize(width: Int, height: Int, sideBySide: Bool) async throws -> ComparisonPlaybackDto {
     try requireReady()
     guard var next = config else { throw failure("请先打开两段视频。") }
+    if partialWork != nil{return state()}
     try validate(offsetUs: next.offsetUs, scale: next.timeScale, width: width, height: height, speed: speed)
     if next.width == width && next.height == height && next.sideBySide == sideBySide { return state() }
     let position = positionUs(); let resume = wantsPlay
@@ -208,7 +216,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
 
   func stepFrame(forward: Bool) async throws -> ComparisonPlaybackDto {
     try requireReady()
-    guard cutoutTask == nil && inspectionTask == nil else { throw failure("人物分析进行中") }
+    guard (cutoutTask == nil && inspectionTask == nil) || partialWork != nil else { throw failure("人物分析进行中") }
     guard let composition, let index = referenceIndex else { throw failure("视频帧时间尚未就绪。") }
     let source = composition.referenceStartUs + positionUs()
     let next = index.adjacent(to: source, forward: forward,
@@ -254,6 +262,8 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     let rURL = config.referenceURL, tURL = config.targetURL
     let window = loopRange() ?? (0..<composition.durationUs)
     guard window.contains(positionUs()) else { throw failure("请在 A/B 选段内选人") }
+    let anchorPosition=positionUs()
+    let initial=max(window.lowerBound,anchorPosition-500_000)..<min(window.upperBound,anchorPosition+500_000)
     let origin=composition.referenceStartUs
     let start=origin+window.lowerBound,end=origin+window.upperBound-1
     let offset = config.offsetUs, scale = config.timeScale
@@ -261,35 +271,58 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     let inspectedR=referenceInspection,inspectedT=targetInspection
     cutoutRevision &+= 1
     let revision = cutoutRevision
-    let task = Task.detached(priority: .userInitiated) {
-      let analyzer = IOSComparisonCutoutAnalysis()
-      let a = try analyzer.analyze(url: rURL,index: referenceIndex,start: start,end: end,
-        seed: r,reference: true,mirror: rMirror,inspection:inspectedR,isCancelled: { Task.isCancelled })
-      let b = try analyzer.analyze(url: tURL,index: targetIndex,
-        start: IOSComparisonTimeCore.map(start,scale: scale,offset: offset),
-        end: IOSComparisonTimeCore.map(end,scale: scale,offset: offset),
-        seed: t,reference: false,mirror: tMirror,inspection:inspectedT,isCancelled: { Task.isCancelled })
-      return IOSComparisonCutoutCache(reference: a,target: b,referenceStartUs: origin,offsetUs: offset,timeScale: scale,window:window)
+    let task = Task.detached(priority: .userInitiated) { [weak self] in
+      let analyzer=IOSComparisonCutoutAnalysis()
+      let previewStart=origin+initial.lowerBound,previewEnd=origin+initial.upperBound-1
+      let a=try analyzer.begin(url:rURL,index:referenceIndex,start:start,end:end,
+        firstPreview:previewStart,lastPreview:previewEnd,seed:r,reference:true,mirror:rMirror,
+        inspection:inspectedR,isCancelled:{Task.isCancelled})
+      let b=try analyzer.begin(url:tURL,index:targetIndex,
+        start:IOSComparisonTimeCore.map(start,scale:scale,offset:offset),
+        end:IOSComparisonTimeCore.map(end,scale:scale,offset:offset),
+        firstPreview:IOSComparisonTimeCore.map(previewStart,scale:scale,offset:offset),
+        lastPreview:IOSComparisonTimeCore.map(previewEnd,scale:scale,offset:offset),
+        seed:t,reference:false,mirror:tMirror,inspection:inspectedT,isCancelled:{Task.isCancelled})
+      if initial != window {
+        guard let self else {throw CancellationError()}
+        try await self.installPartial(a,b,initial:initial,origin:origin,offset:offset,scale:scale,
+          layout:requestedLayout,position:anchorPosition,revision:revision)
+      }
+      let ra=try a.finish(),ta=try b.finish()
+      return IOSComparisonCutoutCache(reference:ra,target:ta,referenceStartUs:origin,offsetUs:offset,timeScale:scale,window:window)
     }
-    cutoutTask = task
-    defer { if cutoutRevision == revision { cutoutTask = nil } }
-    let cache = try await task.value
-    guard !closed, foreground, cutoutRevision == revision, let current = self.config else { throw CancellationError() }
-    cutoutCache = cache.withLayout(requestedLayout);cutoutWindow=window
-    referenceInspection=nil;targetInspection=nil
-    do {
-      let state = try await rebuild(current,positionUs: positionUs(),sourcePositionUs: nil,resume: false)
-      guard foreground, cutoutRevision == revision else { throw CancellationError() }
-      return ComparisonCutoutResultDto(playback: state,referenceVisible: Int64(cache.reference.visibleCount),
-        referenceFrames: Int64(cache.reference.times.count),targetVisible: Int64(cache.target.visibleCount),
-        targetFrames: Int64(cache.target.times.count))
+    cutoutTask=task
+    defer{if cutoutRevision==revision{cutoutTask=nil}}
+    do{
+      let cache=try await task.value
+      guard !closed,foreground,cutoutRevision==revision,let current=self.config else{throw CancellationError()}
+      let position=positionUs(),resume=wantsPlay
+      cutoutCache=cache.withLayout(requestedLayout);cutoutWindow=window;partialWork=nil
+      referenceInspection=nil;targetInspection=nil
+      let state=try await rebuild(current,positionUs:position,sourcePositionUs:nil,resume:resume)
+      guard foreground,cutoutRevision==revision else{throw CancellationError()}
+      return ComparisonCutoutResultDto(playback:state,referenceVisible:Int64(cache.reference.visibleCount),
+        referenceFrames:Int64(cache.reference.times.count),targetVisible:Int64(cache.target.visibleCount),
+        targetFrames:Int64(cache.target.times.count))
     } catch {
-      if !closed && cutoutRevision == revision {
-        cutoutCache = nil;cutoutWindow=nil
-        _ = try? await rebuild(current,positionUs: pendingUs,sourcePositionUs: nil,resume: false)
+      if !closed && cutoutRevision==revision{
+        let position=positionUs()
+        cutoutCache=nil;cutoutWindow=nil;partialWork=nil
+        if let current=self.config{_=try? await rebuild(current,positionUs:position,sourcePositionUs:nil,resume:false)}
       }
       throw error
     }
+  }
+
+  private func installPartial(_ r:IOSComparisonCutoutAnalysis.Work,_ t:IOSComparisonCutoutAnalysis.Work,
+    initial:Range<Int64>,origin:Int64,offset:Int64,scale:Double,layout:IOSComparisonCanvasLayout?,
+    position:Int64,revision:UInt64) async throws{
+    guard !closed,foreground,cutoutRevision==revision,let current=config else{throw CancellationError()}
+    cutoutCache=IOSComparisonCutoutCache(reference:r.preview,target:t.preview,referenceStartUs:origin,
+      offsetUs:offset,timeScale:scale,window:initial,editedLayout:layout)
+    cutoutWindow=initial;partialWork=(r,t)
+    _=try await rebuild(current,positionUs:position,sourcePositionUs:nil,resume:false)
+    guard !closed,foreground,cutoutRevision==revision else{throw CancellationError()}
   }
 
   private static func canvasLayout(_ value: ComparisonCanvasLayoutDto) throws -> IOSComparisonCanvasLayout {
@@ -357,7 +390,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     _ = try? await oldInspection?.value
     guard cutoutRevision == revision else { return state() }
     inspectionTask=nil;referenceInspection=nil;targetInspection=nil
-    cutoutTask = nil
+    cutoutTask = nil;partialWork=nil
     guard cutoutCache != nil else { return state() }
     cutoutCache = nil;cutoutWindow=nil;cutoutExportSuspended=false
     guard !closed, let config else { return state() }
@@ -383,7 +416,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     guard !closed else { return }
     pendingUs = positionUs(); closed = true; wantsPlay = false; ready = false
     generation &+= 1; seekRevision &+= 1
-    cutoutRevision &+= 1; cutoutTask?.cancel(); cutoutTask = nil; cutoutCache = nil;cutoutWindow=nil; inspectionTask?.cancel();inspectionTask=nil;referenceInspection=nil;targetInspection=nil
+    cutoutRevision &+= 1; cutoutTask?.cancel(); cutoutTask = nil;partialWork=nil; cutoutCache = nil;cutoutWindow=nil; inspectionTask?.cancel();inspectionTask=nil;referenceInspection=nil;targetInspection=nil
     referenceIndexTask?.cancel(); targetIndexTask?.cancel()
     referenceIndexTask = nil; targetIndexTask = nil
     referenceIndex = nil; targetIndex = nil
@@ -524,6 +557,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
   }
 
   private func loopRange() -> Range<Int64>? {
+    if partialWork != nil,let cutoutWindow{return cutoutWindow}
     guard let practice = config?.practice, practice.loopEnabled,
           let start = practice.loopStartUs, let end = practice.loopEndUs,
           let duration = composition?.durationUs, start >= 0, end > start, end <= duration else { return nil }

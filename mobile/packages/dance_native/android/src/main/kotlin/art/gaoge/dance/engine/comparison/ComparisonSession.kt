@@ -80,12 +80,21 @@ internal class ComparisonSession(
     private var cutoutWindow: ComparisonLoop?=null
     private var cutoutExportSuspended=false
     private var cutoutPreparing=false
+    private var partialWork:Pair<ComparisonCutoutAnalysis.Work,ComparisonCutoutAnalysis.Work>?=null
+    fun cutoutStatus():ComparisonCutoutResultDto? {
+        val work=partialWork ?: return null
+        val window=cutoutWindow ?: return null
+        val (r,t)=work
+        return ComparisonCutoutResultDto(state(),r.visible.toLong(),r.total.toLong(),t.visible.toLong(),t.total.toLong(),
+            true,window.startUs,window.endUs,r.analyzed.toLong(),t.analyzed.toLong())
+    }
     private var cutoutDone: CompletableDeferred<Unit>?=null
     private var referenceInspection: ComparisonCutoutAnalysis.Inspection?=null
     private var targetInspection: ComparisonCutoutAnalysis.Inspection?=null
     val hasCutout: Boolean get() = cutoutCache!=null || cutoutPreparing
     private var pendingStep: CancellableContinuation<ComparisonPlaybackDto>?=null
     private fun loop(): ComparisonLoop? {
+        if(partialWork!=null)cutoutWindow?.let{return it}
         val start=practice.loopStartUs; val end=practice.loopEndUs
         val duration=range?.durationUs ?: return null
         return if (practice.loopEnabled && start!=null && end!=null &&
@@ -234,7 +243,7 @@ internal class ComparisonSession(
         } }
     }
     fun control(command: ComparisonCommand,valueUs: Long,newSpeed: Double): ComparisonPlaybackDto {
-        check(!closed && (!cutoutPreparing || command==ComparisonCommand.PAUSE)) { "人物分析进行中" }
+        check(!closed && (!cutoutPreparing || partialWork!=null || command==ComparisonCommand.PAUSE)) { "人物分析进行中" }
         if(command!=ComparisonCommand.PAUSE) {referenceInspection=null;targetInspection=null}
         when (command) {
             ComparisonCommand.PLAY -> {
@@ -313,7 +322,7 @@ internal class ComparisonSession(
         return state()
     }
     suspend fun stepFrame(forward: Boolean): ComparisonPlaybackDto {
-        check(ready && pendingStep==null && !cutoutPreparing) { "请等待画面就绪" }
+        check(ready && pendingStep==null && (!cutoutPreparing || partialWork!=null)) { "请等待画面就绪" }
         val bounds=requireNotNull(range)
         val window=cutoutWindow
         val stepBounds=if(window==null)bounds else bounds.copy(
@@ -377,12 +386,16 @@ internal class ComparisonSession(
         val selectedWindow=loop() ?: ComparisonLoop(0,bounds.durationUs)
         require(selectedWindow.contains(positionUs())) { "请在 A/B 选段内选人" }
         val first=selectedWindow.startUs;val last=selectedWindow.endUs-1
+        val anchorPosition=positionUs()
+        val initial=ComparisonLoop(maxOf(first,anchorPosition-500_000L),
+            minOf(selectedWindow.endUs,anchorPosition+500_000L))
         val mirrorR=practice.mirrorTeacher;val mirrorT=practice.mirrorLearner
         val inspectedR=referenceInspection;val inspectedT=targetInspection
         val revision=cutoutRevision.incrementAndGet()
         cutoutPreparing=true
         val done=CompletableDeferred<Unit>();cutoutDone=done
         var pendingCache:ComparisonCutoutCache?=null
+        var partial:ComparisonCutoutCache?=null
         try {
             val cache=withContext(Dispatchers.Default) {
                 val scope=currentCoroutineContext()
@@ -391,25 +404,50 @@ internal class ComparisonSession(
                 segmenter.use {
                     it.initialize()
                     val analysis=ComparisonCutoutAnalysis(context)
-                    val r=analysis.analyze(teacherUri,teacher,bounds.teacherTimeUs(first),bounds.teacherTimeUs(last),ra,true,mirrorR,it,current,inspectedR)
-                    try {
-                        val t=analysis.analyze(learnerUri,learner,bounds.learnerTimeUs(first),bounds.learnerTimeUs(last),ta,false,mirrorT,it,current,inspectedT)
-                        ComparisonCutoutCache(r,t).also{pendingCache=it}
-                    } catch(error:Throwable){r.close();throw error}
+                    val r=analysis.begin(teacherUri,teacher,bounds.teacherTimeUs(first),bounds.teacherTimeUs(last),
+                        bounds.teacherTimeUs(initial.startUs),bounds.teacherTimeUs(initial.endUs-1),ra,true,mirrorR,it,current,inspectedR)
+                    r.use {
+                        val t=analysis.begin(learnerUri,learner,bounds.learnerTimeUs(first),bounds.learnerTimeUs(last),
+                            bounds.learnerTimeUs(initial.startUs),bounds.learnerTimeUs(initial.endUs-1),ta,false,mirrorT,segmenter,current,inspectedT)
+                        t.use {
+                            if(initial!=selectedWindow)withContext(Dispatchers.Main.immediate){
+                                check(!closed && foreground && cutoutRevision.get()==revision && range==bounds)
+                                val preview=ComparisonCutoutCache(r.preview,t.preview)
+                                preview.setLayout(requestedLayout)
+                                partial=preview;cutoutCache=preview;cutoutWindow=initial
+                                partialWork=r to t
+                                pendingUs=anchorPosition;wantsPlay=false
+                                buildEngine()
+                                if(art.gaoge.dance.engine.BuildConfig.DEBUG)android.util.Log.i("WoahCutoutPerf","initial_preview_frames="+r.analyzed+"/"+t.analyzed)
+                            }
+                            val finishedR=r.finish()
+                            try {
+                                val finishedT=t.finish()
+                                ComparisonCutoutCache(finishedR,finishedT).also{pendingCache=it}
+                            } catch(e:Throwable){finishedR.close();throw e}
+                        }
+                    }
                 }
             }
-            if(closed || !foreground || cutoutRevision.get()!=revision || range!=bounds) {
-                cache.close();error("人物分析已取消")
-            }
+            check(!closed && foreground && cutoutRevision.get()==revision) { "人物分析已取消" }
+            val position=positionUs()
+            val wasPlaying=wantsPlay
             cache.setLayout(requestedLayout)
-            cutoutCache=cache;pendingCache=null;cutoutWindow=selectedWindow
+            cutoutCache=cache;pendingCache=null;cutoutWindow=selectedWindow;partialWork=null
             referenceInspection=null;targetInspection=null
-            pendingUs=positionUs()
-            buildEngine()
+            pendingUs=position;wantsPlay=wasPlaying
+            try{buildEngine()}finally{partial?.close();partial=null}
             return ComparisonCutoutResultDto(state(),cache.reference.visibleCount.toLong(),cache.reference.frameCount.toLong(),
                 cache.target.visibleCount.toLong(),cache.target.frameCount.toLong())
         } finally {
             pendingCache?.close()
+            if(partial!=null){
+                val old=partial
+                if(cutoutCache===old){
+                    pendingUs=positionUs();wantsPlay=false;cutoutCache=null;cutoutWindow=null;partialWork=null
+                    try{buildEngine()}finally{old?.close()}
+                }else old?.close()
+            }
             if(cutoutDone===done) {cutoutPreparing=false;cutoutDone=null}
             done.complete(Unit)
         }
@@ -484,7 +522,7 @@ internal class ComparisonSession(
 
     fun resize(newWidth: Int,newHeight: Int,sideBySide: Boolean): ComparisonPlaybackDto {
         require(newWidth in 2..4096 && newHeight in 2..4096)
-        if(cutoutExportSuspended) return state()
+        if(cutoutExportSuspended || partialWork!=null) return state()
         if (width==newWidth && height==newHeight) {
             if (horizontal!=sideBySide) {
                 horizontal=sideBySide
@@ -527,7 +565,7 @@ internal class ComparisonSession(
         if (closed) return
         pendingUs=positionUs();wantsPlay=false;pauseClock();closed=true
         val old=cutoutCache
-        cutoutRevision.incrementAndGet();cutoutPreparing=false;cutoutCache=null;cutoutWindow=null;referenceInspection=null;targetInspection=null
+        cutoutRevision.incrementAndGet();cutoutPreparing=false;partialWork=null;cutoutCache=null;cutoutWindow=null;referenceInspection=null;targetInspection=null
         choreographer.removeFrameCallback(frames)
         try {releaseEngine();producer.setCallback(null);producer.release()} finally {old?.close()}
     }

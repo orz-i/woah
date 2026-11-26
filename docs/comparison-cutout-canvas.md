@@ -591,3 +591,93 @@ macOS host regression passed; Flutter scoped analyzer clean. No new media
 or device-local evidence is committed. A real 30–60 s independent video,
 GPU equivalence, progressive/anchor-first analysis, asynchronous prefetch,
 and durable cache recovery remain to be verified/implemented.
+
+## Stage B2: anchor-first playable preview (2026-11-26)
+
+Both native analyzers now seed the existing two directional FrameKernel
+tracking handles at the selected source PTS, process the first neighborhood
+around that anchor, then finish the untouched suffix and reverse prefix.
+The initial preview window is the intersection of the requested comparison
+window and anchor position +/- 500 ms. The source-frame predecessor is
+included; the selected source PTS must still belong to the window. No
+already-analyzed sample is segmented again (decoder dependencies can be
+decoded again when reopening a span). The same selected identity handles
+and final disk cache receive all observations, with no reseeding at the
+initial-window boundary.
+
+The native prepare operation remains outstanding until both full tracks
+are sealed and their original-source fingerprints reverified. A new
+debug-only getCutoutStatus reply exposes the initial immutable preview,
+analyzed frame counts, and its time interval while this work continues.
+The initial preview does not carry the export fingerprints. Both native
+players constrain seeks, step and looping to the partial window; editing,
+resize and export are gated during analysis. Flutter polls at its existing
+200 ms cadence and displays processed-frame counts, then adopts the
+complete result, discarding obsolete progress and cancellation replies.
+Exit, background and project changes cancel analysis. The ordinary
+comparison paths and model/runtime policy are unchanged.
+
+This is two-stage readiness, not continuously growing timeline coverage:
+the initial interval stays fixed until the full interval is ready.
+Counts reflect materialized selected-alpha observations (a reverse spool
+can be decoding before the count advances). Initial preview remains
+bounded in RAM (maximum 256 source frames per role); the full cache is
+still the B1 disk-backed store. Total analysis time is not improved by
+the scheduling change, and opening additional decode spans can add
+latency. Native preview refresh on the final transition may briefly
+rebuild the player. GPU, async alpha prefetch, durable cache recovery,
+and independent real choreography remain outstanding.
+
+### Verified device evidence
+
+Same 12-second, 360-frames-per-role disposable H.264 fixture as B1, anchor
+at 10 seconds, no A/B restriction, 1440x1080 full output:
+
+| Metric | OnePlus 8T / Android 14 | iPhone 15 Pro simulator / iOS 17 |
+| --- | ---: | ---: |
+| First actual playable canvas | 8.448 s | 5.421 s |
+| Complete analysis | 94.428 s | 82.949 s |
+| Initial common playback interval | [9.5,10.5) s | [9.5,10.5) s |
+| Initial analyzed frames (each role) | 30 | 30 |
+| Later observed analyzed counts | 50 / 30 | 48 / 30 |
+| Final role coverage | 360 / 360 | 360 / 360 |
+| Full export elapsed | 11.075 s | 7.671 s |
+| Decoded video frames | 360 | 360 |
+| Container duration | 12.000 s | 12.000 s |
+
+Real playback was exercised while native work was running; seeks before
+and after the initial window were clamped, playback loop stayed in the
+window, export admission was rejected without replacing the existing job,
+and progress increased. The first and final anchor PNGs decoded to
+identical RGB pixels. Full output passed the six-sample B1 verifier;
+Android MediaStore readback was byte-identical. No new raw or derived
+media was committed.
+
+Separate real cancellation probes on both platforms waited until the
+initial canvas was playable, called clearCutout, verified rejection of
+the pending prepare reply and restoration of ordinary source pixels,
+then sought to zero and reopened the pair without any late partial
+status. Android had no remaining anonymous scratch file descriptors;
+iOS host inspection found no remaining scratch handle after completion.
+
+Flutter comparison regression: 134 passed, including two new progressive
+controller tests. Scoped analyzer clean, Pigeon regeneration reproducible,
+Android focused JNI/JVM comparison regressions (26), macOS host comparison
+regression, and native builds passed.
+
+Reproduce the complete progressive test using the existing full QA
+entrypoint with `--dart-define=WOAH_CUTOUT_FULL_QA=true` and verify:
+```sh
+python3 tools/comparison/verify_cutout_export.py /path/to/results --platform android --full --progressive
+python3 tools/comparison/verify_cutout_export.py /path/to/results --platform ios --full --progressive
+```
+Build the same entrypoint with `--dart-define=WOAH_CUTOUT_CANCEL_QA=true`
+for the standalone partial-cancellation probe, which writes
+`cancel-report.json` and does not overwrite the full-run report.
+
+The real Flutter screen gesture regression on both platforms also passed
+after correcting a transition race: the final result now awaits the next
+actual viewport layout callback and any debounced/native resize before
+enabling edit and export. Both gesture runs observed partial progress with
+the edit/export actions disabled, then entered the editor, applied and
+persisted overlay/mirror/placement, and exited normally.

@@ -77,8 +77,8 @@ internal class ComparisonCutoutDiskTrack(directory: File, times: List<Long>) : A
     private var width = 0
     private var height = 0
     private val chunks = LinkedHashMap<Int, Array<ComparisonCutoutLayer?>>(3,.75f,true)
-    val frameCount get() = count
-    val visibleCount get() = visible
+    val frameCount @Synchronized get() = count
+    val visibleCount @Synchronized get() = visible
     val bytes get() = disk.bytes
     @Synchronized fun add(at: Long, w: Int, h: Int, alpha: ByteArray?, fixed: ComparisonCutoutPlacement) {
         check(!sealed && owners > 0)

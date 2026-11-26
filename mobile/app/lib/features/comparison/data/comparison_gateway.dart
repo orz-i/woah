@@ -59,8 +59,15 @@ abstract interface class ComparisonCutoutGateway {
   Future<ComparisonPlaybackDto> resumeCutoutPreview();
 }
 
+abstract interface class ComparisonProgressiveCutoutGateway {
+  Future<ComparisonCutoutResultDto?> cutoutStatus();
+}
+
 class NativeComparisonGateway
-    implements ComparisonGateway, ComparisonCutoutGateway {
+    implements
+        ComparisonGateway,
+        ComparisonCutoutGateway,
+        ComparisonProgressiveCutoutGateway {
   final DanceComparisonApi _api;
   NativeComparisonGateway({DanceComparisonApi? api})
     : _api = api ?? DanceComparisonApi();
@@ -167,6 +174,8 @@ class NativeComparisonGateway
     ComparisonCutoutSeedDto target,
     ComparisonCanvasLayoutDto? layout,
   ) => _api.prepareCutout(reference, target, layout);
+  @override
+  Future<ComparisonCutoutResultDto?> cutoutStatus() => _api.getCutoutStatus();
   @override
   Future<ComparisonPlaybackDto> setCutoutLayout(
     ComparisonCanvasLayoutDto layout,

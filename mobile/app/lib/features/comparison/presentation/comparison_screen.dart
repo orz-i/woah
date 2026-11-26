@@ -1695,32 +1695,33 @@ class _ComparisonScreenState extends State<ComparisonScreen>
 
   Widget _cutoutPlaybackInfo() {
     final result = controller.cutoutResult!;
-    final missing =
-        result.referenceFrames -
-        result.referenceVisible +
-        result.targetFrames -
-        result.targetVisible;
+    final partial = controller.cutoutPartial;
+    final analyzed =
+        (result.referenceAnalyzed ?? result.referenceFrames) +
+        (result.targetAnalyzed ?? result.targetFrames);
+    final total = result.referenceFrames + result.targetFrames;
+    final missing = analyzed - result.referenceVisible - result.targetVisible;
     return Row(
       children: [
         Expanded(
           child: Text(
-            '实验画布 · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}'
-            '${missing > 0 ? ' · 缺失帧已隐藏，暂不能导出' : ''}',
+            partial
+                ? '已分析 $analyzed/$total 帧 · 正在分析剩余片段，暂不能导出'
+                : '实验画布 · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}'
+                      '${missing > 0 ? ' · 缺失帧已隐藏，暂不能导出' : ''}',
             style: const TextStyle(fontSize: 12),
           ),
         ),
         IconButton(
           key: const ValueKey('comparison-canvas-edit'),
           tooltip: '编辑画布',
-          onPressed: controller.canPlay ? _beginCanvasEditing : null,
+          onPressed: controller.canEditCanvas ? _beginCanvasEditing : null,
           icon: const Icon(Icons.tune_rounded),
         ),
         IconButton(
           key: const ValueKey('comparison-cutout-export'),
           tooltip: '导出画布视频',
-          onPressed: controller.canPlay && controller.cutoutExportReady
-              ? _export
-              : null,
+          onPressed: controller.canExportCanvas ? _export : null,
           icon: const Icon(Icons.ios_share_rounded),
         ),
         TextButton(
@@ -1975,7 +1976,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     final state = controller.playback;
     final duration = state?.durationUs ?? 0;
     final selected = controller.cutoutActive
-        ? controller.cutoutPracticeRange
+        ? controller.cutoutPlayableRange
         : null;
     final start = selected?.$1 ?? 0, end = selected?.$2 ?? duration;
     final position =
@@ -2048,7 +2049,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                         style: const TextStyle(fontSize: 12),
                       ),
                       Text(
-                        selected != null
+                        controller.cutoutPartial
+                            ? '预览 ${comparisonTime(start)}–${comparisonTime(end)}'
+                            : selected != null
                             ? 'A/B ${comparisonTime(start)}–${comparisonTime(end)}'
                             : comparisonTime(end),
                         style: const TextStyle(fontSize: 12),

@@ -548,7 +548,12 @@ data class ComparisonCutoutResultDto (
   val referenceVisible: Long,
   val referenceFrames: Long,
   val targetVisible: Long,
-  val targetFrames: Long
+  val targetFrames: Long,
+  val analyzing: Boolean? = null,
+  val previewStartUs: Long? = null,
+  val previewEndUs: Long? = null,
+  val referenceAnalyzed: Long? = null,
+  val targetAnalyzed: Long? = null
 )
  {
   companion object {
@@ -558,7 +563,12 @@ data class ComparisonCutoutResultDto (
       val referenceFrames = pigeonVar_list[2] as Long
       val targetVisible = pigeonVar_list[3] as Long
       val targetFrames = pigeonVar_list[4] as Long
-      return ComparisonCutoutResultDto(playback, referenceVisible, referenceFrames, targetVisible, targetFrames)
+      val analyzing = pigeonVar_list[5] as Boolean?
+      val previewStartUs = pigeonVar_list[6] as Long?
+      val previewEndUs = pigeonVar_list[7] as Long?
+      val referenceAnalyzed = pigeonVar_list[8] as Long?
+      val targetAnalyzed = pigeonVar_list[9] as Long?
+      return ComparisonCutoutResultDto(playback, referenceVisible, referenceFrames, targetVisible, targetFrames, analyzing, previewStartUs, previewEndUs, referenceAnalyzed, targetAnalyzed)
     }
   }
   fun toList(): List<Any?> {
@@ -568,6 +578,11 @@ data class ComparisonCutoutResultDto (
       referenceFrames,
       targetVisible,
       targetFrames,
+      analyzing,
+      previewStartUs,
+      previewEndUs,
+      referenceAnalyzed,
+      targetAnalyzed,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -578,7 +593,7 @@ data class ComparisonCutoutResultDto (
       return true
     }
     val other = other as ComparisonCutoutResultDto
-    return ComparisonApiPigeonUtils.deepEquals(this.playback, other.playback) && ComparisonApiPigeonUtils.deepEquals(this.referenceVisible, other.referenceVisible) && ComparisonApiPigeonUtils.deepEquals(this.referenceFrames, other.referenceFrames) && ComparisonApiPigeonUtils.deepEquals(this.targetVisible, other.targetVisible) && ComparisonApiPigeonUtils.deepEquals(this.targetFrames, other.targetFrames)
+    return ComparisonApiPigeonUtils.deepEquals(this.playback, other.playback) && ComparisonApiPigeonUtils.deepEquals(this.referenceVisible, other.referenceVisible) && ComparisonApiPigeonUtils.deepEquals(this.referenceFrames, other.referenceFrames) && ComparisonApiPigeonUtils.deepEquals(this.targetVisible, other.targetVisible) && ComparisonApiPigeonUtils.deepEquals(this.targetFrames, other.targetFrames) && ComparisonApiPigeonUtils.deepEquals(this.analyzing, other.analyzing) && ComparisonApiPigeonUtils.deepEquals(this.previewStartUs, other.previewStartUs) && ComparisonApiPigeonUtils.deepEquals(this.previewEndUs, other.previewEndUs) && ComparisonApiPigeonUtils.deepEquals(this.referenceAnalyzed, other.referenceAnalyzed) && ComparisonApiPigeonUtils.deepEquals(this.targetAnalyzed, other.targetAnalyzed)
   }
 
   override fun hashCode(): Int {
@@ -588,10 +603,15 @@ data class ComparisonCutoutResultDto (
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.referenceFrames)
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.targetVisible)
     result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.targetFrames)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.analyzing)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.previewStartUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.previewEndUs)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.referenceAnalyzed)
+    result = 31 * result + ComparisonApiPigeonUtils.deepHash(this.targetAnalyzed)
     return result
   }
   override fun toString(): String {
-    return "ComparisonCutoutResultDto(playback=$playback, referenceVisible=$referenceVisible, referenceFrames=$referenceFrames, targetVisible=$targetVisible, targetFrames=$targetFrames)"
+    return "ComparisonCutoutResultDto(playback=$playback, referenceVisible=$referenceVisible, referenceFrames=$referenceFrames, targetVisible=$targetVisible, targetFrames=$targetFrames, analyzing=$analyzing, previewStartUs=$previewStartUs, previewEndUs=$previewEndUs, referenceAnalyzed=$referenceAnalyzed, targetAnalyzed=$targetAnalyzed)"
   }
 }
 
@@ -1052,6 +1072,7 @@ interface DanceComparisonApi {
   suspend fun getState(): ComparisonPlaybackDto
   suspend fun inspectCutout(reference: Boolean, seed: ComparisonCutoutSeedDto): ComparisonCutoutPreviewDto
   suspend fun prepareCutout(reference: ComparisonCutoutSeedDto, target: ComparisonCutoutSeedDto, layout: ComparisonCanvasLayoutDto?): ComparisonCutoutResultDto
+  suspend fun getCutoutStatus(): ComparisonCutoutResultDto?
   suspend fun setCutoutLayout(layout: ComparisonCanvasLayoutDto): ComparisonPlaybackDto
   suspend fun clearCutout(): ComparisonPlaybackDto
   suspend fun alignMusic(teacherUri: String, learnerUri: String): MusicAlignmentDto
@@ -1307,6 +1328,23 @@ interface DanceComparisonApi {
             CoroutineScope(Dispatchers.Main).launch {
               val wrapped: List<Any?> = try {
                 listOf(api.prepareCutout(referenceArg, targetArg, layoutArg))
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.getCutoutStatus$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.getCutoutStatus())
               } catch (exception: Throwable) {
                 ComparisonApiPigeonUtils.wrapError(exception)
               }

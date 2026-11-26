@@ -88,6 +88,13 @@ class CutoutGateway extends FakeComparisonGateway
   }
 }
 
+class ProgressiveCutoutGateway extends CutoutGateway
+    implements ComparisonProgressiveCutoutGateway {
+  ComparisonCutoutResultDto? progress;
+  @override
+  Future<ComparisonCutoutResultDto?> cutoutStatus() async => progress;
+}
+
 void main() {
   test(
     'inverse native pane geometry rejects letterbox and divider, handles mirror',
@@ -449,6 +456,96 @@ void main() {
       c.dispose();
     },
   );
+
+  test(
+    'progressive preview clamps seeks and blocks export until full result',
+    () async {
+      final gateway = ProgressiveCutoutGateway()
+        ..pending = Completer<ComparisonCutoutResultDto>()
+        ..completeMasks = true;
+      final c = ComparisonController(gateway);
+      c.setViewport(400, 600, false);
+      await c.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      expect(await c.beginCutout(), isTrue);
+      final work = c.prepareCutout(
+        ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5),
+        ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5),
+      );
+      gateway.progress = ComparisonCutoutResultDto(
+        playback: gateway.current,
+        referenceVisible: 10,
+        referenceFrames: 30,
+        targetVisible: 9,
+        targetFrames: 30,
+        analyzing: true,
+        previewStartUs: 500000,
+        previewEndUs: 1500000,
+        referenceAnalyzed: 10,
+        targetAnalyzed: 10,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 240));
+      expect(c.cutoutActive, isTrue);
+      expect(c.cutoutPartial, isTrue);
+      expect(c.cutoutPreparing, isFalse);
+      expect(c.cutoutPlayableRange, (500000, 1500000));
+      expect(c.cutoutExportReady, isFalse);
+      expect(await c.beginCanvasEditing(), isFalse);
+      await c.seek(4000000);
+      expect(c.playback?.positionUs, 1499999);
+      gateway.pending!.complete(gateway.result());
+      await work;
+      expect(c.cutoutPartial, isFalse);
+      expect(c.cutoutAnalysisPending, isFalse);
+      expect(c.cutoutExportReady, isTrue);
+      expect(c.cutoutPlayableRange, isNull);
+      expect(c.canEditCanvas, isFalse);
+      expect(c.canExportCanvas, isFalse);
+      c.setViewport(420, 620, false);
+      expect(c.canEditCanvas, isFalse);
+      expect(c.canExportCanvas, isFalse);
+      expect(await c.beginCanvasEditing(), isFalse);
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      expect(c.canEditCanvas, isTrue);
+      expect(c.canExportCanvas, isTrue);
+      c.dispose();
+    },
+  );
+
+  test('exit during partial preview discards late completion', () async {
+    final gateway = ProgressiveCutoutGateway()
+      ..pending = Completer<ComparisonCutoutResultDto>();
+    final c = ComparisonController(gateway);
+    c.setViewport(400, 600, false);
+    await c.initialize();
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    expect(await c.beginCutout(), isTrue);
+    final work = c.prepareCutout(
+      ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5),
+      ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5),
+    );
+    gateway.progress = ComparisonCutoutResultDto(
+      playback: gateway.current,
+      referenceVisible: 10,
+      referenceFrames: 30,
+      targetVisible: 10,
+      targetFrames: 30,
+      analyzing: true,
+      previewStartUs: 500000,
+      previewEndUs: 1500000,
+      referenceAnalyzed: 10,
+      targetAnalyzed: 10,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 240));
+    expect(c.cutoutPartial, isTrue);
+    await c.exitCutout();
+    gateway.pending!.complete(gateway.result());
+    await work;
+    expect(c.cutoutMode, isFalse);
+    expect(c.cutoutAnalysisPending, isFalse);
+    expect(gateway.clears, 1);
+    c.dispose();
+  });
 
   test('cancelling analysis discards a late result', () async {
     final gateway = CutoutGateway()

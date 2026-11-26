@@ -526,6 +526,11 @@ struct ComparisonCutoutResultDto: Hashable, CustomStringConvertible {
   var referenceFrames: Int64
   var targetVisible: Int64
   var targetFrames: Int64
+  var analyzing: Bool? = nil
+  var previewStartUs: Int64? = nil
+  var previewEndUs: Int64? = nil
+  var referenceAnalyzed: Int64? = nil
+  var targetAnalyzed: Int64? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -535,13 +540,23 @@ struct ComparisonCutoutResultDto: Hashable, CustomStringConvertible {
     let referenceFrames = pigeonVar_list[2] as! Int64
     let targetVisible = pigeonVar_list[3] as! Int64
     let targetFrames = pigeonVar_list[4] as! Int64
+    let analyzing: Bool? = nilOrValue(pigeonVar_list[5])
+    let previewStartUs: Int64? = nilOrValue(pigeonVar_list[6])
+    let previewEndUs: Int64? = nilOrValue(pigeonVar_list[7])
+    let referenceAnalyzed: Int64? = nilOrValue(pigeonVar_list[8])
+    let targetAnalyzed: Int64? = nilOrValue(pigeonVar_list[9])
 
     return ComparisonCutoutResultDto(
       playback: playback,
       referenceVisible: referenceVisible,
       referenceFrames: referenceFrames,
       targetVisible: targetVisible,
-      targetFrames: targetFrames
+      targetFrames: targetFrames,
+      analyzing: analyzing,
+      previewStartUs: previewStartUs,
+      previewEndUs: previewEndUs,
+      referenceAnalyzed: referenceAnalyzed,
+      targetAnalyzed: targetAnalyzed
     )
   }
   func toList() -> [Any?] {
@@ -551,13 +566,18 @@ struct ComparisonCutoutResultDto: Hashable, CustomStringConvertible {
       referenceFrames,
       targetVisible,
       targetFrames,
+      analyzing,
+      previewStartUs,
+      previewEndUs,
+      referenceAnalyzed,
+      targetAnalyzed,
     ]
   }
   static func == (lhs: ComparisonCutoutResultDto, rhs: ComparisonCutoutResultDto) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return ComparisonPigeonInternal.deepEquals(lhs.playback, rhs.playback) && ComparisonPigeonInternal.deepEquals(lhs.referenceVisible, rhs.referenceVisible) && ComparisonPigeonInternal.deepEquals(lhs.referenceFrames, rhs.referenceFrames) && ComparisonPigeonInternal.deepEquals(lhs.targetVisible, rhs.targetVisible) && ComparisonPigeonInternal.deepEquals(lhs.targetFrames, rhs.targetFrames)
+    return ComparisonPigeonInternal.deepEquals(lhs.playback, rhs.playback) && ComparisonPigeonInternal.deepEquals(lhs.referenceVisible, rhs.referenceVisible) && ComparisonPigeonInternal.deepEquals(lhs.referenceFrames, rhs.referenceFrames) && ComparisonPigeonInternal.deepEquals(lhs.targetVisible, rhs.targetVisible) && ComparisonPigeonInternal.deepEquals(lhs.targetFrames, rhs.targetFrames) && ComparisonPigeonInternal.deepEquals(lhs.analyzing, rhs.analyzing) && ComparisonPigeonInternal.deepEquals(lhs.previewStartUs, rhs.previewStartUs) && ComparisonPigeonInternal.deepEquals(lhs.previewEndUs, rhs.previewEndUs) && ComparisonPigeonInternal.deepEquals(lhs.referenceAnalyzed, rhs.referenceAnalyzed) && ComparisonPigeonInternal.deepEquals(lhs.targetAnalyzed, rhs.targetAnalyzed)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -567,10 +587,15 @@ struct ComparisonCutoutResultDto: Hashable, CustomStringConvertible {
     ComparisonPigeonInternal.deepHash(value: referenceFrames, hasher: &hasher)
     ComparisonPigeonInternal.deepHash(value: targetVisible, hasher: &hasher)
     ComparisonPigeonInternal.deepHash(value: targetFrames, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: analyzing, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: previewStartUs, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: previewEndUs, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: referenceAnalyzed, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: targetAnalyzed, hasher: &hasher)
   }
 
   public var description: String {
-    return "ComparisonCutoutResultDto(playback: \(String(describing: playback)), referenceVisible: \(String(describing: referenceVisible)), referenceFrames: \(String(describing: referenceFrames)), targetVisible: \(String(describing: targetVisible)), targetFrames: \(String(describing: targetFrames)))"
+    return "ComparisonCutoutResultDto(playback: \(String(describing: playback)), referenceVisible: \(String(describing: referenceVisible)), referenceFrames: \(String(describing: referenceFrames)), targetVisible: \(String(describing: targetVisible)), targetFrames: \(String(describing: targetFrames)), analyzing: \(String(describing: analyzing)), previewStartUs: \(String(describing: previewStartUs)), previewEndUs: \(String(describing: previewEndUs)), referenceAnalyzed: \(String(describing: referenceAnalyzed)), targetAnalyzed: \(String(describing: targetAnalyzed)))"
   }
 }
 
@@ -1024,6 +1049,7 @@ protocol DanceComparisonApi {
   func getState() async throws -> ComparisonPlaybackDto
   func inspectCutout(reference: Bool, seed: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutPreviewDto
   func prepareCutout(reference: ComparisonCutoutSeedDto, target: ComparisonCutoutSeedDto, layout: ComparisonCanvasLayoutDto?) async throws -> ComparisonCutoutResultDto
+  func getCutoutStatus() async throws -> ComparisonCutoutResultDto?
   func setCutoutLayout(layout: ComparisonCanvasLayoutDto) async throws -> ComparisonPlaybackDto
   func clearCutout() async throws -> ComparisonPlaybackDto
   func alignMusic(teacherUri: String, learnerUri: String) async throws -> MusicAlignmentDto
@@ -1261,6 +1287,21 @@ class DanceComparisonApiSetup {
       }
     } else {
       prepareCutoutChannel.setMessageHandler(nil)
+    }
+    let getCutoutStatusChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.getCutoutStatus\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getCutoutStatusChannel.setMessageHandler { _, reply in
+        Task { @MainActor in
+          do {
+            let result = try await api.getCutoutStatus()
+            reply(wrapResult(result))
+          } catch {
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      getCutoutStatusChannel.setMessageHandler(nil)
     }
     let setCutoutLayoutChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.setCutoutLayout\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

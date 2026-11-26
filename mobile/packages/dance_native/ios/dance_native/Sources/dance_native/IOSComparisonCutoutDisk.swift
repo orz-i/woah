@@ -89,7 +89,9 @@ final class IOSComparisonCutoutDiskTrack: @unchecked Sendable {
   private var records:[IOSComparisonCutoutDisk.Record?]
   private var visible:[Bool]
   private var count=0
-  private(set) var visibleCount=0
+  private var visibleValue=0
+  var visibleCount:Int{lock.lock();defer{lock.unlock()};return visibleValue}
+  var analyzedCount:Int{lock.lock();defer{lock.unlock()};return count}
   private var sealed=false
   private var chunks:[Int:[IOSComparisonCachedCutout?]]=[:]
   private var lru:[Int]=[]
@@ -107,6 +109,7 @@ final class IOSComparisonCutoutDiskTrack: @unchecked Sendable {
   }
   func add(_ pts:Int64,stamp:IOSComparisonSourceStamp,layer:IOSComparisonCutoutLayer?,
            placement:IOSComparisonCutoutPlacement) throws {
+    lock.lock();defer{lock.unlock()}
     guard !sealed,let i=index(pts),records[i]==nil else {throw IOSComparisonCutoutExportUnavailable()}
     if fixed==nil{fixed=placement}
     guard stamp.samples.count==3072 else {throw IOSComparisonCutoutExportUnavailable()}
@@ -118,9 +121,10 @@ final class IOSComparisonCutoutDiskTrack: @unchecked Sendable {
     } else {value.put(UInt32(0));value.put(UInt32(0))}
     records[i]=try disk.append(value.data)
     visible[i]=layer != nil;count+=1
-    if layer != nil{visibleCount+=1}
+    if layer != nil{visibleValue+=1}
   }
   func seal(anchor:Int64) throws {
+    lock.lock();defer{lock.unlock()}
     guard !sealed,count==times.count,let i=index(anchor),visible[i],fixed != nil else {throw IOSComparisonCutoutExportUnavailable()}
     sealed=true
   }

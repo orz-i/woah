@@ -118,12 +118,22 @@ class ComparisonCutoutResultDto {
   int referenceFrames;
   int targetVisible;
   int targetFrames;
+  bool? analyzing;
+  int? previewStartUs;
+  int? previewEndUs;
+  int? referenceAnalyzed;
+  int? targetAnalyzed;
   ComparisonCutoutResultDto({
     required this.playback,
     required this.referenceVisible,
     required this.referenceFrames,
     required this.targetVisible,
     required this.targetFrames,
+    this.analyzing,
+    this.previewStartUs,
+    this.previewEndUs,
+    this.referenceAnalyzed,
+    this.targetAnalyzed,
   });
 }
 
@@ -276,6 +286,8 @@ abstract class DanceComparisonApi {
     ComparisonCutoutSeedDto target,
     ComparisonCanvasLayoutDto? layout,
   );
+  @async
+  ComparisonCutoutResultDto? getCutoutStatus();
   @async
   ComparisonPlaybackDto setCutoutLayout(ComparisonCanvasLayoutDto layout);
   @async

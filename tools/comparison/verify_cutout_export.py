@@ -145,7 +145,7 @@ def verify_extended(folder):
             "publicationBytesCompared": published.exists()}
 
 
-def verify_full(folder, platform):
+def verify_full(folder, platform, progressive=False):
     """Untrimmed 12-second pair; includes a 300-frame reverse prefix and
     seeks across the selected-alpha chunk boundary and far from the seed."""
     report = json.loads((folder / "full-report.json").read_text())
@@ -153,6 +153,19 @@ def verify_full(folder, platform):
     row, = report["results"]
     assert row["id"] == "full-length" and row["visibility"] == [360] * 4
     assert row["window"] is None and row["anchor"] == [10000000, 10000000]
+    if progressive:
+        progress = row["progressive"]
+        assert progress["range"] == [9500000, 10500000]
+        assert 0 < progress["firstPlayableMs"] < row["analysisMs"]
+        assert all(0 < n < 360 for n in progress["initialAnalyzed"])
+        assert all(a <= b <= 360 for a, b in zip(progress["initialAnalyzed"], progress["laterAnalyzed"]))
+        assert progress["range"][0] <= progress["playedPositionUs"] < progress["range"][1]
+        assert progress["exportRejected"] and progress["anchorIdentical"]
+        assert rgb(folder / "full-length-partial-anchor.png") == rgb(folder / "full-length-final-anchor.png")
+        for key in ("anchorPixels", "livePixels"):
+            counts = progress[key]
+            assert counts["leftPixels"] > 80 and counts["rightPixels"] > 80 and counts["topPixels"] < 20
+
     assert row["export"]["resumed"] and row["export"]["startUs"] == 0
     assert row["export"]["endUs"] == 12000000
     if platform == "android":
@@ -198,11 +211,14 @@ if __name__ == "__main__":
     parser.add_argument("--platform", choices=("ios", "android"), default="ios")
     parser.add_argument("--extended", action="store_true", help="verify the separate Android 5-second high-resolution fixture")
     parser.add_argument("--full", action="store_true", help="verify full 12-second segmented-cache fixture")
+    parser.add_argument("--progressive", action="store_true", help="also verify first playable window and final anchor equality")
     args = parser.parse_args()
+    if args.progressive and not args.full:
+        parser.error("--progressive requires --full")
     if args.extended and args.full:
         parser.error("choose --extended or --full")
     if args.extended and args.platform != "android":
         parser.error("--extended requires --platform android")
-    result = verify_full(args.folder,args.platform) if args.full else (
+    result = verify_full(args.folder,args.platform,args.progressive) if args.full else (
         verify_extended(args.folder) if args.extended else verify(args.folder,args.platform))
     print(json.dumps(result,indent=2))

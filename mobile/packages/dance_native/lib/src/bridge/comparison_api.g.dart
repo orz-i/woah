@@ -517,6 +517,11 @@ class ComparisonCutoutResultDto {
     required this.referenceFrames,
     required this.targetVisible,
     required this.targetFrames,
+    this.analyzing,
+    this.previewStartUs,
+    this.previewEndUs,
+    this.referenceAnalyzed,
+    this.targetAnalyzed,
   });
 
   ComparisonPlaybackDto playback;
@@ -529,6 +534,16 @@ class ComparisonCutoutResultDto {
 
   int targetFrames;
 
+  bool? analyzing;
+
+  int? previewStartUs;
+
+  int? previewEndUs;
+
+  int? referenceAnalyzed;
+
+  int? targetAnalyzed;
+
   List<Object?> _toList() {
     return <Object?>[
       playback,
@@ -536,6 +551,11 @@ class ComparisonCutoutResultDto {
       referenceFrames,
       targetVisible,
       targetFrames,
+      analyzing,
+      previewStartUs,
+      previewEndUs,
+      referenceAnalyzed,
+      targetAnalyzed,
     ];
   }
 
@@ -550,6 +570,11 @@ class ComparisonCutoutResultDto {
       referenceFrames: result[2]! as int,
       targetVisible: result[3]! as int,
       targetFrames: result[4]! as int,
+      analyzing: result[5] as bool?,
+      previewStartUs: result[6] as int?,
+      previewEndUs: result[7] as int?,
+      referenceAnalyzed: result[8] as int?,
+      targetAnalyzed: result[9] as int?,
     );
   }
 
@@ -562,7 +587,7 @@ class ComparisonCutoutResultDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(playback, other.playback) && _deepEquals(referenceVisible, other.referenceVisible) && _deepEquals(referenceFrames, other.referenceFrames) && _deepEquals(targetVisible, other.targetVisible) && _deepEquals(targetFrames, other.targetFrames);
+    return _deepEquals(playback, other.playback) && _deepEquals(referenceVisible, other.referenceVisible) && _deepEquals(referenceFrames, other.referenceFrames) && _deepEquals(targetVisible, other.targetVisible) && _deepEquals(targetFrames, other.targetFrames) && _deepEquals(analyzing, other.analyzing) && _deepEquals(previewStartUs, other.previewStartUs) && _deepEquals(previewEndUs, other.previewEndUs) && _deepEquals(referenceAnalyzed, other.referenceAnalyzed) && _deepEquals(targetAnalyzed, other.targetAnalyzed);
   }
 
   @override
@@ -571,7 +596,7 @@ class ComparisonCutoutResultDto {
 
   @override
   String toString() {
-    return 'ComparisonCutoutResultDto(playback: $playback, referenceVisible: $referenceVisible, referenceFrames: $referenceFrames, targetVisible: $targetVisible, targetFrames: $targetFrames)';
+    return 'ComparisonCutoutResultDto(playback: $playback, referenceVisible: $referenceVisible, referenceFrames: $referenceFrames, targetVisible: $targetVisible, targetFrames: $targetFrames, analyzing: $analyzing, previewStartUs: $previewStartUs, previewEndUs: $previewEndUs, referenceAnalyzed: $referenceAnalyzed, targetAnalyzed: $targetAnalyzed)';
   }
 }
 
@@ -1290,6 +1315,25 @@ class DanceComparisonApi {
     )
     ;
     return pigeonVar_replyValue! as ComparisonCutoutResultDto;
+  }
+
+  Future<ComparisonCutoutResultDto?> getCutoutStatus() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.getCutoutStatus$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as ComparisonCutoutResultDto?;
   }
 
   Future<ComparisonPlaybackDto> setCutoutLayout(ComparisonCanvasLayoutDto layout) async {

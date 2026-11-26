@@ -258,7 +258,29 @@ Future<void> main() async {
       'Selection overlay not removed',
     );
     report['dynamicPixels'] = await capture(folder, 'gesture-dynamic');
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+    final firstEdit = byKey('comparison-canvas-edit')?.widget as IconButton?;
+    if (findElement(
+          (w) => w is Text && (w.data?.startsWith('已分析 ') ?? false),
+        ) !=
+        null) {
+      require(
+        firstEdit != null && firstEdit.onPressed == null,
+        'Partial editing is enabled',
+      );
+      final export = byKey('comparison-cutout-export')?.widget as IconButton?;
+      require(
+        export != null && export.onPressed == null,
+        'Partial export is enabled or missing',
+      );
+      report['partialVisibleBeforeEditing'] = true;
+    }
+    await until(
+      () =>
+          (byKey('comparison-canvas-edit')?.widget as IconButton?)?.onPressed !=
+          null,
+      'Full analysis did not enable editing',
+      seconds: 60,
+    );
     await tap(byKey('comparison-canvas-edit')!);
     await until(
       () =>
