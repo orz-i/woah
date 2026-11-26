@@ -261,6 +261,12 @@ int32_t frame_kernel_tracking_selection(uint64_t session,
 int32_t frame_kernel_tracking_step(uint64_t session, uint32_t action, int64_t timestamp_us,
  const FrameKernelTrackingObservation *observations, size_t count,
  const uint8_t *pixels, size_t pixels_len, const int64_t *assigned_ids, size_t assigned_len);
+/* Cutout-only tracker: seed >=0 selects original strong detection index,
+   -1 continues at strictly monotonic exact PTS (one direction per handle). >=0 raw current index; -1 unavailable;
+   -2 invalid. Uses a dedicated tracking handle and contiguous proto masks. */
+int32_t frame_kernel_cutout_track_step(uint64_t session, int64_t at, int32_t seed,
+    const FrameKernelInstanceDetection *detections, size_t count, const uint8_t *masks, size_t len,
+    FrameKernelTransform transform);
 /* Snapshot v1 uses little-endian fixed-width fields, as documented in
    tracking-session-v1.md. Null/zero queries the required size. A successful
    copy returns its byte count; -1 invalid handle/buffer, -2 insufficient space.

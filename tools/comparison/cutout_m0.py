@@ -13,7 +13,6 @@ from fractions import Fraction
 import hashlib
 import json
 from pathlib import Path
-import struct
 import subprocess
 import sys
 import time
@@ -53,12 +52,6 @@ class Options(c.Structure):
     ]
 
 
-class Observation(c.Structure):
-    _fields_ = [("bounds", Rect), ("confidence", F32), ("foot_y", F32),
-                ("mask_offset", c.c_uint64), ("mask_width", U32), ("mask_height", U32),
-                ("transform", Transform)]
-
-
 def api(path):
     lib = c.CDLL(str(path))
     def bind(name, args, result=c.c_int32):
@@ -74,11 +67,7 @@ def api(path):
     bind("tracking_defaults", [], Options)
     bind("tracking_create", [Options], c.c_uint64)
     bind("tracking_destroy", [c.c_uint64])
-    bind("tracking_selection", [c.c_uint64, c.POINTER(I64), c.c_size_t,
-        c.POINTER(I64), c.c_size_t, c.POINTER(I64), c.c_size_t, U32])
-    bind("tracking_step", [c.c_uint64, U32, I64, c.POINTER(Observation), c.c_size_t,
-        P8, c.c_size_t, c.POINTER(I64), c.c_size_t])
-    bind("tracking_snapshot", [c.c_uint64, P8, c.c_size_t], I64)
+    bind("cutout_track_step", [c.c_uint64, I64, c.c_int32, c.POINTER(Detection), c.c_size_t, P8, c.c_size_t, Transform])
     bind("time_value", [U32, I64, U32, c.c_double, I64], I64)
     bind("frame_index", [c.POINTER(I64), c.c_size_t, I64, I64, I64, U32], I64)
     return lib
@@ -131,7 +120,7 @@ def source_frames(lib, path, limit):
             process.wait()
 
 
-def infer(lib, interpreter, rgba):
+def infer(lib, interpreter, rgba, threshold=.25):
     h, w = rgba.shape[:2]
     letterbox = Letterbox()
     packed = np.empty((640, 640, 4), np.uint8)
@@ -150,94 +139,68 @@ def infer(lib, interpreter, rgba):
     detections = (Detection * 256)()
     masks = np.empty((256, 160, 160), np.uint8)
     n = lib.frame_kernel_decode_instances(ptr(head, PF), head.size, ptr(proto, PF), proto.size,
-        model, t, Thresholds(.25, .5, .5), detections, 256, ptr(masks), masks.size, None)
+        model, t, Thresholds(threshold, .5, .5), detections, 256, ptr(masks), masks.size, None)
     if not 0 <= n <= 256:
         raise ValueError(f"Instance decode failed: {n}")
     return list(detections[:n]), masks[:n], t
 
 
-def selected_observation(lib, session, wanted, current_masks):
-    """Return a current detector mask and a reason; never render retained/dilated masks."""
-    size = lib.frame_kernel_tracking_snapshot(session, None, 0)
-    if not 8 <= size <= 64*1024*1024:
-        raise ValueError("Invalid tracker snapshot")
-    raw = (U8 * size)()
-    assert lib.frame_kernel_tracking_snapshot(session, raw, size) == size
-    data, pos = bytes(raw), 0
-    def read(fmt):
-        nonlocal pos
-        result = struct.unpack_from("<" + fmt, data, pos)
-        pos += struct.calcsize("<" + fmt)
-        return result
-    version, count = read("II")
-    assert version == 1
-    for _ in range(count):
-        track_id, state, missed, observation_age, _, observed = read("qIIIII")
-        read("6f")  # predicted bounds, confidence, footY
-        occluders, = read("I")
-        pos += occluders*8
-        present, = read("I")
-        mask = None
-        if present:
-            w, h = read("II")
-            read("3f4I")
-            length, = read("I")
-            assert length == w*h and pos+length <= len(data)
-            mask = data[pos:pos+length]
-            pos += length
-        read("4fI")  # immutable anchor, dormancy
-        if track_id == wanted:
-            if state not in (0, 1):
-                return None, f"track_state_{state}"
-            if missed or observation_age or not observed:
-                return None, "not_current_observation"
-            if occluders or mask is None:
-                return None, "occlusion_or_no_mask"
-            matches = [m for m in current_masks if m.tobytes() == mask]
-            return (matches[0], "current") if len(matches) == 1 else (None, "not_unique_current_mask")
-    return None, "track_absent"
-
-
-def track(lib, interpreter, path, touch, limit):
-    frames, anchor = [], None
-    session = lib.frame_kernel_tracking_create(lib.frame_kernel_tracking_defaults())
-    if not session:
-        raise ValueError("Could not create tracker")
+def track(lib, interpreter, path, touch, limit, anchor_index=0):
+    frames, anchor, prefix = [], None, []
+    sessions = [lib.frame_kernel_tracking_create(lib.frame_kernel_tracking_defaults()) for _ in range(2)]
+    def step(session, observed, seed=-1):
+        pts, rgba, det, masks, t = observed
+        observations = (Detection * len(det))(*det)
+        index = lib.frame_kernel_cutout_track_step(session, pts, seed, observations, len(det),
+            ptr(masks), masks.size, t)
+        if index < -1:
+            raise ValueError("Invalid cutout tracking step")
+        current = masks[index] if index >= 0 else None
+        reason = ("weak_current" if det[index].confidence < .25 else "current") if index >= 0 else "identity_unavailable"
+        alpha = None
+        if current is not None:
+            h, w = rgba.shape[:2]
+            alpha = np.empty((h, w), np.uint8)
+            assert lib.frame_kernel_cutout_alpha(ptr(current), current.size, t, w, h, ptr(alpha), alpha.size) == 0
+        if alpha is not None and not np.any(alpha):
+            reason = "empty_alpha"
+            alpha = None
+        return pts, rgba, alpha, reason
     try:
-        for pts, rgba in source_frames(lib, path, limit):
-            det, masks, t = infer(lib, interpreter, rgba)
-            if anchor is None:
-                wanted = lib.frame_kernel_cutout_select(ptr(masks), masks.size, t, *touch)
-                if wanted < 0:
+        if not all(sessions):
+            raise ValueError("Could not create tracker")
+        forward, reverse = sessions
+        for ordinal, (pts, rgba) in enumerate(source_frames(lib, path, limit)):
+            det, masks, t = infer(lib, interpreter, rgba, .25 if ordinal == anchor_index else .20)
+            observed = pts, rgba, det, masks, t
+            if ordinal < anchor_index:
+                prefix.append(observed)
+                continue
+            if ordinal == anchor_index:
+                seed = lib.frame_kernel_cutout_select(ptr(masks), masks.size, t, *touch)
+                if seed < 0:
                     boxes = [[round(getattr(d.bounds, field)/dim, 3) for field, dim in
                         zip(("left","top","right","bottom"), (t.source_width,t.source_height)*2)] for d in det]
-                    raise ValueError(f"Touch was background/ambiguous ({wanted}); normalized candidates: {boxes}")
-                d = det[wanted].bounds
+                    raise ValueError(f"Touch was background/ambiguous ({seed}); normalized candidates: {boxes}")
+                d = det[seed].bounds
                 anchor = Rect(d.left/t.source_width, d.top/t.source_height,
                     d.right/t.source_width, d.bottom/t.source_height)
-                # Keep the explicitly chosen identity reserved across misses.
-                # Rendering still requires the exact, uniquely matched current raw mask.
-                chosen = (I64 * 1)(wanted)
-                assert lib.frame_kernel_tracking_selection(session, chosen, 1, chosen, 1, None, 0, 0) == 0
-                action = 0
+                first = step(forward, observed, seed)
+                backward = step(reverse, observed, seed)
+                if first[2] is None or backward[2] is None:
+                    raise ValueError("Selection anchor was not retained")
+                preceding = [step(reverse, prior) for prior in reversed(prefix)]
+                frames.extend(reversed(preceding))
+                prefix.clear()
+                frames.append(first)
             else:
-                action = 1
-            obs = (Observation * len(det))(*(Observation(d.bounds, d.confidence, d.bounds.bottom,
-                i*160*160, 160, 160, t) for i, d in enumerate(det)))
-            assert lib.frame_kernel_tracking_step(session, action, pts, obs, len(det), ptr(masks),
-                masks.size, None, 0) == 0
-            current, reason = selected_observation(lib, session, wanted, masks)
-            alpha = None
-            if current is not None:
-                h, w = rgba.shape[:2]
-                alpha = np.empty((h, w), np.uint8)
-                assert lib.frame_kernel_cutout_alpha(ptr(current), current.size, t, w, h, ptr(alpha), alpha.size) == 0
-            if alpha is not None and not np.any(alpha):
-                reason = "empty_alpha"
-                alpha = None
-            frames.append((pts, rgba, alpha, reason))
+                frames.append(step(forward, observed))
+        if anchor is None:
+            raise ValueError("Anchor frame was not decoded")
     finally:
-        assert lib.frame_kernel_tracking_destroy(session) == 0
+        for session in sessions:
+            if session:
+                assert lib.frame_kernel_tracking_destroy(session) == 0
     return frames, anchor
 
 
@@ -278,11 +241,15 @@ def main():
     p.add_argument("--target-point", required=True, type=point)
     p.add_argument("--output", required=True, type=Path)
     p.add_argument("--frames", type=int, default=30)
+    p.add_argument("--reference-anchor-frame", type=int, default=0)
+    p.add_argument("--target-anchor-frame", type=int, default=0)
     p.add_argument("--mirror-target", action="store_true")
     p.add_argument("--require-all", action="store_true", help="fail if either selected subject disappears on any paired frame")
     args = p.parse_args()
     if not 1 <= args.frames <= 120:
         p.error("M0 is deliberately bounded to 1..120 decoded frames per source")
+    if not all(0 <= i < args.frames for i in (args.reference_anchor_frame, args.target_anchor_frame)):
+        p.error("Anchor frame must lie in the decoded source window")
     if args.output.exists():
         p.error("Output directory must not exist")
     model = ROOT/"models/litert/yolo11n-seg-fp16.tflite"
@@ -292,8 +259,8 @@ def main():
     interpreter = Interpreter(model_path=str(model), num_threads=4)
     interpreter.allocate_tensors()
     started = time.monotonic()
-    reference, ra = track(lib, interpreter, args.reference, args.reference_point, args.frames)
-    target, ta = track(lib, interpreter, args.target, args.target_point, args.frames)
+    reference, ra = track(lib, interpreter, args.reference, args.reference_point, args.frames, args.reference_anchor_frame)
+    target, ta = track(lib, interpreter, args.target, args.target_point, args.frames, args.target_anchor_frame)
     times = (I64 * len(target))(*(f[0] for f in target))
     args.output.mkdir(parents=True)
     records = []

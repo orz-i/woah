@@ -2,7 +2,8 @@
 //! safe tracking modules; IDs never expose a native pointer to mobile runtimes.
 use crate::{
     association_score::AssociationWeights,
-    geometry::{Rect, Transform},
+    geometry::{Rect, Transform, overlap_iou},
+    instances::InstanceDetection,
     tracking::*,
 };
 use std::{
@@ -107,6 +108,14 @@ pub struct TrackingObservation {
 struct Session {
     tracker: Tracker,
     snapshot: Vec<u8>,
+    cutout: Option<CutoutClock>,
+}
+#[derive(Clone, Copy)]
+struct CutoutClock {
+    chosen: i64,
+    anchor: i64,
+    last: i64,
+    direction: i64,
 }
 type OwnedSession = Arc<Mutex<Session>>;
 static SESSIONS: OnceLock<Mutex<BTreeMap<u64, OwnedSession>>> = OnceLock::new();
@@ -146,6 +155,7 @@ pub extern "C" fn frame_kernel_tracking_create(options: TrackingOptions) -> u64 
         Arc::new(Mutex::new(Session {
             tracker: Tracker::new(config),
             snapshot: Vec::new(),
+            cutout: None,
         })),
     );
     id
@@ -209,6 +219,9 @@ pub unsafe extern "C" fn frame_kernel_tracking_selection(
     };
     let Some(owner) = session(id) else { return -1 };
     let Ok(mut s) = owner.lock() else { return -1 };
+    if s.cutout.is_some() {
+        return -1;
+    }
     s.tracker.protected_ids = protected.iter().copied().collect();
     s.tracker.selected_ids = body.iter().copied().collect();
     s.tracker.face_selected_ids = face.iter().copied().collect();
@@ -250,6 +263,9 @@ pub unsafe extern "C" fn frame_kernel_tracking_step(
     };
     let Some(owner) = session(id) else { return -1 };
     let Ok(mut s) = owner.lock() else { return -1 };
+    if s.cutout.is_some() {
+        return -1;
+    }
     let result = match action {
         0 => s.tracker.initialize(detections, assigned),
         1 => s.tracker.update(detections, at).map(|_| ()),
@@ -290,6 +306,317 @@ pub unsafe extern "C" fn frame_kernel_tracking_snapshot(
     unsafe { std::ptr::copy_nonoverlapping(s.snapshot.as_ptr(), output, s.snapshot.len()) };
     n
 }
+// Cutout-specific continuation profile. Privacy detection and association
+// calls do not use this entry point or its lower inference threshold.
+const CUTOUT_SEED_CONF: f32 = 0.25;
+const CUTOUT_CONTINUE_CONF: f32 = 0.20;
+
+fn raw_mask_iou(a: &Mask, b: &Mask) -> f32 {
+    if a.transform != b.transform || a.width != b.width || a.height != b.height {
+        return 0.0;
+    }
+    let (mut intersection, mut union) = (0u32, 0u32);
+    for (&x, &y) in a.pixels.iter().zip(b.pixels.iter()) {
+        intersection += u32::from(x >= 128 && y >= 128);
+        union += u32::from(x >= 128 || y >= 128);
+    }
+    if union == 0 {
+        0.0
+    } else {
+        intersection as f32 / union as f32
+    }
+}
+
+fn weak_continuation(track: &Track, candidates: &[Detection], elapsed: i64) -> Option<usize> {
+    if elapsed <= 0
+        || elapsed > 150_000
+        || !track.observed_this_frame
+        || track.state != TrackState::Active
+        || !track.occluder_ids.is_empty()
+    {
+        return None;
+    }
+    let previous = track.observed_mask.as_ref()?;
+    let supported: Vec<_> = candidates
+        .iter()
+        .enumerate()
+        .filter(|(_, candidate)| {
+            candidate.confidence >= CUTOUT_CONTINUE_CONF
+                && overlap_iou(track.observed_bounds, candidate.bounds) >= 0.55
+                && candidate
+                    .mask
+                    .as_ref()
+                    .is_some_and(|m| raw_mask_iou(previous, m) >= 0.50)
+        })
+        .collect();
+    let [(index, candidate)] = supported.as_slice() else {
+        return None;
+    };
+    if candidate.confidence >= CUTOUT_SEED_CONF {
+        return None;
+    }
+    // A second partially overlapping current mask can be a competing person,
+    // even if it does not meet the more stringent continuity thresholds.
+    if candidates.iter().enumerate().any(|(i, d)| {
+        i != *index
+            && d.confidence >= CUTOUT_CONTINUE_CONF
+            && overlap_iou(track.observed_bounds, d.bounds) >= 0.25
+            && d.mask
+                .as_ref()
+                .is_some_and(|m| raw_mask_iou(previous, m) >= 0.20)
+    }) {
+        return None;
+    }
+    Some(*index)
+}
+
+fn cutout_step(s: &mut Session, at: i64, seed: i32, detections: Vec<Detection>) -> Option<i32> {
+    if at < 0
+        || seed < -1
+        || detections
+            .iter()
+            .any(|d| !d.valid() || !(0.0..=1.0).contains(&d.confidence) || d.mask.is_none())
+    {
+        return None;
+    }
+    let mut tracker = s.tracker.clone();
+    let (clock, weak) = if seed >= 0 {
+        if s.cutout.is_some() || detections.get(seed as usize)?.confidence < CUTOUT_SEED_CONF {
+            return None;
+        }
+        let chosen = i64::from(seed);
+        tracker.protected_ids.insert(chosen);
+        tracker.selected_ids.insert(chosen);
+        (
+            CutoutClock {
+                chosen,
+                anchor: at,
+                last: at,
+                direction: 0,
+            },
+            None,
+        )
+    } else {
+        let mut clock = s.cutout?;
+        let delta = at.checked_sub(clock.last)?;
+        if delta == 0 || (clock.direction != 0 && delta.signum() != clock.direction) {
+            return None;
+        }
+        clock.direction = delta.signum();
+        let elapsed = delta.checked_abs()?;
+        clock.last = at;
+        let weak = tracker
+            .tracks
+            .iter()
+            .find(|t| t.id == clock.chosen)
+            .and_then(|t| weak_continuation(t, &detections, elapsed));
+        (clock, weak)
+    };
+    let admitted: Vec<_> = detections
+        .iter()
+        .enumerate()
+        .filter(|(i, d)| d.confidence >= CUTOUT_SEED_CONF || weak == Some(*i))
+        .collect();
+    let values = admitted.iter().map(|(_, d)| (*d).clone()).collect();
+    if seed >= 0 {
+        let ids = admitted.iter().map(|(i, _)| *i as i64).collect::<Vec<_>>();
+        tracker.initialize(values, &ids).ok()?;
+    } else {
+        tracker
+            .update(values, at.checked_sub(clock.anchor)?.checked_abs()?)
+            .ok()?;
+    }
+    // Only an exact raw current detector mask may be rendered. Prediction,
+    // retained/dilated masks and ambiguous same-pixel candidates are not accepted.
+    let selected = tracker
+        .tracks
+        .iter()
+        .find(|t| {
+            t.id == clock.chosen
+                && t.state == TrackState::Active
+                && t.observed_this_frame
+                && t.frames_since_observation == 0
+                && t.occluder_ids.is_empty()
+        })
+        .and_then(|t| t.render_mask.as_ref())
+        .and_then(|mask| {
+            let mut matching = admitted.iter().filter(|(_, d)| {
+                d.mask
+                    .as_ref()
+                    .is_some_and(|m| m.transform == mask.transform && m.pixels == mask.pixels)
+            });
+            let first = matching.next()?;
+            matching.next().is_none().then_some(first.0 as i32)
+        })
+        .unwrap_or(-1);
+    s.tracker = tracker;
+    s.cutout = Some(clock);
+    s.snapshot = encode(&s.tracker);
+    Some(selected)
+}
+
+/// Cutout session step: seed is an original detection index (>=0), or -1
+/// for strictly monotonic continuation in one direction per handle. Returns raw current index, -1 if
+/// identity unavailable, -2 for invalid input. Input masks are contiguous.
+/// # Safety
+/// Nonempty detection and mask buffers must be readable for their stated sizes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_cutout_track_step(
+    id: u64,
+    at: i64,
+    seed: i32,
+    detections: *const InstanceDetection,
+    count: usize,
+    masks: *const u8,
+    len: usize,
+    transform: Transform,
+) -> i32 {
+    if count > 256 || !transform.valid() {
+        return -2;
+    }
+    let area = (transform.proto_size as usize).pow(2);
+    if len != count * area {
+        return -2;
+    }
+    // SAFETY: caller guarantees readable buffers; sizes bounded above.
+    let Some(raw) = (unsafe { borrowed(detections, count) }) else {
+        return -2;
+    };
+    // SAFETY: caller guarantees readable bytes; size bounded above.
+    let Some(pixels) = (unsafe { borrowed(masks, len) }) else {
+        return -2;
+    };
+    let values = raw
+        .iter()
+        .zip(pixels.chunks_exact(area))
+        .map(|(d, m)| Detection {
+            bounds: d.bounds,
+            confidence: d.confidence,
+            foot_y: d.bounds.bottom,
+            mask: Some(Mask {
+                width: transform.proto_size as usize,
+                height: transform.proto_size as usize,
+                pixels: Arc::from(m),
+                transform,
+            }),
+        })
+        .collect();
+    let Some(owner) = session(id) else { return -2 };
+    let Ok(mut s) = owner.lock() else { return -2 };
+    cutout_step(&mut s, at, seed, values).unwrap_or(-2)
+}
+
+#[cfg(test)]
+mod cutout_tracking_tests {
+    use super::*;
+    fn d(confidence: f32, left: f32, mask: &[u8]) -> Detection {
+        Detection {
+            bounds: Rect {
+                left,
+                top: 0.,
+                right: left + 40.,
+                bottom: 80.,
+            },
+            confidence,
+            foot_y: 80.,
+            mask: Some(Mask {
+                width: 4,
+                height: 4,
+                pixels: Arc::from(mask),
+                transform: Transform {
+                    scale: 1.,
+                    pad_left: 0.,
+                    pad_top: 0.,
+                    source_width: 100,
+                    source_height: 100,
+                    input_size: 100,
+                    proto_size: 4,
+                },
+            }),
+        }
+    }
+    fn session() -> Session {
+        Session {
+            tracker: Tracker::new(TrackingConfig::default()),
+            snapshot: Vec::new(),
+            cutout: None,
+        }
+    }
+    #[test]
+    fn weak_observation_only_continues_a_recent_unique_seed() {
+        let left = [
+            255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0,
+        ];
+        let right = [
+            0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255,
+        ];
+        let mut s = session();
+        assert_eq!(cutout_step(&mut s, 0, 0, vec![d(0.22, 0., &left)]), None);
+        assert_eq!(
+            cutout_step(&mut s, 0, 0, vec![d(0.8, 0., &left), d(0.8, 60., &right)]),
+            Some(0)
+        );
+        assert_eq!(
+            cutout_step(
+                &mut s,
+                33_333,
+                -1,
+                vec![d(0.8, 60., &right), d(0.22, 0., &left)]
+            ),
+            Some(1)
+        );
+        assert_eq!(
+            cutout_step(
+                &mut s,
+                66_667,
+                -1,
+                vec![d(0.22, 0., &left), d(0.23, 1., &left)]
+            ),
+            Some(-1)
+        );
+        assert_eq!(
+            cutout_step(&mut s, 100_000, -1, vec![d(0.22, 0., &left)]),
+            Some(-1)
+        );
+        assert_eq!(cutout_step(&mut s, 99_999, -1, vec![]), None);
+    }
+    #[test]
+    fn reverse_tracking_uses_real_pts_and_rejects_direction_changes() {
+        let a = [255; 16];
+        let mut s = session();
+        assert_eq!(
+            cutout_step(&mut s, 200_000, 0, vec![d(0.8, 0., &a)]),
+            Some(0)
+        );
+        assert_eq!(
+            cutout_step(&mut s, 166_667, -1, vec![d(0.22, 0., &a)]),
+            Some(0)
+        );
+        assert_eq!(
+            cutout_step(&mut s, 133_333, -1, vec![d(0.22, 0., &a)]),
+            Some(0)
+        );
+        assert_eq!(cutout_step(&mut s, 150_000, -1, vec![d(0.8, 0., &a)]), None);
+    }
+    #[test]
+    fn weak_candidate_is_not_allowed_after_a_gap_or_wrong_mask() {
+        let a = [255; 16];
+        let b = [0; 16];
+        let mut s = session();
+        assert_eq!(cutout_step(&mut s, 0, 0, vec![d(0.8, 0., &a)]), Some(0));
+        assert_eq!(
+            cutout_step(&mut s, 200_000, -1, vec![d(0.24, 0., &a)]),
+            Some(-1)
+        );
+        let mut s = session();
+        assert_eq!(cutout_step(&mut s, 0, 0, vec![d(0.8, 0., &a)]), Some(0));
+        assert_eq!(
+            cutout_step(&mut s, 33_333, -1, vec![d(0.24, 0., &b)]),
+            Some(-1)
+        );
+    }
+}
+
 struct Writer(Vec<u8>);
 impl Writer {
     fn u(&mut self, v: u32) {
