@@ -3536,7 +3536,7 @@ raw masks added to the repository.
 
 ### Actual native validation
 
-The Android host/JNI test `ComparisonCutoutTest` passes all 12
+The Android host/JNI test `ComparisonCutoutTest` passes all 14
 cases, including explicit touch merge preserving the original rows,
 rejecting an existing canonical selection and competing local hits,
 and leaving outputs unchanged on rejection. Gradle also rebuilt
