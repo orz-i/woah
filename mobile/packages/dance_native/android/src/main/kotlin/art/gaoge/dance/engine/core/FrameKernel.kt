@@ -24,20 +24,20 @@ internal object FrameKernel {
     private external fun danceCutoutCreateNative():Long
     private external fun danceCutoutDestroyNative(id:Long)
     private external fun danceCutoutStepNative(id:Long,pts:Long,seed:Int,rows:FloatArray,masks:ByteArray,
-        transform:FloatArray,features:FloatArray,roi:IntArray?,fullCount:Int):Int
+        transform:FloatArray,features:FloatArray,roi:IntArray?,fullCount:Int,scheduled:Boolean):Int
     class DanceCutoutTrack:AutoCloseable {
         private var id=danceCutoutCreateNative()
         @Synchronized fun step(pts:Long,seed:Int,rows:FloatArray,masks:ByteArray,transform:FloatArray,features:FloatArray):Int {
             check(id!=0L)
-            return danceCutoutStepNative(id,pts,seed,rows,masks,transform,features,null,-1).also{check(it>=-1)}
+            return danceCutoutStepNative(id,pts,seed,rows,masks,transform,features,null,-1,false).also{check(it>=-1)}
         }
-        @Synchronized fun stepOrDetail(pts:Long,rows:FloatArray,masks:ByteArray,transform:FloatArray,features:FloatArray,roi:IntArray):Int {
+        @Synchronized fun stepOrDetail(pts:Long,rows:FloatArray,masks:ByteArray,transform:FloatArray,features:FloatArray,roi:IntArray,scheduled:Boolean=true):Int {
             check(id!=0L && roi.size==4)
-            return danceCutoutStepNative(id,pts,-1,rows,masks,transform,features,roi,-1).also{check(it>=-1||it == -3)}
+            return danceCutoutStepNative(id,pts,-1,rows,masks,transform,features,roi,-1,scheduled).also{check(it>=-1||it == -3||it == -4)}
         }
         @Synchronized fun finishDetail(pts:Long,fullCount:Int,rows:FloatArray,masks:ByteArray,transform:FloatArray,features:FloatArray):Int {
             check(id!=0L && fullCount>=0)
-            return danceCutoutStepNative(id,pts,-1,rows,masks,transform,features,null,fullCount).also{check(it>=-1)}
+            return danceCutoutStepNative(id,pts,-1,rows,masks,transform,features,null,fullCount,false).also{check(it>=-1)}
         }
         @Synchronized override fun close(){if(id!=0L){danceCutoutDestroyNative(id);id=0L}}
     }

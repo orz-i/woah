@@ -295,6 +295,11 @@ int32_t frame_kernel_dance_cutout_step(uint64_t session, int64_t at, int32_t see
 int32_t frame_kernel_dance_step_or_detail(uint64_t session,int64_t at,
     const FrameKernelInstanceDetection *detections,size_t count,const uint8_t *masks,size_t mask_len,
     FrameKernelTransform transform,const float *features,size_t features_len,FrameKernelViewport *roi);
+/* Scheduled variant: -4 is a committed full-only missing frame,
+   with optional local inference skipped due to bounded failure backoff. */
+int32_t frame_kernel_dance_step_or_detail_scheduled(uint64_t session,int64_t at,
+    const FrameKernelInstanceDetection *detections,size_t count,const uint8_t *masks,size_t mask_len,
+    FrameKernelTransform transform,const float *features,size_t features_len,FrameKernelViewport *roi);
 /* Commit the stored full-frame state; only a current appended detail
    index may be returned for this frame. No detail track memory is committed. */
 int32_t frame_kernel_dance_finish_detail(uint64_t session,int64_t at,size_t full_count,

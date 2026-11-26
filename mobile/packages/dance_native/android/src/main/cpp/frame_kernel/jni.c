@@ -825,7 +825,7 @@ JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutD
     (void)self;if(frame_kernel_dance_cutout_destroy((uint64_t)id))invalid(env);
 }
 JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutStepNative(
-    JNIEnv *env,jobject self,jlong id,jlong pts,jint seed,jfloatArray rows,jbyteArray masks,jfloatArray transform,jfloatArray features,jintArray roi,jint fullCount) {
+    JNIEnv *env,jobject self,jlong id,jlong pts,jint seed,jfloatArray rows,jbyteArray masks,jfloatArray transform,jfloatArray features,jintArray roi,jint fullCount,jboolean scheduled) {
     (void)self;FrameKernelTransform t;
     if(!rows||!masks||!features||!read_transform(env,transform,&t))return -2;
     jsize n=(*env)->GetArrayLength(env,rows),bytes=(*env)->GetArrayLength(env,masks),nf=(*env)->GetArrayLength(env,features);
@@ -840,7 +840,8 @@ JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutS
     if(roi){
         if(seed!=-1 || (*env)->GetArrayLength(env,roi)!=4)goto done_dance;
         FrameKernelViewport view={0};
-        result=frame_kernel_dance_step_or_detail((uint64_t)id,pts,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf,&view);
+        result=scheduled?frame_kernel_dance_step_or_detail_scheduled((uint64_t)id,pts,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf,&view):
+            frame_kernel_dance_step_or_detail((uint64_t)id,pts,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf,&view);
         jint v[4]={view.x,view.top,view.width,view.height};
         (*env)->SetIntArrayRegion(env,roi,0,4,v);
     }else if(fullCount>=0)result=frame_kernel_dance_finish_detail((uint64_t)id,pts,(size_t)fullCount,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf);

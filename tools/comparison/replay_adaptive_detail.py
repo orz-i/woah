@@ -33,6 +33,9 @@ def bind_detail(lib):
     lib.frame_kernel_dance_step_or_detail.argtypes=[c.c_uint64,m.I64,c.POINTER(m.Detection),
         c.c_size_t,m.P8,c.c_size_t,m.Transform,m.PF,c.c_size_t,c.POINTER(View)]
     lib.frame_kernel_dance_step_or_detail.restype=c.c_int32
+    if hasattr(lib,"frame_kernel_dance_step_or_detail_scheduled"):
+        lib.frame_kernel_dance_step_or_detail_scheduled.argtypes=lib.frame_kernel_dance_step_or_detail.argtypes
+        lib.frame_kernel_dance_step_or_detail_scheduled.restype=c.c_int32
     lib.frame_kernel_dance_finish_detail.argtypes=[c.c_uint64,m.I64,c.c_size_t,c.POINTER(m.Detection),
         c.c_size_t,m.P8,c.c_size_t,m.Transform,m.PF,c.c_size_t]
     lib.frame_kernel_dance_finish_detail.restype=c.c_int32
@@ -76,8 +79,8 @@ def local(lib,runner,cap,i,view,o):
     return merged,mm,ff
 
 
-def replay(lib,runner,path,obs,anchor,seed,enabled):
-    records={};attempts=[];accepted=[]
+def replay(lib,runner,path,obs,anchor,seed,enabled,scheduled=False,local_cache=None):
+    records={};attempts=[];accepted=[];skipped=[]
     cap=cv2.VideoCapture(str(path))
     budget=min(160,max(1,(len(obs)+3)//4))
     start=time.monotonic()
@@ -91,11 +94,19 @@ def replay(lib,runner,path,obs,anchor,seed,enabled):
             argv=(raw,len(ds),m.ptr(masks),masks.size,t,m.ptr(f,m.PF),f.size)
             if enabled and selected<0 and len(attempts)<budget:
                 view=View()
-                j=lib.frame_kernel_dance_step_or_detail(h,pts,*argv,c.byref(view))
+                step_detail=lib.frame_kernel_dance_step_or_detail_scheduled if scheduled else lib.frame_kernel_dance_step_or_detail
+                j=step_detail(h,pts,*argv,c.byref(view))
+                if j==-4:
+                    skipped.append(int(pts));j=-1
                 if j==-3:
                     attempts.append(int(pts))
                     original_count=len(ds)
-                    ds,masks,f=local(lib,runner,cap,i,view,o)
+                    key=(i,view.x,view.top,view.width,view.height)
+                    if local_cache is not None and key in local_cache:
+                        ds,masks,f=local_cache[key]
+                    else:
+                        ds,masks,f=local(lib,runner,cap,i,view,o)
+                        if local_cache is not None:local_cache[key]=(ds,masks,f)
                     raw=(m.Detection*len(ds))(*ds)
                     j=lib.frame_kernel_dance_finish_detail(h,pts,original_count,raw,len(ds),m.ptr(masks),masks.size,
                         t,m.ptr(f,m.PF),f.size)
@@ -122,13 +133,15 @@ def replay(lib,runner,path,obs,anchor,seed,enabled):
             for h in handles:lib.frame_kernel_dance_cutout_destroy(h)
     finally:cap.release()
     return [records[i] for i in range(len(obs))],{"attempts":len(attempts),"accepted":len(accepted),
-        "attemptedPts":attempts,"acceptedPts":accepted,"seconds":round(time.monotonic()-start,3)}
+        "attemptedPts":attempts,"acceptedPts":accepted,"skippedPts":skipped,"skipped":len(skipped),"seconds":round(time.monotonic()-start,3)}
 
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--manifest",required=True,type=Path);p.add_argument("--media",required=True,type=Path)
     p.add_argument("--library",required=True,type=Path);p.add_argument("--output",required=True,type=Path)
+    p.add_argument("--scheduled",action="store_true",help="also compare the bounded failure-backoff policy, sharing exact local observations")
+    p.add_argument("--no-sheets",action="store_true",help="skip rendering contact sheets")
     a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True)
     mfest=json.loads(a.manifest.read_text())
     model=m.ROOT/"models/litert/yolo11n-seg-fp16.tflite"
@@ -144,9 +157,12 @@ def main():
         raw=obs[anchor][2];t=obs[anchor][3]
         seed=lib.frame_kernel_cutout_select(m.ptr(raw),raw.size,t,*s["seed"]);assert seed>=0
         row={}
-        baseline=None
-        for key,enable in (("fullOnly",False),("detail",True)):
-            records,timing=replay(lib,runner,path,obs,anchor,seed,enable)
+        baseline=None; prior_detail=None
+        variants=[("fullOnly",False,False),("detail",True,False)]
+        if a.scheduled:variants.append(("scheduled",True,True))
+        local_cache={} if a.scheduled else None
+        for key,enable,scheduled in variants:
+            records,timing=replay(lib,runner,path,obs,anchor,seed,enable,scheduled,local_cache)
             stats=assess(records,mfest["annotations"][role],mfest["durationUs"])
             if baseline is None:baseline=records
             else:
@@ -155,12 +171,21 @@ def main():
                 retained=[(i,x,y) for i,((p,x),(q,y)) in enumerate(zip(baseline,records)) if x is not None]
                 assert all(y is not None and np.array_equal(x,y) for _,x,y in retained), "Detail changed canonical full-frame outputs"
                 stats["exactBaselineVisibleFrames"]=len(retained)
+            if key=="detail":prior_detail=records
+            if scheduled:
+                assert prior_detail is not None
+                shared=[(p,x,y) for (p,x),(q,y) in zip(prior_detail,records) if x is not None]
+                stats["priorDetailVisible"]=len(shared)
+                stats["priorDetailExact"]=sum(y is not None and np.array_equal(x,y) for _,x,y in shared)
+                stats["lostDetailPts"]=[p for p,x,y in shared if y is None]
+                stats["changedDetailPts"]=[p for p,x,y in shared if y is not None and not np.array_equal(x,y)]
+                stats["newDetailPts"]=[p for (p,x),(q,y) in zip(prior_detail,records) if x is None and y is not None]
             if "contourCoordinateSize" in mfest:
                 w,h=mfest["contourCoordinateSize"];lookup=dict(records)
                 stats["contours"]=[{"ptsUs":x["ptsUs"],**contour_metrics(lookup[x["ptsUs"]],x["visibleContour"],w,h)}
                     for x in mfest["annotations"][role] if "visibleContour" in x]
             row[key]={**stats,**timing}
-            sheets(path,records,a.output,role,key,mfest["annotations"][role],mfest["durationUs"])
+            if not a.no_sheets:sheets(path,records,a.output,role,key,mfest["annotations"][role],mfest["durationUs"])
             print(role,key,{k:row[key][k] for k in ("visible","checkpointHits","distractorHits","longestMissingUs","attempts","accepted","seconds")},flush=True)
         report["roles"][role]=row
         (a.output/"report.json").write_text(json.dumps(report,indent=2)+"\n")

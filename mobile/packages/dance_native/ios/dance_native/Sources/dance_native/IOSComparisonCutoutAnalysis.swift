@@ -37,15 +37,19 @@ final class IOSComparisonCutoutAnalysis {
       guard result >= -1 else { throw IOSComparisonCutoutAnalysisError.invalidTracking }
       return Int(result)
     }
-    func stepOrDetail(_ o:Observation)throws->(Int,FrameKernelViewport){
+    func stepOrDetail(_ o:Observation,scheduled:Bool)throws->(Int,FrameKernelViewport){
       var roi=FrameKernelViewport()
       let status=o.rows.withUnsafeBufferPointer { rows in o.masks.withUnsafeBufferPointer { masks in
         o.appearance.withUnsafeBufferPointer { f in
-          frame_kernel_dance_step_or_detail(id,o.pts,rows.baseAddress,rows.count,masks.baseAddress,masks.count,
+          if scheduled {
+            return frame_kernel_dance_step_or_detail_scheduled(id,o.pts,rows.baseAddress,rows.count,masks.baseAddress,masks.count,
+              o.transform,f.baseAddress,f.count,&roi)
+          }
+          return frame_kernel_dance_step_or_detail(id,o.pts,rows.baseAddress,rows.count,masks.baseAddress,masks.count,
             o.transform,f.baseAddress,f.count,&roi)
         }
       } }
-      guard status>=(-1) || status == -3 else{throw IOSComparisonCutoutAnalysisError.invalidTracking}
+      guard status>=(-1) || status == -3 || status == -4 else{throw IOSComparisonCutoutAnalysisError.invalidTracking}
       return (Int(status),roi)
     }
     func finishDetail(_ o:Observation,fullCount:Int)throws->Int{
@@ -298,7 +302,7 @@ final class IOSComparisonCutoutAnalysis {
 
   func begin(url: URL,index: IOSComparisonFrameIndex,start: Int64,end: Int64,
     firstPreview:Int64,lastPreview:Int64,seed: IOSComparisonCutoutSeed,reference: Bool,mirror: Bool,
-    inspection: Inspection? = nil,fixedGrid:(Int,Int)?=nil,detailEnabled:Bool=true,isCancelled: @escaping () -> Bool) throws -> Work {
+    inspection: Inspection? = nil,fixedGrid:(Int,Int)?=nil,detailEnabled:Bool=true,detailScheduled:Bool=true,isCancelled: @escaping () -> Bool) throws -> Work {
     func check() throws { if isCancelled() { throw CancellationError() } }
     try check()
     guard seed.x.isFinite, seed.y.isFinite, (0..<1).contains(seed.x), (0..<1).contains(seed.y) else {
@@ -377,7 +381,7 @@ final class IOSComparisonCutoutAnalysis {
       guard cursor==to else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
     }
     let detailBudget=min(160,max(1,(times.count+3)/4))
-    var detailAttempts=0,detailAccepted=0,detailFailures=0
+    var detailAttempts=0,detailAccepted=0,detailFailures=0,detailSkipped=0
     var detailInline=0,detailReaderOpens=0,detailCacheHits=0,detailReadSamples=0
     var detailDecodeMs=0.0,detailInferenceMs=0.0
     func localObservation(_ original:Observation,_ roi:FrameKernelViewport,_ pixel:CVPixelBuffer)throws->Observation{
@@ -469,7 +473,8 @@ final class IOSComparisonCutoutAnalysis {
       if !detailEnabled || detailAttempts>=detailBudget{
         try add(o,track.step(o),initial);return
       }
-      let (selected,roi)=try track.stepOrDetail(o)
+      let (selected,roi)=try track.stepOrDetail(o,scheduled:detailScheduled)
+      if selected == -4{detailSkipped+=1;try add(o,-1,initial);return}
       if selected != -3{try add(o,selected,initial);return}
       detailAttempts+=1
       var merged=o
@@ -536,7 +541,7 @@ final class IOSComparisonCutoutAnalysis {
       try backwards(0,first,false)
       try entries.seal(anchor:seed.ptsUs)
       #if DEBUG
-      NSLog("WoahCutoutDetail role=%@ frames=%d attempts=%d accepted=%d failures=%d inline=%d readerOpens=%d cacheHits=%d readSamples=%d decodeMs=%.1f inferenceMs=%.1f",reference ? "reference":"target",times.count,detailAttempts,detailAccepted,detailFailures,detailInline,detailReaderOpens,detailCacheHits,detailReadSamples,detailDecodeMs,detailInferenceMs)
+      NSLog("WoahCutoutDetail role=%@ frames=%d attempts=%d accepted=%d failures=%d skipped=%d inline=%d readerOpens=%d cacheHits=%d readSamples=%d decodeMs=%.1f inferenceMs=%.1f",reference ? "reference":"target",times.count,detailAttempts,detailAccepted,detailFailures,detailSkipped,detailInline,detailReaderOpens,detailCacheHits,detailReadSamples,detailDecodeMs,detailInferenceMs)
       #endif
 
       guard try IOSComparisonCutoutFingerprint.read(url,current:{!isCancelled()})==fingerprint else{

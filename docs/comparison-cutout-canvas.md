@@ -2019,3 +2019,132 @@ method ComparisonCutoutBackendInstrumentedTest#detailSourceReuseParity
 with `-e detailSourceQa true` after staging reference.mp4. iOS reverse
 probe uses the same QA config with anchorUs=11000000, referenceSeed
 [.55,.60], targetSeed [.37,.52].
+
+## Stage C7.2: bounded failure backoff for low-yield detail requests
+
+C7.1 removed most redundant source decoding. The remaining ROI inference
+yield is highly scene-dependent: Baganda 52/62, Danzón 1/1, Breaking
+15/100 and Vogue 28/157 adopted local masks in the previous host replay.
+Long failed runs (e.g. 30 consecutive unsuccessful Vogue requests) are
+a better optimization target than indiscriminately reducing frame cadence.
+
+Implement an optional per-direction `DetailBackoff` on the existing
+FrameKernel dance session, not another identity tracker:
+
+- Run the unchanged full-frame association on every exact source PTS.
+  Only after a full match fails and the original detail ROI is eligible
+  may the scheduler consider suppressing the optional local inference.
+- After six consecutive attempted local observations with neither an
+  accepted nor a provisional selected detail candidate, skip up to two
+  eligible requests within 100ms of the failed attempt. The next request
+  resumes; a source-time gap, full valid observation or no eligible ROI
+  resets the streak. At 25fps, a sufficiently long failure burst has
+  a six-probe/two-skipped pattern, not permanent suppression.
+- A current full pending confirmation or prior detail pending candidate
+  blocks throttling. Accepted/provisional detail evidence resets the
+  scheduler. The full canonical tracker state is always committed exactly
+  as in the existing full-only path. Skipped samples explicitly have no
+  alpha; no stale mask, new identity inference, threshold change or
+  interpolation of the missing person. Original per-role detail budget
+  and C6 maximum ROI age/size remain unchanged.
+- The scheduled C ABI returns -4 only when the full-only missing state
+  has already been committed; no detail transaction remains to finish.
+  Old unscheduled ABI remains for direct same-build A/B. Both native
+  bridges handle -4 as a missing current frame, and report skipped count
+  separately from actual decode failures and actual model invocations.
+  Archive compatibility key adds detail-backoff-v1.
+- This is a conservative scheduling heuristic, not a proof that an
+  unobserved frame has no recoverable person. It can in principle omit
+  a newly useful local observation; keep experimental release scope.
+  Constants were developed from previously seen B5/C5 failure traces,
+  not an independent holdout. Do not promote based on these clips alone.
+
+### Same-observation host replay
+
+Using the pinned model, identical full observations and identical cached
+local candidates for the unscheduled and scheduled policies, on the
+previously seen four clips. No raw observation cache is persisted or
+committed. The replay checks all prior full-only outputs and records
+any lost, changed or added detail PTS; cached replay time is not a
+measure of actual local inference latency.
+
+| Scene (source samples) | Prior ROI calls -> scheduled | Accepted ROI (unchanged) | Full selected output (unchanged) | Prior valid alpha exact |
+| --- | ---: | ---: | ---: | ---: |
+| Baganda (300) | 62 -> 62 | 52 | 290 | 290/290 |
+| Danzón (300) | 1 -> 1 | 1 | 300 | 300/300 |
+| Breaking (750) | 100 -> 97 | 15 | 663 | 663/663 |
+| Vogue (750) | 157 -> 142 | 28 | 584 | 584/584 |
+
+All 1837 formerly visible alpha buffers are byte-identical across
+2100 source samples; none added or lost. Longest gaps and all sparse
+selected/distractor check results are unchanged. Total detail calls
+320 -> 302 (5.625% fewer); low-yield Vogue 9.55% fewer, Breaking 3%.
+High-yield Baganda/Danzón unaffected. This is a small targeted reduction
+in inference calls, not a claim of large end-to-end speedup or release
+identity correctness.
+
+Reproduce with the existing B5 and C5 manifests and source files:
+```sh
+python tools/comparison/replay_adaptive_detail.py \
+  --manifest testdata/comparison/real-dance-b5.json \
+  --media /path/to/exact/tested/mp4s \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c72-ab --scheduled --no-sheets
+```
+The native Android instrumentation accepts `-e detailScheduled false`
+for the prior C7.1 scheduler, with the same C7.1 source reuse and model.
+
+### Native regression
+
+The actual C5 12-second pair on the OnePlus 8T retains all four
+C7.1 Alpha files byte-for-byte (1200 source PTS records, including
+missing markers). CPU4 coverage 287/300 + 300/300, GPU coverage
+285/300 + 300/300. GPU requests/accepted 73/58, CPU 69/56, target
+0/0 on both, skipped 0 and failures 0. Full analysis CPU 101.814s
+and GPU 65.713s, vs previous C7.1 98.027s/65.278s; since no requests
+were skipped, there is no C5 end-to-end speedup claim. These runs
+were not repeated at controlled temperature.
+
+iOS simulator C5 pair 55.592s, first preview 4.534s, 285/300 +
+300/300, 69/54 reference requests/adopted and no skipped requests.
+All 24 exact-PTS canvas images are pixel-identical to C7.1.
+The actual B5 30s pair additionally exercised suppression on both
+lanes: Breaking 118 requests, 12 adopted, 15 skipped, 597/750
+visible; Vogue 111 requests, 17 adopted, 10 skipped, 610/750
+visible. No ROI decode/inference failures, 124.550s total analysis.
+The incomplete results correctly reject archive/export and restore
+ordinary playback. This iOS B5 run was not compared to an unscheduled
+same-input iOS raw-alpha baseline; no parity or speedup claim for it.
+Rust full suite 153 passed/1 ignored, additional session-state
+and pending-confirmation test passed in both timestamp directions;
+Clippy all targets passed. Android 28 focused + 3 frozen privacy
+reference tests passed. No privacy association policy change.
+
+A paired, same-installed-APK Android GPU run on the first 12s of both
+B5 source clips (300 exact samples per lane, original 3s selection)
+compared `detailScheduled=false` and `true`, with identical decoder
+reuse, model and other configuration. Both output Alpha record files
+are byte-identical across all 600 samples (including missing markers).
+
+| Metric | Unscheduled | Scheduled |
+| --- | ---: | ---: |
+| Breaking detail calls / accepted | 45 / 0 | 39 / 0 |
+| Breaking selected outputs | 253/300 | 253/300 |
+| Vogue detail calls / accepted | 75 / 10 | 75 / 10 |
+| Vogue selected outputs | 102/300 | 102/300 |
+| Pair analysis time | 71.550s | 69.859s |
+| First preview | 8.699s | 8.308s |
+
+Breaking skips six requests (13.3% fewer calls); Vogue skips 13
+eligible requests but consumes its unchanged 75-call per-role budget
+later, without more recovered frames. Thus only six model invocations
+are eliminated overall (120 -> 114) in this native test. The ~2.4%
+single-trial elapsed improvement is modest and not a thermally
+controlled general speedup. This is an exact parity result for this
+input/backend, not a general guarantee for all unseen detail frames.
+The conservative scheduler is enabled in the experimental canvas;
+the unscheduled instrumentation option is retained. No new threshold,
+model, identity state or GPU default promotion. Proceed to independent
+holdout C7.3 instead of tuning more thresholds against the development
+clips. Physical iPhone, rotated-container full E2E, active model
+cancellation and release-grade dense identity/edge evidence remain open.

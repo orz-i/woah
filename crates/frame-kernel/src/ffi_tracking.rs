@@ -114,6 +114,7 @@ struct Session {
     dance: Option<CutoutPolicy>,
     detail_trial: Option<DetailTrial>,
     detail_pending: Option<crate::tracking_cutout::PendingMatch>,
+    detail_backoff: crate::dance_detail::DetailBackoff,
 }
 // The tentative detail evaluation may never replace the canonical full
 // observation result. Keep the full-only commit while the caller decodes ROI.
@@ -122,6 +123,7 @@ struct DetailTrial {
     count: usize,
     tracker: Tracker,
     policy: CutoutPolicy,
+    scheduled: bool,
 }
 #[derive(Clone, Copy)]
 struct CutoutClock {
@@ -175,6 +177,7 @@ fn create_session(config: TrackingConfig, dance: Option<CutoutPolicy>) -> u64 {
             dance,
             detail_trial: None,
             detail_pending: None,
+            detail_backoff: Default::default(),
         })),
     );
     id
@@ -219,6 +222,7 @@ pub(crate) fn step_dance_session(
         tracker,
         dance,
         detail_pending,
+        detail_backoff,
         ..
     } = &mut *s;
     let Some(policy) = dance else { return -2 };
@@ -237,6 +241,7 @@ pub(crate) fn step_dance_session(
     .unwrap_or(-2);
     if result >= -1 {
         *detail_pending = None;
+        detail_backoff.reset();
     }
     result
 }
@@ -248,6 +253,23 @@ pub(crate) fn step_or_detail(
     o: crate::dance_cutout::CutoutObservation<'_>,
     roi: &mut crate::composition::Viewport,
 ) -> i32 {
+    step_or_detail_impl(id, at, o, roi, false)
+}
+pub(crate) fn step_or_detail_scheduled(
+    id: u64,
+    at: i64,
+    o: crate::dance_cutout::CutoutObservation<'_>,
+    roi: &mut crate::composition::Viewport,
+) -> i32 {
+    step_or_detail_impl(id, at, o, roi, true)
+}
+fn step_or_detail_impl(
+    id: u64,
+    at: i64,
+    o: crate::dance_cutout::CutoutObservation<'_>,
+    roi: &mut crate::composition::Viewport,
+    scheduled: bool,
+) -> i32 {
     let Some(owner) = session(id) else { return -2 };
     let Ok(mut s) = owner.lock() else { return -2 };
     let Session {
@@ -255,6 +277,7 @@ pub(crate) fn step_or_detail(
         dance,
         detail_trial,
         detail_pending,
+        detail_backoff,
         ..
     } = &mut *s;
     let Some(policy) = dance else { return -2 };
@@ -265,6 +288,7 @@ pub(crate) fn step_or_detail(
         let result = crate::dance_cutout::step(tracker, policy, at, -1, o).unwrap_or(-2);
         if result >= -1 {
             *detail_pending = None;
+            detail_backoff.reset();
         }
         return result;
     };
@@ -273,12 +297,25 @@ pub(crate) fn step_or_detail(
     let mut trial_policy = policy.clone();
     let result = crate::dance_cutout::step(&mut trial, &mut trial_policy, at, -1, o).unwrap_or(-2);
     if result == -1 {
+        // Only suppress optional detail inference; commit exactly the same
+        // canonical full-only next state. A current provisional candidate
+        // is never throttled, so two-observation confirmation remains intact.
+        if scheduled
+            && detail_pending.is_none()
+            && trial_policy.pending.is_none()
+            && detail_backoff.skip(at)
+        {
+            *tracker = trial;
+            *policy = trial_policy;
+            return -4;
+        }
         *roi = view;
         *detail_trial = Some(DetailTrial {
             at,
             count,
             tracker: trial,
             policy: trial_policy,
+            scheduled,
         });
         -3
     } else {
@@ -286,6 +323,7 @@ pub(crate) fn step_or_detail(
             *tracker = trial;
             *policy = trial_policy;
             *detail_pending = None;
+            detail_backoff.reset();
         }
         result
     }
@@ -312,6 +350,7 @@ pub(crate) fn finish_detail(
         dance,
         detail_trial,
         detail_pending,
+        detail_backoff,
         ..
     } = &mut *s;
     let Some(policy) = dance else { return -2 };
@@ -376,6 +415,11 @@ pub(crate) fn finish_detail(
         }
     }
     let base = detail_trial.take().unwrap();
+    if base.scheduled {
+        detail_backoff.observe(at, result >= 0 || next_pending.is_some());
+    } else {
+        detail_backoff.reset();
+    }
     *tracker = base.tracker;
     *policy = base.policy;
     *detail_pending = next_pending;
@@ -742,8 +786,118 @@ mod cutout_tracking_tests {
             dance: None,
             detail_trial: None,
             detail_pending: None,
+            detail_backoff: Default::default(),
         }
     }
+    #[test]
+    fn detail_backoff_commits_only_full_state_and_protects_pending_confirmation() {
+        use crate::{
+            appearance::APPEARANCE_BINS, composition::Viewport, dance_cutout::CutoutObservation,
+        };
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 0.,
+            source_width: 160,
+            source_height: 160,
+            input_size: 160,
+            proto_size: 16,
+        };
+        let d = InstanceDetection {
+            bounds: Rect {
+                left: 60.,
+                top: 50.,
+                right: 90.,
+                bottom: 100.,
+            },
+            confidence: 0.9,
+        };
+        let masks = [255u8; 256];
+        let mut f = [0.; APPEARANCE_BINS];
+        f[0] = 1.;
+        let empty = || CutoutObservation {
+            detections: &[],
+            masks: &[],
+            transform: t,
+            features: &[],
+        };
+        let rows = [d];
+        let observed = || CutoutObservation {
+            detections: &rows,
+            masks: &masks,
+            transform: t,
+            features: &f,
+        };
+        for direction in [1, -1] {
+            let anchor = 2_000_000;
+            let a = create_dance_session();
+            let b = create_dance_session();
+            for id in [a, b] {
+                assert_eq!(step_dance_session(id, anchor, 0, &rows, &masks, t, &f), 0);
+            }
+            let mut roi = Viewport::default();
+            for i in 1..=8 {
+                let at = anchor + direction * i * 40_000;
+                assert_eq!(step_dance_session(a, at, -1, &[], &[], t, &[]), -1);
+                let result = step_or_detail_scheduled(b, at, empty(), &mut roi);
+                if i <= 6 {
+                    assert_eq!(result, -3);
+                    assert_eq!(finish_detail(b, at, 0, empty()), -1);
+                } else {
+                    assert_eq!(result, -4);
+                    assert_eq!(finish_detail(b, at, 0, empty()), -2);
+                }
+                let x = super::session(a).unwrap();
+                let y = super::session(b).unwrap();
+                let x = x.lock().unwrap();
+                let y = y.lock().unwrap();
+                assert_eq!(
+                    x.dance.as_ref().unwrap().clock.as_ref().unwrap().last,
+                    y.dance.as_ref().unwrap().clock.as_ref().unwrap().last
+                );
+                assert_eq!(
+                    x.tracker.tracks[0].observed_bounds,
+                    y.tracker.tracks[0].observed_bounds
+                );
+                assert_eq!(x.tracker.tracks[0].state, y.tracker.tracks[0].state);
+                assert_eq!(
+                    x.tracker.tracks[0].appearance.as_ref().unwrap().last_seen,
+                    y.tracker.tracks[0].appearance.as_ref().unwrap().last_seen
+                );
+            }
+            let at = anchor + direction * 9 * 40_000;
+            assert_eq!(step_or_detail_scheduled(b, at, empty(), &mut roi), -3);
+            // Recovery candidate is not yet renderable, but must be
+            // followed by a normal inference on the next sample.
+            assert_eq!(finish_detail(b, at, 0, observed()), -1);
+            assert_eq!(
+                step_or_detail_scheduled(b, at + direction * 40_000, empty(), &mut roi),
+                -3
+            );
+            assert_eq!(finish_detail(b, at + direction * 40_000, 0, observed()), 0);
+            // A subsequent full observation takes its normal path.
+            for i in 9..=10 {
+                assert_eq!(
+                    step_dance_session(a, anchor + direction * i * 40_000, -1, &[], &[], t, &[]),
+                    -1
+                );
+            }
+            for i in 11..=12 {
+                let at = anchor + direction * i * 40_000;
+                let base = step_dance_session(a, at, -1, &rows, &masks, t, &f);
+                let selected = step_or_detail_scheduled(b, at, observed(), &mut roi);
+                if selected == -3 {
+                    assert_eq!(base, -1);
+                    assert_eq!(finish_detail(b, at, 1, observed()), -1);
+                } else {
+                    assert_eq!(selected, base);
+                }
+            }
+            assert_eq!(destroy_dance_session(a), 0);
+            assert_eq!(destroy_dance_session(b), 0);
+        }
+    }
+
     #[test]
     fn detail_overlay_cannot_mutate_full_identity_or_learn_competitors() {
         use crate::{

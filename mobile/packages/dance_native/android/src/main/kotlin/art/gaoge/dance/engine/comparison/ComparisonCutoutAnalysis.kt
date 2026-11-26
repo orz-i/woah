@@ -224,7 +224,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         fun select(seed: ComparisonCutoutSeed) =
             FrameKernel.cutoutSelectNative(masks,transform,seed.x,seed.y)
         fun track(session:FrameKernel.DanceCutoutTrack,seed:Int=-1)=session.step(pts,seed,rows,masks,transform,appearance)
-        fun stepOrDetail(session:FrameKernel.DanceCutoutTrack,roi:IntArray)=session.stepOrDetail(pts,rows,masks,transform,appearance,roi)
+        fun stepOrDetail(session:FrameKernel.DanceCutoutTrack,roi:IntArray,scheduled:Boolean)=session.stepOrDetail(pts,rows,masks,transform,appearance,roi,scheduled)
         fun finishDetail(session:FrameKernel.DanceCutoutTrack,fullCount:Int)=session.finishDetail(pts,fullCount,rows,masks,transform,appearance)
         fun withDetail(local:Observation,roi:IntArray):Observation {
             require(local.pts==pts)
@@ -307,7 +307,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     fun begin(uri: String, description: ComparisonVideoDescription, start: Long,endInclusive: Long,
         firstPreview:Long,lastPreview:Long,seed: ComparisonCutoutSeed, reference: Boolean, mirror: Boolean,
         segmenter: YoloLiteRtSegmenter,current: () -> Boolean, inspection: Inspection? = null,
-        fixedGrid:Pair<Int,Int>?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true): Work {
+        fixedGrid:Pair<Int,Int>?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true,detailScheduled:Boolean=true): Work {
         val measure=art.gaoge.dance.engine.BuildConfig.DEBUG
         val wallStart=System.nanoTime()
         val timing=linkedMapOf<String,Long>()
@@ -370,7 +370,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         // project. CPU can sample the currently borrowed Image; GPU keeps its
         // proven RGBA prefetch and lazily opens a second sequential reader.
         val detailBudget=minOf(160,maxOf(1,(times.size+3)/4))
-        var detailAttempts=0;var detailAccepted=0;var detailFailures=0
+        var detailAttempts=0;var detailAccepted=0;var detailFailures=0;var detailSkipped=0
         var detailInline=0;var detailOpens=0;var detailSeeks=0;var detailReuseHits=0
         // A single auxiliary codec per span. Descending PTS requires flush
         // and seek; a failed reuse is retried once with a fresh codec.
@@ -422,7 +422,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 add(o,timed("track"){o.track(session)},initial);return
             }
             val roi=IntArray(4)
-            val selected=timed("track"){o.stepOrDetail(session,roi)}
+            val selected=timed("track"){o.stepOrDetail(session,roi,detailScheduled)}
+            if(selected==-4){detailSkipped++;add(o,-1,initial);return}
             if(selected!=-3){add(o,selected,initial);return}
             detailAttempts++
             val merged=try{
@@ -550,6 +551,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                         .put("prefixBytes",prefixBytes).put("alphaBytesPerFrame",aw*ah)
                         .put("detailAttempts",detailAttempts).put("detailAccepted",detailAccepted).put("detailFailures",detailFailures)
                         .put("detailEnabled",detailEnabled).put("detailReuse",detailReuse)
+                        .put("detailScheduled",detailScheduled).put("detailSkipped",detailSkipped)
                         .put("detailInline",detailInline).put("detailDecoderOpens",detailOpens)
                         .put("detailSeeks",detailSeeks).put("detailReuseHits",detailReuseHits).put("stageMs",stages).toString())
                 }

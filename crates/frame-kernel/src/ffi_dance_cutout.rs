@@ -186,6 +186,46 @@ pub unsafe extern "C" fn frame_kernel_dance_step_or_detail(
     )
 }
 /// # Safety
+/// Arrays must be readable and the ROI output uniquely writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_dance_step_or_detail_scheduled(
+    id: u64,
+    at: i64,
+    d: *const InstanceDetection,
+    count: usize,
+    m: *const u8,
+    mask_len: usize,
+    t: Transform,
+    f: *const f32,
+    feature_len: usize,
+    roi: *mut crate::composition::Viewport,
+) -> i32 {
+    if !valid_lengths(t, count, mask_len, feature_len) {
+        return -2;
+    }
+    // SAFETY: checked lengths and the caller's exclusive output region.
+    let (Some(d), Some(m), Some(f), Some(roi)) = (
+        unsafe { borrowed(d, count) },
+        unsafe { borrowed(m, mask_len) },
+        unsafe { borrowed(f, feature_len) },
+        unsafe { write(roi, 1) },
+    ) else {
+        return -2;
+    };
+    roi[0] = crate::composition::Viewport::default();
+    crate::ffi_tracking::step_or_detail_scheduled(
+        id,
+        at,
+        crate::dance_cutout::CutoutObservation {
+            detections: d,
+            masks: m,
+            transform: t,
+            features: f,
+        },
+        &mut roi[0],
+    )
+}
+/// # Safety
 /// Arrays must describe the original full-frame rows followed by detail rows.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_dance_finish_detail(

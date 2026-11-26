@@ -63,6 +63,48 @@ pub(crate) fn view(tracker: &Tracker, policy: &CutoutPolicy, at: i64) -> Option<
     })
 }
 
+/// Local inference scheduling only, per direction/session. Never changes
+/// canonical Tracker state or substitutes an old mask. A usable provisional
+/// detail candidate resets backoff even before it is allowed to render.
+#[derive(Default)]
+pub(crate) struct DetailBackoff {
+    failures: u8,
+    remaining: u8,
+    last_failure: Option<i64>,
+}
+impl DetailBackoff {
+    const FAILURES: u8 = 6;
+    const SKIP: u8 = 2;
+    const MAX_PAUSE_US: u64 = 100_000;
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
+    pub fn skip(&mut self, at: i64) -> bool {
+        if self
+            .last_failure
+            .is_some_and(|p| at.abs_diff(p) > Self::MAX_PAUSE_US)
+        {
+            self.reset();
+        }
+        if self.remaining == 0 {
+            return false;
+        }
+        self.remaining -= 1;
+        true
+    }
+    pub fn observe(&mut self, at: i64, has_evidence: bool) {
+        if has_evidence {
+            self.reset();
+            return;
+        }
+        self.last_failure = Some(at);
+        self.failures = self.failures.saturating_add(1);
+        if self.failures >= Self::FAILURES {
+            self.remaining = Self::SKIP;
+        }
+    }
+}
+
 /// Remap a local CURRENT candidate. Reject crop-edge truncation and strong
 /// duplicates of full-frame observations. Never remove original observations;
 /// shared global assignment still owns the decision.
@@ -156,6 +198,34 @@ pub fn remap(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn backoff_only_after_six_failures_and_bounded_two_frames() {
+        for direction in [1, -1] {
+            let mut s = DetailBackoff::default();
+            let t = 1_000_000;
+            for i in 0..6 {
+                let at = t + direction * i * 40_000;
+                assert!(!s.skip(at));
+                s.observe(at, false);
+            }
+            assert!(s.skip(t + direction * 240_000));
+            assert!(s.skip(t + direction * 280_000));
+            assert!(!s.skip(t + direction * 320_000));
+            s.observe(t + direction * 320_000, true);
+            assert!(!s.skip(t + direction * 360_000));
+        }
+        let mut s = DetailBackoff::default();
+        for i in 0..6 {
+            s.observe(i * 20_000, false);
+        }
+        assert!(!s.skip(250_000)); // cadence break
+        for i in 0..6 {
+            s.observe(300_000 + i * 20_000, false);
+        }
+        s.reset();
+        assert!(!s.skip(430_000));
+    }
+
     #[test]
     fn remap_rejects_truncated_and_duplicate_and_keeps_source_coordinates() {
         let t = Transform {
