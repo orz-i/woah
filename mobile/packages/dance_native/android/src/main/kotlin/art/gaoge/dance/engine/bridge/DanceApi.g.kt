@@ -652,7 +652,8 @@ data class PreviewRequestDto (
   val effects: EffectConfigDto,
   val follow: FollowConfigDto,
   val faceOnlyPersonIds: List<Long>? = null,
-  val tightMaskPreview: Boolean? = null
+  val tightMaskPreview: Boolean? = null,
+  val mirrorHorizontally: Boolean? = null
 )
  {
   companion object {
@@ -664,7 +665,8 @@ data class PreviewRequestDto (
       val follow = pigeonVar_list[4] as FollowConfigDto
       val faceOnlyPersonIds = pigeonVar_list[5] as List<Long>?
       val tightMaskPreview = pigeonVar_list[6] as Boolean?
-      return PreviewRequestDto(analysisCacheId, timestampMs, selectedPersonIds, effects, follow, faceOnlyPersonIds, tightMaskPreview)
+      val mirrorHorizontally = pigeonVar_list[7] as Boolean?
+      return PreviewRequestDto(analysisCacheId, timestampMs, selectedPersonIds, effects, follow, faceOnlyPersonIds, tightMaskPreview, mirrorHorizontally)
     }
   }
   fun toList(): List<Any?> {
@@ -676,6 +678,7 @@ data class PreviewRequestDto (
       follow,
       faceOnlyPersonIds,
       tightMaskPreview,
+      mirrorHorizontally,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -686,7 +689,7 @@ data class PreviewRequestDto (
       return true
     }
     val other = other as PreviewRequestDto
-    return DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.timestampMs, other.timestampMs) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.faceOnlyPersonIds, other.faceOnlyPersonIds) && DanceApiPigeonUtils.deepEquals(this.tightMaskPreview, other.tightMaskPreview)
+    return DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.timestampMs, other.timestampMs) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.faceOnlyPersonIds, other.faceOnlyPersonIds) && DanceApiPigeonUtils.deepEquals(this.tightMaskPreview, other.tightMaskPreview) && DanceApiPigeonUtils.deepEquals(this.mirrorHorizontally, other.mirrorHorizontally)
   }
 
   override fun hashCode(): Int {
@@ -698,10 +701,11 @@ data class PreviewRequestDto (
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.follow)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.faceOnlyPersonIds)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.tightMaskPreview)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.mirrorHorizontally)
     return result
   }
   override fun toString(): String {
-    return "PreviewRequestDto(analysisCacheId=$analysisCacheId, timestampMs=$timestampMs, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, faceOnlyPersonIds=$faceOnlyPersonIds, tightMaskPreview=$tightMaskPreview)"
+    return "PreviewRequestDto(analysisCacheId=$analysisCacheId, timestampMs=$timestampMs, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, faceOnlyPersonIds=$faceOnlyPersonIds, tightMaskPreview=$tightMaskPreview, mirrorHorizontally=$mirrorHorizontally)"
   }
 }
 
@@ -767,7 +771,8 @@ data class ExportRequestDto (
   val enableLivePreview: Boolean,
   val faceOnlyPersonIds: List<Long>? = null,
   val trimStartMs: Long,
-  val trimEndMs: Long? = null
+  val trimEndMs: Long? = null,
+  val mirrorHorizontally: Boolean? = null
 )
  {
   companion object {
@@ -788,7 +793,8 @@ data class ExportRequestDto (
       val faceOnlyPersonIds = pigeonVar_list[13] as List<Long>?
       val trimStartMs = pigeonVar_list[14] as Long
       val trimEndMs = pigeonVar_list[15] as Long?
-      return ExportRequestDto(sourceUri, analysisCacheId, outputFilePath, selectedPersonIds, effects, follow, targetWidth, targetHeight, targetFps, videoBitrate, processingProfile, cropClarityScale, enableLivePreview, faceOnlyPersonIds, trimStartMs, trimEndMs)
+      val mirrorHorizontally = pigeonVar_list[16] as Boolean?
+      return ExportRequestDto(sourceUri, analysisCacheId, outputFilePath, selectedPersonIds, effects, follow, targetWidth, targetHeight, targetFps, videoBitrate, processingProfile, cropClarityScale, enableLivePreview, faceOnlyPersonIds, trimStartMs, trimEndMs, mirrorHorizontally)
     }
   }
   fun toList(): List<Any?> {
@@ -809,6 +815,7 @@ data class ExportRequestDto (
       faceOnlyPersonIds,
       trimStartMs,
       trimEndMs,
+      mirrorHorizontally,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -819,7 +826,7 @@ data class ExportRequestDto (
       return true
     }
     val other = other as ExportRequestDto
-    return DanceApiPigeonUtils.deepEquals(this.sourceUri, other.sourceUri) && DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.outputFilePath, other.outputFilePath) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.targetWidth, other.targetWidth) && DanceApiPigeonUtils.deepEquals(this.targetHeight, other.targetHeight) && DanceApiPigeonUtils.deepEquals(this.targetFps, other.targetFps) && DanceApiPigeonUtils.deepEquals(this.videoBitrate, other.videoBitrate) && DanceApiPigeonUtils.deepEquals(this.processingProfile, other.processingProfile) && DanceApiPigeonUtils.deepEquals(this.cropClarityScale, other.cropClarityScale) && DanceApiPigeonUtils.deepEquals(this.enableLivePreview, other.enableLivePreview) && DanceApiPigeonUtils.deepEquals(this.faceOnlyPersonIds, other.faceOnlyPersonIds) && DanceApiPigeonUtils.deepEquals(this.trimStartMs, other.trimStartMs) && DanceApiPigeonUtils.deepEquals(this.trimEndMs, other.trimEndMs)
+    return DanceApiPigeonUtils.deepEquals(this.sourceUri, other.sourceUri) && DanceApiPigeonUtils.deepEquals(this.analysisCacheId, other.analysisCacheId) && DanceApiPigeonUtils.deepEquals(this.outputFilePath, other.outputFilePath) && DanceApiPigeonUtils.deepEquals(this.selectedPersonIds, other.selectedPersonIds) && DanceApiPigeonUtils.deepEquals(this.effects, other.effects) && DanceApiPigeonUtils.deepEquals(this.follow, other.follow) && DanceApiPigeonUtils.deepEquals(this.targetWidth, other.targetWidth) && DanceApiPigeonUtils.deepEquals(this.targetHeight, other.targetHeight) && DanceApiPigeonUtils.deepEquals(this.targetFps, other.targetFps) && DanceApiPigeonUtils.deepEquals(this.videoBitrate, other.videoBitrate) && DanceApiPigeonUtils.deepEquals(this.processingProfile, other.processingProfile) && DanceApiPigeonUtils.deepEquals(this.cropClarityScale, other.cropClarityScale) && DanceApiPigeonUtils.deepEquals(this.enableLivePreview, other.enableLivePreview) && DanceApiPigeonUtils.deepEquals(this.faceOnlyPersonIds, other.faceOnlyPersonIds) && DanceApiPigeonUtils.deepEquals(this.trimStartMs, other.trimStartMs) && DanceApiPigeonUtils.deepEquals(this.trimEndMs, other.trimEndMs) && DanceApiPigeonUtils.deepEquals(this.mirrorHorizontally, other.mirrorHorizontally)
   }
 
   override fun hashCode(): Int {
@@ -840,10 +847,11 @@ data class ExportRequestDto (
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.faceOnlyPersonIds)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.trimStartMs)
     result = 31 * result + DanceApiPigeonUtils.deepHash(this.trimEndMs)
+    result = 31 * result + DanceApiPigeonUtils.deepHash(this.mirrorHorizontally)
     return result
   }
   override fun toString(): String {
-    return "ExportRequestDto(sourceUri=$sourceUri, analysisCacheId=$analysisCacheId, outputFilePath=$outputFilePath, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, targetWidth=$targetWidth, targetHeight=$targetHeight, targetFps=$targetFps, videoBitrate=$videoBitrate, processingProfile=$processingProfile, cropClarityScale=$cropClarityScale, enableLivePreview=$enableLivePreview, faceOnlyPersonIds=$faceOnlyPersonIds, trimStartMs=$trimStartMs, trimEndMs=$trimEndMs)"
+    return "ExportRequestDto(sourceUri=$sourceUri, analysisCacheId=$analysisCacheId, outputFilePath=$outputFilePath, selectedPersonIds=$selectedPersonIds, effects=$effects, follow=$follow, targetWidth=$targetWidth, targetHeight=$targetHeight, targetFps=$targetFps, videoBitrate=$videoBitrate, processingProfile=$processingProfile, cropClarityScale=$cropClarityScale, enableLivePreview=$enableLivePreview, faceOnlyPersonIds=$faceOnlyPersonIds, trimStartMs=$trimStartMs, trimEndMs=$trimEndMs, mirrorHorizontally=$mirrorHorizontally)"
   }
 }
 

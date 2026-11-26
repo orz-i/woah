@@ -85,7 +85,8 @@ final class IOSMetalPreviewRenderer {
     outputHeight: Int? = nil,
     sourceCrop: SIMD4<Float> = SIMD4<Float>(0, 0, 1, 1),
     legStretchTargetId: Int? = nil,
-    cropClarityScale: Double = 1.0
+    cropClarityScale: Double = 1.0,
+    mirrorHorizontally: Bool = false
   ) throws -> CGImage {
     let sourceWidth = max(1, source.width)
     let sourceHeight = max(1, source.height)
@@ -233,7 +234,10 @@ final class IOSMetalPreviewRenderer {
     // The iOS Simulator Metal backend supports at most 14 constant buffer
     // bindings. Pack four independent UInt32 selectors into one 16-byte vector
     // without changing shader semantics, privacy behavior, or field precision.
-    var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, legStretchFlag)
+    // Reuse an unused bit in the fourth selector to stay within the simulator's
+    // Metal buffer limit. The shader reflects only the final output address.
+    let geometryFlags = legStretchFlag | (mirrorHorizontally ? UInt32(2) : UInt32(0))
+    var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, geometryFlags)
     encoder.setBytes(&packedFlags, length: MemoryLayout<SIMD4<UInt32>>.size, index: 0)
     encoder.setBytes(&fillColor, length: MemoryLayout<SIMD4<Float>>.size, index: 1)
     encoder.setBytes(&borderColor, length: MemoryLayout<SIMD4<Float>>.size, index: 2)
@@ -865,7 +869,8 @@ kernel void woahPreviewKernel(
   const uint fillMode = packedFlags.x;
   const uint stickerEnabled = packedFlags.y;
   const uint customStickerEnabled = packedFlags.z;
-  const uint legStretchEnabled = packedFlags.w;
+  const uint legStretchEnabled = packedFlags.w & 1u;
+  const bool mirrorHorizontally = (packedFlags.w & 2u) != 0u;
   uint width = output.get_width();
   uint height = output.get_height();
   if (gid.x >= width || gid.y >= height) return;
@@ -1009,7 +1014,10 @@ kernel void woahPreviewKernel(
     }
   }
 
-  output.write(float4(color.rgb, 1.0), gid);
+  // Reflect the fully composited pixel; every privacy and beauty input stays
+  // in the original crop/source coordinates.
+  uint2 outputPixel = mirrorHorizontally ? uint2(width - 1u - gid.x, gid.y) : gid;
+  output.write(float4(color.rgb, 1.0), outputPixel);
 }
 """#
 }

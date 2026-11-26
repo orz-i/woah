@@ -577,6 +577,7 @@ class _Repository implements NativeProcessingRepository {
     bool enableLivePreview = false,
     int trimStartMs = 0,
     int? trimEndMs,
+    bool mirrorHorizontally = false,
   }) async {
     starts++;
     final id = startBarrier == null

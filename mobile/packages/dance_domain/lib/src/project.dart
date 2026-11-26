@@ -31,6 +31,9 @@ class DanceProject {
   final FollowConfig follow;
   final OutputResolutionPreset outputResolutionPreset;
 
+  /// Mirror the final protected picture horizontally in display coordinates.
+  final bool mirrorHorizontally;
+
   bool get hasFollowTarget =>
       follow.enabled &&
       persons.any((person) => person.id == follow.targetPersonId);
@@ -79,6 +82,7 @@ class DanceProject {
     this.effects = const EffectConfig(),
     this.follow = const FollowConfig(),
     this.outputResolutionPreset = OutputResolutionPreset.source,
+    this.mirrorHorizontally = false,
     this.crop,
     this.trimStartMs = 0,
     this.trimEndMs,
@@ -97,6 +101,7 @@ class DanceProject {
     'effects': effects.toJson(),
     'follow': follow.toJson(),
     'outputResolutionPreset': outputResolutionPreset.name,
+    'mirrorHorizontally': mirrorHorizontally,
     'crop': crop?.toJson(),
     'trimStartMs': trimStartMs,
     'trimEndMs': trimEndMs,
@@ -134,6 +139,7 @@ class DanceProject {
       (value) => value.name == json['outputResolutionPreset'],
       orElse: () => OutputResolutionPreset.source,
     ),
+    mirrorHorizontally: json['mirrorHorizontally'] as bool? ?? false,
     crop: json['crop'] != null
         ? CropConfig.fromJson(json['crop'] as Map<String, dynamic>)
         : null,
@@ -154,6 +160,7 @@ class DanceProject {
     EffectConfig? effects,
     FollowConfig? follow,
     OutputResolutionPreset? outputResolutionPreset,
+    bool? mirrorHorizontally,
     CropConfig? crop,
     int? trimStartMs,
     int? trimEndMs,
@@ -173,6 +180,7 @@ class DanceProject {
       follow: follow ?? this.follow,
       outputResolutionPreset:
           outputResolutionPreset ?? this.outputResolutionPreset,
+      mirrorHorizontally: mirrorHorizontally ?? this.mirrorHorizontally,
       crop: crop ?? this.crop,
       trimStartMs: trimStartMs ?? this.trimStartMs,
       trimEndMs: clearTrimEnd ? null : (trimEndMs ?? this.trimEndMs),

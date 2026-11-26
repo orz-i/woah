@@ -82,7 +82,13 @@ enum IOSMetalPhase3Smoke {
       )
     }
 
+    // Exercise the exact production compositor on asymmetric content, privacy
+    // masks, stickers and an off-center crop. A mirror must equal the reflected
+    // *protected* output, not a reflection of just the source texture.
+    let mirroredCases = try verifyHorizontalMirror(renderer: renderer, effects: effects)
+
     return [
+      "horizontal_mirror_cases": mirroredCases,
       "status": "pass",
       "device_name": device.name,
       "render_ms": elapsedMs,
@@ -92,16 +98,81 @@ enum IOSMetalPhase3Smoke {
     ]
   }
 
+  private static func verifyHorizontalMirror(
+    renderer: IOSMetalPreviewRenderer, effects: EffectConfigDto
+  ) throws -> Int {
+    let size = 64
+    let source = try makeSolidImage(width: size, height: size, rgba: (0, 0, 255, 255), asymmetric: true)
+    let proto = IOSYoloPostprocessor.protoSize
+    let leftMask = (0..<(proto * proto)).map { UInt8($0 % proto < proto / 2 ? 255 : 0) }
+    let rightMask = (0..<(proto * proto)).map { UInt8($0 % proto >= proto / 2 ? 255 : 0) }
+    let body = IOSPreviewPerson(id: 0, detection: IOSYoloDetection(
+      x1: 0, y1: 0, x2: 32, y2: 64, confidence: 1, mask: leftMask))
+    let face = IOSPreviewPerson(id: 1, detection: IOSYoloDetection(
+      x1: 32, y1: 0, x2: 64, y2: 64, confidence: 1, mask: rightMask))
+    let preprocess = IOSYoloPreprocessResult(input: [],
+      scale: Float32(IOSYoloPreprocessor.inputSize) / Float32(size),
+      padLeft: 0, padTop: 0, sourceWidth: size, sourceHeight: size,
+      inputSize: IOSYoloPreprocessor.inputSize)
+    let faceRegion = IOSFacePrivacyEllipse(centerX: 48, centerY: 17,
+      radiusX: 8, radiusY: 11, source: .detectedFace)
+    var stickerEffects = effects
+    stickerEffects.fillMode = "sticker"
+    stickerEffects.faceStickerEnabled = true
+    stickerEffects.stickerAssetId = "builtin:sunglasses"
+    let full = SIMD4<Float>(0, 0, 1, 1)
+    let crop = SIMD4<Float>(0.125, 0, 0.75, 1)
+    let cases: [(Set<Int>, Set<Int>, EffectConfigDto, SIMD4<Float>, Int)] = [
+      ([], [], effects, full, 64),
+      ([0], [], effects, full, 64),
+      ([], [1], effects, full, 64),
+      ([], [1], stickerEffects, full, 64),
+      ([0], [1], effects, crop, 40),
+      ([], [1], stickerEffects, crop, 40),
+    ]
+    for (bodyIds, faceIds, config, rect, outputWidth) in cases {
+      func render(_ mirror: Bool) throws -> CGImage {
+        try renderer.render(source: source, persons: [body, face], preprocess: preprocess,
+          fullBodyIds: bodyIds, faceOnlyIds: faceIds, effects: config,
+          faceRegions: [1: faceRegion], tightMask: true, outputWidth: outputWidth,
+          outputHeight: size, sourceCrop: rect, mirrorHorizontally: mirror)
+      }
+      let normal = try render(false)
+      let flipped = try render(true)
+      guard let normalData = normal.dataProvider?.data, let flippedData = flipped.dataProvider?.data else {
+        throw PigeonError(code: "METAL_SMOKE_READBACK_FAILED", message: "Mirror pixel readback failed", details: nil)
+      }
+      let a = [UInt8](normalData as Data)
+      let b = [UInt8](flippedData as Data)
+      guard a != b, a.count == outputWidth * size * 4, b.count == a.count else {
+        throw PigeonError(code: "METAL_SMOKE_PIXEL_MISMATCH", message: "Mirror must change asymmetric output", details: nil)
+      }
+      for y in 0..<size {
+        for x in 0..<outputWidth {
+          let from = (y * outputWidth + x) * 4
+          let to = (y * outputWidth + outputWidth - 1 - x) * 4
+          guard a[from..<from + 4].elementsEqual(b[to..<to + 4]) else {
+            throw PigeonError(code: "METAL_SMOKE_PIXEL_MISMATCH",
+              message: "Mirror did not reflect the complete protected pixel",
+              details: ["x": x, "y": y, "width": outputWidth])
+          }
+        }
+      }
+    }
+    return cases.count
+  }
+
   private static func makeSolidImage(
     width: Int,
     height: Int,
-    rgba: (UInt8, UInt8, UInt8, UInt8)
+    rgba: (UInt8, UInt8, UInt8, UInt8),
+    asymmetric: Bool = false
   ) throws -> CGImage {
     var bytes = [UInt8](repeating: 0, count: width * height * 4)
     for index in 0..<(width * height) {
       let offset = index * 4
       bytes[offset] = rgba.0
-      bytes[offset + 1] = rgba.1
+      bytes[offset + 1] = asymmetric ? UInt8((index % width) * 3 % 256) : rgba.1
       bytes[offset + 2] = rgba.2
       bytes[offset + 3] = rgba.3
     }

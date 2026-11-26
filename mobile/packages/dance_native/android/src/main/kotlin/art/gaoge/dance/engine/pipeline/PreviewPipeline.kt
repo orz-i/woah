@@ -311,7 +311,8 @@ class PreviewPipeline(
                 glRenderer.renderBase(
                     frameTexture = target.textureId,
                     texMatrix = ReframeGeometry.textureMatrixForScreenGlCrop(glCrop),
-                    textureType = SourceTextureType.TEXTURE_2D
+                    textureType = SourceTextureType.TEXTURE_2D,
+                    mirrorHorizontally = request.mirrorHorizontally == true
                 )
             } else {
                 glRenderer.render(
@@ -330,6 +331,7 @@ class PreviewPipeline(
                     tightMask = request.tightMaskPreview ?: false,
                     sourceWidth = sourceFrameWidth,
                     sourceHeight = sourceFrameHeight,
+                    mirrorHorizontally = request.mirrorHorizontally == true,
                     legStretchTargetPersonId = if (request.follow.enabled) {
                         request.follow.targetPersonId?.toInt()
                     } else {

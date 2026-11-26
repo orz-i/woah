@@ -163,6 +163,7 @@ class ExportController extends StateNotifier<ExportState> {
         enableLivePreview: Platform.isAndroid ? livePreviewAtLaunch : true,
         trimStartMs: project.trimStartMs,
         trimEndMs: project.trimEndMs,
+        mirrorHorizontally: project.mirrorHorizontally,
       );
       operation.jobId = jobId;
       final earlyStatus = operation.earlyStatuses[jobId];
