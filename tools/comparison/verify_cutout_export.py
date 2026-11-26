@@ -251,22 +251,68 @@ def verify_archive(folder, platform):
             "newProcess":True,"negativeTests":"passed"}
 
 
+def verify_repair(folder, platform):
+    """Validate the local-patch QA outputs and independently decode its export."""
+    report=json.loads((folder/"repair-report.json").read_text())
+    assert report["finished"] and report["passed"],report
+    for key in ("cancelPreserved","outsideIdentical","archiveRestored",
+                "realDistinctSubjectReplaced","realOutsideIdentical","realCorrectedMatchesOriginalAnchor"):
+        assert report[key],key
+    def equal(a,b):return rgb(folder/f"{a}.png")==rgb(folder/f"{b}.png")
+    assert equal("repair-before-inside","repair-cancelled")
+    assert equal("repair-before-left","repair-after-left")
+    assert equal("repair-before-right","repair-after-right")
+    assert equal("repair-before-left","repair-restored-left")
+    assert equal("repair-real-original-outside","repair-real-wrong-outside")
+    assert equal("repair-real-original-outside","repair-real-corrected-outside")
+    assert not equal("repair-real-wrong","repair-real-corrected")
+    assert equal("repair-real-original-anchor","repair-real-corrected")
+    path=folder/"repair-restored-cutout.mp4"
+    metadata=media(path)
+    video=next(s for s in metadata["streams"] if s["codec_type"]=="video")
+    audio=next(s for s in metadata["streams"] if s["codec_type"]=="audio")
+    assert (video["width"],video["height"])==(320,240)
+    assert video["codec_name"]=="h264" and audio["codec_name"]=="aac"
+    assert abs(float(metadata["format"]["duration"])-3)<=.001
+    pts=[float(f["best_effort_timestamp_time"]) for f in metadata["frames"] if f.get("media_type")=="video"]
+    assert len(pts)==90 and all(abs(t-i/30)<2e-6 for i,t in enumerate(pts))
+    data=rgb(path)
+    assert len(data)==90*FRAME_BYTES
+    comparisons=[{"ptsUs":us,**compare(rgb(folder/f"repair-restored-export-preview-{us}.png"),
+                 data[i*FRAME_BYTES:(i+1)*FRAME_BYTES])}
+                 for us,i in ((0,0),(400000,12),(800000,24))]
+    assert equal("repair-restored-export-preview-400000","repair-restored-export-resumed")
+    pcm=run("ffmpeg","-v","error","-i",str(path),"-map","0:a:0","-ac","1","-ar","48000","-f","s16le","-")
+    samples=[v[0] for v in struct.iter_unpack("<h",pcm)][4800:-4800]
+    hz=sum((a<0)!=(b<0) for a,b in zip(samples,samples[1:]))*24000/len(samples)
+    assert abs(hz-440)<8
+    published=folder/"repair-published.mp4"
+    if platform=="android":assert report["export"]["savedToGallery"]
+    if published.exists():assert published.read_bytes()==path.read_bytes()
+    return {"frames":len(pts),"duration":float(metadata["format"]["duration"]),
+            "audioHz":round(hz,2),"pixelComparisons":comparisons,
+            "patchElapsedMs":report["patchElapsedMs"],"publicationBytesCompared":published.exists(),
+            "realIdentityPatch":True,"cancelAndOutsideUnchanged":True}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", type=Path)
     parser.add_argument("--platform", choices=("ios", "android"), default="ios")
     parser.add_argument("--extended", action="store_true", help="verify the separate Android 5-second high-resolution fixture")
     parser.add_argument("--full", action="store_true", help="verify full 12-second segmented-cache fixture")
+    parser.add_argument("--repair", action="store_true", help="verify local repair and restored export")
     parser.add_argument("--archive", action="store_true", help="verify new-process canvas archive restoration")
     parser.add_argument("--progressive", action="store_true", help="also verify first playable window and final anchor equality")
     args = parser.parse_args()
     if args.progressive and not args.full:
         parser.error("--progressive requires --full")
-    if sum((args.extended,args.full,args.archive))>1:
-        parser.error("choose --extended, --full or --archive")
+    if sum((args.extended,args.full,args.archive,args.repair))>1:
+        parser.error("choose --extended, --full, --archive or --repair")
     if args.extended and args.platform != "android":
         parser.error("--extended requires --platform android")
-    result = verify_archive(args.folder,args.platform) if args.archive else (
+    result = verify_repair(args.folder,args.platform) if args.repair else (
+        verify_archive(args.folder,args.platform) if args.archive else (
         verify_full(args.folder,args.platform,args.progressive) if args.full else (
-        verify_extended(args.folder) if args.extended else verify(args.folder,args.platform)))
+        verify_extended(args.folder) if args.extended else verify(args.folder,args.platform))))
     print(json.dumps(result,indent=2))

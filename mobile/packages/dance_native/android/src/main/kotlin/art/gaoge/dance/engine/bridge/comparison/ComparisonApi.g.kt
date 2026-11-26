@@ -1073,6 +1073,9 @@ interface DanceComparisonApi {
   suspend fun inspectCutout(reference: Boolean, seed: ComparisonCutoutSeedDto): ComparisonCutoutPreviewDto
   suspend fun prepareCutout(reference: ComparisonCutoutSeedDto, target: ComparisonCutoutSeedDto, layout: ComparisonCanvasLayoutDto?): ComparisonCutoutResultDto
   suspend fun getCutoutStatus(): ComparisonCutoutResultDto?
+  suspend fun beginCutoutRepair(reference: Boolean, startUs: Long, endUs: Long): ComparisonPlaybackDto
+  suspend fun repairCutout(seed: ComparisonCutoutSeedDto, projectId: String): ComparisonCutoutResultDto
+  suspend fun cancelCutoutRepair(): ComparisonCutoutResultDto
   suspend fun saveCutout(projectId: String): Boolean
   suspend fun restoreCutout(projectId: String, layout: ComparisonCanvasLayoutDto?): ComparisonCutoutResultDto?
   suspend fun forgetCutout(projectId: String)
@@ -1348,6 +1351,64 @@ interface DanceComparisonApi {
             CoroutineScope(Dispatchers.Main).launch {
               val wrapped: List<Any?> = try {
                 listOf(api.getCutoutStatus())
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.beginCutoutRepair$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val referenceArg = args[0] as Boolean
+            val startUsArg = args[1] as Long
+            val endUsArg = args[2] as Long
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.beginCutoutRepair(referenceArg, startUsArg, endUsArg))
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.repairCutout$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val seedArg = args[0] as ComparisonCutoutSeedDto
+            val projectIdArg = args[1] as String
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.repairCutout(seedArg, projectIdArg))
+              } catch (exception: Throwable) {
+                ComparisonApiPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.dance_native.DanceComparisonApi.cancelCutoutRepair$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                listOf(api.cancelCutoutRepair())
               } catch (exception: Throwable) {
                 ComparisonApiPigeonUtils.wrapError(exception)
               }

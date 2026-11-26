@@ -133,6 +133,36 @@ struct IOSComparisonCutoutTrackCache: Sendable {
   }
   var visibleCount: Int { disk?.visibleCount ?? entries.values.filter { $0.layer != nil }.count }
   func exact(_ pts:Int64)->IOSComparisonCachedCutout? {disk?.exact(pts) ?? entries[pts]}
+  /// Stream an exact PTS patch into a new immutable store. Keep the original
+  /// placement and non-repaired records; do not substitute old missing masks.
+  func replacing(_ patch:Self,expected:[Int64],originalAnchor:Int64,current:()->Bool)throws->Self {
+    guard let digest=fingerprint,patch.fingerprint==digest,patch.times==expected,
+      let first=expected.first,let start=times.firstIndex(of:first),
+      start+expected.count<=times.count,Array(times[start..<start+expected.count])==expected,
+      let anchor=exact(originalAnchor)?.layer else{throw IOSComparisonCutoutExportUnavailable()}
+    let disk=try IOSComparisonCutoutDiskTrack(times:times)
+    var oldVisible=0,patchVisible=0
+    for (i,pts) in times.enumerated(){
+      guard current() else{throw CancellationError()}
+      guard let old=exact(pts) else{throw IOSComparisonCutoutExportUnavailable()}
+      if old.layer != nil{oldVisible+=1}
+      let patched=(start..<start+expected.count).contains(i)
+      let entry:IOSComparisonCachedCutout
+      if patched {
+        guard let value=patch.exact(pts),old.stamp.agrees(with:value.stamp) else{throw IOSComparisonCutoutExportUnavailable()}
+        entry=value
+        if value.layer != nil{patchVisible+=1}
+      }else{entry=old}
+      let layer=try entry.layer.map{value->IOSComparisonCutoutLayer in
+        guard value.sourcePtsUs==pts,value.width==anchor.width,value.height==anchor.height else{throw IOSComparisonCutoutExportUnavailable()}
+        return IOSComparisonCutoutLayer(sourcePtsUs:pts,width:value.width,height:value.height,alpha:value.alpha,placement:anchor.placement)
+      }
+      try disk.add(pts,stamp:entry.stamp,layer:layer,placement:anchor.placement)
+    }
+    guard oldVisible==visibleCount,patchVisible==patch.visibleCount else{throw IOSComparisonCutoutExportUnavailable()}
+    try disk.seal(anchor:originalAnchor)
+    return Self(disk:disk,fingerprint:digest)
+  }
   func entry(at time: Int64) -> (Int64,IOSComparisonCachedCutout)? {
     guard let i = IOSComparisonTimeCore.frameIndex(times,time: time),
           let entry = exact(times[i]) else { return nil }

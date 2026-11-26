@@ -34,6 +34,39 @@ internal class ComparisonCutoutTrackCache private constructor(
     val frameCount:Int get()=disk?.frameCount ?: entries!!.size
     val visibleCount:Int get()=disk?.visibleCount ?: entries!!.values.count{it!=null}
     fun layer(ptsUs:Long):ComparisonCutoutLayer?=disk?.layer(ptsUs) ?: entries?.get(ptsUs)
+    /** Replace exactly the decoder-indexed samples in the confirmed patch.
+     * Missing patch observations explicitly replace old observations too.
+     * Keep the original placement anchor to avoid geometry jumps at seams. */
+    fun replacing(directory:java.io.File,patch:ComparisonCutoutTrackCache,expected:List<Long>,
+                  originalAnchor:Long,current:()->Boolean):ComparisonCutoutTrackCache {
+        val digest=requireNotNull(fingerprint)
+        require(patch.fingerprint==digest && patch.times==expected && expected.isNotEmpty())
+        val all=times
+        val start=all.binarySearch(expected.first())
+        require(start>=0 && start+expected.size<=all.size && all.subList(start,start+expected.size)==expected)
+        val anchor=requireNotNull(layer(originalAnchor))
+        val fixed=anchor.placement
+        val out=ComparisonCutoutDiskTrack(directory,all)
+        try {
+            var oldVisible=0;var patchVisible=0
+            for((i,pts) in all.withIndex()){
+                if(!current())throw CancellationException("Cutout repair cancelled")
+                val old=layer(pts)
+                if(old!=null)oldVisible++
+                val patched=i in start until start+expected.size
+                val selected=if(patched)patch.layer(pts) else old
+                if(patched && selected!=null)patchVisible++
+                val alpha=selected?.let {
+                    require(it.sourcePtsUs==pts && it.width==anchor.width && it.height==anchor.height)
+                    ByteBuffer.allocate(it.width*it.height).also(it::uploadTo).array()
+                }
+                out.add(pts,anchor.width,anchor.height,alpha,fixed)
+            }
+            require(oldVisible==visibleCount && patchVisible==patch.visibleCount)
+            out.seal(originalAnchor)
+            return ComparisonCutoutTrackCache(out,digest)
+        }catch(e:Throwable){out.close();throw e}
+    }
     fun retained()=ComparisonCutoutTrackCache(entries,disk?.retain(),fingerprint)
     private val released=java.util.concurrent.atomic.AtomicBoolean(false)
     override fun close(){if(released.compareAndSet(false,true))disk?.close()}
@@ -44,6 +77,14 @@ internal class ComparisonCutoutCache(val reference: ComparisonCutoutTrackCache,
     private val layout=java.util.concurrent.atomic.AtomicReference<ComparisonCanvasLayout?>(null)
     private val released=java.util.concurrent.atomic.AtomicBoolean(false)
     fun setLayout(value:ComparisonCanvasLayout?) = layout.getAndSet(value)
+    fun replacing(referenceRole:Boolean,directory:java.io.File,patch:ComparisonCutoutTrackCache,
+                  expected:List<Long>,anchor:Long,current:()->Boolean):ComparisonCutoutCache {
+        val replaced=(if(referenceRole)reference else target).replacing(directory,patch,expected,anchor,current)
+        try {
+            return (if(referenceRole)ComparisonCutoutCache(replaced,target.retained())
+                else ComparisonCutoutCache(reference.retained(),replaced)).also{it.setLayout(layout.get())}
+        }catch(e:Throwable){replaced.close();throw e}
+    }
     fun frame(referencePts: Long, targetPts: Long) =
         ComparisonCutoutFrame(reference.layer(referencePts),target.layer(targetPts),layout.get())
     fun frozen(): ComparisonCutoutCache = ComparisonCutoutCache(reference.retained(),target.retained()).also { it.setLayout(layout.get()) }

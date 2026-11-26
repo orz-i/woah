@@ -217,6 +217,22 @@ func cutoutSmoke(reference: URL, target: URL) async throws {
   }
   precondition(diskCache.exact(diskTimes[5])?.layer==nil)
   precondition(diskCache.exact(diskTimes[200]+1)==nil)
+  let patchTimes=Array(diskTimes[4..<9])
+  let patchStore=try IOSComparisonCutoutDiskTrack(times:patchTimes,directory:dir)
+  for pts in patchTimes {
+    try patchStore.add(pts,stamp:rStamp,layer:pts==diskTimes[6] ? nil :
+      mask(pts,Array(repeating:UInt8(99),count:16),a),placement:a)
+  }
+  try patchStore.seal(anchor:diskTimes[5])
+  let patch=IOSComparisonCutoutTrackCache(disk:patchStore,fingerprint:referenceDigest)
+  let merged=try diskCache.replacing(patch,expected:patchTimes,originalAnchor:diskTimes[200],current:{true})
+  precondition(merged.visibleCount==399 && merged.exact(diskTimes[5])?.layer?.alpha.first==99)
+  precondition(merged.exact(diskTimes[6])?.layer==nil && merged.exact(diskTimes[9])?.layer?.alpha.first==10)
+  precondition(diskCache.exact(diskTimes[5])?.layer==nil)
+  do { _=try diskCache.replacing(patch,expected:Array(patchTimes.dropFirst()),originalAnchor:diskTimes[200],current:{true})
+    preconditionFailure("accepted a non-exact patch") } catch {}
+  do { _=try diskCache.replacing(patch,expected:patchTimes,originalAnchor:diskTimes[200],current:{false})
+    preconditionFailure("accepted cancelled patch") } catch is CancellationError {}
   let spool=try IOSComparisonCutoutDisk(directory:dir,budget:100)
   let record=try spool.append(Data([1,2,3]))
   let decoded=try spool.read(record)

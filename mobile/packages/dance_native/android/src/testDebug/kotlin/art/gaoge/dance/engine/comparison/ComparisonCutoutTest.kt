@@ -254,4 +254,38 @@ class ComparisonCutoutTest {
             }
         }finally{dir.deleteRecursively()}
     }
+    @Test fun localPatchOnlyReplacesExactPtsAndPreservesPlacementAndOtherRole() {
+        val dir=java.nio.file.Files.createTempDirectory("cutout-repair-test").toFile()
+        val times=(0L..79L).map{it*33333}
+        val oldPlacement=ComparisonCutoutPlacement(FloatRect(.1f,.2f,.5f,.8f),.27,.88,.7,false)
+        val newPlacement=oldPlacement.copy(anchor=FloatRect(.2f,.1f,.6f,.9f))
+        fun layer(pts:Long,value:Int,placement:ComparisonCutoutPlacement=oldPlacement)=
+            ComparisonCutoutLayer(pts,2,2,byteArrayOf(value.toByte(),2,3,4),placement)
+        val original=ComparisonCutoutTrackCache(times.associateWith{if(it==times[35])null else layer(it,11)},"source")
+        val other=ComparisonCutoutTrackCache(times.associateWith{layer(it,17)},"other")
+        val selected=times.subList(30,40)
+        val patch=ComparisonCutoutTrackCache(selected.associateWith{
+            if(it==times[36])null else layer(it,99,newPlacement)
+        },"source")
+        val pair=ComparisonCutoutCache(original,other)
+        try {
+            pair.replacing(true,dir,patch,selected,times[0]){true}.use{updated->
+                assertEquals(79,updated.reference.visibleCount)
+                for(pts in times){
+                    val value=updated.reference.layer(pts)
+                    if(pts==times[36]){assertNull(value);continue}
+                    assertEquals(oldPlacement,value!!.placement)
+                    val buffer=ByteBuffer.allocate(4);value.uploadTo(buffer)
+                    assertEquals((if(pts in selected)99 else 11).toByte(),buffer.get())
+                    val t=ByteBuffer.allocate(4);updated.target.layer(pts)!!.uploadTo(t)
+                    assertEquals(17.toByte(),t.get())
+                }
+                assertNull(original.layer(times[35]))
+            }
+            assertFailsWith<IllegalArgumentException>{pair.replacing(true,dir,patch,selected.drop(1),times[0]){true}}
+            assertFailsWith<kotlinx.coroutines.CancellationException>{pair.replacing(true,dir,patch,selected,times[0]){false}}
+            assertEquals(79,original.visibleCount)
+            assertEquals(0,dir.listFiles()!!.size)
+        }finally{patch.close();pair.close();dir.deleteRecursively()}
+    }
 }

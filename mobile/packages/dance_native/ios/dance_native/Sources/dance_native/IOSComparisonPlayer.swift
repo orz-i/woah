@@ -77,6 +77,18 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
   private var archiveSaveTask:Task<Bool,Error>?
   private var archiveRestoreTask:Task<IOSComparisonCutoutRestored?,Error>?
   private var cutoutSelection:IOSComparisonCutoutSelection?
+  private struct Repair:Equatable,Sendable {
+    let reference:Bool
+    let window:Range<Int64>
+    let position:Int64
+  }
+  private var repair:Repair?
+  private func completedCutoutResult(_ playback:ComparisonPlaybackDto)throws->ComparisonCutoutResultDto{
+    guard let cache=cutoutCache else{throw IOSComparisonCutoutExportUnavailable()}
+    return ComparisonCutoutResultDto(playback:playback,referenceVisible:Int64(cache.reference.visibleCount),
+      referenceFrames:Int64(cache.reference.times.count),targetVisible:Int64(cache.target.visibleCount),
+      targetFrames:Int64(cache.target.times.count))
+  }
   private var archiving:Bool{archiveSaveTask != nil || archiveRestoreTask != nil}
   private func cancelArchive(){
     archiveSaveTask?.cancel();archiveRestoreTask?.cancel()
@@ -135,7 +147,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     let oldInspection=inspectionTask; oldInspection?.cancel()
     _ = try? await oldInspection?.value
     inspectionTask=nil;referenceInspection=nil;targetInspection=nil
-    cutoutTask = nil;partialWork=nil;cutoutCache = nil;cutoutWindow=nil;cutoutSelection=nil
+    cutoutTask = nil;partialWork=nil;cutoutCache = nil;cutoutWindow=nil;cutoutSelection=nil;repair=nil
     try validate(offsetUs: offsetUs, scale: timeScale, width: width, height: height, speed: speed)
     referenceIndexTask?.cancel(); targetIndexTask?.cancel()
     referenceIndex = nil; targetIndex = nil
@@ -160,6 +172,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
   func control(command: ComparisonCommand, valueUs: Int64, speed newSpeed: Double) async throws -> ComparisonPlaybackDto {
     try requireReady()
     guard (cutoutTask == nil && inspectionTask == nil && !archiving) || partialWork != nil || command == .pause else { throw failure("人物分析进行中") }
+    guard repair==nil || command == .pause else{throw failure("请先完成或取消局部纠错")}
     if command != .pause { referenceInspection=nil;targetInspection=nil }
     switch command {
     case .play:
@@ -201,7 +214,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
   func resize(width: Int, height: Int, sideBySide: Bool) async throws -> ComparisonPlaybackDto {
     try requireReady()
     guard var next = config else { throw failure("请先打开两段视频。") }
-    if partialWork != nil || archiving{return state()}
+    if partialWork != nil || archiving || repair != nil{return state()}
     try validate(offsetUs: next.offsetUs, scale: next.timeScale, width: width, height: height, speed: speed)
     if next.width == width && next.height == height && next.sideBySide == sideBySide { return state() }
     let position = positionUs(); let resume = wantsPlay
@@ -230,7 +243,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
 
   func stepFrame(forward: Bool) async throws -> ComparisonPlaybackDto {
     try requireReady()
-    guard (cutoutTask == nil && inspectionTask == nil && !archiving) || partialWork != nil else { throw failure("人物分析进行中") }
+    guard repair==nil,(cutoutTask == nil && inspectionTask == nil && !archiving) || partialWork != nil else { throw failure("人物分析进行中") }
     guard let composition, let index = referenceIndex else { throw failure("视频帧时间尚未就绪。") }
     let source = composition.referenceStartUs + positionUs()
     let next = index.adjacent(to: source, forward: forward,
@@ -243,7 +256,8 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
 
   func inspectCutout(reference: Bool,seed value: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutPreviewDto {
     try requireReady()
-    guard !hasCutout,foreground,!wantsPlay,let config,
+    guard (!hasCutout || (repair?.reference==reference && cutoutTask==nil && inspectionTask==nil && !archiving)),
+          foreground,!wantsPlay,let config,
           (reference ? presentedReferenceUs : presentedTargetUs)==value.sourcePtsUs else {
       throw failure("请暂停并等待画面就绪")
     }
@@ -340,6 +354,103 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     guard !closed,foreground,cutoutRevision==revision else{throw CancellationError()}
   }
 
+  func beginCutoutRepair(reference:Bool,startUs:Int64,endUs:Int64)async throws->ComparisonPlaybackDto{
+    try requireReady()
+    guard !closed,foreground,!wantsPlay,cutoutTask==nil,inspectionTask==nil,!archiving,!cutoutExportSuspended,
+      repair==nil,cutoutCache != nil,cutoutSelection != nil,let window=cutoutWindow,let config,
+      startUs>=window.lowerBound,endUs<=window.upperBound,endUs>startUs,endUs-startUs<=10_000_000,
+      (startUs..<endUs).contains(positionUs()) else{throw IOSComparisonCutoutExportUnavailable()}
+    let request=Repair(reference:reference,window:startUs..<endUs,position:positionUs())
+    cutoutRevision &+= 1;let revision=cutoutRevision
+    referenceInspection=nil;targetInspection=nil
+    repair=request
+    do{
+      let value=try await rebuild(config,positionUs:request.position,sourcePositionUs:nil,resume:false)
+      guard !closed,foreground,revision==cutoutRevision,repair==request else{throw CancellationError()}
+      return value
+    }catch{
+      if !closed,revision==cutoutRevision{
+        repair=nil;_=try? await rebuild(config,positionUs:request.position,sourcePositionUs:nil,resume:false)
+      }
+      throw error
+    }
+  }
+
+  func repairCutout(seed value:ComparisonCutoutSeedDto,projectId:String)async throws->ComparisonCutoutResultDto{
+    try requireReady()
+    guard !closed,foreground,!wantsPlay,cutoutTask==nil,inspectionTask==nil,!archiving,!cutoutExportSuspended,
+      let request=repair,let original=cutoutCache,let selection=cutoutSelection,let config,let composition,
+      let index=request.reference ? referenceIndex:targetIndex,
+      request.window.contains(positionUs()),
+      (request.reference ? presentedReferenceUs:presentedTargetUs)==value.sourcePtsUs else{
+      throw IOSComparisonCutoutExportUnavailable()
+    }
+    let seed=IOSComparisonCutoutSeed(ptsUs:value.sourcePtsUs,x:Float(value.x),y:Float(value.y))
+    guard let inspection=request.reference ? referenceInspection:targetInspection,inspection.seed==seed else{
+      throw IOSComparisonCutoutExportUnavailable()
+    }
+    let origin=composition.referenceStartUs,offset=config.offsetUs,scale=config.timeScale
+    let r=config.referenceURL,t=config.targetURL,url=request.reference ? r:t
+    let mirror=request.reference ? config.practice.mirrorTeacher:config.practice.mirrorLearner
+    func sourceTime(_ position:Int64)throws->Int64{
+      let us=origin+position
+      if request.reference{return us}
+      return IOSComparisonTimeCore.map(us,scale:scale,offset:offset)
+    }
+    let start=try sourceTime(request.window.lowerBound),end=try sourceTime(request.window.upperBound-1)
+    let previewStart=try sourceTime(max(request.window.lowerBound,positionUs()-500_000))
+    let previewEnd=try sourceTime(min(request.window.upperBound-1,positionUs()+499_999))
+    let oldTrack=request.reference ? original.reference:original.target
+    let expected=try IOSComparisonCutoutAnalysis.window(oldTrack.times,start:start,end:end,anchor:seed.ptsUs)
+    guard expected.count<=600 else{throw IOSComparisonCutoutExportUnavailable()}
+    let anchor=request.reference ? selection.reference.ptsUs:selection.target.ptsUs
+    cutoutRevision &+= 1;let revision=cutoutRevision
+    let task=Task.detached(priority:.userInitiated){()->IOSComparisonCutoutCache in
+      let work=try IOSComparisonCutoutAnalysis().begin(url:url,index:index,start:start,end:end,
+        firstPreview:previewStart,lastPreview:previewEnd,seed:seed,reference:request.reference,mirror:mirror,
+        inspection:inspection,isCancelled:{Task.isCancelled})
+      let patch=try work.finish()
+      guard patch.exact(seed.ptsUs)?.layer != nil else{throw IOSComparisonCutoutExportUnavailable()}
+      let merged=try oldTrack.replacing(patch,expected:expected,originalAnchor:anchor,current:{!Task.isCancelled})
+      try original.verifySources(referenceURL:r,targetURL:t,current:{!Task.isCancelled})
+      guard !Task.isCancelled else{throw CancellationError()}
+      try IOSComparisonCutoutArchive.forget(projectId)
+      return IOSComparisonCutoutCache(reference:request.reference ? merged:original.reference,
+        target:request.reference ? original.target:merged,referenceStartUs:original.referenceStartUs,
+        offsetUs:original.offsetUs,timeScale:original.timeScale,window:original.window,editedLayout:original.editedLayout)
+    }
+    cutoutTask=task
+    defer{if cutoutRevision==revision{cutoutTask=nil}}
+    let replacement=try await task.value
+    guard !closed,foreground,cutoutRevision==revision,repair==request else{throw CancellationError()}
+    cutoutCache=replacement;repair=nil
+    do{
+      let playback=try await rebuild(config,positionUs:request.position,sourcePositionUs:nil,resume:false)
+      guard !closed,foreground,cutoutRevision==revision else{throw CancellationError()}
+      referenceInspection=nil;targetInspection=nil
+      return try completedCutoutResult(playback)
+    }catch{
+      if !closed,cutoutRevision==revision {
+        cutoutCache=original;repair=request
+        _=try? await rebuild(config,positionUs:request.position,sourcePositionUs:nil,resume:false)
+      }
+      throw error
+    }
+  }
+
+  func cancelCutoutRepair()async throws->ComparisonCutoutResultDto{
+    guard let request=repair else{return try completedCutoutResult(state())}
+    guard let config else{throw IOSComparisonCutoutExportUnavailable()}
+    cutoutRevision &+= 1;let revision=cutoutRevision
+    let work=cutoutTask,inspect=inspectionTask
+    work?.cancel();inspect?.cancel()
+    _=try? await work?.value;_=try? await inspect?.value
+    guard !closed,revision==cutoutRevision,repair==request else{throw CancellationError()}
+    cutoutTask=nil;inspectionTask=nil;referenceInspection=nil;targetInspection=nil;repair=nil
+    let value=try await rebuild(config,positionUs:request.position,sourcePositionUs:nil,resume:false)
+    return try completedCutoutResult(value)
+  }
+
   nonisolated private static func archiveKey(reference:URL,target:URL,origin:Int64,offset:Int64,
     scale:Double,window:Range<Int64>,mirrorR:Bool,mirrorT:Bool,current:()->Bool)throws->IOSComparisonCutoutArchiveKey{
     guard let model=IOSModelResources.yoloModelURL(),let executable=Bundle.main.executableURL else{
@@ -354,7 +465,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
   }
 
   func saveCutout(projectId:String)async throws->Bool{
-    guard !closed,foreground,!archiving,cutoutTask==nil,!cutoutExportSuspended,
+    guard !closed,foreground,!archiving,cutoutTask==nil,!cutoutExportSuspended,repair==nil,
       let cache=cutoutCache,let window=cutoutWindow,let selection=cutoutSelection,let config else{
       throw IOSComparisonCutoutExportUnavailable()
     }
@@ -435,7 +546,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
 
   func setCutoutLayout(_ value: ComparisonCanvasLayoutDto) async throws -> ComparisonPlaybackDto {
     try requireReady()
-    guard foreground,!wantsPlay,cutoutTask==nil,inspectionTask==nil,!archiving,
+    guard foreground,!wantsPlay,cutoutTask==nil,inspectionTask==nil,!archiving,repair==nil,
       let old=cutoutCache,let config else { throw failure("请暂停画布后再调整") }
     let layout=try Self.canvasLayout(value)
     let position=positionUs()
@@ -459,7 +570,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
 
   func freezeCutoutExport(_ spec:IOSComparisonExportSpec) throws -> IOSComparisonCutoutCache {
     try requireReady()
-    guard foreground,!wantsPlay,cutoutTask==nil,inspectionTask==nil,!archiving,!cutoutExportSuspended,
+    guard foreground,!wantsPlay,cutoutTask==nil,inspectionTask==nil,!archiving,!cutoutExportSuspended,repair==nil,
       let cache=cutoutCache,let config,let window=cutoutWindow,spec.isCutout,cache.complete,
       window==(spec.startUs..<spec.endUs),spec.offsetUs==config.offsetUs,spec.timeScale==config.timeScale,
       try IOSComparisonFiles.resolve(spec.teacherURI)==config.referenceURL,
@@ -491,7 +602,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     inspectionTask=nil;referenceInspection=nil;targetInspection=nil
     cutoutTask = nil;partialWork=nil
     guard cutoutCache != nil else { return state() }
-    cutoutCache = nil;cutoutWindow=nil;cutoutSelection=nil;cutoutExportSuspended=false
+    cutoutCache = nil;cutoutWindow=nil;cutoutSelection=nil;repair=nil;cutoutExportSuspended=false
     guard !closed, let config else { return state() }
     return try await rebuild(config,positionUs: positionUs(),sourcePositionUs: nil,resume: false)
   }
@@ -515,7 +626,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     guard !closed else { return }
     pendingUs = positionUs(); closed = true; wantsPlay = false; ready = false
     generation &+= 1; seekRevision &+= 1
-    cutoutRevision &+= 1; cutoutTask?.cancel(); cutoutTask = nil;partialWork=nil; cutoutCache = nil;cutoutWindow=nil; inspectionTask?.cancel();inspectionTask=nil;referenceInspection=nil;targetInspection=nil
+    cutoutRevision &+= 1; cutoutTask?.cancel(); cutoutTask = nil;partialWork=nil; cutoutCache = nil;cutoutWindow=nil;repair=nil;cutoutSelection=nil; inspectionTask?.cancel();inspectionTask=nil;referenceInspection=nil;targetInspection=nil
     referenceIndexTask?.cancel(); targetIndexTask?.cancel()
     referenceIndexTask = nil; targetIndexTask = nil
     referenceIndex = nil; targetIndex = nil
@@ -544,7 +655,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     do {
       let built = try await IOSComparisonComposition.make(referenceURL: next.referenceURL, targetURL: next.targetURL,
         offsetUs: next.offsetUs, timeScale: next.timeScale, width: next.width, height: next.height,
-        gap: 8, sideBySide: next.sideBySide, practice: next.practice,cutout: cutoutCache)
+        gap: 8, sideBySide: next.sideBySide, practice: next.practice,cutout: repair==nil ? cutoutCache:nil)
       try check(current)
       if let oldStart = previousReferenceStartUs {
         next.practice = translatedPractice(next.practice, oldStart: oldStart, newStart: built.referenceStartUs, duration: built.durationUs)

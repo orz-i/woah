@@ -48,6 +48,7 @@ class _CutoutSmoke extends ChangeNotifier {
   static const cancelPartial = bool.fromEnvironment('WOAH_CUTOUT_CANCEL_QA');
   static const persistQa = bool.fromEnvironment('WOAH_CUTOUT_PERSIST_QA');
   static const realQa = bool.fromEnvironment('WOAH_CUTOUT_REAL_QA');
+  static const repairQa = bool.fromEnvironment('WOAH_CUTOUT_REPAIR_QA');
   final api = DanceComparisonApi();
   final previewKey = GlobalKey();
   String status = 'waiting';
@@ -1334,6 +1335,265 @@ class _CutoutSmoke extends ChangeNotifier {
     }
   }
 
+  Future<void> repairProbe() async {
+    final report = <String, Object?>{'finished': false, 'passed': false};
+    final file = File('${folder.path}/repair-report.json');
+    void save() => file.writeAsStringSync(jsonEncode(report), flush: true);
+    Future<ComparisonPlaybackDto> open(
+      String r,
+      String t,
+      int start,
+      int end,
+      int position,
+    ) async {
+      await host(api.close());
+      return ready(
+        await host(
+          api.open(
+            '${folder.path}/$r',
+            '${folder.path}/$t',
+            0,
+            position,
+            1,
+            320,
+            240,
+            true,
+            ComparisonPracticeDto(
+              mirrorTeacher: false,
+              mirrorLearner: false,
+              loopEnabled: true,
+              loopStartUs: start,
+              loopEndUs: end,
+            ),
+            1,
+          ),
+        ),
+      );
+    }
+
+    Future<ComparisonPlaybackDto> seek(int pts) async =>
+        ready(await host(api.control(ComparisonCommand.seek, pts, 1)));
+    ComparisonCutoutSeedDto seed(
+      ComparisonPlaybackDto s,
+      bool ref,
+      double x,
+      double y,
+    ) => ComparisonCutoutSeedDto(
+      sourcePtsUs: (ref ? s.teacherFrameUs : s.learnerFrameUs)!,
+      x: x,
+      y: y,
+    );
+    Future<ComparisonCutoutResultDto> prepare(
+      ComparisonPlaybackDto s,
+      double rx,
+      double ry,
+      double tx,
+      double ty,
+    ) async {
+      final r = seed(s, true, rx, ry), t = seed(s, false, tx, ty);
+      await inspect(true, r, 'repair-initial-r');
+      await inspect(false, t, 'repair-initial-t');
+      final value = await host(api.prepareCutout(r, t, null));
+      await ready(value.playback);
+      return value;
+    }
+
+    Future<String> picture(int us, String name) async {
+      await seek(us);
+      await capture(name);
+      return base64Encode(File('${folder.path}/$name.png').readAsBytesSync());
+    }
+
+    Future<ComparisonCutoutResultDto> repair(
+      bool ref,
+      int start,
+      int end,
+      int anchor,
+      double x,
+      double y,
+      String id,
+    ) async {
+      await seek(anchor);
+      final s = await ready(await host(api.beginCutoutRepair(ref, start, end)));
+      final selected = seed(s, ref, x, y);
+      await inspect(ref, selected, 'repair-selected-still');
+      final v = await host(api.repairCutout(selected, id));
+      await ready(v.playback);
+      return v;
+    }
+
+    try {
+      const id = 'qa_local_repair';
+      await host(api.forgetCutout(id));
+      final begin = await open(
+        'long-source.mp4',
+        'long-variant.mp4',
+        6000000,
+        9000000,
+        7000000,
+      );
+      final initial = await prepare(begin, .355, .855, .324, .86);
+      require(
+        initial.referenceVisible == 90 && initial.targetVisible == 90,
+        'Stable fixture not complete',
+      );
+      require(await host(api.saveCutout(id)), 'Initial archive save failed');
+      final left = await picture(7000000, 'repair-before-left');
+      final right = await picture(8800000, 'repair-before-right');
+      final inside = await picture(8000000, 'repair-before-inside');
+      var original = await ready(
+        await host(api.beginCutoutRepair(true, 7600000, 8400000)),
+      );
+      final s = seed(original, true, .355, .855);
+      await inspect(true, s, 'repair-cancel-still');
+      final cancelled = await host(api.cancelCutoutRepair());
+      await ready(cancelled.playback);
+      require(
+        cancelled.referenceVisible == 90 &&
+            cancelled.targetVisible == 90 &&
+            await picture(8000000, 'repair-cancelled') == inside,
+        'Cancel changed original canvas',
+      );
+      report['cancelPreserved'] = true;
+      save();
+      final watch = Stopwatch()..start();
+      final patched = await repair(
+        true,
+        7600000,
+        8400000,
+        8000000,
+        .355,
+        .855,
+        id,
+      );
+      report['patchElapsedMs'] = watch.elapsedMilliseconds;
+      require(
+        patched.referenceFrames == 90 &&
+            patched.targetFrames == 90 &&
+            patched.referenceVisible == 90 &&
+            patched.targetVisible == 90,
+        'Repair lost stable frames',
+      );
+      require(
+        await picture(7000000, 'repair-after-left') == left &&
+            await picture(8800000, 'repair-after-right') == right,
+        'Outside patch changed',
+      );
+      report['outsideIdentical'] = true;
+      require(await host(api.saveCutout(id)), 'Repaired archive save failed');
+      await open(
+        'long-source.mp4',
+        'long-variant.mp4',
+        6000000,
+        9000000,
+        8000000,
+      );
+      final restored = await host(api.restoreCutout(id, null));
+      require(
+        restored != null &&
+            restored.referenceVisible == 90 &&
+            restored.targetVisible == 90,
+        'Repaired archive not restorable',
+      );
+      await ready(restored!.playback);
+      require(
+        await picture(7000000, 'repair-restored-left') == left,
+        'Restored seam changed',
+      );
+      report['archiveRestored'] = true;
+      report['export'] = await exportCanvas(
+        'repair-restored',
+        'long-source.mp4',
+        'long-variant.mp4',
+        6000000,
+        9000000,
+      );
+      await host(api.forgetCutout(id));
+      save();
+
+      // Actual two-person visual correction. Temporarily insert the clearly
+      // distinct red-shirt spectator into a short interval in the QA canvas,
+      // then re-anchor the black-clad dancer at the identical PTS.
+      const realId = 'qa_real_local_repair';
+      await host(api.forgetCutout(realId));
+      final real = await open(
+        'real-reference.mp4',
+        'real-target.mp4',
+        2000000,
+        5000000,
+        3000000,
+      );
+      final realInitial = await prepare(real, .42, .29, .46, .56);
+      report['realInitial'] = [
+        realInitial.referenceVisible,
+        realInitial.targetVisible,
+      ];
+      final outside = await picture(3000000, 'repair-real-original-outside');
+      final before = await picture(4000000, 'repair-real-original-anchor');
+      final wrong = await repair(
+        true,
+        3800000,
+        4240000,
+        4000000,
+        .80,
+        .23,
+        realId,
+      );
+      final wrongImage = await picture(4000000, 'repair-real-wrong');
+      require(
+        wrongImage != before,
+        'Distinct-person patch did not change the canvas',
+      );
+      require(
+        await picture(3000000, 'repair-real-wrong-outside') == outside,
+        'Wrong patch escaped range',
+      );
+      final fixed = await repair(
+        true,
+        3800000,
+        4240000,
+        4000000,
+        .47,
+        .28,
+        realId,
+      );
+      final fixedImage = await picture(4000000, 'repair-real-corrected');
+      require(
+        fixedImage != wrongImage,
+        'Re-anchor did not change wrong person',
+      );
+      require(
+        await picture(3000000, 'repair-real-corrected-outside') == outside,
+        'Corrected patch escaped range',
+      );
+      require(
+        fixed.referenceFrames == realInitial.referenceFrames &&
+            fixed.targetFrames == realInitial.targetFrames &&
+            fixed.targetVisible == realInitial.targetVisible &&
+            wrong.targetVisible == realInitial.targetVisible,
+        'Other role changed',
+      );
+      report['realDistinctSubjectReplaced'] = true;
+      report['realOutsideIdentical'] = true;
+      report['realCorrectedMatchesOriginalAnchor'] = fixedImage == before;
+      report['realCoverageAfter'] = [
+        fixed.referenceVisible,
+        fixed.targetVisible,
+      ];
+      await host(api.forgetCutout(realId));
+      report['passed'] = true;
+    } catch (e) {
+      report['error'] = '$e';
+    } finally {
+      await host(api.close());
+      texture = null;
+      report['finished'] = true;
+      save();
+      status = 'repair-finished';
+      notifyListeners();
+    }
+  }
+
   Future<void> run() async {
     folder = Directory(
       '${Directory.systemTemp.parent.path}/Documents/comparison-cutout-fixtures',
@@ -1348,6 +1608,10 @@ class _CutoutSmoke extends ChangeNotifier {
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    if (repairQa) {
+      await repairProbe();
+      return;
     }
     if (realQa) {
       await realDanceProbe();

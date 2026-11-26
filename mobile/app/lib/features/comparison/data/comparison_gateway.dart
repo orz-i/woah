@@ -72,12 +72,26 @@ abstract interface class ComparisonSavedCutoutGateway {
   Future<void> forgetCutout(String projectId);
 }
 
+abstract interface class ComparisonRepairCutoutGateway {
+  Future<ComparisonPlaybackDto> beginCutoutRepair(
+    bool reference,
+    int startUs,
+    int endUs,
+  );
+  Future<ComparisonCutoutResultDto> repairCutout(
+    ComparisonCutoutSeedDto seed,
+    String projectId,
+  );
+  Future<ComparisonCutoutResultDto> cancelCutoutRepair();
+}
+
 class NativeComparisonGateway
     implements
         ComparisonGateway,
         ComparisonCutoutGateway,
         ComparisonProgressiveCutoutGateway,
-        ComparisonSavedCutoutGateway {
+        ComparisonSavedCutoutGateway,
+        ComparisonRepairCutoutGateway {
   final DanceComparisonApi _api;
   NativeComparisonGateway({DanceComparisonApi? api})
     : _api = api ?? DanceComparisonApi();
@@ -186,6 +200,20 @@ class NativeComparisonGateway
   ) => _api.prepareCutout(reference, target, layout);
   @override
   Future<ComparisonCutoutResultDto?> cutoutStatus() => _api.getCutoutStatus();
+  @override
+  Future<ComparisonPlaybackDto> beginCutoutRepair(
+    bool reference,
+    int startUs,
+    int endUs,
+  ) => _api.beginCutoutRepair(reference, startUs, endUs);
+  @override
+  Future<ComparisonCutoutResultDto> repairCutout(
+    ComparisonCutoutSeedDto seed,
+    String projectId,
+  ) => _api.repairCutout(seed, projectId);
+  @override
+  Future<ComparisonCutoutResultDto> cancelCutoutRepair() =>
+      _api.cancelCutoutRepair();
   @override
   Future<bool> saveCutout(String projectId) => _api.saveCutout(projectId);
   @override

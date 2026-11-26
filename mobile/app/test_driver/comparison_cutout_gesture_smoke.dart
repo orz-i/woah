@@ -397,6 +397,71 @@ Future<void> main() async {
     );
     await tap(byKey('comparison-canvas-done')!);
     await until(() => byText('退出画布') != null, 'Restored edit did not finish');
+    await until(
+      () =>
+          (byKey('comparison-cutout-repair')?.widget as IconButton?)
+              ?.onPressed !=
+          null,
+      'Repair button not ready',
+    );
+    // Native viewport is frozen at the pre-repair canvas geometry, just
+    // as it is when first entering person selection.
+    final repairStage = box(byKey('comparison-stage')!);
+    final repairRatio = math.min(
+      dpr,
+      1920 / math.max(repairStage.size.width, repairStage.size.height),
+    );
+    final repairW = (repairStage.size.width * repairRatio).round(),
+        repairH = (repairStage.size.height * repairRatio).round();
+    await tap(byKey('comparison-cutout-repair')!);
+    await until(
+      () => byKey('comparison-repair-enter') != null,
+      'Repair range dialog absent',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await tap(byKey('comparison-repair-enter')!);
+    await until(
+      () => byKey('comparison-cutout-gesture') != null,
+      'Repair selection absent',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    state = await api.getState();
+    await drag(true, repairW, repairH, state.teacherAspect!, .355, .855, false);
+    await until(
+      () =>
+          (byKey('comparison-repair-apply')?.widget as FilledButton?)
+              ?.onPressed !=
+          null,
+      'Repair selection not confirmed',
+    );
+    await tap(byKey('comparison-repair-apply')!);
+    await until(
+      () =>
+          byKey('comparison-cutout-timeline') != null &&
+          byKey('comparison-cutout-gesture') == null &&
+          (byKey('comparison-canvas-edit')?.widget as IconButton?)?.onPressed !=
+              null,
+      'Applied repair did not return to canvas',
+      seconds: 60,
+    );
+    report['repairedViaGesture'] = true;
+    report['repairedPixels'] = await capture(folder, 'gesture-repaired');
+    await tap(byKey('comparison-cutout-repair')!);
+    await until(
+      () => byKey('comparison-repair-enter') != null,
+      'Cancel repair range dialog absent',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await tap(byKey('comparison-repair-enter')!);
+    await until(() => byText('取消纠错') != null, 'Cancel repair selection absent');
+    await tap(byText('取消纠错')!);
+    await until(
+      () =>
+          byKey('comparison-cutout-timeline') != null &&
+          byKey('comparison-cutout-gesture') == null,
+      'Cancelled repair did not restore canvas',
+    );
+    report['cancelledRepairViaGesture'] = true;
     await tap(byText('退出画布')!);
     await until(
       () => byKey('comparison-picture-pane-teacher') != null,

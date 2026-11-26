@@ -125,6 +125,42 @@ class SavedCutoutGateway extends CutoutGateway
   }
 }
 
+class RepairCutoutGateway extends CutoutGateway
+    implements ComparisonRepairCutoutGateway {
+  (bool, int, int)? repairRequest;
+  int repairs = 0, repairCancels = 0;
+  bool failRepair = false;
+  Completer<ComparisonCutoutResultDto>? pendingRepair;
+  @override
+  Future<ComparisonPlaybackDto> beginCutoutRepair(
+    bool reference,
+    int startUs,
+    int endUs,
+  ) async {
+    repairRequest = (reference, startUs, endUs);
+    return current;
+  }
+
+  @override
+  Future<ComparisonCutoutResultDto> repairCutout(
+    ComparisonCutoutSeedDto seed,
+    String projectId,
+  ) async {
+    repairs++;
+    if (failRepair) throw StateError('Patch rejected');
+    if (pendingRepair != null) return pendingRepair!.future;
+    completeMasks = true;
+    return result();
+  }
+
+  @override
+  Future<ComparisonCutoutResultDto> cancelCutoutRepair() async {
+    repairCancels++;
+    repairRequest = null;
+    return result();
+  }
+}
+
 void main() {
   test(
     'inverse native pane geometry rejects letterbox and divider, handles mirror',
@@ -222,7 +258,7 @@ void main() {
   testWidgets('paired long presses publish preview and keep export isolated', (
     tester,
   ) async {
-    final gateway = CutoutGateway();
+    final gateway = RepairCutoutGateway();
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.darkTheme,
@@ -296,6 +332,34 @@ void main() {
     expect(gateway.edits.last.reference.x, .5);
     await tester.tap(find.byKey(const ValueKey('comparison-canvas-done')));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('comparison-cutout-repair')));
+    await tester.pumpAndSettle();
+    expect(find.text('局部纠错'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('comparison-repair-enter')));
+    await tester.pumpAndSettle();
+    expect(finder, findsOneWidget);
+    // Confirming a selected role is explicit, and no second role is required.
+    final repairRect = tester.getRect(finder);
+    final gestureRepair = await tester.startGesture(
+      Offset(repairRect.left + repairRect.width * .25, repairRect.center.dy),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
+    await gestureRepair.moveTo(repairRect.center);
+    await tester.pump();
+    await gestureRepair.up();
+    await tester.pumpAndSettle();
+    expect(gateway.repairs, 0);
+    final apply = find.byKey(const ValueKey('comparison-repair-apply'));
+    expect(tester.widget<FilledButton>(apply).onPressed, isNotNull);
+    await tester.tap(apply);
+    await tester.pumpAndSettle();
+    expect(gateway.repairs, 1);
+    expect(gateway.seeds.length, 2);
+    expect(
+      find.byKey(const ValueKey('comparison-cutout-timeline')),
+      findsOneWidget,
+    );
     await tester.tap(find.text('退出画布'));
     await tester.pumpAndSettle();
     expect(gateway.clears, 1);
@@ -483,6 +547,78 @@ void main() {
       await c.prepareCutout(a, b);
       expect(c.cutoutExportReady, isFalse);
       expect(await c.prepareExport(), isNull);
+      c.dispose();
+    },
+  );
+
+  test(
+    'local repair is single-role, bounded and commits without pair reanalysis',
+    () async {
+      final gateway = RepairCutoutGateway();
+      final c = ComparisonController(gateway);
+      c.setViewport(400, 600, false);
+      await c.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      final a = ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5);
+      final b = ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5);
+      expect(await c.beginCutout(), isTrue);
+      await c.prepareCutout(a, b);
+      final pos = c.playback!.positionUs;
+      final start = pos > 100000 ? pos - 100000 : 0;
+      final end = pos + 100001;
+      expect(await c.beginCutoutRepair(false, end, end + 1000), isFalse);
+      expect(await c.beginCutoutRepair(false, start, end), isTrue);
+      expect(c.cutoutRepairReference, isFalse);
+      expect(c.cutoutSelecting, isTrue);
+      expect(c.cutoutExportReady, isFalse);
+      expect(await c.inspectCutout(true, a), isNull);
+      expect(await c.inspectCutout(false, b), isNotNull);
+      gateway.failRepair = true;
+      expect(await c.applyCutoutRepair(b), isFalse);
+      expect(c.cutoutRepairing, isTrue);
+      gateway.failRepair = false;
+      expect(await c.applyCutoutRepair(b), isTrue);
+      expect(c.cutoutActive, isTrue);
+      expect(c.cutoutRepairing, isFalse);
+      expect(c.cutoutExportReady, isTrue);
+      expect(gateway.seeds.length, 2);
+      expect(gateway.repairs, 2);
+      c.dispose();
+    },
+  );
+
+  test(
+    'cancel local repair rejects late reply and restores original counts',
+    () async {
+      final gateway = RepairCutoutGateway()
+        ..pendingRepair = Completer<ComparisonCutoutResultDto>();
+      final c = ComparisonController(gateway);
+      c.setViewport(400, 600, false);
+      await c.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      final a = ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5);
+      final b = ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5);
+      expect(await c.beginCutout(), isTrue);
+      await c.prepareCutout(a, b);
+      final pos = c.playback!.positionUs;
+      expect(await c.beginCutoutRepair(false, pos, pos + 100001), isTrue);
+      final work = c.applyCutoutRepair(b);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await c.cancelCutoutRepair();
+      gateway.pendingRepair!.complete(
+        ComparisonCutoutResultDto(
+          playback: gateway.current,
+          referenceVisible: 30,
+          referenceFrames: 30,
+          targetVisible: 30,
+          targetFrames: 30,
+        ),
+      );
+      expect(await work, isFalse);
+      expect(c.cutoutActive, isTrue);
+      expect(c.cutoutResult!.targetVisible, 29);
+      expect(c.cutoutRepairing, isFalse);
+      expect(gateway.repairCancels, 1);
       c.dispose();
     },
   );

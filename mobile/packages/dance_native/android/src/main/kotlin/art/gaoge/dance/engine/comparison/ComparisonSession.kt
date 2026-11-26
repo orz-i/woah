@@ -79,6 +79,13 @@ internal class ComparisonSession(
     private var cutoutCache: ComparisonCutoutCache?=null
     private var cutoutWindow: ComparisonLoop?=null
     private var cutoutSelection:ComparisonCutoutSelection?=null
+    private data class Repair(val reference:Boolean,val window:ComparisonLoop,val position:Long)
+    private var repair:Repair?=null
+    private fun completedCutoutResult():ComparisonCutoutResultDto {
+        val cache=requireNotNull(cutoutCache)
+        return ComparisonCutoutResultDto(state(),cache.reference.visibleCount.toLong(),cache.reference.frameCount.toLong(),
+            cache.target.visibleCount.toLong(),cache.target.frameCount.toLong())
+    }
     private var cutoutOrigin:Long?=null
     private var cutoutExportSuspended=false
     private var cutoutPreparing=false
@@ -249,7 +256,7 @@ internal class ComparisonSession(
             initialMirrorTeacher=practice.mirrorTeacher,initialMirrorLearner=practice.mirrorLearner,
             initialTeacherPicture=ComparisonPicture.fromDto(practice.teacherPicture),
             initialLearnerPicture=ComparisonPicture.fromDto(practice.learnerPicture),
-            cutoutProvider=cutoutCache?.let { cache -> { r,t -> cache.frame(r,t) } })
+            cutoutProvider=cutoutCache?.takeIf{repair==null}?.let { cache -> { r,t -> cache.frame(r,t) } })
         engine!!.open(Uri.parse(teacherUri),Uri.parse(learnerUri))
     }
     private fun seek(valueUs: Long) {
@@ -267,6 +274,7 @@ internal class ComparisonSession(
     }
     fun control(command: ComparisonCommand,valueUs: Long,newSpeed: Double): ComparisonPlaybackDto {
         check(!closed && (!cutoutPreparing || partialWork!=null || command==ComparisonCommand.PAUSE)) { "人物分析进行中" }
+        check(repair==null || command==ComparisonCommand.PAUSE){"请先完成或取消局部纠错"}
         if(command!=ComparisonCommand.PAUSE)clearCutoutInspections()
         when (command) {
             ComparisonCommand.PLAY -> {
@@ -346,7 +354,7 @@ internal class ComparisonSession(
         return state()
     }
     suspend fun stepFrame(forward: Boolean): ComparisonPlaybackDto {
-        check(ready && pendingStep==null && (!cutoutPreparing || partialWork!=null)) { "请等待画面就绪" }
+        check(ready && pendingStep==null && repair==null && (!cutoutPreparing || partialWork!=null)) { "请等待画面就绪" }
         if(!hasCutout)clearCutoutInspections()
         val bounds=requireNotNull(range)
         val window=cutoutWindow
@@ -370,7 +378,7 @@ internal class ComparisonSession(
         }
     }
     suspend fun inspectCutout(reference: Boolean,value: ComparisonCutoutSeedDto): ComparisonCutoutPreviewDto {
-        check(!closed && ready && !hasCutout && foreground && !wantsPlay)
+        check(!closed && ready && (!hasCutout || (repair?.reference==reference && !cutoutPreparing)) && foreground && !wantsPlay)
         val pair=requireNotNull(engine?.presentedFrame)
         require((if(reference)pair.first else pair.second)==value.sourcePtsUs) { "选人画面已变化" }
         val seed=ComparisonCutoutSeed(value.sourcePtsUs,value.x.toFloat(),value.y.toFloat())
@@ -485,6 +493,99 @@ internal class ComparisonSession(
         }
     }
 
+    fun beginCutoutRepair(reference:Boolean,startUs:Long,endUs:Long):ComparisonPlaybackDto {
+        check(!closed && ready && foreground && !wantsPlay && !cutoutPreparing && !cutoutExportSuspended && repair==null)
+        requireNotNull(cutoutCache);requireNotNull(cutoutSelection)
+        val window=requireNotNull(cutoutWindow);val position=positionUs()
+        require(startUs>=window.startUs && endUs<=window.endUs && endUs>startUs &&
+            endUs-startUs<=10_000_000L && position in startUs until endUs)
+        clearCutoutInspections()
+        repair=Repair(reference,ComparisonLoop(startUs,endUs),position)
+        cutoutRevision.incrementAndGet()
+        pendingUs=position;wantsPlay=false
+        try{buildEngine()}catch(error:Throwable){repair=null;buildEngine();throw error}
+        return state()
+    }
+
+    suspend fun repairCutout(value:ComparisonCutoutSeedDto,projectId:String):ComparisonCutoutResultDto {
+        check(!closed && ready && foreground && !wantsPlay && !cutoutPreparing && !cutoutExportSuspended)
+        val request=requireNotNull(repair)
+        require(request.window.contains(positionUs()))
+        val pair=requireNotNull(engine?.presentedFrame)
+        require((if(request.reference)pair.first else pair.second)==value.sourcePtsUs)
+        val seed=ComparisonCutoutSeed(value.sourcePtsUs,value.x.toFloat(),value.y.toFloat())
+        val inspected=requireNotNull(if(request.reference)referenceInspection else targetInspection)
+        require(inspected.seed==seed)
+        val bounds=requireNotNull(range)
+        val original=requireNotNull(cutoutCache)
+        val selection=requireNotNull(cutoutSelection)
+        val description=requireNotNull(if(request.reference)a else b)
+        val uri=if(request.reference)teacherUri else learnerUri
+        val mirror=if(request.reference)practice.mirrorTeacher else practice.mirrorLearner
+        fun sourceTime(us:Long)=if(request.reference)bounds.teacherTimeUs(us) else bounds.learnerTimeUs(us)
+        val start=sourceTime(request.window.startUs);val end=sourceTime(request.window.endUs-1)
+        val oldTrack=if(request.reference)original.reference else original.target
+        val expected=ComparisonCutoutAnalysis.window(oldTrack.times,start,end,seed.ptsUs)
+        require(expected.size<=600)
+        val anchor=if(request.reference)selection.reference.ptsUs else selection.target.ptsUs
+        val previewStart=sourceTime(maxOf(request.window.startUs,positionUs()-500_000))
+        val previewEnd=sourceTime(minOf(request.window.endUs-1,positionUs()+499_999))
+        val frozen=original.frozen()
+        val revision=cutoutRevision.incrementAndGet()
+        val done=CompletableDeferred<Unit>();cutoutDone=done;cutoutPreparing=true
+        var pending:ComparisonCutoutCache?=null
+        var runtime=takeCutoutRuntime()
+        try {
+            val replacement=withContext(Dispatchers.Default){
+                val scope=currentCoroutineContext();val current={scope.isActive && cutoutRevision.get()==revision}
+                val segmenter=runtime ?: newCutoutRuntime().also{runtime=it}
+                try {
+                    initializeCutoutRuntime(segmenter)
+                    ComparisonCutoutAnalysis(context).begin(uri,description,start,end,previewStart,previewEnd,
+                        seed,request.reference,mirror,segmenter,current,inspected).use{work->
+                        work.finish().use{patch->
+                            require(patch.layer(seed.ptsUs)!=null)
+                            frozen.replacing(request.reference,context.cacheDir,patch,expected,anchor,current).also{pending=it}
+                        }
+                    }
+                }finally{runtime=null;segmenter.close()}
+                require(ComparisonCutoutFingerprint.read(context,teacherUri,current)==frozen.reference.fingerprint &&
+                    ComparisonCutoutFingerprint.read(context,learnerUri,current)==frozen.target.fingerprint)
+                check(current())
+                // Invalidate the old persisted canvas before exposing the new one.
+                archive().forget(projectId)
+                requireNotNull(pending)
+            }
+            check(!closed && foreground && cutoutRevision.get()==revision && repair==request && cutoutCache===original)
+            repair=null;cutoutCache=replacement;pending=null
+            pendingUs=request.position;wantsPlay=false
+            try{buildEngine()}catch(e:Throwable){
+                cutoutCache=original;repair=request
+                try{buildEngine()}finally{replacement.close()}
+                throw e
+            }
+            original.close();clearCutoutInspections()
+            return completedCutoutResult()
+        }finally {
+            runtime?.close();pending?.close();frozen.close()
+            if(cutoutDone===done){cutoutDone=null;cutoutPreparing=false}
+            done.complete(Unit)
+        }
+    }
+
+    suspend fun cancelCutoutRepair():ComparisonCutoutResultDto {
+        // If publication won the race, return the committed cache rather
+        // than resurrecting the old cache or reporting a false rollback.
+        val request=repair ?: return completedCutoutResult()
+        val revision=cutoutRevision.incrementAndGet()
+        cutoutDone?.await()
+        check(!closed && cutoutRevision.get()==revision && repair==request)
+        repair=null;clearCutoutInspections()
+        pendingUs=request.position;wantsPlay=false
+        buildEngine()
+        return completedCutoutResult()
+    }
+
     private fun archive()=ComparisonCutoutArchive(java.io.File(context.cacheDir,"comparison-cutout-v1"),context.cacheDir)
     private fun archiveKey(origin:Long,offset:Long,scale:Double,window:ComparisonLoop,
                            mirrorR:Boolean,mirrorT:Boolean,current:()->Boolean)=ComparisonCutoutArchiveKey(
@@ -493,7 +594,7 @@ internal class ComparisonSession(
         ComparisonCutoutFingerprint.read(context,learnerUri,current),
         ComparisonCutoutArchive.modelDigest(context,current))
     suspend fun saveCutout(projectId:String):Boolean {
-        check(!closed && foreground && !cutoutPreparing && !cutoutExportSuspended)
+        check(!closed && foreground && !cutoutPreparing && !cutoutExportSuspended && repair==null)
         val active=requireNotNull(cutoutCache)
         // A missing mask is not silently promoted into an archived selection.
         if(active.reference.visibleCount!=active.reference.frameCount ||
@@ -569,7 +670,7 @@ internal class ComparisonSession(
     }
 
     suspend fun setCutoutLayout(layout: ComparisonCanvasLayoutDto): ComparisonPlaybackDto {
-        check(!closed && ready && !cutoutPreparing && foreground && !wantsPlay)
+        check(!closed && ready && !cutoutPreparing && foreground && !wantsPlay && repair==null)
         val cache=requireNotNull(cutoutCache)
         val renderer=requireNotNull(engine)
         val value=ComparisonCanvasLayout.fromDto(layout)
@@ -598,7 +699,7 @@ internal class ComparisonSession(
     }
 
     fun freezeCutoutExport(spec:ComparisonExportSpec):ComparisonCutoutExportSnapshot {
-        check(!closed && ready && !wantsPlay && !cutoutPreparing && !cutoutExportSuspended)
+        check(!closed && ready && !wantsPlay && !cutoutPreparing && !cutoutExportSuspended && repair==null)
         val cache=requireNotNull(cutoutCache)
         val bounds=requireNotNull(range)
         val window=requireNotNull(cutoutWindow)
@@ -629,7 +730,7 @@ internal class ComparisonSession(
         clearCutoutInspections()
         if(cutoutCache!=null) {
             pendingUs=positionUs();wantsPlay=false;pauseClock()
-            val old=cutoutCache;cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;cutoutExportSuspended=false
+            val old=cutoutCache;cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;repair=null;cutoutExportSuspended=false
             try { buildEngine() } finally { old?.close() }
         }
         return state()
@@ -637,7 +738,7 @@ internal class ComparisonSession(
 
     fun resize(newWidth: Int,newHeight: Int,sideBySide: Boolean): ComparisonPlaybackDto {
         require(newWidth in 2..4096 && newHeight in 2..4096)
-        if(cutoutExportSuspended || partialWork!=null) return state()
+        if(cutoutExportSuspended || partialWork!=null || repair!=null) return state()
         if (width==newWidth && height==newHeight) {
             if (horizontal!=sideBySide) {
                 horizontal=sideBySide
@@ -680,7 +781,7 @@ internal class ComparisonSession(
         if (closed) return
         pendingUs=positionUs();wantsPlay=false;pauseClock();closed=true
         val old=cutoutCache
-        cutoutRevision.incrementAndGet();cutoutPreparing=false;partialWork=null;cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;clearCutoutInspections()
+        cutoutRevision.incrementAndGet();cutoutPreparing=false;partialWork=null;cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;repair=null;clearCutoutInspections()
         choreographer.removeFrameCallback(frames)
         try {releaseEngine();producer.setCallback(null);producer.release()} finally {old?.close()}
     }

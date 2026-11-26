@@ -1317,3 +1317,113 @@ The independent development clips still have gaps, and neither
 continuous identity ground truth nor independent held-out quality
 acceptance has been established. Keep GPU opt-in and draft/Debug
 restrictions. C2 is a shared-core migration, not a release acceptance.
+
+### C2 follow-up: completed CPU evidence
+
+The previously outstanding Android CPU instrumented run also finished:
+659/750 Breaking and 533/750 Vogue output masks, 227.266s full analysis.
+Longest missing runs 0.320s / 2.560s, selected-point checks 8/10 each,
+original distractor hits 0/10 each. The 18s, 20s and supplemental 27s
+Breaking checkpoints hit the selected dancer, and the annotated white-shirt
+spectator was rejected on **both** CPU and GPU. This does not establish
+correct identity throughout all frames.
+
+## Stage C3: explicit local subject correction
+
+The completed experimental canvas exposes a local repair action next to
+the canvas editor/export actions. Pause/seek the canvas to the frame where
+the user can confidently identify the desired subject; select reference
+or target and a comparison-time interval containing that position. The
+native player temporarily renders the original pair, preserving the
+existing cache; only the chosen role accepts long-press selection. The
+user inspects the extracted still and explicitly confirms before inference.
+
+The first implementation allows a single role and interval (at most 10s
+and 600 source samples). Native translates the interval through the same
+affine music mapping and enumerates the exact source PTS, including the
+predecessor sample covering the left boundary if it falls between frames.
+This is frame-boundary replacement, not a sub-frame splice.
+The existing shared Tracker runs with the newly confirmed anchor only
+in that interval; no automatic reseeding or third tracking implementation.
+The original geometry anchor remains fixed to avoid resizing/repositioning
+at the splice; if the initial global selection is wrong, use clear/reselect.
+After inference, replace the interval's exact PTS records in a new
+anonymous bounded store, leaving the other role and outside records
+unchanged. Missing new observations replace old ones explicitly, not
+via stale-mask fallback. The original seed frame must still be present
+for cache sealing. Reconstruction copies the selected role's cache
+records but does not rerun inference outside the repair interval.
+
+The old cache remains available until the replacement is validated.
+Validate the subset of exact PTS, dimensions, source fingerprint and
+record counts, and iOS source stamp agreement. Recheck both source
+fingerprints before publication. Only the latest valid session may
+publish. During correction, ordinary playback seek/step, resize, canvas
+editing, archive save and cutout export are blocked. Cancel before
+publication returns the old cache; the native commit is atomic, so a
+cancel after commit returns the new canvas. Failure leaves the original
+cache available. The old durable archive is invalidated before publishing
+the patch (a cancellation racing that point may require saving again);
+the controller saves a new archive only when both tracks are complete.
+No separate correction history/undo or portable correction recipe is
+persisted. Any remaining missing frames continue to block strict export.
+No privacy tracker or inference backend policy changed.
+
+### Device evidence
+
+Both native Debug apps ran `WOAH_CUTOUT_REPAIR_QA=true`:
+
+| Metric | OnePlus 8T Android 14 | iOS 17 simulator |
+| --- | ---: | ---: |
+| Source window | [6,9)s, 90 frames per role | [6,9)s, 90 frames per role |
+| Repaired reference range | [7.6,8.4)s, 24 frames | [7.6,8.4)s, 24 frames |
+| Repair incl. inspection/cache publication | 5.254s | 2.321s |
+| Repaired full-window coverage | 90/90 + 90/90 | 90/90 + 90/90 |
+| Export elapsed after reopening archive | 4.100s | 1.450s |
+| Output | 320x240, 90 H.264 frames, 3.000s | 320x240, 90 H.264 frames, 3.000s |
+
+Cancellation before applying was pixel-identical; sampled outside patch
+frames at 7.0s and 8.8s are pixel-identical before/after, and reopening
+the saved patched cache preserves the seam sample. Independent FFmpeg
+verification of the actual exported files confirmed 90 frame timestamps,
+440 Hz reference tone, 3.000s duration and preview/export MAE 0.744–0.809
+(Android) / 0.937–1.039 (iOS). Android published MediaStore bytes equal
+the local MP4. iOS export is simulator local-file evidence, not Photos.
+
+The second probe used the independent real B5 clips at [2,5)s, seed 3s.
+It intentionally selected a red-shirt spectator for [3.8,4.24)s, then
+selected the original black-clad dancer at 4s with an explicit fresh
+anchor. Both platforms produced a different wrong-person image and then
+the corrected anchor exactly matched the original correct anchor; the
+sample outside patch at 3s remained byte-identical throughout. Reference
+75/75, target 27/75 Android and 30/75 iOS remained unchanged after
+correction. This proves a deliberate local replacement, not autonomous
+recovery from every real tracking failure; the real pair is incomplete
+and no full real-pair export is claimed.
+
+Flutter comparison suite 139 passed including two new controller tests;
+the targeted actual-widget repair interaction passed, including explicit
+confirmation and no pair reanalysis. Android focused JNI/JVM 28 passed
+including exact patch/cancel/other-role/placement invariants. macOS
+comparison host regression passed including patch roundtrip and cancellation.
+Pigeon regeneration reproducible and scoped Flutter analyzer clean.
+Physical iPhone, long independent holdouts, dense identity/edge quality,
+automatic gap navigation and post-commit undo remain outstanding.
+
+Reproduce with the prior QA fixture staging plus the two B5 sources named
+real-reference.mp4 / real-target.mp4. Build the existing cutout smoke
+entry with `--dart-define=WOAH_CUTOUT_REPAIR_QA=true`. Pull only its
+repair-* QA outputs and, on Android, the published file as repair-published.mp4.
+```sh
+python3 tools/comparison/verify_cutout_export.py /path/to/results --platform android --repair
+python3 tools/comparison/verify_cutout_export.py /path/to/results --platform ios --repair
+```
+No source videos or screenshots committed. The QA exported video remains
+in the isolated test app/MediaStore. No existing user media was modified.
+
+The real Flutter gesture smoke passed on both platforms after reentry
+from the saved canvas: range dialog, correct role's drag, explicit
+repair confirmation, preview restored, a second repair cancelled, then
+ordinary exit and explicit clear/reselect. The controller test also
+covers a late correction reply after cancellation; actual device
+cancel was exercised before applying, not during active model inference.

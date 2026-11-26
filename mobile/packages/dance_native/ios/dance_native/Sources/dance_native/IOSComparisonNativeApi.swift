@@ -148,6 +148,33 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
     return nil
     #endif
   }
+  func beginCutoutRepair(reference:Bool,startUs:Int64,endUs:Int64)async throws->ComparisonPlaybackDto{
+    do{
+      #if DEBUG
+      return try await requirePlayer().beginCutoutRepair(reference:reference,startUs:startUs,endUs:endUs)
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    }catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func repairCutout(seed:ComparisonCutoutSeedDto,projectId:String)async throws->ComparisonCutoutResultDto{
+    do{
+      #if DEBUG
+      return try await requirePlayer().repairCutout(seed:seed,projectId:projectId)
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    }catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func cancelCutoutRepair()async throws->ComparisonCutoutResultDto{
+    do{
+      #if DEBUG
+      return try await requirePlayer().cancelCutoutRepair()
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    }catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
   func saveCutout(projectId:String)async throws->Bool{
     do{
       #if DEBUG

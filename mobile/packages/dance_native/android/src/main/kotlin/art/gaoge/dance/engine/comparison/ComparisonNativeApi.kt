@@ -171,6 +171,18 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
         check(art.gaoge.dance.engine.BuildConfig.DEBUG)
         return session?.cutoutStatus()
     }
+    override suspend fun beginCutoutRepair(reference:Boolean,startUs:Long,endUs:Long):ComparisonPlaybackDto{
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).beginCutoutRepair(reference,startUs,endUs)
+    }
+    override suspend fun repairCutout(seed:ComparisonCutoutSeedDto,projectId:String):ComparisonCutoutResultDto{
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).repairCutout(seed,projectId)
+    }
+    override suspend fun cancelCutoutRepair():ComparisonCutoutResultDto{
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).cancelCutoutRepair()
+    }
     override suspend fun saveCutout(projectId:String):Boolean {
         check(art.gaoge.dance.engine.BuildConfig.DEBUG)
         return requireNotNull(session).saveCutout(projectId)

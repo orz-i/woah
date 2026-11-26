@@ -33,6 +33,11 @@ class ComparisonController extends ChangeNotifier {
   bool cutoutAnalysisPending = false;
   bool cutoutRestored = false, cutoutArchived = false;
   bool cutoutRestoring = false, cutoutSaving = false;
+  bool? cutoutRepairReference;
+  (int, int)? cutoutRepairRange;
+  bool get supportsCutoutRepair =>
+      supportsCutout && gateway is ComparisonRepairCutoutGateway;
+  bool get cutoutRepairing => cutoutRepairReference != null;
   bool get supportsSavedCutout =>
       supportsCutout && gateway is ComparisonSavedCutoutGateway;
   bool get cutoutPartial => cutoutResult?.analyzing == true;
@@ -153,6 +158,8 @@ class ComparisonController extends ChangeNotifier {
     cutoutArchived = false;
     cutoutRestoring = false;
     cutoutSaving = false;
+    cutoutRepairReference = null;
+    cutoutRepairRange = null;
     _awaitingCanvasViewport = false;
   }
 
@@ -1046,12 +1053,208 @@ class ComparisonController extends ChangeNotifier {
     return true;
   }
 
+  // Selection mode suspends normal polling. Wait for the actual native
+  // presented source after a rebuild, not an old cached PTS.
+  Future<ComparisonPlaybackDto> _repairReady(
+    ComparisonPlaybackDto value,
+    int request,
+  ) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 15));
+    var state = value;
+    while (state.phase != 'paused' ||
+        state.teacherFrameUs == null ||
+        state.learnerFrameUs == null) {
+      if (_closed ||
+          request != _cutoutRequest ||
+          DateTime.now().isAfter(deadline) ||
+          state.phase == 'error' ||
+          state.phase == 'closed') {
+        throw StateError('Repair viewport unavailable');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      if (_closed || request != _cutoutRequest) {
+        throw StateError('Repair cancelled');
+      }
+      state = await gateway.state();
+    }
+    return state;
+  }
+
+  Future<bool> beginCutoutRepair(bool reference, int start, int end) async {
+    if (!supportsCutoutRepair || !canEditCanvas || cutoutRepairing) {
+      return false;
+    }
+    final window = cutoutPlayableRange ?? (0, playback!.durationUs);
+    final position = playback!.positionUs;
+    if (start < window.$1 ||
+        end > window.$2 ||
+        end <= start ||
+        end - start > 10000000 ||
+        position < start ||
+        position >= end) {
+      return false;
+    }
+    final request = ++_cutoutRequest;
+    final original = cutoutResult!;
+    cutoutPreparing = true;
+    error = null;
+    _notify();
+    final repairGateway = gateway as ComparisonRepairCutoutGateway;
+    var nativeEntered = false;
+    try {
+      if (!await _control(ComparisonCommand.pause, 0) ||
+          _closed ||
+          request != _cutoutRequest) {
+        return false;
+      }
+      final state = await repairGateway.beginCutoutRepair(
+        reference,
+        start,
+        end,
+      );
+      nativeEntered = true;
+      if (_closed || request != _cutoutRequest) return false;
+      cutoutRepairReference = reference;
+      cutoutRepairRange = (start, end);
+      playback = await _repairReady(state, request);
+      if (_closed || request != _cutoutRequest) return false;
+      cutoutResult = null;
+      cutoutSelecting = true;
+      _awaitingCanvasViewport = false;
+      return true;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) {
+        if (nativeEntered) {
+          try {
+            final restored = await repairGateway.cancelCutoutRepair();
+            if (!_closed && request == _cutoutRequest) {
+              playback = restored.playback;
+            }
+          } catch (_) {}
+        }
+        if (!_closed && request == _cutoutRequest) {
+          cutoutResult = original;
+          cutoutRepairReference = null;
+          cutoutRepairRange = null;
+          error = '无法打开局部纠错，请在画面稳定后重试。';
+        }
+      }
+      return false;
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutPreparing = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<bool> applyCutoutRepair(ComparisonCutoutSeedDto seed) async {
+    if (_closed ||
+        !cutoutRepairing ||
+        !cutoutSelecting ||
+        cutoutPreparing ||
+        cutoutInspecting ||
+        (cutoutRepairReference!
+                ? playback?.teacherFrameUs
+                : playback?.learnerFrameUs) !=
+            seed.sourcePtsUs) {
+      return false;
+    }
+    final request = ++_cutoutRequest;
+    cutoutPreparing = true;
+    error = null;
+    _notify();
+    try {
+      final result = await (gateway as ComparisonRepairCutoutGateway)
+          .repairCutout(seed, project.id);
+      if (_closed || request != _cutoutRequest) return false;
+      cutoutArchived = false;
+      cutoutRestored = false;
+      // Atomic native commit has completed; only readiness/persistence remain.
+      cutoutRepairReference = null;
+      cutoutRepairRange = null;
+      cutoutSelecting = false;
+      cutoutResult = result;
+      playback = result.playback;
+      _awaitingCanvasViewport = true;
+      if (result.referenceVisible == result.referenceFrames &&
+          result.targetVisible == result.targetFrames &&
+          result.referenceFrames > 0 &&
+          result.targetFrames > 0 &&
+          gateway is ComparisonSavedCutoutGateway) {
+        cutoutSaving = true;
+        _notify();
+        try {
+          final saved = await (gateway as ComparisonSavedCutoutGateway)
+              .saveCutout(project.id);
+          if (_closed || request != _cutoutRequest) return false;
+          cutoutArchived = saved;
+          if (!saved) error = '已应用局部纠错，但本次缓存未保存。';
+        } catch (_) {
+          if (!_closed && request == _cutoutRequest) {
+            error = '已应用局部纠错，但本次缓存未保存。';
+          }
+        }
+      }
+      if (_closed || request != _cutoutRequest) return false;
+      try {
+        final state = await gateway.state();
+        if (_closed || request != _cutoutRequest) return false;
+        playback = state;
+      } catch (_) {}
+      if (_closed || request != _cutoutRequest) return false;
+      message = '已应用局部纠错；请检查修复后的区间及边界。';
+      return true;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) {
+        error = '局部纠错未完成，原画布保留。请重新确认或取消。';
+      }
+      return false;
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutPreparing = false;
+        cutoutSaving = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<void> cancelCutoutRepair() async {
+    if (_closed || !cutoutRepairing) return;
+    final request = ++_cutoutRequest;
+    cutoutPreparing = true;
+    _notify();
+    try {
+      final restored = await (gateway as ComparisonRepairCutoutGateway)
+          .cancelCutoutRepair();
+      if (_closed || request != _cutoutRequest) return;
+      cutoutResult = restored;
+      playback = restored.playback;
+      cutoutRepairReference = null;
+      cutoutRepairRange = null;
+      cutoutSelecting = false;
+      cutoutInspecting = false;
+      cutoutArchived = false;
+      _awaitingCanvasViewport = true;
+      error = null;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) error = '无法返回画布，请重试取消。';
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutPreparing = false;
+        cutoutInspecting = false;
+        _notify();
+      }
+    }
+  }
+
   Future<ComparisonCutoutPreviewDto?> inspectCutout(
     bool reference,
     ComparisonCutoutSeedDto seed,
   ) async {
     if (_closed ||
         !cutoutSelecting ||
+        (cutoutRepairing && cutoutRepairReference != reference) ||
         cutoutPreparing ||
         cutoutInspecting ||
         (reference ? playback?.teacherFrameUs : playback?.learnerFrameUs) !=
@@ -1097,6 +1300,7 @@ class ComparisonController extends ChangeNotifier {
   ) async {
     if (_closed ||
         !cutoutSelecting ||
+        cutoutRepairing ||
         cutoutPreparing ||
         cutoutInspecting ||
         playback?.teacherFrameUs != reference.sourcePtsUs ||
@@ -1245,6 +1449,8 @@ class ComparisonController extends ChangeNotifier {
     cutoutArchived = false;
     cutoutRestoring = false;
     cutoutSaving = false;
+    cutoutRepairReference = null;
+    cutoutRepairRange = null;
     _awaitingCanvasViewport = false;
     final needsNative =
         cutoutSelecting || cutoutPreparing || cutoutInspecting || cutoutActive;

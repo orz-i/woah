@@ -1030,7 +1030,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       _cancelCutoutDrag();
     });
     final a = _cutoutReference, b = _cutoutTarget;
-    if (a != null && b != null) unawaited(controller.prepareCutout(a, b));
+    if (!controller.cutoutRepairing && a != null && b != null) {
+      unawaited(controller.prepareCutout(a, b));
+    }
   }
 
   Widget _subjectStill(
@@ -1069,6 +1071,101 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     }
   }
 
+  Future<void> _beginCutoutRepair() async {
+    if (!controller.canEditCanvas) return;
+    await controller.pause();
+    if (!mounted || !controller.canEditCanvas) return;
+    final position = controller.playback!.positionUs;
+    final full =
+        controller.cutoutPlayableRange ?? (0, controller.playback!.durationUs);
+    final low = math.max(full.$1, position - 10000000);
+    final high = math.min(full.$2, position + 10000001);
+    if (high <= low) return;
+    bool reference = true;
+    var selected = RangeValues(
+      math.max(low, position - 1000000).toDouble(),
+      math.min(high, position + 1000001).toDouble(),
+    );
+    final choice = await showDialog<(bool, int, int)>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, update) {
+          final start = selected.start.round(), end = selected.end.round();
+          final valid =
+              start <= position &&
+              position < end &&
+              end - start <= 10000000 &&
+              end > start;
+          return AlertDialog(
+            title: const Text('局部纠错'),
+            scrollable: true,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('选择需要修复的人物和时间段，再在当前原视频画面中确认正确人物。只替换该角色在选段中的分析结果。'),
+                const SizedBox(height: 12),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: true, label: Text('参考')),
+                    ButtonSegment(value: false, label: Text('目标')),
+                  ],
+                  selected: {reference},
+                  onSelectionChanged: (v) => update(() => reference = v.first),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '修复 ${(start / 1e6).toStringAsFixed(2)}s – ${(end / 1e6).toStringAsFixed(2)}s',
+                ),
+                RangeSlider(
+                  key: const ValueKey('comparison-repair-range'),
+                  values: selected,
+                  min: low.toDouble(),
+                  max: high.toDouble(),
+                  onChanged: (value) => update(() => selected = value),
+                ),
+                Text(
+                  '确认点 ${(position / 1e6).toStringAsFixed(2)}s · 选段需包含确认点，最多10秒',
+                ),
+                const SizedBox(height: 6),
+                const Text('缺失仍会隐藏，不使用旧 Mask 填充。应用后请检查人物是否正确。'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                key: const ValueKey('comparison-repair-enter'),
+                onPressed: valid
+                    ? () => Navigator.pop(context, (reference, start, end))
+                    : null,
+                child: const Text('确认选段'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (!mounted || choice == null) return;
+    setState(() {
+      _resetCutoutSeeds();
+      _cutoutStarting = true;
+    });
+    await controller.beginCutoutRepair(choice.$1, choice.$2, choice.$3);
+    if (mounted) setState(() => _cutoutStarting = false);
+  }
+
+  Future<void> _applyCutoutRepair() async {
+    final role = controller.cutoutRepairReference;
+    if (role == null) return;
+    final seed = role ? _cutoutReference : _cutoutTarget;
+    if (seed == null) return;
+    final applied = await controller.applyCutoutRepair(seed);
+    if (mounted && applied) setState(_resetCutoutSeeds);
+  }
+
   Future<void> _exitCutout() async {
     if (controller.cutoutApplying || _canvasEntering || controller.exporting) {
       return;
@@ -1081,7 +1178,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         _canvasFocal = null;
       });
     }
-    await controller.exitCutout();
+    if (controller.cutoutRepairing) {
+      await controller.cancelCutoutRepair();
+    } else {
+      await controller.exitCutout();
+    }
   }
 
   Widget _cutoutControls() {
@@ -1099,21 +1200,27 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 : controller.cutoutSaving
                 ? '正在保存画布缓存…'
                 : controller.cutoutPreparing
-                ? '正在分析参考与目标人物…'
+                ? (controller.cutoutRepairing ? '正在局部重新分析…' : '正在分析参考与目标人物…')
                 : controller.cutoutInspecting
                 ? '正在提取所选人物…'
+                : controller.cutoutRepairing
+                ? '长按${controller.cutoutRepairReference! ? '参考' : '目标'}视频中的正确人物，拖入画布后确认。'
                 : '长按人物身体中央，拖入中间的画布。',
             maxLines: 2,
           ),
           const SizedBox(height: 6),
           Text(
-            controller.cutoutPracticeRange == null
+            controller.cutoutRepairing
+                ? '修复 ${(controller.cutoutRepairRange!.$1 / 1e6).toStringAsFixed(2)}s – ${(controller.cutoutRepairRange!.$2 / 1e6).toStringAsFixed(2)}s，其他帧不变'
+                : controller.cutoutPracticeRange == null
                 ? '分析共同区间；较长视频请先启用 A/B 选段。'
                 : '仅分析当前 A/B 选段',
             style: const TextStyle(fontSize: 12),
           ),
           Text(
-            '参考：${reference ? '已加入' : '未选择'}   目标：${target ? '已加入' : '未选择'}',
+            controller.cutoutRepairing
+                ? '${controller.cutoutRepairReference! ? '参考' : '目标'}：${(controller.cutoutRepairReference! ? reference : target) ? '已确认候选' : '未选择'}'
+                : '参考：${reference ? '已加入' : '未选择'}   目标：${target ? '已加入' : '未选择'}',
           ),
           SizedBox(
             height: 4,
@@ -1126,10 +1233,21 @@ class _ComparisonScreenState extends State<ComparisonScreen>
               controller.error!,
               style: TextStyle(color: AppTheme.of(context).error, fontSize: 13),
             ),
+          if (controller.cutoutRepairing)
+            FilledButton(
+              key: const ValueKey('comparison-repair-apply'),
+              onPressed:
+                  !controller.cutoutPreparing &&
+                      !controller.cutoutInspecting &&
+                      (controller.cutoutRepairReference! ? reference : target)
+                  ? _applyCutoutRepair
+                  : null,
+              child: const Text('确认人物并应用纠错'),
+            ),
           TextButton(
             key: const ValueKey('comparison-cutout-cancel'),
             onPressed: _exitCutout,
-            child: const Text('退出抠像画布'),
+            child: Text(controller.cutoutRepairing ? '取消纠错' : '退出抠像画布'),
           ),
         ],
       ),
@@ -1228,10 +1346,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                         children: [
                           Expanded(
                             child: _referenceStill == null
-                                ? const Center(
+                                ? Center(
                                     child: Text(
-                                      '参考待选',
-                                      style: TextStyle(
+                                      controller.cutoutRepairReference == false
+                                          ? '参考保持不变'
+                                          : '参考待选',
+                                      style: const TextStyle(
                                         color: Colors.white54,
                                         fontSize: 11,
                                       ),
@@ -1247,10 +1367,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                           ),
                           Expanded(
                             child: _targetStill == null
-                                ? const Center(
+                                ? Center(
                                     child: Text(
-                                      '目标待选',
-                                      style: TextStyle(
+                                      controller.cutoutRepairReference == true
+                                          ? '目标保持不变'
+                                          : '目标待选',
+                                      style: const TextStyle(
                                         color: Colors.white54,
                                         fontSize: 11,
                                       ),
@@ -1310,6 +1432,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                   final reference = nativeHorizontal
                       ? p.dx < size.width / 2
                       : p.dy < size.height / 2;
+                  if (controller.cutoutRepairing &&
+                      controller.cutoutRepairReference != reference) {
+                    return;
+                  }
                   final native = stage.nativePoint(p, reference);
                   if (native == null) return;
                   final aspect = reference
@@ -1732,6 +1858,13 @@ class _ComparisonScreenState extends State<ComparisonScreen>
             style: const TextStyle(fontSize: 12),
           ),
         ),
+        if (controller.supportsCutoutRepair)
+          IconButton(
+            key: const ValueKey('comparison-cutout-repair'),
+            tooltip: '局部纠错',
+            onPressed: controller.canEditCanvas ? _beginCutoutRepair : null,
+            icon: const Icon(Icons.person_search_outlined),
+          ),
         IconButton(
           key: const ValueKey('comparison-canvas-edit'),
           tooltip: '编辑画布',
