@@ -120,6 +120,11 @@ enum IOSMetalPhase3Smoke {
     stickerEffects.fillMode = "sticker"
     stickerEffects.faceStickerEnabled = true
     stickerEffects.stickerAssetId = "builtin:sunglasses"
+    var legEffects = effects
+    legEffects.legStretchEnabled = true
+    legEffects.legStretch = 0.25
+    legEffects.legZoneTop = 0.3
+    legEffects.legZoneBottom = 0.9
     let full = SIMD4<Float>(0, 0, 1, 1)
     let crop = SIMD4<Float>(0.125, 0, 0.75, 1)
     let cases: [(Set<Int>, Set<Int>, EffectConfigDto, SIMD4<Float>, Int)] = [
@@ -129,13 +134,16 @@ enum IOSMetalPhase3Smoke {
       ([], [1], stickerEffects, full, 64),
       ([0], [1], effects, crop, 40),
       ([], [1], stickerEffects, crop, 40),
+      ([0], [], legEffects, crop, 40),
     ]
     for (bodyIds, faceIds, config, rect, outputWidth) in cases {
       func render(_ mirror: Bool) throws -> CGImage {
         try renderer.render(source: source, persons: [body, face], preprocess: preprocess,
           fullBodyIds: bodyIds, faceOnlyIds: faceIds, effects: config,
           faceRegions: [1: faceRegion], tightMask: true, outputWidth: outputWidth,
-          outputHeight: size, sourceCrop: rect, mirrorHorizontally: mirror)
+          outputHeight: size, sourceCrop: rect,
+          legStretchTargetId: config.legStretchEnabled ? 1 : nil,
+          mirrorHorizontally: mirror)
       }
       let normal = try render(false)
       let flipped = try render(true)
@@ -144,6 +152,19 @@ enum IOSMetalPhase3Smoke {
       }
       let a = [UInt8](normalData as Data)
       let b = [UInt8](flippedData as Data)
+      if config.legStretchEnabled {
+        // The two bits must remain independent. Verify that the enabled warp
+        // actually changes the unprotected protagonist before testing reflection.
+        let unwarped = try renderer.render(source: source, persons: [body, face],
+          preprocess: preprocess, fullBodyIds: bodyIds, faceOnlyIds: faceIds,
+          effects: effects, faceRegions: [1: faceRegion], tightMask: true,
+          outputWidth: outputWidth, outputHeight: size, sourceCrop: rect)
+        guard let unwarpedData = unwarped.dataProvider?.data,
+              a != [UInt8](unwarpedData as Data) else {
+          throw PigeonError(code: "METAL_SMOKE_PIXEL_MISMATCH",
+            message: "Leg stretch did not change protagonist pixels", details: nil)
+        }
+      }
       guard a != b, a.count == outputWidth * size * 4, b.count == a.count else {
         throw PigeonError(code: "METAL_SMOKE_PIXEL_MISMATCH", message: "Mirror must change asymmetric output", details: nil)
       }
@@ -171,7 +192,7 @@ enum IOSMetalPhase3Smoke {
     var bytes = [UInt8](repeating: 0, count: width * height * 4)
     for index in 0..<(width * height) {
       let offset = index * 4
-      bytes[offset] = rgba.0
+      bytes[offset] = asymmetric ? UInt8((index / width) * 3 % 256) : rgba.0
       bytes[offset + 1] = asymmetric ? UInt8((index % width) * 3 % 256) : rgba.1
       bytes[offset + 2] = rgba.2
       bytes[offset + 3] = rgba.3

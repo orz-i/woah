@@ -70,18 +70,55 @@ class IOSPhase4LegStretchContractTest(unittest.TestCase):
     def test_renderer_leg_stretch_flag_packing_must_retain_w_lane(self) -> None:
         failures = self._verify_modified(
             "IOSMetalPreviewRenderer.swift",
+            "const uint legStretchEnabled = packedFlags.w & 1u;",
             "const uint legStretchEnabled = packedFlags.w;",
-            "const uint legStretchEnabled = packedFlags.z;",
         )
         self.assertTrue(any("renderer leg stretch implementation" in f for f in failures), failures)
 
     def test_renderer_leg_stretch_swift_flag_must_not_be_dropped(self) -> None:
         failures = self._verify_modified(
             "IOSMetalPreviewRenderer.swift",
-            "var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, legStretchFlag)",
-            "var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, 0)",
+            "let geometryFlags = legStretchFlag | (mirrorHorizontally ? UInt32(2) : UInt32(0))",
+            "let geometryFlags = mirrorHorizontally ? UInt32(2) : UInt32(0)",
         )
         self.assertTrue(any("renderer leg stretch implementation" in f for f in failures), failures)
+
+    def test_renderer_must_pack_geometry_flags_in_w_lane(self) -> None:
+        failures = self._verify_modified(
+            "IOSMetalPreviewRenderer.swift",
+            "var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, geometryFlags)",
+            "var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, legStretchFlag)",
+        )
+        self.assertTrue(any("renderer leg stretch implementation" in f for f in failures), failures)
+
+    def test_mirror_must_not_share_leg_stretch_bit(self) -> None:
+        failures = self._verify_modified(
+            "IOSMetalPreviewRenderer.swift",
+            "const bool mirrorHorizontally = (packedFlags.w & 2u) != 0u;",
+            "const bool mirrorHorizontally = (packedFlags.w & 1u) != 0u;",
+        )
+        self.assertTrue(any("horizontal mirror implementation" in f for f in failures), failures)
+
+    def test_mirror_must_change_final_composited_output_address(self) -> None:
+        failures = self._verify_modified(
+            "IOSMetalPreviewRenderer.swift",
+            "output.write(float4(color.rgb, 1.0), outputPixel);",
+            "output.write(float4(color.rgb, 1.0), gid);",
+        )
+        self.assertTrue(any("horizontal mirror implementation" in f for f in failures), failures)
+
+    def test_mirror_must_be_forwarded_by_preview_and_export(self) -> None:
+        for label, filename in (
+            ("preview", "IOSPreviewPipeline.swift"),
+            ("export", "IOSExportPipeline.swift"),
+        ):
+            with self.subTest(label=label):
+                failures = self._verify_modified(
+                    filename,
+                    "mirrorHorizontally: request.mirrorHorizontally == true",
+                    "mirrorHorizontally: false",
+                )
+                self.assertIn(f"iOS {label} must forward horizontal mirror to the renderer", failures)
 
     def test_unsupported_skin_whitening_remains_rejected(self) -> None:
         failures = self._verify_modified(
