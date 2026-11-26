@@ -2704,3 +2704,187 @@ and use truly unseen material with identity/edge assessment.
 Incomplete export remains blocked, physical iPhone and full
 rotated-container/active ROI inference cancellation acceptance
 remain outstanding. Keep Debug/draft and CPU4 default/GPU QA.
+
+## Stage C8.3: independent lighting and competing-performer holdout
+
+Freeze runtime and model at `d1a93623dad476e91c80591380d15e53d4dfb343`.
+Do not tune the scale contradiction, incumbent release, ROI policy or
+thresholds based on this new holdout before recording results. The
+same C8.2 Android QA APK and iOS simulator binary were used; only
+fixture staging changed. Two sources selected by raw video content
+(not model output):
+
+- **A cultural display**, Mwintirew, CC BY-SA 4.0,
+  https://commons.wikimedia.org/wiki/File:A_cultural_display.webm .
+  Outdoor ensemble, foreground patterned-clothing drummer/dancer
+  interacting with an overlapping similarly costumed performer and
+  seated musicians. Continuous source interval [1,13)s.
+- **Local folk dance**, Kang Ri Ya, CC BY-SA 4.0,
+  https://commons.wikimedia.org/wiki/File:Local_folk_dance.webm .
+  Solo stage dance, strong alternating magenta/blue lighting and
+  seated spectators, turns and garment motion. Continuous interval
+  [10,22)s. Source 640x352; scaling does not add source detail.
+
+Other inspected candidates were not chosen: edited Salsa instructional
+video has frequent cuts, and an overhead group video has difficult
+identity annotation at tiny scale. This selection used only source
+frames. The two chosen clips are independent of the previous six
+development scenes. Both 12 seconds, 960x540, 25fps, H.264 yuv420p,
+300 frames and zero first PTS; aspect ratio preserved with padding,
+source audio removed. No repeated footage. The selected person and
+distractor points at each integer second and four approximate visible
+silhouettes per role were drawn before evaluating any output. At
+the ensemble crossing, some distractor landmarks are seated musicians
+because the competing standing performer is partially occluded; the
+points are not an exhaustive distractor inventory. The coarse body
+contours intentionally exclude the drum where visually separable;
+occluded/blurred fingers and clothing edges are approximate. No
+independent adjudicator or dense ground truth is claimed.
+
+Source file and test MP4 SHA-256, attribution, exact seeds and source-only
+labels are in `testdata/comparison/real-dance-c83-holdout.json`.
+Frozen manifest SHA-256:
+`780df2d1c404f834229b239f51edfd63b7928fd78b1404faba1eba34ea379a96`.
+Do not redistribute any derived CC BY-SA media without the required
+attribution and compatible license. No source clips, decoded RGB,
+selected Alpha, observation files or screenshots committed.
+
+### Fresh same-observation host A/B (C8.1 -> C8.2)
+
+The complete scheduled pipeline used identical full detections and
+existing 29-float features, sharing local observations where requested
+crop geometry agrees. The C8.2 incumbent-ownership change preserved
+all prior outputs on these two new inputs:
+
+| Scene | Available masks | Selected landmarks | Distractor landmarks | Prior alpha byte exact | ROI attempted/adopted | Longest gap |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Outdoor ensemble | 300/300 | 12/12 | 0/12 | 300/300 | 0/0 | 0 |
+| Stage solo | 264/300 | 10/12 | 0/12 | 264/264 | 56/21 | 0.32s |
+
+Both baseline and candidate match on all 600 positions, including
+missing markers. This is fresh evidence of no regression in these
+inputs, not a universal correctness or throughput claim.
+Host stage misses at 9s/10s are missing current masks, not marked
+wrong-person output. Full-frame host probe at 0/2/6/9/10s has no
+candidate at the selected landmark, even using the existing continuation
+confidence threshold. ROI fills 0/2/6s in the host scheduled pipeline.
+Model recall and lighting sensitivity are still material concerns.
+Host raw detection is not the actual native backend evidence.
+
+### Device observations and quality assessment
+
+Actual Android GPU and CPU use the C8.1 isolated capture option:
+compressed full detection rows, exact PTS, raw mask and existing
+compact appearance features, no RGB. Capture adds overhead; elapsed
+times are descriptive, not a performance comparison. Full native
+outputs are reviewed against the frozen landmarks and approximate
+silhouettes. The iOS real driver captures 24 default and 24 reduced
+reference-only canvas frames at identical exact PTS; reduced layout
+[.43,.82,.45] avoids confusing canvas clipping with selected identity.
+No changes to product default placement.
+
+The Android GPU ensemble has 300/300 current masks, 12/12 selected
+checks, 0/12 marked distractor hits, zero gap and zero ROI calls.
+Stage solo 275/300, 11/12 selected points and 0/12 distractor hits,
+nine missing intervals (longest 0.40s), 46 ROI attempts and 23 accepted,
+no detail failures. Review actual GPU overlay sheets confirms the
+selected foreground dancer through overlap and the solo subject when
+visible. In some ensemble frames the instrument or neighboring body
+fragments are included. The approximate silhouette IoU/F1 (four
+samples per scene, missing counts as zero) is 0.6748/0.4499 for
+ensemble and 0.5339/0.4021 for solo (available-only 0.7119/0.5361).
+These are approximate, sparse masks, not subpixel matting truth.
+
+The iOS simulator actual full+detail run produced 300/300 + 283/300.
+Full-pair analysis 48.213s, initial playable 5.058s. All 48 sampled
+canvas positions exactly match both source timestamps. Actual
+reference-only pictures confirm the original foreground dancer
+during/after overlap; the stage dancer vanishes at the 9s sample
+and later returns. Incomplete archive/export refused, ordinary
+playback restored. No physical iPhone or raw iOS alpha metric.
+
+Exact GPU observation replay of C8.1 and C8.2 full-only association
+gives identical coverage/checks: 300/300 (12/12) ensemble,
+252/300 (8/12) solo; the full scheduled device pipeline supplies 23
+extra masks and three additional marked hits in the solo scene.
+At 0/2/6s no actual native full raw candidate covers the selected
+point; at 9s there is a raw current candidate with confidence
+0.24365 (below the existing strong 0.25 threshold) and approximate
+contour IoU 0.821, but no selected full/ROI mask. This differs from
+host's no-candidate result and demonstrates why actual native
+observations matter. A global weak threshold relaxation is not
+justified by a single useful weak mask; the missing sample is not a
+confirmed identity switch.
+
+### Reproduction
+
+Use exact resources from the manifest. Prepare each source using:
+```sh
+ffmpeg -v error -y -ss START -i ORIGINAL.webm -map 0:v:0 \
+  -vf 'fps=25,scale=960:540:force_original_aspect_ratio=decrease,pad=960:540:(ow-iw)/2:(oh-ih)/2,setsar=1,setpts=N/(25*TB)' \
+  -an -frames:v 300 -c:v libx264 -preset fast -crf 19 -pix_fmt yuv420p -movflags +faststart TEST.mp4
+```
+Verify test hashes. Stage ensemble12.mp4 as reference.mp4 and
+folk12.mp4 as target.mp4 into isolated instrumentation files, use
+`limitUs=12000000 anchorUs=3000000 referenceX=.416 referenceY=.59
+targetX=.45 targetY=.52 captureObservations=true` and both effective
+backends. For iOS stage real-reference/target.mp4 with the same
+duration/cadence/seeds, 24 half-second times rounded to exact 40ms
+PTS, referenceReviewLayout=[.43,.82,.45]. Replay previous and current
+FrameKernel with existing tools:
+```sh
+python tools/comparison/replay_adaptive_detail.py \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --media /path/to/media --baseline-library /path/to/c81/libframe_kernel.dylib \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c83-host --no-sheets
+python tools/comparison/review_holdout.py /path/to/device/evidence \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --media /path/to/media --output /tmp/c83-review
+python tools/comparison/replay_native_observations.py \
+  --evidence /path/to/device/evidence \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --baseline-library /path/to/c81/libframe_kernel.dylib \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c83-native-replay.json
+```
+
+The final Android CPU4 native run confirms the same marked outcomes:
+300/300 ensemble and 276/300 solo. Both 12/12 and 11/12 selected
+point checks, no marked distractor hits. Solo longest unavailable
+span 0.40s, 46 attempts and 24 adopted local masks; 11 missing
+intervals. CPU approximate silhouette IoU/F1 (including missing)
+0.6741/0.4534 ensemble and 0.5357/0.3984 solo (available-only
+solo 0.7143/0.5312). CPU/GPU joint-visible mean IoU 0.9926 ensemble
+and 0.9944 solo, which is agreement rather than absolute quality.
+Both backends finish the full pair and report their requested
+effective accelerator. The compressed observation-capture run took
+167.635s CPU and 52.344s GPU; first playable 17.478s/6.755s.
+Do not infer release performance or promote GPU from these times.
+
+On the captured four full-observation streams, C8.1 and C8.2 selected
+raw indices and selected trace fields are exactly equal at all
+1200 source positions, including missing positions. Full-only CPU
+solo also has 252/300 masks and 8/12 selected points. CPU raw
+candidate at 9s confidence 0.22951, GPU 0.24365; both have anchor
+similarity ~0.9675, unlike the marked competitors (~0.6076).
+Both are below the strong threshold. Native full+detail misses
+the marked 9s observation on both backends. The weak candidate
+is a concrete opportunity for bounded evidence-based recovery,
+but this frozen test does not change weak admission rules.
+
+**C8.3 conclusion:** targeted identity regression passes on the
+new samples (both Android backends 23/24 selected and 0/24 marked
+distractors, iOS visual review consistent); identity for every
+frame remains unproven. Stage solo missing masks and coarse
+silhouette/edge quality fail the predeclared complete-availability
+and quality criteria. Release-grade acceptance is not proven.
+No production algorithm, model, UI, export policy or default
+backend changes are included. Keep Draft/Debug and strict incomplete
+export rejection. Next engineering priority: use the exact native
+weak-observation records to improve temporally supported weak-mask
+admission without broad confidence relaxation; separately evaluate
+foreground artifact/edge quality and explicit local correction.
+Do not repeatedly retune the incumbent ownership rule on this
+pair. A fresh independent holdout and physical iPhone evidence
+are still required before release promotion.
