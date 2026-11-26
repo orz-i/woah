@@ -78,6 +78,8 @@ internal class ComparisonSession(
     private val cutoutRevision=AtomicLong(0)
     private var cutoutCache: ComparisonCutoutCache?=null
     private var cutoutWindow: ComparisonLoop?=null
+    private var cutoutSelection:ComparisonCutoutSelection?=null
+    private var cutoutOrigin:Long?=null
     private var cutoutExportSuspended=false
     private var cutoutPreparing=false
     private var partialWork:Pair<ComparisonCutoutAnalysis.Work,ComparisonCutoutAnalysis.Work>?=null
@@ -462,6 +464,7 @@ internal class ComparisonSession(
             val wasPlaying=wantsPlay
             cache.setLayout(requestedLayout)
             cutoutCache=cache;pendingCache=null;cutoutWindow=selectedWindow;partialWork=null
+            cutoutSelection=ComparisonCutoutSelection(ra,ta);cutoutOrigin=bounds.teacherStartUs
             referenceInspection=null;targetInspection=null
             pendingUs=position;wantsPlay=wasPlaying
             try{buildEngine()}finally{partial?.close();partial=null}
@@ -478,6 +481,89 @@ internal class ComparisonSession(
                 }else old?.close()
             }
             if(cutoutDone===done) {cutoutPreparing=false;cutoutDone=null}
+            done.complete(Unit)
+        }
+    }
+
+    private fun archive()=ComparisonCutoutArchive(java.io.File(context.cacheDir,"comparison-cutout-v1"),context.cacheDir)
+    private fun archiveKey(origin:Long,offset:Long,scale:Double,window:ComparisonLoop,
+                           mirrorR:Boolean,mirrorT:Boolean,current:()->Boolean)=ComparisonCutoutArchiveKey(
+        origin,offset,scale,window.startUs,window.endUs,mirrorR,mirrorT,cutoutAccelerator.name,
+        ComparisonCutoutFingerprint.read(context,teacherUri,current),
+        ComparisonCutoutFingerprint.read(context,learnerUri,current),
+        ComparisonCutoutArchive.modelDigest(context,current))
+    suspend fun saveCutout(projectId:String):Boolean {
+        check(!closed && foreground && !cutoutPreparing && !cutoutExportSuspended)
+        val active=requireNotNull(cutoutCache)
+        // A missing mask is not silently promoted into an archived selection.
+        if(active.reference.visibleCount!=active.reference.frameCount ||
+            active.target.visibleCount!=active.target.frameCount)return false
+        val selection=requireNotNull(cutoutSelection);val origin=requireNotNull(cutoutOrigin)
+        val window=requireNotNull(cutoutWindow)
+        val offset=offsetUs;val scale=timeScale;val mr=practice.mirrorTeacher;val mt=practice.mirrorLearner
+        val frozen=active.frozen()
+        val revision=cutoutRevision.incrementAndGet()
+        val done=CompletableDeferred<Unit>();cutoutDone=done;cutoutPreparing=true
+        try {
+            return withContext(Dispatchers.IO){
+                val scope=currentCoroutineContext();val current={scope.isActive && cutoutRevision.get()==revision}
+                val key=archiveKey(origin,offset,scale,window,mr,mt,current)
+                archive().save(projectId,key,selection,frozen,current)
+            }
+        } finally {
+            frozen.close()
+            if(cutoutDone===done){cutoutDone=null;cutoutPreparing=false}
+            done.complete(Unit)
+        }
+    }
+    suspend fun restoreCutout(projectId:String,layout:ComparisonCanvasLayoutDto?):ComparisonCutoutResultDto? {
+        check(!closed && ready && foreground && !wantsPlay && !hasCutout)
+        val requested=layout?.let{ComparisonCanvasLayout.fromDto(it)}
+        val bounds=requireNotNull(range)
+        val window=loop() ?: ComparisonLoop(0,bounds.durationUs)
+        val offset=offsetUs;val scale=timeScale;val mr=practice.mirrorTeacher;val mt=practice.mirrorLearner
+        val revision=cutoutRevision.incrementAndGet()
+        val done=CompletableDeferred<Unit>();cutoutDone=done;cutoutPreparing=true
+        var pending:ComparisonCutoutRestored?=null
+        try {
+            val restored=withContext(Dispatchers.IO){
+                val scope=currentCoroutineContext();val current={scope.isActive && cutoutRevision.get()==revision}
+                // Cheap existence check avoids hashing sources on first entry.
+                require(projectId.matches(Regex("[A-Za-z0-9_-]{1,80}")))
+                if(!java.io.File(context.cacheDir,"comparison-cutout-v1/$projectId.cutout").isFile)return@withContext null
+                val key=archiveKey(bounds.teacherStartUs,offset,scale,window,mr,mt,current)
+                val analysis=ComparisonCutoutAnalysis(context)
+                archive().restore(projectId,key,{seed->
+                    ComparisonCutoutAnalysis.window(analysis.timestamps(teacherUri,current),
+                        bounds.teacherTimeUs(window.startUs),bounds.teacherTimeUs(window.endUs-1),seed.ptsUs)
+                },{seed->
+                    ComparisonCutoutAnalysis.window(analysis.timestamps(learnerUri,current),
+                        bounds.learnerTimeUs(window.startUs),bounds.learnerTimeUs(window.endUs-1),seed.ptsUs)
+                },current).also{pending=it}?.let{value->
+                    // The source can change while a large archive is reconstructed.
+                    if(ComparisonCutoutFingerprint.read(context,teacherUri,current)!=key.referenceDigest ||
+                        ComparisonCutoutFingerprint.read(context,learnerUri,current)!=key.targetDigest){
+                        value.cache.close();pending=null;archive().forget(projectId);null
+                    }else value
+                }
+            } ?: return null
+            check(!closed && foreground && cutoutRevision.get()==revision && range==bounds)
+            val position=positionUs().coerceIn(window.startUs,window.endUs-1)
+            restored.cache.setLayout(requested)
+            cutoutCache=restored.cache;pending=null;cutoutSelection=restored.selection;cutoutOrigin=bounds.teacherStartUs
+            cutoutWindow=window;pendingUs=position;wantsPlay=false
+            clearCutoutInspections()
+            try{buildEngine()}catch(error:Throwable){
+                cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null
+                try{buildEngine()}finally{restored.cache.close()}
+                throw error
+            }
+            return ComparisonCutoutResultDto(state(),restored.cache.reference.visibleCount.toLong(),
+                restored.cache.reference.frameCount.toLong(),restored.cache.target.visibleCount.toLong(),
+                restored.cache.target.frameCount.toLong())
+        } finally {
+            pending?.cache?.close()
+            if(cutoutDone===done){cutoutDone=null;cutoutPreparing=false}
             done.complete(Unit)
         }
     }
@@ -543,7 +629,7 @@ internal class ComparisonSession(
         clearCutoutInspections()
         if(cutoutCache!=null) {
             pendingUs=positionUs();wantsPlay=false;pauseClock()
-            val old=cutoutCache;cutoutCache=null;cutoutWindow=null;cutoutExportSuspended=false
+            val old=cutoutCache;cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;cutoutExportSuspended=false
             try { buildEngine() } finally { old?.close() }
         }
         return state()
@@ -594,7 +680,7 @@ internal class ComparisonSession(
         if (closed) return
         pendingUs=positionUs();wantsPlay=false;pauseClock();closed=true
         val old=cutoutCache
-        cutoutRevision.incrementAndGet();cutoutPreparing=false;partialWork=null;cutoutCache=null;cutoutWindow=null;clearCutoutInspections()
+        cutoutRevision.incrementAndGet();cutoutPreparing=false;partialWork=null;cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;clearCutoutInspections()
         choreographer.removeFrameCallback(frames)
         try {releaseEngine();producer.setCallback(null);producer.release()} finally {old?.close()}
     }

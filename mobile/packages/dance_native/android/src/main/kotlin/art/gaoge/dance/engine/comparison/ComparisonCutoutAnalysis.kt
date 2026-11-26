@@ -30,6 +30,7 @@ internal class ComparisonCutoutTrackCache private constructor(
 ) : AutoCloseable {
     constructor(layers:Map<Long,ComparisonCutoutLayer?>,fingerprint:String?=null):this(layers.toMap(),null,fingerprint)
     constructor(disk:ComparisonCutoutDiskTrack,fingerprint:String):this(null,disk,fingerprint)
+    val times:List<Long> get()=disk?.times ?: entries!!.keys.sorted()
     val frameCount:Int get()=disk?.frameCount ?: entries!!.size
     val visibleCount:Int get()=disk?.visibleCount ?: entries!!.values.count{it!=null}
     fun layer(ptsUs:Long):ComparisonCutoutLayer?=disk?.layer(ptsUs) ?: entries?.get(ptsUs)
@@ -117,7 +118,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         if(!current()) throw CancellationException("Cutout analysis cancelled")
     }
 
-    private fun timestamps(uri: String, current: () -> Boolean): List<Long> {
+    internal fun timestamps(uri: String, current: () -> Boolean): List<Long> {
         val extractor = MediaExtractor()
         try {
             val source = Uri.parse(uri)

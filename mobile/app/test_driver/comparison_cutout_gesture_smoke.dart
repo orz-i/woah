@@ -191,6 +191,8 @@ Future<void> main() async {
       sideBySide: false,
       updatedAtMs: DateTime.now().millisecondsSinceEpoch,
     );
+    // Keep this QA entry independent of archives left by previous runs.
+    await api.forgetCutout(project.id);
     final gateway = FixtureGateway(project);
     runApp(
       MaterialApp(
@@ -350,6 +352,68 @@ Future<void> main() async {
       () => byKey('comparison-picture-pane-teacher') != null,
       'Ordinary view not restored',
     );
+    // Enter through the actual view menu; restoration must skip long-press selection.
+    await until(
+      () =>
+          (byKey('comparison-view')?.widget as PopupMenuButton?)?.enabled ==
+          true,
+      'Ordinary view menu unavailable',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    await tap(byKey('comparison-view')!);
+    await until(() => byText('抠像画布（实验）') != null, 'Restore menu missing');
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await tap(byText('抠像画布（实验）')!);
+    await until(
+      () =>
+          findElement(
+            (w) => w is Text && (w.data?.startsWith('已恢复画布') ?? false),
+          ) !=
+          null,
+      'Saved canvas was not restored',
+    );
+    await until(
+      () =>
+          (byKey('comparison-canvas-edit')?.widget as IconButton?)?.onPressed !=
+          null,
+      'Restored canvas never became editable',
+    );
+    require(
+      byKey('comparison-cutout-gesture') == null,
+      'Restore reopened selection overlay',
+    );
+    report['restoredPixels'] = await capture(folder, 'gesture-restored');
+    await tap(byKey('comparison-canvas-edit')!);
+    await until(
+      () =>
+          byKey('comparison-canvas-edit-gesture') != null &&
+          (byKey('comparison-canvas-done')!.widget as TextButton).onPressed !=
+              null,
+      'Restored canvas edit not ready',
+    );
+    require(
+      gateway.lastSaved?.canvasLayout?.target.x == saved.target.x,
+      'Restored project lost edited layout',
+    );
+    await tap(byKey('comparison-canvas-done')!);
+    await until(() => byText('退出画布') != null, 'Restored edit did not finish');
+    await tap(byText('退出画布')!);
+    await until(
+      () => byKey('comparison-picture-pane-teacher') != null,
+      'Restored exit failed',
+    );
+    report['restoredViaMenu'] = true;
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    await tap(byKey('comparison-view')!);
+    await until(() => byText('重新选人（清除缓存）') != null, 'Reselect menu missing');
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await tap(byText('重新选人（清除缓存）')!);
+    await until(
+      () => byKey('comparison-cutout-gesture') != null,
+      'Reselect did not reset canvas',
+    );
+    report['reselectViaMenu'] = true;
+    await api.clearCutout();
     report['passed'] = true;
   } catch (error) {
     report['passed'] = false;

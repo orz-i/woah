@@ -46,6 +46,7 @@ class _CutoutSmoke extends ChangeNotifier {
   static const extended = bool.fromEnvironment('WOAH_CUTOUT_EXTENDED_QA');
   static const fullLength = bool.fromEnvironment('WOAH_CUTOUT_FULL_QA');
   static const cancelPartial = bool.fromEnvironment('WOAH_CUTOUT_CANCEL_QA');
+  static const persistQa = bool.fromEnvironment('WOAH_CUTOUT_PERSIST_QA');
   final api = DanceComparisonApi();
   final previewKey = GlobalKey();
   String status = 'waiting';
@@ -960,6 +961,222 @@ class _CutoutSmoke extends ChangeNotifier {
     }
   }
 
+  Future<void> archiveProbe() async {
+    final reportFile = File('${folder.path}/archive-report.json');
+    final previous = reportFile.existsSync()
+        ? Map<String, dynamic>.from(
+            jsonDecode(reportFile.readAsStringSync()) as Map,
+          )
+        : <String, dynamic>{};
+    final restore = previous['phase'] == 'saved';
+    final report = <String, Object?>{...previous, 'pid': pid, 'passed': false};
+    const id = 'qa_archive_restore';
+    const corrupt = 'qa_archive_corrupt',
+        mapping = 'qa_archive_mapping',
+        mutated = 'qa_archive_mutated';
+    final source = File('${folder.path}/archive-source.mp4');
+    final target = File('${folder.path}/archive-variant.mp4');
+    final layout = ComparisonCanvasLayoutDto(
+      reference: ComparisonCanvasLayerDto(
+        x: .31,
+        y: .86,
+        height: .67,
+        opacity: 1,
+        mirror: false,
+      ),
+      target: ComparisonCanvasLayerDto(
+        x: .69,
+        y: .82,
+        height: .61,
+        opacity: .72,
+        mirror: true,
+      ),
+      targetOnTop: true,
+      background: 0,
+    );
+    Future<ComparisonPlaybackDto> open(int position, {int offset = 0}) async {
+      await host(api.close());
+      return ready(
+        await host(
+          api.open(
+            source.path,
+            target.path,
+            offset,
+            position,
+            1,
+            320,
+            240,
+            true,
+            ComparisonPracticeDto(
+              mirrorTeacher: false,
+              mirrorLearner: true,
+              loopEnabled: true,
+              loopStartUs: 6000000,
+              loopEndUs: 9000000,
+            ),
+            1,
+          ),
+        ),
+      );
+    }
+
+    Future<void> seekAnchor() async {
+      final frame = await ready(
+        await host(api.control(ComparisonCommand.seek, 7000000, 1)),
+      );
+      require(
+        frame.teacherFrameUs == 7000000 && frame.learnerFrameUs == 7000000,
+        'Archive anchor differs',
+      );
+    }
+
+    bool all(ComparisonCutoutResultDto value) =>
+        value.referenceFrames == 90 &&
+        value.referenceVisible == 90 &&
+        value.targetFrames == 90 &&
+        value.targetVisible == 90;
+    try {
+      if (!restore) {
+        await File('${folder.path}/long-source.mp4').copy(source.path);
+        await File('${folder.path}/long-variant.mp4').copy(target.path);
+        for (final key in [id, corrupt, mapping, mutated]) {
+          await host(api.forgetCutout(key));
+        }
+        final frame = await open(7000000);
+        final r = ComparisonCutoutSeedDto(
+          sourcePtsUs: frame.teacherFrameUs!,
+          x: .355,
+          y: .855,
+        );
+        final t = ComparisonCutoutSeedDto(
+          sourcePtsUs: frame.learnerFrameUs!,
+          x: .324,
+          y: .86,
+        );
+        await inspect(true, r, 'archive-reference-still');
+        await inspect(false, t, 'archive-target-still');
+        final watch = Stopwatch()..start();
+        final analyzed = await host(api.prepareCutout(r, t, layout));
+        require(all(analyzed), 'Archive analysis incomplete');
+        report['analysisMs'] = watch.elapsedMilliseconds;
+        await ready(analyzed.playback);
+        await seekAnchor();
+        final pixels = await capture('archive-original-anchor');
+        require(
+          (pixels['leftPixels'] as int) > 80 &&
+              (pixels['rightPixels'] as int) > 80,
+          'No canvas',
+        );
+        final save = Stopwatch()..start();
+        require(await host(api.saveCutout(id)), 'Archive save failed');
+        report['saveMs'] = save.elapsedMilliseconds;
+        report['firstPid'] = pid;
+        report['phase'] = 'saved';
+        report['saved'] = true;
+      } else {
+        require(
+          previous['firstPid'] != pid,
+          'Expected a new process, not just a new player',
+        );
+        await open(7400000);
+        final watch = Stopwatch()..start();
+        final restored = await host(api.restoreCutout(id, layout));
+        require(restored != null && all(restored), 'No complete saved archive');
+        await ready(restored!.playback);
+        report['restoreMs'] = watch.elapsedMilliseconds;
+        require(
+          restored.playback.positionUs == 7400000,
+          'Restore changed selected playhead',
+        );
+        await seekAnchor();
+        await capture('archive-restored-anchor');
+        require(
+          base64Encode(
+                File(
+                  '${folder.path}/archive-original-anchor.png',
+                ).readAsBytesSync(),
+              ) ==
+              base64Encode(
+                File(
+                  '${folder.path}/archive-restored-anchor.png',
+                ).readAsBytesSync(),
+              ),
+          'Restored anchor pixel mismatch',
+        );
+        report['anchorIdentical'] = true;
+        report['coverage'] = [
+          restored.referenceVisible,
+          restored.targetVisible,
+        ];
+        for (final key in [corrupt, mapping, mutated]) {
+          require(
+            await host(api.saveCutout(key)),
+            'Negative fixture save failed',
+          );
+        }
+        report['export'] = await exportCanvas(
+          'archive-restored',
+          'archive-source.mp4',
+          'archive-variant.mp4',
+          6000000,
+          9000000,
+        );
+        // Corrupt a disposable test-only archive. Production UI has no raw file API.
+        final archiveRoot = Directory(
+          Platform.isAndroid
+              ? '${folder.parent.parent.path}/cache/comparison-cutout-v1'
+              : '${Directory.systemTemp.parent.path}/Library/Caches/comparison-cutout-v1',
+        );
+        final corruptFile = File('${archiveRoot.path}/$corrupt.cutout');
+        require(corruptFile.existsSync(), 'QA archive location absent');
+        final writer = corruptFile.openSync(mode: FileMode.append);
+        writer.writeByteSync(77);
+        writer.closeSync();
+        await open(7400000);
+        require(
+          await host(api.restoreCutout(corrupt, layout)) == null,
+          'Corrupt archive was restored',
+        );
+        report['corruptionRejected'] = true;
+        await open(7400000, offset: 33333);
+        require(
+          await host(api.restoreCutout(mapping, layout)) == null,
+          'Changed mapping archive was restored',
+        );
+        report['mappingRejected'] = true;
+        await open(7400000);
+        // Hash must detect modified bytes even with identical URI and dimensions.
+        await host(api.close());
+        final sink = source.openSync(mode: FileMode.append);
+        sink.writeByteSync(119);
+        sink.closeSync();
+        await open(7400000);
+        require(
+          await host(api.restoreCutout(mutated, layout)) == null,
+          'Changed source archive was restored',
+        );
+        report['sourceMutationRejected'] = true;
+        await host(api.forgetCutout(id));
+        require(
+          await host(api.restoreCutout(id, layout)) == null,
+          'Forgotten archive was restored',
+        );
+        report['forgetPassed'] = true;
+        report['phase'] = 'finished';
+        report['passed'] = true;
+      }
+    } catch (error) {
+      report['phase'] = 'failed';
+      report['error'] = '$error';
+    } finally {
+      await host(api.close());
+      texture = null;
+      reportFile.writeAsStringSync(jsonEncode(report), flush: true);
+      status = 'archive-${report['phase']}';
+      notifyListeners();
+    }
+  }
+
   Future<void> run() async {
     folder = Directory(
       '${Directory.systemTemp.parent.path}/Documents/comparison-cutout-fixtures',
@@ -974,6 +1191,10 @@ class _CutoutSmoke extends ChangeNotifier {
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    if (persistQa) {
+      await archiveProbe();
+      return;
     }
     if (cancelPartial) {
       status = 'cancel-partial';

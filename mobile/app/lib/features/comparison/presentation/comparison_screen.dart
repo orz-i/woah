@@ -29,6 +29,7 @@ enum _ComparisonViewAction {
   adjust,
   rotate,
   cutout,
+  reselectCutout,
 }
 
 class ComparisonScreen extends StatefulWidget {
@@ -662,6 +663,8 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           unawaited(_rotate());
         case _ComparisonViewAction.cutout:
           unawaited(_beginCutout());
+        case _ComparisonViewAction.reselectCutout:
+          unawaited(_beginCutout(reselect: true));
       }
     },
     itemBuilder: (_) => [
@@ -670,6 +673,13 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           _ComparisonViewAction.cutout,
           '抠像画布（实验）',
           Icons.content_cut_rounded,
+          enabled: controller.canPlay && _manualSession == null,
+        ),
+      if (controller.supportsSavedCutout)
+        _viewOption(
+          _ComparisonViewAction.reselectCutout,
+          '重新选人（清除缓存）',
+          Icons.person_search_outlined,
           enabled: controller.canPlay && _manualSession == null,
         ),
       _viewOption(
@@ -1044,12 +1054,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     );
   }
 
-  Future<void> _beginCutout() async {
+  Future<void> _beginCutout({bool reselect = false}) async {
     setState(() {
       _resetCutoutSeeds();
       _cutoutStarting = true;
     });
-    final ready = await controller.beginCutout();
+    final ready = await controller.beginCutout(reselect: reselect);
     if (!mounted) return;
     setState(() => _cutoutStarting = false);
     if (!ready && controller.error == null) {
@@ -1084,7 +1094,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            controller.cutoutPreparing
+            controller.cutoutRestoring
+                ? '正在检查已保存画布…'
+                : controller.cutoutSaving
+                ? '正在保存画布缓存…'
+                : controller.cutoutPreparing
                 ? '正在分析参考与目标人物…'
                 : controller.cutoutInspecting
                 ? '正在提取所选人物…'
@@ -1705,9 +1719,15 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       children: [
         Expanded(
           child: Text(
-            partial
+            controller.cutoutSaving
+                ? '正在保存已完成的画布缓存…'
+                : partial
                 ? '已分析 $analyzed/$total 帧 · 正在分析剩余片段，暂不能导出'
-                : '实验画布 · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}'
+                : '${controller.cutoutRestored
+                          ? '已恢复画布'
+                          : controller.cutoutArchived
+                          ? '已缓存画布'
+                          : '实验画布'} · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}'
                       '${missing > 0 ? ' · 缺失帧已隐藏，暂不能导出' : ''}',
             style: const TextStyle(fontSize: 12),
           ),

@@ -80,6 +80,16 @@ internal class PrivateComparisonApi(private val delegate: DanceComparisonApi) : 
         delegate.getCutoutStatus()
     } catch(error:Throwable){throw NativeDiagnosticPrivacy.comparison(error)}
 
+    override suspend fun saveCutout(projectId:String):Boolean=try {
+        delegate.saveCutout(projectId)
+    }catch(e:Throwable){throw NativeDiagnosticPrivacy.comparison(e)}
+    override suspend fun restoreCutout(projectId:String,layout:ComparisonCanvasLayoutDto?):ComparisonCutoutResultDto?=try {
+        delegate.restoreCutout(projectId,layout)
+    }catch(e:Throwable){throw NativeDiagnosticPrivacy.comparison(e)}
+    override suspend fun forgetCutout(projectId:String):Unit=try {
+        delegate.forgetCutout(projectId)
+    }catch(e:Throwable){throw NativeDiagnosticPrivacy.comparison(e)}
+
     override suspend fun setCutoutLayout(layout: ComparisonCanvasLayoutDto): ComparisonPlaybackDto = try {
         delegate.setCutoutLayout(layout)
     } catch (error: Throwable) {

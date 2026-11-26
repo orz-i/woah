@@ -1050,6 +1050,9 @@ protocol DanceComparisonApi {
   func inspectCutout(reference: Bool, seed: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutPreviewDto
   func prepareCutout(reference: ComparisonCutoutSeedDto, target: ComparisonCutoutSeedDto, layout: ComparisonCanvasLayoutDto?) async throws -> ComparisonCutoutResultDto
   func getCutoutStatus() async throws -> ComparisonCutoutResultDto?
+  func saveCutout(projectId: String) async throws -> Bool
+  func restoreCutout(projectId: String, layout: ComparisonCanvasLayoutDto?) async throws -> ComparisonCutoutResultDto?
+  func forgetCutout(projectId: String) async throws
   func setCutoutLayout(layout: ComparisonCanvasLayoutDto) async throws -> ComparisonPlaybackDto
   func clearCutout() async throws -> ComparisonPlaybackDto
   func alignMusic(teacherUri: String, learnerUri: String) async throws -> MusicAlignmentDto
@@ -1302,6 +1305,58 @@ class DanceComparisonApiSetup {
       }
     } else {
       getCutoutStatusChannel.setMessageHandler(nil)
+    }
+    let saveCutoutChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.saveCutout\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      saveCutoutChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let projectIdArg = args[0] as! String
+        Task { @MainActor in
+          do {
+            let result = try await api.saveCutout(projectId: projectIdArg)
+            reply(wrapResult(result))
+          } catch {
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      saveCutoutChannel.setMessageHandler(nil)
+    }
+    let restoreCutoutChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.restoreCutout\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      restoreCutoutChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let projectIdArg = args[0] as! String
+        let layoutArg: ComparisonCanvasLayoutDto? = nilOrValue(args[1])
+        Task { @MainActor in
+          do {
+            let result = try await api.restoreCutout(projectId: projectIdArg, layout: layoutArg)
+            reply(wrapResult(result))
+          } catch {
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      restoreCutoutChannel.setMessageHandler(nil)
+    }
+    let forgetCutoutChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.forgetCutout\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      forgetCutoutChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let projectIdArg = args[0] as! String
+        Task { @MainActor in
+          do {
+            try await api.forgetCutout(projectId: projectIdArg)
+            reply(wrapResult(nil))
+          } catch {
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      forgetCutoutChannel.setMessageHandler(nil)
     }
     let setCutoutLayoutChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.setCutoutLayout\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

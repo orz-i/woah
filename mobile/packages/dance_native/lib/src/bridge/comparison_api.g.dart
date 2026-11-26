@@ -1336,6 +1336,62 @@ class DanceComparisonApi {
     return pigeonVar_replyValue as ComparisonCutoutResultDto?;
   }
 
+  Future<bool> saveCutout(String projectId) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.saveCutout$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[projectId]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as bool;
+  }
+
+  Future<ComparisonCutoutResultDto?> restoreCutout(String projectId, ComparisonCanvasLayoutDto? layout) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.restoreCutout$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[projectId, layout]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+    return pigeonVar_replyValue as ComparisonCutoutResultDto?;
+  }
+
+  Future<void> forgetCutout(String projectId) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.forgetCutout$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[projectId]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
   Future<ComparisonPlaybackDto> setCutoutLayout(ComparisonCanvasLayoutDto layout) async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.setCutoutLayout$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(

@@ -205,20 +205,68 @@ def verify_full(folder, platform, progressive=False):
             "exportMs":row["export"]["elapsedMs"]}
 
 
+def verify_archive(folder, platform):
+    """Verify a new-process restore and its strict 3-second A/B export."""
+    report = json.loads((folder / "archive-report.json").read_text())
+    assert report["phase"] == "finished" and report["passed"]
+    assert report["pid"] != report["firstPid"]
+    assert report["coverage"] == [90, 90]
+    for key in ("anchorIdentical", "corruptionRejected", "mappingRejected",
+                "sourceMutationRejected", "forgetPassed"):
+        assert report[key], key
+    assert rgb(folder / "archive-original-anchor.png") == rgb(folder / "archive-restored-anchor.png")
+    export = report["export"]
+    assert export["jobState"] == "completed" and export["resumed"]
+    assert (export["startUs"], export["endUs"]) == (6000000, 9000000)
+    path = folder / "archive-restored-cutout.mp4"
+    metadata = media(path)
+    video = next(s for s in metadata["streams"] if s["codec_type"] == "video")
+    audio = next(s for s in metadata["streams"] if s["codec_type"] == "audio")
+    assert video["codec_name"] == "h264" and audio["codec_name"] == "aac"
+    assert (video["width"], video["height"]) == (320, 240)
+    assert int(audio["sample_rate"]) == 48000 and audio["channels"] == (1 if platform == "android" else 2)
+    assert abs(float(metadata["format"]["duration"]) - 3) <= .001
+    pts = [float(f["best_effort_timestamp_time"]) for f in metadata["frames"]
+           if f.get("media_type") == "video"]
+    assert len(pts) == 90 and all(abs(t-i/30)<2e-6 for i,t in enumerate(pts))
+    frames = rgb(path)
+    assert len(frames) == 90 * FRAME_BYTES
+    comparisons = [{"ptsUs":us, **compare(rgb(folder / f"archive-restored-export-preview-{us}.png"),
+                    frames[i*FRAME_BYTES:(i+1)*FRAME_BYTES])} for us,i in ((0,0),(400000,12),(800000,24))]
+    assert rgb(folder / "archive-restored-export-resumed.png") == rgb(folder / "archive-restored-export-preview-400000.png")
+    pcm = run("ffmpeg","-v","error","-i",str(path),"-map","0:a:0","-ac","1",
+              "-ar","48000","-f","s16le","-")
+    samples = [v[0] for v in struct.iter_unpack("<h",pcm)][4800:-4800]
+    hz = sum((a<0)!=(b<0) for a,b in zip(samples,samples[1:]))*24000/len(samples)
+    assert abs(hz-440)<8
+    published = folder / "archive-published.mp4"
+    if platform == "android":
+        assert export["savedToGallery"]
+    if published.exists():
+        assert published.read_bytes() == path.read_bytes()
+    return {"frames": len(pts), "duration": float(metadata["format"]["duration"]),
+            "analysisMs": report["analysisMs"], "saveMs": report["saveMs"],
+            "restoreMs": report["restoreMs"], "audioHz":round(hz,2),
+            "pixelComparisons":comparisons,"publicationBytesCompared":published.exists(),
+            "newProcess":True,"negativeTests":"passed"}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", type=Path)
     parser.add_argument("--platform", choices=("ios", "android"), default="ios")
     parser.add_argument("--extended", action="store_true", help="verify the separate Android 5-second high-resolution fixture")
     parser.add_argument("--full", action="store_true", help="verify full 12-second segmented-cache fixture")
+    parser.add_argument("--archive", action="store_true", help="verify new-process canvas archive restoration")
     parser.add_argument("--progressive", action="store_true", help="also verify first playable window and final anchor equality")
     args = parser.parse_args()
     if args.progressive and not args.full:
         parser.error("--progressive requires --full")
-    if args.extended and args.full:
-        parser.error("choose --extended or --full")
+    if sum((args.extended,args.full,args.archive))>1:
+        parser.error("choose --extended, --full or --archive")
     if args.extended and args.platform != "android":
         parser.error("--extended requires --platform android")
-    result = verify_full(args.folder,args.platform,args.progressive) if args.full else (
-        verify_extended(args.folder) if args.extended else verify(args.folder,args.platform))
+    result = verify_archive(args.folder,args.platform) if args.archive else (
+        verify_full(args.folder,args.platform,args.progressive) if args.full else (
+        verify_extended(args.folder) if args.extended else verify(args.folder,args.platform)))
     print(json.dumps(result,indent=2))

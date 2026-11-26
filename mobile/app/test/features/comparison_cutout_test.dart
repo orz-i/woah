@@ -95,6 +95,36 @@ class ProgressiveCutoutGateway extends CutoutGateway
   Future<ComparisonCutoutResultDto?> cutoutStatus() async => progress;
 }
 
+class SavedCutoutGateway extends CutoutGateway
+    implements ComparisonSavedCutoutGateway {
+  ComparisonCutoutResultDto? archived;
+  int restores = 0, archiveSaves = 0, forgets = 0;
+  bool failArchiveSave = false;
+  Completer<ComparisonCutoutResultDto?>? pendingRestore;
+  @override
+  Future<bool> saveCutout(String projectId) async {
+    archiveSaves++;
+    if (failArchiveSave) throw StateError('archive write failed');
+    archived = result();
+    return true;
+  }
+
+  @override
+  Future<ComparisonCutoutResultDto?> restoreCutout(
+    String projectId,
+    ComparisonCanvasLayoutDto? layout,
+  ) async {
+    restores++;
+    return pendingRestore == null ? archived : pendingRestore!.future;
+  }
+
+  @override
+  Future<void> forgetCutout(String projectId) async {
+    forgets++;
+    archived = null;
+  }
+}
+
 void main() {
   test(
     'inverse native pane geometry rejects letterbox and divider, handles mirror',
@@ -456,6 +486,87 @@ void main() {
       c.dispose();
     },
   );
+
+  test(
+    'completed selection saves and reentry restores without inference; reselect forgets',
+    () async {
+      final gateway = SavedCutoutGateway()..completeMasks = true;
+      final c = ComparisonController(gateway);
+      c.setViewport(400, 600, false);
+      await c.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      expect(await c.beginCutout(), isTrue);
+      expect(c.cutoutSelecting, isTrue);
+      await c.prepareCutout(
+        ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5),
+        ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5),
+      );
+      expect(gateway.archiveSaves, 1);
+      expect(c.cutoutArchived, isTrue);
+      await c.exitCutout();
+      expect(await c.beginCutout(), isTrue);
+      expect(c.cutoutRestored, isTrue);
+      expect(c.cutoutSelecting, isFalse);
+      expect(gateway.seeds.length, 2);
+      expect(c.cutoutExportReady, isTrue);
+      c.setViewport(400, 600, false);
+      expect(c.canEditCanvas, isTrue);
+      await c.exitCutout();
+      expect(await c.beginCutout(reselect: true), isTrue);
+      expect(c.cutoutSelecting, isTrue);
+      expect(gateway.forgets, 1);
+      expect(c.cutoutRestored, isFalse);
+      c.dispose();
+    },
+  );
+
+  test(
+    'incomplete analysis is never archived and a cache write error preserves preview',
+    () async {
+      final gateway = SavedCutoutGateway();
+      final c = ComparisonController(gateway);
+      c.setViewport(400, 600, false);
+      await c.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      expect(await c.beginCutout(), isTrue);
+      Future<void> analyze() => c.prepareCutout(
+        ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5),
+        ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5),
+      );
+      await analyze();
+      expect(gateway.archiveSaves, 0);
+      expect(c.cutoutActive, isTrue);
+      await c.exitCutout();
+      gateway.completeMasks = true;
+      gateway.failArchiveSave = true;
+      expect(await c.beginCutout(), isTrue);
+      await analyze();
+      expect(gateway.archiveSaves, 1);
+      expect(c.cutoutArchived, isFalse);
+      expect(c.cutoutExportReady, isTrue);
+      expect(c.cutoutActive, isTrue);
+      c.dispose();
+    },
+  );
+
+  test('cancel during restore cannot resurrect a late cached canvas', () async {
+    final gateway = SavedCutoutGateway()
+      ..completeMasks = true
+      ..pendingRestore = Completer<ComparisonCutoutResultDto?>();
+    final c = ComparisonController(gateway);
+    c.setViewport(400, 600, false);
+    await c.initialize();
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    final work = c.beginCutout();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(c.cutoutRestoring, isTrue);
+    await c.exitCutout();
+    gateway.pendingRestore!.complete(gateway.result());
+    expect(await work, isFalse);
+    expect(c.cutoutActive, isFalse);
+    expect(c.cutoutRestoring, isFalse);
+    c.dispose();
+  });
 
   test(
     'progressive preview clamps seeks and blocks export until full result',

@@ -148,6 +148,30 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
     return nil
     #endif
   }
+  func saveCutout(projectId:String)async throws->Bool{
+    do{
+      #if DEBUG
+      return try await requirePlayer().saveCutout(projectId:projectId)
+      #else
+      return false
+      #endif
+    }catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func restoreCutout(projectId:String,layout:ComparisonCanvasLayoutDto?)async throws->ComparisonCutoutResultDto?{
+    do{
+      #if DEBUG
+      return try await requirePlayer().restoreCutout(projectId:projectId,layout:layout)
+      #else
+      return nil
+      #endif
+    }catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func forgetCutout(projectId:String)async throws{
+    #if DEBUG
+    do{try await Task.detached(priority:.utility){try IOSComparisonCutoutArchive.forget(projectId)}.value}
+    catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+    #endif
+  }
   func setCutoutLayout(layout: ComparisonCanvasLayoutDto) async throws -> ComparisonPlaybackDto {
     do {
       #if DEBUG

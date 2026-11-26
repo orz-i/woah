@@ -194,4 +194,51 @@ class ComparisonCutoutTest {
             }
         } finally {dir.deleteRecursively()}
     }
+    @Test fun archiveRoundTripsSelectedAlphaAndRejectsStaleOrCorruptInput() {
+        val dir=java.nio.file.Files.createTempDirectory("cutout-archive-test").toFile()
+        val root=java.io.File(dir,"saved")
+        val archive=ComparisonCutoutArchive(root,dir)
+        val pts=(0L..79L).map{it*33333}
+        val seed=ComparisonCutoutSeed(pts[32],.25f,.5f)
+        val selection=ComparisonCutoutSelection(seed,seed)
+        val key=ComparisonCutoutArchiveKey(0,0,1.0,0,pts.last()+1,false,true,"CPU","ref","target","model")
+        fun track(reference:Boolean,digest:String):ComparisonCutoutTrackCache{
+            val placement=ComparisonCutoutPlacement(FloatRect(.1f,.2f,.5f,.8f),
+                if(reference).27 else .73,.88,.70,!reference)
+            return ComparisonCutoutTrackCache(pts.associateWith{p->
+                ComparisonCutoutLayer(p,2,2,byteArrayOf((p%255).toByte(),2,3,4),placement)
+            },digest)
+        }
+        try{
+            ComparisonCutoutCache(track(true,"ref"),track(false,"target")).use{cache->
+                assertEquals(true,archive.save("project",key,selection,cache){true})
+                assertFailsWith<kotlinx.coroutines.CancellationException>{
+                    archive.restore("project",key,{pts},{pts}){false}
+                }
+                val restored=archive.restore("project",key,{pts},{pts}){true}!!
+                restored.cache.use{saved->
+                    assertEquals(selection,restored.selection)
+                    saved.requireComplete()
+                    for(p in listOf(pts[0],pts[31],pts[32],pts[79])){
+                        val a=ByteBuffer.allocate(4);val b=ByteBuffer.allocate(4)
+                        cache.reference.layer(p)!!.uploadTo(a)
+                        saved.reference.layer(p)!!.uploadTo(b)
+                        assertContentEquals(a.array(),b.array())
+                    }
+                    assertNull(saved.reference.layer(pts[32]+1))
+                }
+                assertNull(archive.restore("project",key.copy(offset=1),{pts},{pts}){true})
+                assertEquals(false,java.io.File(root,"project.cutout").exists())
+                archive.save("project",key,selection,cache){true}
+                java.io.File(root,"project.cutout").appendBytes(byteArrayOf(1))
+                assertNull(archive.restore("project",key,{pts},{pts}){true})
+                archive.save("project",key,selection,cache){true}
+                assertNull(archive.restore("project",key,{pts.dropLast(1)},{pts}){true})
+                archive.save("project",key,selection,cache){true}
+                assertFailsWith<IllegalArgumentException>{archive.forget("../outside")}
+                archive.forget("project")
+                assertNull(archive.restore("project",key,{pts},{pts}){true})
+            }
+        }finally{dir.deleteRecursively()}
+    }
 }

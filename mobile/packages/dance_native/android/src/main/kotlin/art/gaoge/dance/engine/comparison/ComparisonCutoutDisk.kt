@@ -77,6 +77,7 @@ internal class ComparisonCutoutDiskTrack(directory: File, times: List<Long>) : A
     private var width = 0
     private var height = 0
     private val chunks = LinkedHashMap<Int, Array<ComparisonCutoutLayer?>>(3,.75f,true)
+    val times:List<Long> get()=pts.toList()
     val frameCount @Synchronized get() = count
     val visibleCount @Synchronized get() = visible
     val bytes get() = disk.bytes

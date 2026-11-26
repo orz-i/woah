@@ -822,3 +822,123 @@ with a disposable source.mp4 in the same QA Documents directory.
 
 All generated media, reports and traces remain local. No user application
 or project data was replaced. A QA MP4 remains in the device gallery.
+
+## Stage B4: saved canvas restoration (2026-11-26)
+
+The project view continues to open as ordinary comparison. Entering
+"抠像画布（实验）" first attempts a saved canvas for that project ID;
+a valid cache restores the selected subjects and current project's layout
+without calling a detector. "重新选人（清除缓存）" explicitly removes the
+archive before showing selection. Exiting the canvas does not erase
+the completed analysis. A missing/expired/invalid archive falls back
+to ordinary selection. Incomplete analysis remains preview-only and
+is never saved as a reusable archive. A storage failure does not
+invalidate the current complete in-memory preview or export.
+
+Both platforms store only complete selected-alpha tracks, source PTS,
+selected normalized coordinates and fixed anchor boxes in a separate
+app-private cache. iOS additionally retains the existing 32x32 sampled
+RGB stamp per source sample for the compositor's mismatch guard; it is
+not a unique PTS proof. There is no raw detector prefix, thumbnail,
+source movie, or model tensor in the archive. Layout preferences remain
+in the existing project JSON; project schema is unchanged. The cache
+is not a backup or long-term portable project format. Android uses
+app cache; iOS uses Library/Caches with backup exclusion and file
+protection. Four project archives / 512 MiB total, oldest-first
+eviction and 30-day idle expiry on cache maintenance; OS may evict
+earlier. Atomic staging can briefly require space for the old and new
+archive. No new persistent cache is created for partial analysis.
+
+Archive admission validates the format/algorithm contract version,
+native build identity (Android Git revision / iOS executable hash),
+OS, inference backend, actual bundled model digest, both original
+source SHA-256 fingerprints, reference origin, affine music mapping,
+mirror settings and exact common/A-B interval. The whole file checksum
+is checked before reconstruction; expected PTS are independently
+enumerated from the current sources, records are bounded, and source
+fingerprints are checked again before publication. This is corruption/
+staleness detection, not an adversarial authentication protocol.
+Incompatible builds conservatively require new analysis. Cache loss
+requires manual reselection, not an automatic identity guess.
+
+Reconstruction streams records into the existing anonymous B1
+scratch store; no all-video alpha array is loaded into RAM. The
+existing frozen-cache and exact decoded-PTS export checks remain.
+Cancellation and project switches reject late restore results.
+The user can clear a project's archive explicitly. Other stale
+archives are evictable. Export job snapshots after process death still
+require starting a new export from the restored canvas rather than
+silently retrying an old job.
+
+### Actual process restart evidence
+
+12-second repeated H.264 source pair, A/B [6,9)s, selection at 7s,
+90 real samples per role, edited canvas layout. Write archive in one
+process; terminate the application; start the **same installed build**
+again, open at 7.4s and restore without inspection or inference.
+Then seek to 7s, compare anchor pixels and export the restored cache.
+The fixture derives from the same short source; no independent
+choreography or real iPhone evidence is claimed.
+
+| Metric | OnePlus 8T Android 14 | iPhone 15 Pro simulator iOS 17 |
+| --- | ---: | ---: |
+| Original analysis (CPU) | 24.565s | 14.164s |
+| Archive write | 0.121s | 0.030s |
+| Archive size | ~5.1 MiB | ~5.7 MiB |
+| Restore including playable state | 0.588s | 0.279s |
+| Role coverage | 90/90 each | 90/90 each |
+| Original/restored anchor RGB | identical | identical |
+| Restored H.264/AAC output | 90 frames, 3.000s | 90 frames, 3.000s |
+| Export elapsed (320x240) | 2.696s | 1.232s |
+
+The Android report used distinct process IDs 27838 and 28628; iOS
+48894 and 48982. Android restart log has zero model initializations.
+Both outputs retain the 440 Hz reference audio and exact frame PTS.
+All six independently decoded preview/export samples passed the verifier
+(Android RGB MAE 0.744–0.809; iOS 0.937–1.039); resumed preview identical.
+Android published file bytes match the local MP4. Both platforms
+rejected the corrupted archive, changed affine offset, and source
+mutation at identical URI; explicit forget then returned no cache.
+The first Android negative-probe run used an incorrect Dart cache
+directory; fixed the test path and repeated the complete two-process
+probe. The final result passed. Only disposable fixture copies were
+modified. Android archive directory empty and no scratch descriptors
+observed at the end. Physical iPhone, cache behavior after OS eviction,
+and long independent choreography remain outstanding.
+
+Flutter comparison tests 137 passed (restore without re-inference,
+incomplete/failed save, late restore cancellation and prior regressions).
+Android focused JNI/JVM 27 passed (new archive exact PTS/alpha roundtrip,
+checksum, mapping, cancellation and explicit forget). Pigeon output
+reproducible; scoped analyzer and simulator build passed.
+
+### Reproduce
+
+Build the existing smoke entrypoint with:
+```sh
+flutter build apk --debug --target-platform android-arm64 \
+  --target=test_driver/comparison_cutout_smoke.dart \
+  --dart-define=WOAH_CUTOUT_PERSIST_QA=true
+```
+Use the isolated cutoutqa package (as in prior sections), or the
+iOS simulator target. Stage the existing long-source/long-variant
+fixtures. Remove only the QA fixture directory's archive-report.json
+to start a fresh run. First launch waits until report phase "saved";
+terminate the app without uninstalling, then launch the same binary.
+The report must reach phase "finished" and have different process IDs.
+Verify:
+```sh
+python3 tools/comparison/verify_cutout_export.py /path/to/results --platform android --archive
+python3 tools/comparison/verify_cutout_export.py /path/to/results --platform ios --archive
+```
+Pull the published Android file to archive-published.mp4 for byte
+comparison. The real Flutter gesture smoke now additionally exercises
+saved-canvas reentry through the view menu, editable layout recovery,
+and explicit clear/reselect. Generated media and device reports stay
+local; the device QA export remains in MediaStore.
+
+Final actual Flutter screen gesture regression passed on both Android
+and iOS: initial selection, complete analysis, edited layout, exit,
+restore via the normal view menu without a selection overlay, editing
+the restored canvas, exit, and explicit clear/reselect. The QA cache
+was removed at the end of the reselect test.
