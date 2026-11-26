@@ -1,0 +1,276 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Independent real choreography QA; no media or masks committed. Sampled body/distractor points are visual checks, not segmentation ground truth.",
+  "modelSha256": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+  "durationUs": 30000000,
+  "cadence": 25,
+  "dimensions": [
+    768,
+    432
+  ],
+  "framesPerRole": 750,
+  "anchorUs": 3000000,
+  "sources": {
+    "reference": {
+      "file": "break30.mp4",
+      "title": "The guys break dancing in the street near the mall.webm",
+      "author": "KazanCity1",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "descriptionUrl": "https://commons.wikimedia.org/wiki/File:The_guys_break_dancing_in_the_street_near_the_mall.webm",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6c/The_guys_break_dancing_in_the_street_near_the_mall.webm",
+      "downloadSha256": "59ba72a59a14bd4429ec1ac4ad2590354bc86d707afa9662681d7f8c21e9689e",
+      "startSeconds": 37,
+      "testedMp4Sha256": "205993d5e88edd2339d8a2a3aa62a67d9b2a8b05f1b20e2a687b9462708dd28d",
+      "seed": [
+        0.42,
+        0.29
+      ],
+      "subjectDescription": "Black-clad active dancer, not the surrounding spectators."
+    },
+    "target": {
+      "file": "vogue30.mp4",
+      "title": "VOGUE DANCE SHOW - GOOD FOOT STUDIO 2016.webm",
+      "author": "Good Foot Dance Studio (Танцевальная студия «Good Foot»)",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "descriptionUrl": "https://commons.wikimedia.org/wiki/File:VOGUE_DANCE_SHOW_-_GOOD_FOOT_STUDIO_2016.webm",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c2/VOGUE_DANCE_SHOW_-_GOOD_FOOT_STUDIO_2016.webm/VOGUE_DANCE_SHOW_-_GOOD_FOOT_STUDIO_2016.webm.720p.vp9.webm",
+      "downloadSha256": "c42b7ef01d0fc601eaa38eb8c63eaf001ddc584466ff014dd06224ae5a08c3f7",
+      "startSeconds": 48,
+      "testedMp4Sha256": "394feafc4bf7a0d2bea850fda3f8506f491ecf4fa22e3af107aae18922092389",
+      "seed": [
+        0.46,
+        0.56
+      ],
+      "subjectDescription": "Left dancer at the selection frame, with long hair and dark top."
+    }
+  },
+  "transform": "continuous 30s trim; scale to 768x432; normalize cadence to 25 fps; H.264 yuv420p; strip audio. No loop/repetition. Normalization may duplicate/drop source samples.",
+  "annotations": {
+    "reference": [
+      {
+        "ptsUs": 3000000,
+        "selected": [
+          0.42,
+          0.29
+        ],
+        "distractor": [
+          0.76,
+          0.23
+        ]
+      },
+      {
+        "ptsUs": 5000000,
+        "selected": [
+          0.45,
+          0.4
+        ],
+        "distractor": [
+          0.76,
+          0.24
+        ]
+      },
+      {
+        "ptsUs": 8000000,
+        "selected": [
+          0.48,
+          0.4
+        ],
+        "distractor": [
+          0.72,
+          0.35
+        ]
+      },
+      {
+        "ptsUs": 10000000,
+        "selected": [
+          0.47,
+          0.45
+        ],
+        "distractor": [
+          0.59,
+          0.31
+        ]
+      },
+      {
+        "ptsUs": 15000000,
+        "selected": [
+          0.49,
+          0.49
+        ],
+        "distractor": [
+          0.74,
+          0.25
+        ]
+      },
+      {
+        "ptsUs": 18000000,
+        "selected": [
+          0.315,
+          0.48
+        ],
+        "distractor": [
+          0.28,
+          0.13
+        ]
+      },
+      {
+        "ptsUs": 20000000,
+        "selected": [
+          0.44,
+          0.46
+        ],
+        "distractor": [
+          0.25,
+          0.15
+        ]
+      },
+      {
+        "ptsUs": 21000000,
+        "selected": [
+          0.52,
+          0.47
+        ],
+        "distractor": [
+          0.68,
+          0.25
+        ]
+      },
+      {
+        "ptsUs": 26000000,
+        "selected": [
+          0.39,
+          0.42
+        ],
+        "distractor": [
+          0.57,
+          0.28
+        ]
+      },
+      {
+        "ptsUs": 27000000,
+        "selected": [
+          0.45,
+          0.73
+        ],
+        "distractor": [
+          0.55,
+          0.25
+        ]
+      }
+    ],
+    "target": [
+      {
+        "ptsUs": 3000000,
+        "selected": [
+          0.46,
+          0.56
+        ],
+        "distractor": [
+          0.6,
+          0.56
+        ]
+      },
+      {
+        "ptsUs": 6000000,
+        "selected": [
+          0.46,
+          0.52
+        ],
+        "distractor": [
+          0.64,
+          0.52
+        ]
+      },
+      {
+        "ptsUs": 7000000,
+        "selected": [
+          0.45,
+          0.49
+        ],
+        "distractor": [
+          0.67,
+          0.49
+        ]
+      },
+      {
+        "ptsUs": 8000000,
+        "selected": [
+          0.44,
+          0.5
+        ],
+        "distractor": [
+          0.65,
+          0.5
+        ]
+      },
+      {
+        "ptsUs": 10000000,
+        "selected": [
+          0.41,
+          0.58
+        ],
+        "distractor": [
+          0.63,
+          0.61
+        ]
+      },
+      {
+        "ptsUs": 13000000,
+        "selected": [
+          0.37,
+          0.62
+        ],
+        "distractor": [
+          0.6,
+          0.61
+        ]
+      },
+      {
+        "ptsUs": 17000000,
+        "selected": [
+          0.35,
+          0.61
+        ],
+        "distractor": [
+          0.67,
+          0.65
+        ]
+      },
+      {
+        "ptsUs": 20000000,
+        "selected": [
+          0.33,
+          0.58
+        ],
+        "distractor": [
+          0.73,
+          0.57
+        ]
+      },
+      {
+        "ptsUs": 24000000,
+        "selected": [
+          0.31,
+          0.59
+        ],
+        "distractor": [
+          0.72,
+          0.58
+        ]
+      },
+      {
+        "ptsUs": 27000000,
+        "selected": [
+          0.33,
+          0.52
+        ],
+        "distractor": [
+          0.72,
+          0.52
+        ]
+      }
+    ]
+  }
+}

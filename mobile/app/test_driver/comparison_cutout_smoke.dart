@@ -47,6 +47,7 @@ class _CutoutSmoke extends ChangeNotifier {
   static const fullLength = bool.fromEnvironment('WOAH_CUTOUT_FULL_QA');
   static const cancelPartial = bool.fromEnvironment('WOAH_CUTOUT_CANCEL_QA');
   static const persistQa = bool.fromEnvironment('WOAH_CUTOUT_PERSIST_QA');
+  static const realQa = bool.fromEnvironment('WOAH_CUTOUT_REAL_QA');
   final api = DanceComparisonApi();
   final previewKey = GlobalKey();
   String status = 'waiting';
@@ -59,7 +60,7 @@ class _CutoutSmoke extends ChangeNotifier {
   }
 
   Future<T> host<T>(Future<T> value) =>
-      value.timeout(Duration(seconds: fullLength ? 600 : 90));
+      value.timeout(Duration(seconds: fullLength || realQa ? 600 : 90));
   Future<ComparisonPlaybackDto> ready(ComparisonPlaybackDto s) async {
     final until = DateTime.now().add(const Duration(seconds: 30));
     while (s.phase != 'paused' ||
@@ -1177,6 +1178,162 @@ class _CutoutSmoke extends ChangeNotifier {
     }
   }
 
+  // Real-scene probe: incomplete tracking is an observed quality result,
+  // not a passing release gate. Verify the exact native export admission.
+  Future<void> realDanceProbe() async {
+    final reportFile = File('${folder.path}/real-dance-report.json');
+    final row = <String, Object?>{
+      'finished': false,
+      'passed': false,
+      'pid': pid,
+    };
+    void save() => reportFile.writeAsStringSync(jsonEncode(row), flush: true);
+    const projectId = 'qa_independent_dance';
+    final source = '${folder.path}/real-reference.mp4';
+    final target = '${folder.path}/real-target.mp4';
+    try {
+      await host(api.forgetCutout(projectId));
+      final before = await ready(
+        await host(
+          api.open(
+            source,
+            target,
+            0,
+            3000000,
+            1,
+            320,
+            240,
+            true,
+            ComparisonPracticeDto(
+              mirrorTeacher: false,
+              mirrorLearner: false,
+              loopEnabled: false,
+            ),
+            1,
+          ),
+        ),
+      );
+      require(
+        before.durationUs == 30000000,
+        'Expected untrimmed 30-second pair',
+      );
+      row['anchor'] = [before.teacherFrameUs, before.learnerFrameUs];
+      final ra = ComparisonCutoutSeedDto(
+        sourcePtsUs: before.teacherFrameUs!,
+        x: .42,
+        y: .29,
+      );
+      final ta = ComparisonCutoutSeedDto(
+        sourcePtsUs: before.learnerFrameUs!,
+        x: .46,
+        y: .56,
+      );
+      row['referenceStill'] = await inspect(true, ra, 'real-reference-still');
+      row['targetStill'] = await inspect(false, ta, 'real-target-still');
+      save();
+      final watch = Stopwatch()..start();
+      final pending = host(api.prepareCutout(ra, ta, null));
+      unawaited(
+        pending.then<void>((_) {}, onError: (Object _, StackTrace _) {}),
+      );
+      final partial = await waitForPartial();
+      row['firstPlayableMs'] = watch.elapsedMilliseconds;
+      row['partialRange'] = [partial.previewStartUs, partial.previewEndUs];
+      await ready(partial.playback);
+      await capture('real-partial-anchor');
+      save();
+      final result = await pending;
+      row['analysisMs'] = watch.elapsedMilliseconds;
+      row['visibility'] = [
+        result.referenceVisible,
+        result.referenceFrames,
+        result.targetVisible,
+        result.targetFrames,
+      ];
+      await ready(result.playback);
+      require(
+        result.referenceFrames == 750 && result.targetFrames == 750,
+        'Incomplete frame indexing',
+      );
+      final samples = <Map<String, Object?>>[];
+      for (final second in [
+        0,
+        1,
+        2,
+        3,
+        5,
+        8,
+        10,
+        12,
+        15,
+        18,
+        20,
+        22,
+        25,
+        28,
+        29,
+      ]) {
+        final us = second * 1000000;
+        final frame = await ready(
+          await host(api.control(ComparisonCommand.seek, us, 1)),
+        );
+        samples.add({
+          'positionUs': us,
+          'pts': [frame.teacherFrameUs, frame.learnerFrameUs],
+          ...await capture('real-sample-$second'),
+        });
+      }
+      row['samples'] = samples;
+      final full =
+          result.referenceVisible == result.referenceFrames &&
+          result.targetVisible == result.targetFrames;
+      row['allVisible'] = full;
+      if (!full) {
+        require(
+          !await host(api.saveCutout(projectId)),
+          'Incomplete archive saved',
+        );
+        final beforeJob = (await host(api.getExport()))?.jobId;
+        final spec = jsonEncode({
+          'schemaVersion': 1,
+          'id': projectId,
+          'teacher': {'uri': source},
+          'learner': {'uri': target},
+          'offsetUs': 0,
+          'timeScale': 1,
+          'mirrorTeacher': false,
+          'mirrorLearner': false,
+        });
+        bool rejected = false;
+        try {
+          await host(
+            api.startCutoutExport(spec, 0, 30000000, 1440, 1080, 8, true, true),
+          );
+        } catch (_) {
+          rejected = true;
+        }
+        require(
+          rejected && (await host(api.getExport()))?.jobId == beforeJob,
+          'Incomplete export admitted',
+        );
+        row['incompleteArchiveRejected'] = true;
+        row['incompleteExportRejected'] = true;
+      }
+      await ready(await host(api.clearCutout()));
+      row['ordinaryRestored'] = true;
+      row['passed'] = true;
+    } catch (error) {
+      row['error'] = error.toString();
+    } finally {
+      await host(api.close());
+      texture = null;
+      row['finished'] = true;
+      save();
+      status = 'real-dance-finished';
+      notifyListeners();
+    }
+  }
+
   Future<void> run() async {
     folder = Directory(
       '${Directory.systemTemp.parent.path}/Documents/comparison-cutout-fixtures',
@@ -1191,6 +1348,10 @@ class _CutoutSmoke extends ChangeNotifier {
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    if (realQa) {
+      await realDanceProbe();
+      return;
     }
     if (persistQa) {
       await archiveProbe();

@@ -16,6 +16,8 @@ import org.json.JSONObject
 import org.junit.Assume.assumeTrue
 import org.junit.runner.RunWith
 import java.io.File
+import java.io.BufferedOutputStream
+import java.io.DataOutputStream
 import java.nio.ByteBuffer
 import kotlin.math.abs
 import kotlin.math.max
@@ -36,7 +38,9 @@ class ComparisonCutoutBackendInstrumentedTest {
     private data class Lane(val frames: List<Frame?>, val evidence: JSONObject)
     private data class Run(val lanes: List<Lane>, val evidence: JSONObject)
 
-    private fun source(file: File, reference: Boolean, anchorUs: Long, limitUs: Long): Source {
+    private fun source(file: File, reference: Boolean, anchorUs: Long, limitUs: Long,
+        x:Float=if(reference).355f else .324f,y:Float=if(reference).855f else .86f,
+        maxFrames:Int=360): Source {
         require(file.isFile)
         val extractor = MediaExtractor()
         try {
@@ -56,17 +60,18 @@ class ComparisonCutoutBackendInstrumentedTest {
                 if(extractor.sampleTime<limitUs)pts.add(extractor.sampleTime)
                 if(!extractor.advance())break
             }
-            require(pts.size>=30 && pts.size<=360 && pts.first()==0L)
+            require(pts.size>=30 && pts.size<=maxFrames && pts.first()==0L)
             val anchor=pts.minBy { abs(it-anchorUs) }
             return Source(file,ComparisonVideoDescription(f.getInteger(MediaFormat.KEY_WIDTH),f.getInteger(MediaFormat.KEY_HEIGHT),
                 rotation,duration,fps,requireNotNull(f.getString(MediaFormat.KEY_MIME)),"device",false),
-                pts.toList(),ComparisonCutoutSeed(anchor,if(reference).355f else .324f,if(reference).855f else .86f),reference)
+                pts.toList(),ComparisonCutoutSeed(anchor,x,y),reference)
         } finally {extractor.release()}
     }
 
     private fun ms(start:Long)= (System.nanoTime()-start)/1_000_000.0
 
-    private suspend fun runBackend(context:Context,sources:List<Source>,backend:LiteRtAccelerator,threads:Int):Run {
+    private suspend fun runBackend(context:Context,sources:List<Source>,backend:LiteRtAccelerator,threads:Int,
+        evidenceRoot:File?=null):Run {
         val start=System.nanoTime()
         YoloLiteRtSegmenter(context,requestedAccelerator=backend,cpuNumThreads=threads).use { segmenter ->
             segmenter.initialize()
@@ -98,7 +103,29 @@ class ComparisonCutoutBackendInstrumentedTest {
                     val laneStart=System.nanoTime()
                     work.finish().use { cache ->
                         val finishMs=ms(laneStart)
-                        val frames=src.times.map { at ->
+                        // Long-scene evidence is streamed to an explicitly opted-in
+                        // private instrumentation directory; never hold all alpha
+                        // frames in RAM or write to a product project.
+                        val frames=if(evidenceRoot!=null){
+                            val role=if(src.reference)"reference" else "target"
+                            val destination=File(evidenceRoot,"${backend.name.lowercase()}-$role.alpha")
+                            val temporary=File(evidenceRoot,"${destination.name}.tmp")
+                            try{
+                                DataOutputStream(BufferedOutputStream(temporary.outputStream())).use{out->
+                                    out.writeInt(0x574F4131);out.writeInt(src.times.size)
+                                    for(at in src.times){
+                                        val layer=cache.layer(at)
+                                        out.writeLong(at);out.writeInt(layer?.width ?: 0);out.writeInt(layer?.height ?: 0)
+                                        if(layer!=null){
+                                            val bytes=ByteBuffer.allocate(layer.width*layer.height)
+                                            layer.uploadTo(bytes);out.write(bytes.array())
+                                        }
+                                    }
+                                }
+                                check(temporary.renameTo(destination))
+                            }finally{temporary.delete()}
+                            emptyList()
+                        }else src.times.map { at ->
                             cache.layer(at)?.let { layer ->
                                 val bytes=ByteBuffer.allocate(layer.width*layer.height)
                                 layer.uploadTo(bytes)
@@ -111,6 +138,7 @@ class ComparisonCutoutBackendInstrumentedTest {
                             .put("anchor",JSONArray(listOf(anchor.left,anchor.top,anchor.right,anchor.bottom)))
                             .put("firstAnalyzed",work.preview.frameCount)
                         lanes.add(Lane(frames,stats))
+                        if(evidenceRoot!=null)Log.i("WoahCutoutBackendQa","lane=" + stats.toString())
                     }
                 }
                 check(segmenter.effectiveAccelerator==backend)
@@ -207,4 +235,40 @@ class ComparisonCutoutBackendInstrumentedTest {
             Log.i("WoahCutoutBackendQa",report.toString())
         }
     }
+    /** Real independent clips, fixed PTS/seed, no automatic reseeding. The
+     * masks are test-only local evidence for review, not identity ground truth. */
+    @Test fun realDanceQuality():Unit=runBlocking {
+        val args=InstrumentationRegistry.getArguments()
+        assumeTrue(args.getString("realDanceQa")=="true")
+        val context=ApplicationProvider.getApplicationContext<Context>()
+        check(context.packageName=="art.gaoge.dance.engine.cutoutqa.test")
+        val root=File(context.filesDir,"comparison-real-dance-qa").apply{mkdirs()}
+        val seconds=(args.getString("limitUs")?.toLong() ?: 30_000_000L).coerceIn(1_000_000,60_000_000)
+        val anchor=(args.getString("anchorUs")?.toLong() ?: 3_000_000L).coerceIn(0,seconds-1)
+        val sources=listOf(source(File(root,"reference.mp4"),true,anchor,seconds,
+            args.getString("referenceX")!!.toFloat(),args.getString("referenceY")!!.toFloat(),1800),
+            source(File(root,"target.mp4"),false,anchor,seconds,
+            args.getString("targetX")!!.toFloat(),args.getString("targetY")!!.toFloat(),1800))
+        val report=JSONObject().put("device",android.os.Build.MODEL).put("sdk",android.os.Build.VERSION.SDK_INT)
+            .put("limitUs",seconds).put("anchorUs",anchor)
+        val results=JSONArray()
+        val evidence=File(root,"report.json")
+        fun publish(complete:Boolean){
+            report.put("completed",complete).put("runs",results)
+            val tmp=File(root,"report.tmp")
+            tmp.writeText(report.toString(2));check(tmp.renameTo(evidence))
+        }
+        publish(false)
+        for(backend in listOf(LiteRtAccelerator.GPU,LiteRtAccelerator.CPU)){
+            val row=try {
+                runBackend(context,sources,backend,4,root).evidence
+            }catch(e:Exception){
+                JSONObject().put("requested",backend.name).put("status","failed").put("errorClass",e.javaClass.simpleName)
+            }
+            results.put(row);publish(false)
+            Log.i("WoahCutoutBackendQa",row.toString())
+        }
+        publish(true)
+    }
+
 }

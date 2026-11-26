@@ -942,3 +942,173 @@ and iOS: initial selection, complete analysis, edited layout, exit,
 restore via the normal view menu without a selection overlay, editing
 the restored canvas, exit, and explicit clear/reselect. The QA cache
 was removed at the end of the reselect test.
+
+## Stage B5: independent real-dance quality baseline (2026-11-26)
+
+**Result: real-scene identity quality is NOT accepted. Do not promote
+the Android GPU default or remove the experimental flag.** Both native
+platforms can analyze the full 30-second input; tracking/segmentation
+quality, not cache capacity or encoding, is the release blocker.
+
+### Fixture provenance and scope
+
+`testdata/comparison/real-dance-b5.json` records the source URLs, authors,
+CC BY 3.0 attribution/license links, exact downloaded and tested file
+SHA-256, transform, seed coordinates and sparse visual checkpoints.
+No downloaded video, sampled RGB, masks or rendered contact sheets
+are committed. The videos are separate independent choreographies,
+not synchronized performances of the same dance: this is a cutout
+identity/quality stress pair, not a music-alignment benchmark.
+
+- Reference: [The guys break dancing in the street near the mall](https://commons.wikimedia.org/wiki/File:The_guys_break_dancing_in_the_street_near_the_mall.webm),
+  KazanCity1, CC BY 3.0, original source; continuous source seconds
+  37–67. Selected black-clad active dancer; foreground audience
+  obstruction, inversion, floor work and spectators.
+- Target: [VOGUE DANCE SHOW - GOOD FOOT STUDIO 2016](https://commons.wikimedia.org/wiki/File:VOGUE_DANCE_SHOW_-_GOOD_FOOT_STUDIO_2016.webm),
+  Good Foot Dance Studio, CC BY 3.0, Wikimedia 720p VP9 transcode;
+  continuous source seconds 48–78. Selected left dancer at 3s;
+  dark stage, small subjects, floor work and illumination changes.
+- Re-encode each to display-oriented 768x432 H.264/yuv420p,
+  25fps, 30.000s, 750 frames, mute original audio. Cadence normalization
+  may drop or duplicate original samples; no intentional clip repetition.
+  Anchor at 3s, reference (.42,.29), target (.46,.56).
+- A downloaded aerial cultural-dance clip was screened out because
+  subject scale/viewpoint was not representative of practice. It is
+  not counted in the two evaluated lanes.
+
+### Native evidence (same pinned YOLO model, unchanged tracker)
+
+| Metric | Android CPU4 | Android GPU | iOS simulator XNNPACK |
+| --- | ---: | ---: | ---: |
+| Full analysis | 181.587s | 115.884s | 104.872s |
+| Initial neighborhood / playable probe | 7.756s | 4.803s | 3.814s |
+| Breaking frames with output alpha | 409/750 | 259/750 | 472/750 |
+| Vogue frames with output alpha | 146/750 | 151/750 | 114/750 |
+| Breaking longest missing interval | 6.040s | 9.760s | not measured |
+| Vogue longest missing interval | 19.680s | 18.960s | not measured |
+| Breaking selected body point hits (10 visual samples) | 3 | 3 | not measured |
+| Breaking distractor point hits (10 visual samples) | 1 | 2 | not measured |
+| Vogue selected body point hits (10 visual samples) | 5 | 5 | not measured |
+
+The Android rows are the same instrumented native B2 analyzer on
+one OnePlus 8T, with GPU followed by CPU4. The iOS row is the actual
+player/bridge/texture path on the iPhone 15 Pro simulator, not a
+physical device. Timing scopes are not identical across OSes. The
+Android battery sensor moved from about 26.3 C to 32.5 C during the
+run; no thermal steady-state claim. GPU completed 1.57x faster
+in this one trial. The device instrumentation passed as a diagnostic,
+not as a release quality gate.
+
+For Breaking the two Android backends jointly output 220 samples
+(mean binary alpha IoU 0.996136), but 189 CPU-only and 39 GPU-only
+samples disagree on availability. For Vogue the joint-visible IoU
+is 0.994962 on 144 samples; two CPU-only and seven GPU-only samples.
+A high IoU **conditional on both having a mask** is not identity
+validation: both can select the same wrong person. The actual
+Android mask at Breaking 18s covers the white-shirt spectator on
+both CPU and GPU; GPU also does so at 20s. The black-clad dancer is
+visually present in the source. These are observed incorrect-person
+outputs, not merely missing masks. Review of the source and raw
+host detection at those checkpoints gives distinct current
+selected candidates at confidence 0.831 and 0.751; the host
+decoder/runtime differs from the mobile backends, so this is
+supporting diagnosis rather than proof of the device's exact raw
+tensor result. At 10s, 21s, 26s and 27s the selected point also
+belongs to a distinct raw host detection, while the GPU tracker
+has no output. Vogue selected detections at 13s, 17s, 24s and
+27s likewise exist in host observations while the native GPU
+has no output. Missing detections and ambiguous touches do
+also occur, particularly in low light and inversion. Do not
+attribute every loss to tracking or count missing masks as
+correct identity.
+
+The real iOS player completed 750/750 source PTS indexing per role,
+published the initial window, sought sampled frames, refused both
+incomplete export and archive save, and restored ordinary playback.
+No successful export is claimed for this incomplete real pair.
+
+### Actual same-observation algorithm experiment
+
+`experiment_cutout_appearance.py` is an explicitly **host-only**
+prototype, independent of the privacy tracker. It compares current
+FrameKernel association and an experimental selected-instance lane
+on the same raw detector observations with the pinned model,
+forward/backward seed, masked color distribution, local motion,
+and competing-candidate margin. It never outputs a stale mask,
+does not use facial recognition, and does not change any mobile
+runtime or default threshold.
+
+| Host experiment metric | Current FrameKernel | Appearance prototype |
+| --- | ---: | ---: |
+| Breaking output frames | 170/750 | 284/750 |
+| Breaking selected point hits | 2/10 | 4/10 |
+| Breaking longest missing span | 14.240s | 18.440s |
+| Vogue output frames | 62/750 | 652/750 |
+| Vogue selected point hits | 2/10 | 10/10 |
+| Vogue longest missing span | 23.000s | 2.680s |
+
+All prototype point checks of the ten manually sampled distractor
+locations in each lane were negative. Sparse point annotations are
+approximate visual evidence, not dense masks, ground-truth tracking,
+or proof of no switches. The prototype's Breaking overlap with
+legacy is often low and the long missing span worsens; higher output
+counts cannot alone justify promotion. Host decoding/model numerics
+differ from Android/iOS, so compare the two host columns with each
+other, not host values directly with device values. Vogue improvement
+demonstrates the need for additional identity evidence, not a ready
+algorithm. No threshold fitting or production fallback policy is
+approved on these two clips alone.
+
+Next work: separate the cutout-specific association policy from the
+privacy protection tracker, add appearance/temporal evidence with
+stable identity ownership across rapid pose changes, and provide
+an explicit user-confirmed re-anchor/local reanalysis workflow for
+ambiguous gaps. Evaluate on independent hold-out choreography and
+dense manually verified identity/edge samples; tune only after
+checking mistaken associations. The currently recorded wrong-person
+output remains a product blocker. No production runtime change was
+made in B5.
+
+### Reproduce
+
+Download the exact resources recorded in the manifest into a
+local QA directory, check downloaded SHA-256, then:
+```sh
+ffmpeg -v error -y -ss 37 -i breakdance.webm -t 30 -map 0:v:0 \
+  -vf 'fps=25,scale=768:432,setsar=1' -an -c:v libx264 -preset fast \
+  -crf 20 -pix_fmt yuv420p -movflags +faststart break30.mp4
+ffmpeg -v error -y -ss 48 -i vogue.webm -t 30 \
+  -vf 'fps=25,scale=768:432,setsar=1' -an -c:v libx264 -preset fast \
+  -crf 20 -pix_fmt yuv420p -movflags +faststart vogue30.mp4
+```
+Verify 750 frames and exact 30s with ffprobe. Transcoded bytes may
+depend on FFmpeg version. Build the isolated instrumentation APK
+as in B3. Stage the two MP4s as reference.mp4 / target.mp4 in
+the test package's files/comparison-real-dance-qa directory.
+```sh
+adb shell am instrument -w -r \
+  -e class art.gaoge.dance.engine.comparison.ComparisonCutoutBackendInstrumentedTest#realDanceQuality \
+  -e realDanceQa true -e limitUs 30000000 -e anchorUs 3000000 \
+  -e referenceX .42 -e referenceY .29 -e targetX .46 -e targetY .56 \
+  art.gaoge.dance.engine.cutoutqa.test/androidx.test.runner.AndroidJUnitRunner
+```
+Pull report.json and the four *.alpha files from that explicit QA
+directory. These bounded binary records are test-only selected
+alpha evidence; remove them after review. Never run this evidence
+mode on unrelated personal sources. Use:
+```sh
+python tools/comparison/review_real_dance.py /path/to/evidence \
+  --reference break30.mp4 --target vogue30.mp4 \
+  --annotations testdata/comparison/real-dance-b5.json --output /tmp/dance-review
+python tools/comparison/experiment_cutout_appearance.py \
+  --reference break30.mp4 --target vogue30.mp4 \
+  --annotations testdata/comparison/real-dance-b5.json \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/dance-appearance
+```
+Add --probe-only to the experiment for raw detection availability
+at the sparse checkpoints. Build the existing iOS simulator smoke
+entry with WOAH_CUTOUT_REAL_QA=true and stage real-reference.mp4 /
+real-target.mp4 in its QA Documents folder. The iOS report explicitly
+checks the incomplete export/cache rejection rather than asserting
+all frames have an alpha. Do not commit local evidence media.
