@@ -2148,3 +2148,186 @@ model, identity state or GPU default promotion. Proceed to independent
 holdout C7.3 instead of tuning more thresholds against the development
 clips. Physical iPhone, rotated-container full E2E, active model
 cancellation and release-grade dense identity/edge evidence remain open.
+
+## Stage C7.3: fresh identity and quality holdout (2026-11-26)
+
+**Decision: execution complete for the scheduled native paths; autonomous
+release-quality acceptance FAIL / release blocked.** The runtime, model
+weights, ROI and scheduler are frozen at
+`c068a03478a6f8c9091c2563d98ca80e808a7cd6`.
+No production tracking, model, threshold or rendering changes in this
+stage. New test data and the diagnosis below are QA evidence.
+
+### Independent source fixtures
+
+`testdata/comparison/real-dance-c73-holdout.json` records source URLs,
+attribution, exact media hashes, seeds, and source-only annotations.
+New recordings not used in C1–C7.2 tuning:
+
+- Basque dancers in Boise, Joseph, CC BY-SA 2.0:
+  https://commons.wikimedia.org/wiki/File:Basque_dancers_in_Boise.webm .
+  Continuous 12s from 0.5s. Choose blue-shawl, red-skirt dancer with
+  white head covering and dark apron, at the left at the 3s anchor.
+  Closely spaced dancers, similar costumes, changing formation and
+  raised hoops. The red-shawl dancer is a different subject.
+- Swing Dance, vincefry100, CC BY 3.0:
+  https://commons.wikimedia.org/wiki/File:Swing_Dance.webm .
+  Continuous 300 samples from 60s, source 640x360, dark ballroom,
+  striped pink-skirt dancer, dark-suited partner, background viewers
+  and foreground camera operator. Upscaling does not add source detail.
+
+Both normalized to 960x540, H.264, 25fps, exactly 300 source PTS
+each; source audio removed. No intentionally repeated clip.
+The first Swing encode had a 40ms first PTS; Android fixture validation
+correctly rejected it. A lossless copy remux reset it to zero. Verified
+all 300 decoded frame pixel hashes unchanged, preserved pre-remux hash
+and unchanged seeds/annotations in the manifest. Initial run did not
+produce a valid paired report. Final manifest SHA-256:
+`06242f04d53121fcf0b5b5d756dcc6b94d49aa1057923fa28561aa915ec05f9e`.
+Labels drawn before looking at any algorithm outputs: 11 Basque and 12
+Swing selected/distractor point pairs, 3+4 coarse visible contours;
+Basque 4s point excluded for uncertain subject at the edge, 0s no
+contour due to overlap. These are not dense or independently adjudicated
+ground-truth masks. At each checkpoint the two annotated people are
+not an exhaustive list of all possible distractors. No raw media,
+alpha records or screenshots are committed. Respect attribution
+and share-alike if redistributing derived media.
+
+### Fresh host same-observation scheduler A/B
+
+| Scene | Full only | C7.1 unscheduled | C7.2 scheduled | Prior visible byte exact | Detail calls old -> new |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Basque | 279/300 | 280/300 | 280/300 | 280/280 | 21 -> 17 |
+| Swing | 244/300 | 246/300 | 246/300 | 246/246 | 54 -> 47 |
+
+11 fewer ROI invocations (75 -> 64), no lost/changed/added scheduled
+alpha vs unscheduled, longest missing runs 0.72s/1.00s unchanged.
+Selected points 10/11 and 5/12; no annotated distractor hits, but
+that does NOT mean there are no wrong-person outputs. The host Swing
+output already fails the selected-point criterion on full-only, so
+the schedule is not the explanation for that failure. This tests
+same-observation parity on these clips, not universal scheduler safety.
+
+### Frozen native scheduled results
+
+OnePlus 8T Android 14 and iPhone 15 Pro iOS 17 simulator actual
+player/texture. Exact 300 source samples each, initial anchor 3.0s.
+
+| Metric | Android CPU4 | Android GPU QA | iOS simulator |
+| --- | ---: | ---: | ---: |
+| Basque current Mask count | 288/300 | 273/300 | 270/300 |
+| Swing current Mask count | 248/300 | 249/300 | 249/300 |
+| Full pair analysis | 100.341s | 67.143s | 51.166s |
+| First preview | 10.241s | 8.026s | 4.753s |
+| Basque selected points | 6/11 | 6/11 | visual |
+| Basque annotated distractor hits | 3/11 | 3/11 | visual |
+| Swing selected points | 6/12 | 6/12 | visual |
+| Swing annotated distractor hits | 0/12 | 0/12 | visual |
+| Basque longest missing run | 0.36s | 0.72s | not measured |
+| Swing longest missing run | 0.72s | 0.76s | not measured |
+
+Actual ROI attempted/accepted/skipped: CPU Basque 3/0/0,
+Swing 50/19/3; GPU Basque 15/0/3, Swing 50/21/3; iOS Basque
+19/0/2, Swing 51/7/4. Zero local decode/inference exceptions in
+these runs. CPU/GPU both effective as requested. Temperature
+26.2 -> 29.4 C over Android runs, not a controlled timing trial.
+iOS actual 24 exact-PTS sample captures passed, incomplete archive
+and export rejected and ordinary playback restored. QA execution
+success does not equal release acceptance. No complete holdout pair
+export; no physical iPhone.
+
+Android approximate contour IoU over the 3 Basque and 4 Swing
+annotated samples (missing or wrong-person masks count zero IoU):
+CPU 0.5443/0.2974, GPU 0.5450/0.2973. Approximate boundary F1
+with four-pixel tolerance CPU 0.3865/0.2309 and GPU 0.3873/0.2309.
+Basque at 3s/6s ~0.80/0.84 IoU; 9s both zero. Swing at 3s/6s
+~0.52/0.67, at 0s/9s both zero. Conditional CPU/GPU jointly visible
+mean IoU is high (0.9737 Basque, 0.9869 Swing), but wrong shared
+identity can produce high cross-backend agreement. No universal
+segmentation or identity accuracy extrapolation from these sparse
+samples.
+
+### Confirmed failure phenomena and diagnosis
+
+- **Identity switch after the formation changes:** in Basque, the
+  correct blue-shawl dancer is visible at the left early, moves to
+  the right later. At 8s native result has no mask. At 9/10/11s
+  both Android backends render the red-shawl dancer instead,
+  while the selected blue-shawl dancer remains visible on the right.
+  This is a confirmed wrong person, not merely a skirt edge defect.
+  Actual iOS canvas samples likewise show the red-shawl subject
+  after the crossing. The host replay retains the blue-shawl
+  point checks at 9–11s, so native numerical/observation differences
+  can change the outcome of the same shared association algorithm.
+- **Background viewer association in dark crowded video:** Swing
+  Android GPU overlay at 0s, 8s and 9s covers background viewers
+  instead of the pink-striped dancing subject. 11s shows other
+  background/body fragments. The actual iOS canvas at 6s/8s
+  includes a small non-dancer foreground extraction. The annotated
+  partner points are not hit, illustrating why sparse distractor
+  counts cannot establish zero wrong people.
+- Independent host full-frame model probe, same frozen .25 seed/.20
+  continuation thresholds, finds a candidate at all 12 Swing
+  annotated selected points. At 0/3/6/9s the best approximate raw
+  contour IoU is 0.605/0.516/0.666/0.552. Final host contour IoU
+  at 0/6/9s is zero despite these raw observations. The result is
+  evidence of candidate selection/association failure rather than
+  simply an absent model observation; host raw observations are not
+  the native backend tensors. The full detector itself still has
+  rough silhouettes and dark-scene boundary errors.
+
+The failure is substantive and requires revisiting selected identity
+ownership, not adding more ROI attempts or threshold-tuning until
+this holdout passes. Inspect selected-track history across crossing,
+competitor ownership, appearance memory updates and reacquisition
+candidate scores from the same observations. In particular, separate
+continuity evidence from long-term appearance identity; do not
+automatically accept a newly occupying competitor. Stronger
+appearance/spatial clothing evidence can be evaluated on the common
+Tracker, with ambiguity surfaced for the existing user-confirmed local
+repair. A separate new tracker or changing privacy behavior is not
+justified. A fresh independent holdout must follow any fix. Full
+frame-count completeness alone is insufficient for strict export:
+a complete track may still contain wrong identities. Keep experimental
+Debug/draft and GPU QA only. Release remains blocked by identity
+truthfulness and edge quality as well as untested physical iPhone.
+Do not open another round of performance-only optimization.
+
+### Reproduction
+
+Download exact source files and verify hashes in the manifest.
+Normalize as in previous holdout, Basque input seek 0.5s and 12s;
+Swing input seek 60s, `-frames:v 300`, then copy-remux to zero PTS.
+See manifest for output hashes.
+Use prior C7.2 instrumentation with limitUs=12000000,
+anchorUs=3000000, referenceX=.112, referenceY=.428,
+targetX=.338, targetY=.546. Stage real-dance-config.json for iOS
+with the same duration, cadence 25, seeds and 24 half-second samples
+rounded down to exact 40ms PTS. The host and raw diagnostics:
+```sh
+python tools/comparison/replay_adaptive_detail.py \
+  --manifest testdata/comparison/real-dance-c73-holdout.json \
+  --media /path/to/mp4s --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c73-host --scheduled --no-sheets
+python tools/comparison/probe_holdout_observations.py \
+  --manifest testdata/comparison/real-dance-c73-holdout.json \
+  --media /path/to/mp4s --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c73-raw.json
+python tools/comparison/review_holdout.py /path/to/device/evidence \
+  --manifest testdata/comparison/real-dance-c73-holdout.json \
+  --media /path/to/mp4s --output /tmp/c73-review
+```
+
+### Native same-build scheduler comparison on the new pair
+
+The additional Android GPU run with `detailScheduled=false` completed
+using the same installed frozen C7.2 APK, effective GPU, and same two
+exact input MP4 files. Both complete 300-frame Alpha files compare
+byte-for-byte equal to the scheduled run (600 records including
+missing markers). Basque calls 18 -> 15, adopted 0 unchanged;
+Swing calls 53 -> 50, adopted 21 unchanged. Thus 71 -> 65 actual
+local calls (8.45% fewer). Analysis 69.737 -> 67.143s (~3.7% lower),
+first preview 8.034 -> 8.026s. One trial each, different device thermal
+state; no general throughput claim. The confirmed wrong identities
+are present with or without this scheduling change. The new scheduler
+is not the source of these specific identity failures.
