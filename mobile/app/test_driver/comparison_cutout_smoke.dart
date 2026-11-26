@@ -1194,6 +1194,54 @@ class _CutoutSmoke extends ChangeNotifier {
     final source = '${folder.path}/real-reference.mp4';
     final target = '${folder.path}/real-target.mp4';
     try {
+      final configFile = File('${folder.path}/real-dance-config.json');
+      final config = configFile.existsSync()
+          ? Map<String, dynamic>.from(
+              jsonDecode(configFile.readAsStringSync()) as Map,
+            )
+          : <String, dynamic>{};
+      final duration = (config['durationUs'] as int?) ?? 30000000;
+      final cadence = (config['cadence'] as int?) ?? 25;
+      final anchor = (config['anchorUs'] as int?) ?? 3000000;
+      final ref = (config['referenceSeed'] as List?) ?? [.42, .29];
+      final tar = (config['targetSeed'] as List?) ?? [.46, .56];
+      final times =
+          (config['samplesUs'] as List?)?.cast<int>() ??
+          [
+            0,
+            1,
+            2,
+            3,
+            5,
+            8,
+            10,
+            12,
+            15,
+            18,
+            20,
+            22,
+            25,
+            28,
+            29,
+          ].map((v) => v * 1000000).toList();
+      require(
+        duration > 0 &&
+            duration <= 60000000 &&
+            cadence > 0 &&
+            cadence <= 60 &&
+            anchor >= 0 &&
+            anchor < duration &&
+            times.every((v) => v >= 0 && v < duration),
+        'Invalid real-dance QA config',
+      );
+      row['config'] = {
+        'durationUs': duration,
+        'cadence': cadence,
+        'anchorUs': anchor,
+        'referenceSeed': ref,
+        'targetSeed': tar,
+        'samplesUs': times,
+      };
       await host(api.forgetCutout(projectId));
       final before = await ready(
         await host(
@@ -1201,7 +1249,7 @@ class _CutoutSmoke extends ChangeNotifier {
             source,
             target,
             0,
-            3000000,
+            anchor,
             1,
             320,
             240,
@@ -1215,20 +1263,17 @@ class _CutoutSmoke extends ChangeNotifier {
           ),
         ),
       );
-      require(
-        before.durationUs == 30000000,
-        'Expected untrimmed 30-second pair',
-      );
+      require(before.durationUs == duration, 'Unexpected real-pair duration');
       row['anchor'] = [before.teacherFrameUs, before.learnerFrameUs];
       final ra = ComparisonCutoutSeedDto(
         sourcePtsUs: before.teacherFrameUs!,
-        x: .42,
-        y: .29,
+        x: (ref[0] as num).toDouble(),
+        y: (ref[1] as num).toDouble(),
       );
       final ta = ComparisonCutoutSeedDto(
         sourcePtsUs: before.learnerFrameUs!,
-        x: .46,
-        y: .56,
+        x: (tar[0] as num).toDouble(),
+        y: (tar[1] as num).toDouble(),
       );
       row['referenceStill'] = await inspect(true, ra, 'real-reference-still');
       row['targetStill'] = await inspect(false, ta, 'real-target-still');
@@ -1254,35 +1299,23 @@ class _CutoutSmoke extends ChangeNotifier {
       ];
       await ready(result.playback);
       require(
-        result.referenceFrames == 750 && result.targetFrames == 750,
+        result.referenceFrames == duration * cadence ~/ 1000000 &&
+            result.targetFrames == duration * cadence ~/ 1000000,
         'Incomplete frame indexing',
       );
       final samples = <Map<String, Object?>>[];
-      for (final second in [
-        0,
-        1,
-        2,
-        3,
-        5,
-        8,
-        10,
-        12,
-        15,
-        18,
-        20,
-        22,
-        25,
-        28,
-        29,
-      ]) {
-        final us = second * 1000000;
+      for (final us in times) {
         final frame = await ready(
           await host(api.control(ComparisonCommand.seek, us, 1)),
         );
         samples.add({
           'positionUs': us,
           'pts': [frame.teacherFrameUs, frame.learnerFrameUs],
-          ...await capture('real-sample-$second'),
+          ...await capture(
+            config.isEmpty
+                ? 'real-sample-${us ~/ 1000000}'
+                : 'real-sample-us-$us',
+          ),
         });
       }
       row['samples'] = samples;
@@ -1309,7 +1342,7 @@ class _CutoutSmoke extends ChangeNotifier {
         bool rejected = false;
         try {
           await host(
-            api.startCutoutExport(spec, 0, 30000000, 1440, 1080, 8, true, true),
+            api.startCutoutExport(spec, 0, duration, 1440, 1080, 8, true, true),
           );
         } catch (_) {
           rejected = true;

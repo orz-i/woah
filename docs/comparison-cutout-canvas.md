@@ -1556,3 +1556,169 @@ macOS host comparison passed, Flutter smoke analyzer clean. No raw
 media or masks were committed. Retain experimental Debug/draft and
 GPU opt-in; independent dense identity/edge holdouts and physical
 iPhone release evidence remain outstanding.
+
+## Stage C5: frozen independent real-dance holdout (2026-11-26)
+
+**Decision: C5 ran to completion; release quality is NOT accepted.**
+Frozen runtime/core commit `2a954b08cb1ba0bbb2ee15fa7f90ccb3f48a4ad0`;
+no detector weights, confidence thresholds, association policy or
+production rendering changes in this stage. The new files are QA
+configuration, visual annotations and local evaluation tools.
+
+### Independent source fixtures and predeclared checks
+
+`testdata/comparison/real-dance-c5-holdout.json` records the original
+resource URL, license, attribution, exact download and test MP4 hashes,
+continuous source interval, normalized seed and visual annotations.
+
+- **Baganda traditional dance 01**, Kateregga1, CC BY-SA 4.0:
+  https://commons.wikimedia.org/wiki/File:Baganda_traditional_dance_01.webm .
+  Original seconds [12,24), selected foreground striped-costume dancer
+  with white waist sash; similar orange-sash dancer nearby, drums and
+  other foreground/background people. Rapid turn/garment changes.
+- **Parejas bailando Danzon**, Koffermejia, CC0 1.0:
+  https://commons.wikimedia.org/wiki/File:Parejas_bailando_Danzon.webm .
+  Wikimedia 720p VP9 transcode, source [4,16), selected near-camera
+  white-dress dancer with dark waist belt; close embrace, rotating
+  partner, foreground passer-by and multiple similar white outfits.
+
+Each fixture is a single continuous 12s segment, 960x540 H.264 at
+25fps, 300 decoded PTS per role; cadence normalization can drop or
+duplicate source samples but no intentional repetition. Audio removed.
+Anchor at 3.0s; reference seed (.565,.47), target (.413,.50).
+These different choreographies test identity/cutout, not musical
+alignment. Before reviewing output masks, independently inspect the
+unoverlaid source images and freeze 12 selected-person interior points
+and 12 different-person points per role, plus 4 manually approximated
+visible silhouettes per role at 0/3/6/9s on a 640x360 labeling grid.
+Manifest SHA-256 d87ff0d57c3322386c664faee09ffb91fcd9968619a7039ea79e5d438e4769e5.
+No ground-truth claim for fine edges, occluded limbs, or every frame.
+No source videos, derived alpha or screenshots are committed. If
+redistributing the Baganda derived video/visuals, retain its CC BY-SA
+attribution and license.
+
+### Actual native holdout results
+
+| Metric | Android CPU4 | Android effective GPU (QA) | iOS 17 simulator |
+| --- | ---: | ---: | ---: |
+| Baganda current alpha output | 231/300 | 227/300 | 231/300 |
+| Danzon current alpha output | 300/300 | 300/300 | 300/300 |
+| Full analysis | 92.580s | 57.105s | 44.310s |
+| Initial neighborhood / playable | 9.421s | 7.369s | 4.128s |
+| Baganda longest missing interval | 0.760s | 0.840s | not measured |
+| Baganda missing intervals | 13 | 13 | not measured |
+| Baganda selected point hits | 8/12 | 8/12 | visually sampled |
+| Danzon selected point hits | 12/12 | 12/12 | visually sampled |
+| Annotated distractor hits (both roles) | 0/24 | 0/24 | visually sampled |
+
+OnePlus 8T Android 14, GPU then CPU4, battery sensor 28.8 -> 31.4 C.
+Actual GPU backend, no fallback. Not a thermally controlled repeated
+performance test. All 300 source PTS in each lane were read back and
+checked against the 25fps index. Danzon has no unavailable masks;
+the CPU/GPU joint-mask IoU averages 0.99647, minimum 0.93710.
+Baganda: 227 joint-visible, 4 CPU-only, 0 GPU-only, joint mean IoU
+0.98948, minimum 0.74230; two joint masks below 0.90. Availability
+and conditional IoU do not establish identity correctness.
+
+iOS real app player/texture path inspected both subjects, published
+the initial window, processed all 600 indexed samples, captured 24
+exact PTS canvas checkpoints at roughly 0.5s spacing, refused incomplete
+archive/export, and restored ordinary playback. Visual review confirms
+the near-camera white-belt dancer remains selected in those samples;
+Baganda intermittently disappears, and the skirt/body sometimes has
+holes or partial limbs. The partner's hand/arm can remain near the
+selected white-dress shoulder. No iOS raw-alpha metric or successful
+full independent-pair export is claimed. No physical iPhone.
+
+### Approximate visible-contour quality (Android)
+
+Threshold the actual alpha at 128 after interpolation to the manual
+640x360 annotation grid. IoU with a manually drawn approximate visible
+silhouette, and boundary F1 with a 4-pixel tolerance, per sample.
+Missing alpha is zero; report all and available samples separately.
+Do not treat the contours as dense professional segmentation labels.
+
+| Scene/metric | CPU4 | GPU |
+| --- | ---: | ---: |
+| Baganda contour IoU all 4 (2 missing) | 0.35869 | 0.35807 |
+| Baganda contour IoU 2 available | 0.71739 | 0.71615 |
+| Baganda boundary F1 2 available | 0.59496 | 0.59431 |
+| Danzon contour IoU all 4 | 0.80748 | 0.80791 |
+| Danzon boundary F1 all 4 | 0.66681 | 0.66857 |
+
+At Baganda 6/7/8/9s both native backends have no selected alpha
+at the annotated visible point, despite the subject still being
+visually present in the raw video. At 0s the CPU visible contour
+IoU is about 0.593, at 3s about 0.842. The sample counts are small,
+so neither "zero wrong people" nor complete real-world edge quality
+is established. The remaining substantial loss includes raw
+segmentation failures and partially missing silhouettes.
+
+### Post-freeze diagnosis: source scale vs association
+
+The host independent raw-model probe uses the SAME pinned YOLO model,
+unchanged .25 seed/.20 nonseed thresholds, and the exact test MP4
+samples. This is independent of native runtime tensors. For Baganda,
+at 6/7/8/9s the annotated selected point has no raw candidate even
+at .20. At 6s and 9s the best raw instance contour IoU is respectively
+0.00081 and 0.0. Thus these failures cannot be repaired by accepting
+a different track ID or merely changing the tracker threshold.
+
+After recording frozen C5 outcomes, run a single exploratory fixed
+source ROI (x=336,y=92,w=384,h=421 at 960x540) containing the chosen
+dancer around the original anchor, with the same model, thresholds,
+and reverse mapping into original source coordinates. The fixed ROI
+is manually specified, not automatic production localization. It
+recovers all four failed selected-point checkpoints at 6–9s, confidence
+0.777/0.495/0.706/0.857. At 6s/9s, best raw contour IoU rises to
+0.892/0.870. The crop does miss the previously valid 2s point, so do
+not replace the full-frame observation with a crop unconditionally.
+This is a diagnostic hypothesis test on a now-seen fixture, not
+a new held-out result or production fix.
+
+Next engineering work should improve selected-subject observations
+when full-frame masks are missing/fragmentary, using bounded
+source-space detail ROI and current-mask remapping, shared model and
+FrameKernel, competing-person checks and reliable full-frame fallback.
+Do not infer identity from a crop position alone or extrapolate stale
+masks. Measure added model invocations and latency before adoption,
+then repeat on a fresh independent holdout. GPU default promotion and
+release remain blocked; no reason to add a second tracker or tune this
+holdout until it passes.
+
+### Reproduce
+
+Download the exact resources and check hashes from the manifest.
+```sh
+ffmpeg -v error -y -ss 12 -i baganda.webm -t 12 -map 0:v:0 \
+  -vf 'fps=25,scale=960:540,setsar=1' -an -c:v libx264 -preset fast \
+  -crf 19 -pix_fmt yuv420p -movflags +faststart baganda12.mp4
+ffmpeg -v error -y -ss 4 -i danzon.webm -t 12 -map 0:v:0 \
+  -vf 'fps=25,scale=960:540,setsar=1' -an -c:v libx264 -preset fast \
+  -crf 19 -pix_fmt yuv420p -movflags +faststart danzon12.mp4
+```
+Stage them as reference.mp4 / target.mp4 in the isolated Android
+instrumentation package's files/comparison-real-dance-qa directory.
+Use the C4 instrumentation with `-e limitUs 12000000 -e anchorUs 3000000
+-e referenceX .565 -e referenceY .47 -e targetX .413 -e targetY .50`.
+Pull report.json and four alpha records into the local evidence directory.
+```sh
+python tools/comparison/review_holdout.py /path/to/evidence \
+  --manifest testdata/comparison/real-dance-c5-holdout.json \
+  --media /path/to/mp4s --output /tmp/c5-review
+python tools/comparison/probe_holdout_observations.py \
+  --manifest testdata/comparison/real-dance-c5-holdout.json \
+  --media /path/to/mp4s --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c5-raw.json --reference-roi 336 92 384 421
+```
+The iOS QA Dart driver `WOAH_CUTOUT_REAL_QA=true` now accepts
+optional real-dance-config.json in the fixture directory. Stage
+real-reference.mp4 / real-target.mp4 and use configuration
+durationUs=12000000, cadence=25, anchorUs=3000000,
+referenceSeed=[.565,.47], targetSeed=[.413,.50],
+samplesUs = floor(i*500000/40000)*40000 for i=0..23.
+Without config, existing B5 behavior remains. Capture names include
+exact microseconds for a configured run. Actual Android and iOS
+instrumentation/QA finished successfully, which is evidence execution,
+not release-quality acceptance. Scoped Dart analyzer and Python syntax
+checks passed.
