@@ -681,3 +681,144 @@ actual viewport layout callback and any debounced/native resize before
 enabling edit and export. Both gesture runs observed partial progress with
 the edit/export actions disabled, then entered the editor, applied and
 persisted overlay/mirror/placement, and exited normally.
+
+## Stage B3: actual accelerator comparison (2026-11-26)
+
+The Android benchmark is an opt-in instrumented test using the same
+CanonicalYuvInferenceDecoder, YOLO11n-seg, selected-mask FrameKernel
+tracking, anchor-first ordering, and final disk cache as the canvas.
+It compares exact source PTS and selected alpha, not a dummy input
+or just the model invocation return time. The report keeps only
+aggregate metrics (no source paths, frames, masks, or tensors).
+
+Test device: OnePlus 8T / KB2000, Android 14, Qualcomm hardware AVC.
+The two 3-second sources each have 90 real decoded H.264 presentation
+samples, made by repeating the same one-second source and its mirror.
+Seed at 1s, pinned model SHA-256
+`ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`.
+CPU4, GPU, CPU6 ran serially in that order. Battery sensor temperature
+rose from approximately 25.2 to 27.1 C; this is one device and one
+trial, not a thermal steady-state benchmark or independent choreography.
+
+| Metric | CPU4 | GPU | CPU6 |
+| --- | ---: | ---: | ---: |
+| Actual runtime | CPU | GPU | CPU |
+| Initialization | 0.102 s | 2.072 s | 0.118 s |
+| Two source inspections | 0.563 s | 0.487 s | 0.721 s |
+| Initial neighborhood analysis | 8.082 s | 5.459 s | 8.848 s |
+| Both full analysis (excluding readback of final alpha cache) | 25.749 s | 14.387 s | 25.175 s |
+| Total wall including initialization and cache readback | 26.467 s | 17.007 s | 26.078 s |
+| Visible frames | 180/180 | 180/180 | 180/180 |
+| Mean binary alpha IoU vs CPU4 (threshold 128) | reference | 0.995148 | 1 |
+| Minimum alpha IoU vs CPU4 | reference | 0.976190 | 1 |
+| Missing/extra selected frames vs CPU4 | reference | 0 / 0 | 0 / 0 |
+| Exact alpha frames vs CPU4 | reference | 0 | 180 |
+| Mean abs alpha error in threshold-union region (0–255) | reference | 0.4423 | 0 |
+
+GPU complete analysis is 1.79x faster, and whole benchmark wall time is
+1.56x faster. The GPU area ratio relative to CPU ranges from 0.9880 to
+1.0244. CPU6's 2.2% analysis improvement is too small to justify changing
+thread count. These measurements establish agreement with CPU on this
+fixture, not segmentation ground truth or subject identity under difficult
+occlusion. The GPU compiled model is effective GPU according to LiteRT;
+that does not establish full GPU residency of every operation. Model
+invoke alone understates GPU latency because reading its output can
+synchronize execution: combined invocation + output read was about
+18.31 s on CPU4 and 6.19 s on GPU for the two lanes.
+
+### Isolated Android application GPU path
+
+An explicit Gradle property selects GPU **only** for the isolated Debug
+`.cutoutqa` application. Normal builds remain CPU4. GPU initialization
+fallback is rejected in this trial instead of mixing CPU/GPU observations
+within a selected identity session. During successful GPU selection the
+same initialized model runner is leased across reference/target
+inspection and full analysis; no repeated compilation for each selected
+role. Idle runners are released on source/playhead/practice changes,
+exit, background or session close; in-flight work retains exclusive
+ownership and closes on completion/cancellation. CPU retains its original
+short inspection runtime lifetime. No privacy export policy, model, mask
+threshold, tracking algorithm or native encoder is changed.
+
+On the real application GPU path with the full B2 fixture, 12 seconds,
+720 total source frames, anchor 10 seconds, 1440x1080 output:
+
+| Metric | Prior B2 CPU4 | B3 GPU |
+| --- | ---: | ---: |
+| First dynamic preview after prepare | 8.448 s | 4.996 s |
+| Full analysis | 94.428 s | 49.705 s |
+| Export including publication | 11.075 s | 10.547 s |
+| Valid selected frames | 720/720 | 720/720 |
+
+GPU cold compilation was ~2.04 s; the successful first inspection took
+2.267 s and the second inspection 0.200 s (no new compile). The first
+preview timing starts after those inspections, not from the first press.
+The smoke also intentionally rejects an invalid background hit, which
+causes a separate compile before the valid selection. Full analysis time
+falls 47.4%, first-preview analysis time 40.9%. Both lanes logged GPU.
+Full 360-frame MP4 passed the existing progressive verifier, including
+12.000s duration, source PTS, 439.96 Hz tone, anchor equality, preview
+restore, and MediaStore readback byte equality. Preview/export RGB MAE
+1.700–1.977. Six corresponding CPU/GPU **decoded** output samples
+downscaled to 320x240 gave whole-frame RGB MAE 0.208–0.359 and selected
+foreground-region MAE 1.212–1.726 (0–255; encoder and geometry differences
+included). GPU cancellation after first partial preview passed:
+one compiled runtime, first preview 4.889s, cancellation and restored
+ordinary playback 0.403s, late reply rejected, reopen clean, no remaining
+cutout scratch handles or LiteRT runner thread observed.
+
+The new main bottlenecks include output synchronization/readback
+(20.603s summed in the full GPU run) and decode/conversion (14.475s).
+Do not infer GPU model time solely from the asynchronous invocation
+counter or sum overlapping per-role wall timers. GPU still needs
+independent long choreography and multi-device thermal testing before
+default promotion.
+
+### iOS simulator diagnostic
+
+The existing strict-backend video probe was exercised on three real
+frames (0, 400, 800ms) from the same source. XNNPACK median model invoke
+40.257ms, Metal 21.237ms; actual Metal backend reported, but five person
+candidates on every sample versus three on XNNPACK, with some extended
+boxes. Current Metal configuration allows precision loss. Core ML
+strict probe failed on this simulator. These are detection summaries,
+not selected-alpha equivalence or physical iPhone measurements.
+iOS comparison remains XNNPACK. A physical iPhone is needed before
+promoting Metal or Core ML.
+
+### Reproduce
+
+From the app's Android Gradle directory, build the isolated instrumentation
+APK:
+```sh
+export ORG_GRADLE_PROJECT_WOAH_CUTOUT_QA=true
+./gradlew :dance_native:assembleDebugAndroidTest
+```
+Install the resulting `art.gaoge.dance.engine.cutoutqa.test` APK. Stage
+disposable 3-second H.264 fixtures `reference.mp4` and `target.mp4` in
+that package's `files/comparison-cutout-backend-qa` via run-as. Run:
+```sh
+adb shell am instrument -w -r \
+  -e class art.gaoge.dance.engine.comparison.ComparisonCutoutBackendInstrumentedTest#sameVideoCpuGpuSelectedAlpha \
+  -e cutoutBackendQa true -e limitUs 3000000 -e anchorUs 1000000 \
+  art.gaoge.dance.engine.cutoutqa.test/androidx.test.runner.AndroidJUnitRunner
+adb exec-out run-as art.gaoge.dance.engine.cutoutqa.test \
+  cat files/comparison-cutout-backend-qa/report.json
+```
+To exercise GPU in the existing isolated application QA flow:
+```sh
+export ORG_GRADLE_PROJECT_WOAH_CUTOUT_QA=true
+export ORG_GRADLE_PROJECT_WOAH_CUTOUT_QA_BACKEND=gpu
+flutter build apk --debug --target-platform android-arm64 \
+  --target=test_driver/comparison_cutout_smoke.dart \
+  --dart-define=WOAH_CUTOUT_FULL_QA=true
+```
+Use the prior 12s fixture and `--full --progressive` verifier.
+Use `WOAH_CUTOUT_CANCEL_QA=true` in place of the full define to verify
+cancellation. Without both the isolated package and the explicit GPU
+property the ordinary application remains CPU4. For simulator backend
+diagnostics, build `test_driver/comparison_cutout_ios_backend_smoke.dart`
+with a disposable source.mp4 in the same QA Documents directory.
+
+All generated media, reports and traces remain local. No user application
+or project data was replaced. A QA MP4 remains in the device gallery.

@@ -91,6 +91,27 @@ internal class ComparisonSession(
     private var cutoutDone: CompletableDeferred<Unit>?=null
     private var referenceInspection: ComparisonCutoutAnalysis.Inspection?=null
     private var targetInspection: ComparisonCutoutAnalysis.Inspection?=null
+    // Only an idle runner is held on the main thread. An ongoing inspect or
+    // prepare takes exclusive ownership and closes it on cancellation/failure.
+    // GPU QA keeps the idle runtime between selections to avoid compiling
+    // the graph per selected role. CPU keeps its existing short lifetime.
+    private var idleCutoutRuntime:YoloLiteRtSegmenter?=null
+    private val cutoutAccelerator=if(art.gaoge.dance.engine.BuildConfig.DEBUG &&
+        art.gaoge.dance.engine.BuildConfig.CUTOUT_QA_BACKEND=="gpu" &&
+        context.packageName.endsWith(".cutoutqa")) LiteRtAccelerator.GPU else LiteRtAccelerator.CPU
+    private fun newCutoutRuntime()=YoloLiteRtSegmenter(context,requestedAccelerator=cutoutAccelerator,cpuNumThreads=4)
+    private fun takeCutoutRuntime()=idleCutoutRuntime.also{idleCutoutRuntime=null}
+    private fun clearCutoutInspections(){
+        referenceInspection=null;targetInspection=null
+        takeCutoutRuntime()?.close()
+    }
+    private suspend fun initializeCutoutRuntime(value:YoloLiteRtSegmenter){
+        value.initialize()
+        // Never mix GPU and CPU observations within one selected identity
+        // session. In the opt-in GPU QA build a fallback is a failed trial,
+        // not a successful accelerated run.
+        check(value.effectiveAccelerator==cutoutAccelerator){"抠像推理后端不可用，请重新选择人物"}
+    }
     val hasCutout: Boolean get() = cutoutCache!=null || cutoutPreparing
     private var pendingStep: CancellableContinuation<ComparisonPlaybackDto>?=null
     private fun loop(): ComparisonLoop? {
@@ -244,7 +265,7 @@ internal class ComparisonSession(
     }
     fun control(command: ComparisonCommand,valueUs: Long,newSpeed: Double): ComparisonPlaybackDto {
         check(!closed && (!cutoutPreparing || partialWork!=null || command==ComparisonCommand.PAUSE)) { "人物分析进行中" }
-        if(command!=ComparisonCommand.PAUSE) {referenceInspection=null;targetInspection=null}
+        if(command!=ComparisonCommand.PAUSE)clearCutoutInspections()
         when (command) {
             ComparisonCommand.PLAY -> {
                 val bounds=range
@@ -275,6 +296,7 @@ internal class ComparisonSession(
     }
     fun setAlignment(valueUs: Long,scale: Double): ComparisonPlaybackDto {
         check(!closed && !hasCutout) { "请先退出抠像画布" }
+        clearCutoutInspections()
         ComparisonMusicMapping(valueUs,scale)
         val teacher=a; val learner=b
         val previous=range
@@ -305,7 +327,7 @@ internal class ComparisonSession(
     fun setPractice(value: ComparisonPracticeDto): ComparisonPlaybackDto {
         check(!cutoutPreparing) { "人物分析进行中" }
         check(!hasCutout || value==practice) { "请先退出抠像画布再调整选段或画面" }
-        if(value!=practice){referenceInspection=null;targetInspection=null}
+        if(value!=practice)clearCutoutInspections()
         val teacherPicture=ComparisonPicture.fromDto(value.teacherPicture)
         val learnerPicture=ComparisonPicture.fromDto(value.learnerPicture)
         val duration=range?.durationUs
@@ -323,6 +345,7 @@ internal class ComparisonSession(
     }
     suspend fun stepFrame(forward: Boolean): ComparisonPlaybackDto {
         check(ready && pendingStep==null && (!cutoutPreparing || partialWork!=null)) { "请等待画面就绪" }
+        if(!hasCutout)clearCutoutInspections()
         val bounds=requireNotNull(range)
         val window=cutoutWindow
         val stepBounds=if(window==null)bounds else bounds.copy(
@@ -354,21 +377,25 @@ internal class ComparisonSession(
         val revision=cutoutRevision.incrementAndGet()
         cutoutPreparing=true
         val done=CompletableDeferred<Unit>();cutoutDone=done
+        var runtime=takeCutoutRuntime()
         try {
             val inspection=withContext(Dispatchers.Default) {
                 val scope=currentCoroutineContext()
                 val current={scope.isActive && cutoutRevision.get()==revision}
-                YoloLiteRtSegmenter(context,requestedAccelerator=LiteRtAccelerator.CPU,cpuNumThreads=4).use {
-                    it.initialize()
-                    ComparisonCutoutAnalysis(context).inspect(uri,description,seed,it,current)
-                }
+                val segmenter=runtime ?: newCutoutRuntime().also{runtime=it}
+                initializeCutoutRuntime(segmenter)
+                ComparisonCutoutAnalysis(context).inspect(uri,description,seed,segmenter,current)
             }
             check(!closed && foreground && cutoutRevision.get()==revision)
             val shown=requireNotNull(engine?.presentedFrame)
             require((if(reference)shown.first else shown.second)==seed.ptsUs)
             if(reference)referenceInspection=inspection else targetInspection=inspection
+            if(cutoutAccelerator==LiteRtAccelerator.GPU){
+                idleCutoutRuntime=runtime;runtime=null
+            }
             return inspection.preview
         } finally {
+            runtime?.close()
             if(cutoutDone===done){cutoutPreparing=false;cutoutDone=null}
             done.complete(Unit)
         }
@@ -396,16 +423,17 @@ internal class ComparisonSession(
         val done=CompletableDeferred<Unit>();cutoutDone=done
         var pendingCache:ComparisonCutoutCache?=null
         var partial:ComparisonCutoutCache?=null
+        var runtime=takeCutoutRuntime()
         try {
             val cache=withContext(Dispatchers.Default) {
                 val scope=currentCoroutineContext()
                 val current={scope.isActive && cutoutRevision.get()==revision}
-                val segmenter=YoloLiteRtSegmenter(context,requestedAccelerator=LiteRtAccelerator.CPU,cpuNumThreads=4)
-                segmenter.use {
-                    it.initialize()
+                val segmenter=runtime ?: newCutoutRuntime().also{runtime=it}
+                try {
+                    initializeCutoutRuntime(segmenter)
                     val analysis=ComparisonCutoutAnalysis(context)
                     val r=analysis.begin(teacherUri,teacher,bounds.teacherTimeUs(first),bounds.teacherTimeUs(last),
-                        bounds.teacherTimeUs(initial.startUs),bounds.teacherTimeUs(initial.endUs-1),ra,true,mirrorR,it,current,inspectedR)
+                        bounds.teacherTimeUs(initial.startUs),bounds.teacherTimeUs(initial.endUs-1),ra,true,mirrorR,segmenter,current,inspectedR)
                     r.use {
                         val t=analysis.begin(learnerUri,learner,bounds.learnerTimeUs(first),bounds.learnerTimeUs(last),
                             bounds.learnerTimeUs(initial.startUs),bounds.learnerTimeUs(initial.endUs-1),ta,false,mirrorT,segmenter,current,inspectedT)
@@ -427,7 +455,7 @@ internal class ComparisonSession(
                             } catch(e:Throwable){finishedR.close();throw e}
                         }
                     }
-                }
+                } finally {runtime=null;segmenter.close()}
             }
             check(!closed && foreground && cutoutRevision.get()==revision) { "人物分析已取消" }
             val position=positionUs()
@@ -440,6 +468,7 @@ internal class ComparisonSession(
             return ComparisonCutoutResultDto(state(),cache.reference.visibleCount.toLong(),cache.reference.frameCount.toLong(),
                 cache.target.visibleCount.toLong(),cache.target.frameCount.toLong())
         } finally {
+            runtime?.close()
             pendingCache?.close()
             if(partial!=null){
                 val old=partial
@@ -511,7 +540,7 @@ internal class ComparisonSession(
         val revision=cutoutRevision.incrementAndGet()
         cutoutDone?.await()
         if(closed || cutoutRevision.get()!=revision)return state()
-        referenceInspection=null;targetInspection=null
+        clearCutoutInspections()
         if(cutoutCache!=null) {
             pendingUs=positionUs();wantsPlay=false;pauseClock()
             val old=cutoutCache;cutoutCache=null;cutoutWindow=null;cutoutExportSuspended=false
@@ -539,7 +568,7 @@ internal class ComparisonSession(
         return state()
     }
     fun background() { if (!closed) {
-        cutoutRevision.incrementAndGet();referenceInspection=null;targetInspection=null
+        cutoutRevision.incrementAndGet();clearCutoutInspections()
         pendingUs=positionUs();wantsPlay=false;foreground=false;pauseClock()
     } }
     fun foreground() { foreground=true }
@@ -565,7 +594,7 @@ internal class ComparisonSession(
         if (closed) return
         pendingUs=positionUs();wantsPlay=false;pauseClock();closed=true
         val old=cutoutCache
-        cutoutRevision.incrementAndGet();cutoutPreparing=false;partialWork=null;cutoutCache=null;cutoutWindow=null;referenceInspection=null;targetInspection=null
+        cutoutRevision.incrementAndGet();cutoutPreparing=false;partialWork=null;cutoutCache=null;cutoutWindow=null;clearCutoutInspections()
         choreographer.removeFrameCallback(frames)
         try {releaseEngine();producer.setCallback(null);producer.release()} finally {old?.close()}
     }
