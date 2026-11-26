@@ -18,10 +18,14 @@ import 'package:flutter/rendering.dart';
 class FixtureGateway extends NativeComparisonGateway {
   FixtureGateway(this.project);
   final ComparisonProject project;
+  ComparisonProject? lastSaved;
   @override
   Future<ComparisonLibrary> load() async => ComparisonLibrary([project], 0);
   @override
-  Future<void> save(ComparisonProject value) async {}
+  Future<void> save(ComparisonProject value) async {
+    lastSaved = value;
+  }
+
   @override
   Future<ComparisonExportDto?> getExport() async => null;
 }
@@ -187,12 +191,13 @@ Future<void> main() async {
       sideBySide: false,
       updatedAtMs: DateTime.now().millisecondsSinceEpoch,
     );
+    final gateway = FixtureGateway(project);
     runApp(
       MaterialApp(
         theme: AppTheme.darkTheme,
         home: RepaintBoundary(
           key: rootKey,
-          child: ComparisonScreen(gateway: FixtureGateway(project)),
+          child: ComparisonScreen(gateway: gateway),
         ),
       ),
     );
@@ -253,6 +258,71 @@ Future<void> main() async {
       'Selection overlay not removed',
     );
     report['dynamicPixels'] = await capture(folder, 'gesture-dynamic');
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    await tap(byKey('comparison-canvas-edit')!);
+    await until(
+      () =>
+          byKey('comparison-canvas-edit-gesture') != null &&
+          (byKey('comparison-canvas-done')!.widget as TextButton).onPressed !=
+              null,
+      'Canvas edit not ready',
+    );
+    await tap(byKey('comparison-canvas-overlay')!);
+    await until(
+      () =>
+          gateway.lastSaved?.canvasLayout?.target.opacity == .5 &&
+          (byKey('comparison-canvas-done')!.widget as TextButton).onPressed !=
+              null,
+      'Overlay not applied/saved',
+    );
+    await tap(byKey('comparison-canvas-target')!);
+    await tap(byKey('comparison-canvas-mirror')!);
+    await until(
+      () =>
+          gateway.lastSaved?.canvasLayout?.target.mirror == true &&
+          (byKey('comparison-canvas-done')!.widget as TextButton).onPressed !=
+              null,
+      'Independent mirror not saved',
+    );
+    final surface = box(byKey('comparison-canvas-edit-gesture')!);
+    final start = surface.localToGlobal(surface.size.center(Offset.zero));
+    final end =
+        start + Offset(surface.size.width * .18, -surface.size.height * .13);
+    final id = ++pointer;
+    send(PointerDownEvent(pointer: id, position: start));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    send(
+      PointerMoveEvent(
+        pointer: id,
+        position: start + (end - start) * .5,
+        delta: (end - start) * .5,
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    send(
+      PointerMoveEvent(pointer: id, position: end, delta: (end - start) * .5),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    send(PointerUpEvent(pointer: id, position: end));
+    await until(
+      () =>
+          (gateway.lastSaved?.canvasLayout?.target.x ?? 0) > .5 &&
+          (byKey('comparison-canvas-done')!.widget as TextButton).onPressed !=
+              null,
+      'Canvas move not saved',
+    );
+    final saved = gateway.lastSaved!.canvasLayout!;
+    require(
+      saved.reference.x == .5 && saved.target.y < .88,
+      'Moving target changed reference or failed vertical move',
+    );
+    report['editedLayout'] = saved.toJson();
+    report['editedPixels'] = await capture(folder, 'gesture-edited');
+    await tap(byKey('comparison-canvas-done')!);
+    await until(
+      () => byKey('comparison-cutout-timeline') != null,
+      'Edit did not finish',
+    );
     await tap(byText('退出画布')!);
     await until(
       () => byKey('comparison-picture-pane-teacher') != null,

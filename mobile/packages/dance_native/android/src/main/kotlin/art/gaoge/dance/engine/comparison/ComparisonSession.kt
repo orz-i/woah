@@ -12,6 +12,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
+import art.gaoge.dance.engine.bridge.comparison.ComparisonCanvasLayoutDto
 import art.gaoge.dance.engine.bridge.comparison.ComparisonCutoutPreviewDto
 import art.gaoge.dance.engine.bridge.comparison.ComparisonCutoutResultDto
 import art.gaoge.dance.engine.bridge.comparison.ComparisonCutoutSeedDto
@@ -363,7 +364,8 @@ internal class ComparisonSession(
         }
     }
 
-    suspend fun prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto): ComparisonCutoutResultDto {
+    suspend fun prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto,layout: ComparisonCanvasLayoutDto?): ComparisonCutoutResultDto {
+        val requestedLayout=layout?.let { ComparisonCanvasLayout.fromDto(it) }
         check(!closed && ready && !hasCutout && foreground && !wantsPlay) { "请暂停并等待画面就绪" }
         val bounds=requireNotNull(range)
         val teacher=requireNotNull(a);val learner=requireNotNull(b)
@@ -393,6 +395,7 @@ internal class ComparisonSession(
                 }
             }
             check(!closed && foreground && cutoutRevision.get()==revision && range==bounds) { "人物分析已取消" }
+            cache.setLayout(requestedLayout)
             cutoutCache=cache;cutoutWindow=selectedWindow
             referenceInspection=null;targetInspection=null
             pendingUs=positionUs()
@@ -401,6 +404,35 @@ internal class ComparisonSession(
                 cache.target.visibleCount.toLong(),cache.target.frameCount.toLong())
         } finally {
             if(cutoutDone===done) {cutoutPreparing=false;cutoutDone=null}
+            done.complete(Unit)
+        }
+    }
+
+    suspend fun setCutoutLayout(layout: ComparisonCanvasLayoutDto): ComparisonPlaybackDto {
+        check(!closed && ready && !cutoutPreparing && foreground && !wantsPlay)
+        val cache=requireNotNull(cutoutCache)
+        val renderer=requireNotNull(engine)
+        val value=ComparisonCanvasLayout.fromDto(layout)
+        val revision=cutoutRevision.incrementAndGet()
+        val done=CompletableDeferred<Unit>();cutoutDone=done;cutoutPreparing=true
+        val previous=cache.setLayout(value)
+        try {
+            kotlinx.coroutines.withTimeout(10_000L) {
+                suspendCancellableCoroutine<Unit> { continuation ->
+                    renderer.redrawCutout { result ->
+                        if(continuation.isActive) result.fold(
+                            onSuccess={continuation.resume(Unit)},onFailure={continuation.resumeWithException(it)})
+                    }
+                }
+            }
+            check(!closed && foreground && cutoutRevision.get()==revision && engine===renderer)
+            return state()
+        } catch (error:Throwable) {
+            cache.setLayout(previous)
+            if(!closed && engine===renderer && cutoutCache===cache)renderer.redrawCutout {}
+            throw error
+        } finally {
+            if(cutoutDone===done){cutoutPreparing=false;cutoutDone=null}
             done.complete(Unit)
         }
     }

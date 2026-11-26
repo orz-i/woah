@@ -184,6 +184,22 @@ internal class ComparisonGlEngine(
         }
     }
 
+    /** Complete only after the edited geometry has been submitted to the surface.
+     * A stale or closed engine cannot acknowledge an edit to another session. */
+    fun redrawCutout(complete:(Result<Unit>)->Unit) {
+        val expected=request.get()
+        if(!handler.post {
+            val result=runCatching {
+                check(cutoutProvider!=null && current() && request.get()==expected)
+                val target=requireNotNull(lastTarget)
+                redraw=true
+                drawAt(target,lastOffset,System.nanoTime(),diagnostics.generation(),lastTimeScale)
+                checkCurrent()
+            }
+            main.post { complete(result) }
+        }) main.post { complete(Result.failure(IllegalStateException("Cutout surface closed"))) }
+    }
+
     fun setPicture(reference: Boolean, target: Boolean,
         referencePicture: ComparisonPicture,targetPicture: ComparisonPicture) {
         latestPicture.set(PictureRequest(reference,target,referencePicture,targetPicture))
@@ -316,19 +332,22 @@ internal class ComparisonGlEngine(
         if (!redraw && ta.startUs==lastTeacher && lb.startUs==lastLearner) return
         GLES20.glViewport(0,0,width,height)
         GLES20.glDisable(GLES20.GL_SCISSOR_TEST)
-        GLES20.glClearColor(0f,0f,0f,1f)
+        val frame = cutoutProvider?.invoke(ta.startUs,lb.startUs)
+        val color=frame?.layout?.color() ?: floatArrayOf(0f,0f,0f)
+        GLES20.glClearColor(color[0],color[1],color[2],1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        val provider = cutoutProvider
-        if (provider == null) {
+        if (frame == null) {
             drawTexture(a,textures[0],true)
             drawTexture(b,textures[1],false)
         } else {
-            val frame = provider(ta.startUs,lb.startUs)
             GLES20.glEnable(GLES20.GL_BLEND)
             GLES20.glBlendFunc(GLES20.GL_ONE,GLES20.GL_ONE_MINUS_SRC_ALPHA)
             try {
-                frame.layer(true,ta.startUs)?.let { drawTexture(a,textures[0],true,it) }
-                frame.layer(false,lb.startUs)?.let { drawTexture(b,textures[1],false,it) }
+                fun reference() { frame.layer(true,ta.startUs)?.let {
+                    drawTexture(a,textures[0],true,it,frame.layout?.reference?.apply(it.placement)) } }
+                fun target() { frame.layer(false,lb.startUs)?.let {
+                    drawTexture(b,textures[1],false,it,frame.layout?.target?.apply(it.placement)) } }
+                if(frame.layout?.targetOnTop!=false){reference();target()}else{target();reference()}
             } finally { GLES20.glDisable(GLES20.GL_BLEND) }
         }
         check(GLES20.glGetError()==GLES20.GL_NO_ERROR) { "GL composition error" }
@@ -349,14 +368,15 @@ internal class ComparisonGlEngine(
     }
 
     private fun drawTexture(video: ComparisonCodecVideo,textureId: Int,isTeacher: Boolean,
-        cutout: ComparisonCutoutLayer? = null) {
+        cutout: ComparisonCutoutLayer? = null, edited: ComparisonCutoutPlacement? = null) {
         val d=video.description
         val rotated=d.rotation%180!=0
         val pane=if (cutout == null) ComparisonGlLayout.pane(width,height,gap,isTeacher,sideBySide)
             else ComparisonViewport(0,0,width,height)
         val picture=if (isTeacher) teacherPicture else learnerPicture
         val aspect=if(rotated) d.height.toDouble()/d.width else d.width.toDouble()/d.height
-        val quad=cutout?.placement?.quad(width,height,aspect) ?: picture.quad(pane,
+        val placement=edited ?: cutout?.placement
+        val quad=placement?.quad(width,height,aspect) ?: picture.quad(pane,
             ComparisonGlLayout.viewport(width,height,gap,
                 if(rotated) d.height else d.width,if(rotated) d.width else d.height,isTeacher,sideBySide))
         val shaderProgram=if(cutout == null) program else cutoutProgram
@@ -367,10 +387,10 @@ internal class ComparisonGlEngine(
         GLES20.glUniform2f(GLES20.glGetUniformLocation(shaderProgram,"frameScale"),quad.scaleX,quad.scaleY)
         GLES20.glUniform2f(GLES20.glGetUniformLocation(shaderProgram,"frameShift"),quad.shiftX,quad.shiftY)
         GLES20.glUniform1f(GLES20.glGetUniformLocation(shaderProgram,"mirrorX"),
-            if (cutout?.placement?.mirror ?: (if (isTeacher) mirrorTeacher else mirrorLearner)) -1f else 1f)
+            if (placement?.mirror ?:  (if (isTeacher) mirrorTeacher else mirrorLearner)) -1f else 1f)
         if (cutout != null) {
             GLES20.glUniform1i(GLES20.glGetUniformLocation(shaderProgram,"alphaMask"),1)
-            GLES20.glUniform1f(GLES20.glGetUniformLocation(shaderProgram,"opacity"),cutout.placement.opacity)
+            GLES20.glUniform1f(GLES20.glGetUniformLocation(shaderProgram,"opacity"),requireNotNull(placement).opacity)
             uploadAlpha(cutout)
         }
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)

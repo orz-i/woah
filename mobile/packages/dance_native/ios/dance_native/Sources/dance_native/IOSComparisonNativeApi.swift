@@ -132,14 +132,23 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
       #endif
     } catch { throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison) }
   }
-  func prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutResultDto {
+  func prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto,layout: ComparisonCanvasLayoutDto?) async throws -> ComparisonCutoutResultDto {
     do {
       #if DEBUG
-      return try await requirePlayer().prepareCutout(reference: reference,target: target)
+      return try await requirePlayer().prepareCutout(reference: reference,target: target,layout:layout)
       #else
       throw invalid("抠像画布正在测试")
       #endif
     } catch { throw IOSDiagnosticPrivacy.pigeon(error,stage: .comparison) }
+  }
+  func setCutoutLayout(layout: ComparisonCanvasLayoutDto) async throws -> ComparisonPlaybackDto {
+    do {
+      #if DEBUG
+      return try await requirePlayer().setCutoutLayout(layout)
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    } catch {throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
   }
   func clearCutout() async throws -> ComparisonPlaybackDto {
     do { return try await requirePlayer().clearCutout() }

@@ -50,6 +50,10 @@ abstract interface class ComparisonCutoutGateway {
   Future<ComparisonCutoutResultDto> prepareCutout(
     ComparisonCutoutSeedDto reference,
     ComparisonCutoutSeedDto target,
+    ComparisonCanvasLayoutDto? layout,
+  );
+  Future<ComparisonPlaybackDto> setCutoutLayout(
+    ComparisonCanvasLayoutDto layout,
   );
   Future<ComparisonPlaybackDto> clearCutout();
 }
@@ -160,7 +164,12 @@ class NativeComparisonGateway
   Future<ComparisonCutoutResultDto> prepareCutout(
     ComparisonCutoutSeedDto reference,
     ComparisonCutoutSeedDto target,
-  ) => _api.prepareCutout(reference, target);
+    ComparisonCanvasLayoutDto? layout,
+  ) => _api.prepareCutout(reference, target, layout);
+  @override
+  Future<ComparisonPlaybackDto> setCutoutLayout(
+    ComparisonCanvasLayoutDto layout,
+  ) => _api.setCutoutLayout(layout);
   @override
   Future<ComparisonPlaybackDto> clearCutout() => _api.clearCutout();
   @override
@@ -196,4 +205,21 @@ class NativeComparisonGateway
   Future<void> openExport(String id) => _api.openExport(id);
   @override
   Future<void> close() => _api.close();
+}
+
+ComparisonCanvasLayoutDto canvasLayoutDto(ComparisonCanvasLayout layout) {
+  ComparisonCanvasLayerDto layer(ComparisonCanvasLayer value) =>
+      ComparisonCanvasLayerDto(
+        x: value.x,
+        y: value.y,
+        height: value.height,
+        opacity: value.opacity,
+        mirror: value.mirror,
+      );
+  return ComparisonCanvasLayoutDto(
+    reference: layer(layout.reference),
+    target: layer(layout.target),
+    targetOnTop: layout.targetOnTop,
+    background: layout.background,
+  );
 }

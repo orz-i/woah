@@ -56,9 +56,21 @@ class CutoutGateway extends FakeComparisonGateway
   Future<ComparisonCutoutResultDto> prepareCutout(
     ComparisonCutoutSeedDto reference,
     ComparisonCutoutSeedDto target,
+    ComparisonCanvasLayoutDto? layout,
   ) async {
+    initialLayout = layout;
     seeds.addAll([reference, target]);
     return pending == null ? result() : pending!.future;
+  }
+
+  ComparisonCanvasLayoutDto? initialLayout;
+  final edits = <ComparisonCanvasLayoutDto>[];
+  @override
+  Future<ComparisonPlaybackDto> setCutoutLayout(
+    ComparisonCanvasLayoutDto layout,
+  ) async {
+    edits.add(layout);
+    return current;
   }
 
   @override
@@ -216,6 +228,30 @@ void main() {
       find.byKey(const ValueKey('comparison-project-menu')),
     );
     expect(menu.enabled, isFalse);
+    await tester.tap(find.byKey(const ValueKey('comparison-canvas-edit')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('comparison-canvas-edit-gesture')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('comparison-canvas-overlay')));
+    await tester.pumpAndSettle();
+    expect(gateway.edits.last.target.opacity, .5);
+    await tester.tap(find.byKey(const ValueKey('comparison-canvas-target')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('comparison-canvas-mirror')));
+    await tester.pumpAndSettle();
+    expect(gateway.edits.last.target.mirror, isTrue);
+    final gesture = find.byKey(
+      const ValueKey('comparison-canvas-edit-gesture'),
+    );
+    final rect = tester.getRect(gesture);
+    await tester.drag(gesture, Offset(rect.width * .10, -rect.height * .10));
+    await tester.pumpAndSettle();
+    expect(gateway.edits.last.target.x, greaterThan(.5));
+    expect(gateway.edits.last.reference.x, .5);
+    await tester.tap(find.byKey(const ValueKey('comparison-canvas-done')));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('退出画布'));
     await tester.pumpAndSettle();
     expect(gateway.clears, 1);
@@ -293,6 +329,79 @@ void main() {
     expect(gateway.current.positionUs, 0);
     controller.dispose();
   });
+
+  test(
+    'canvas settings persist after explicit edit and reload for new analysis',
+    () async {
+      final gateway = CutoutGateway();
+      final c = ComparisonController(gateway);
+      c.setViewport(400, 600, false);
+      await c.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      expect(await c.beginCutout(), isTrue);
+      final ra = ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5);
+      final ta = ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5);
+      await c.prepareCutout(ra, ta);
+      expect(gateway.initialLayout!.reference.x, .27);
+      expect(await c.beginCanvasEditing(), isTrue);
+      final layout = c.canvasLayout.overlay().copyWith(
+        background: 2,
+        targetOnTop: false,
+      );
+      expect(await c.applyCanvasLayout(layout), isTrue);
+      expect(gateway.edits.single.reference.x, .5);
+      expect(gateway.edits.single.target.opacity, .5);
+      expect(gateway.seeds.length, 2);
+      expect(gateway.projects.first.canvasLayout!.background, 2);
+      c.finishCanvasEditing();
+      await c.exitCutout();
+      expect(await c.beginCutout(), isTrue);
+      await c.prepareCutout(ra, ta);
+      expect(gateway.initialLayout!.background, 2);
+      expect(gateway.initialLayout!.targetOnTop, isFalse);
+      c.dispose();
+    },
+  );
+
+  test(
+    'old JSON stays compatible and canvas validation rejects invalid layout',
+    () {
+      final old = savedProject();
+      expect(old.toJson().containsKey('canvasLayout'), isFalse);
+      final layout = ComparisonCanvasLayout.sideBySide().overlay();
+      final project = old.copyWith(canvasLayout: layout);
+      final restored = ComparisonProject.fromJson(
+        Map<String, dynamic>.from(project.toJson()),
+      );
+      expect(restored.canvasLayout!.toJson(), layout.toJson());
+      expect(project.swapSources().canvasLayout, isNull);
+      expect(
+        project
+            .copyWith(
+              teacher: const ComparisonSource(
+                uri: 'file:///new',
+                name: 'new',
+                durationUs: 1000000,
+                hasAudio: false,
+              ),
+            )
+            .canvasLayout,
+        isNull,
+      );
+      expect(
+        project.copyWith(positionUs: 2).canvasLayout!.toJson(),
+        layout.toJson(),
+      );
+      final bad = layout.copyWith(target: layout.target.copyWith(opacity: 1.1));
+      expect(bad.valid, isFalse);
+      expect(
+        () => ComparisonCanvasLayout.fromJson(
+          Map<String, dynamic>.from(bad.toJson()),
+        ),
+        throwsFormatException,
+      );
+    },
+  );
 
   test('cancelling analysis discards a late result', () async {
     final gateway = CutoutGateway()

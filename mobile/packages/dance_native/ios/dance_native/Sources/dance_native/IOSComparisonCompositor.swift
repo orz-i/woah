@@ -36,11 +36,42 @@ struct IOSComparisonCutoutLayer: Sendable {
       && (0...1).contains(placement.opacity)
   }
 }
+/// Geometry edits never replace the original selection anchor or cached alpha.
+struct IOSComparisonCanvasLayer: Sendable {
+  let x: Double
+  let y: Double
+  let height: Double
+  let opacity: Double
+  let mirror: Bool
+  var valid: Bool {
+    [x,y,height,opacity].allSatisfy { $0.isFinite } && (0...1).contains(x)
+      && (0...1).contains(y) && (0.05...2).contains(height) && (0...1).contains(opacity)
+  }
+  func apply(_ base: IOSComparisonCutoutPlacement) -> IOSComparisonCutoutPlacement {
+    IOSComparisonCutoutPlacement(anchor:base.anchor,x:x,y:y,subjectHeight:height,mirror:mirror,opacity:opacity)
+  }
+}
+struct IOSComparisonCanvasLayout: Sendable {
+  let reference: IOSComparisonCanvasLayer
+  let target: IOSComparisonCanvasLayer
+  let targetOnTop: Bool
+  let background: Int64
+  var valid: Bool { reference.valid && target.valid && (0...2).contains(background) }
+  func layer(_ referenceRole: Bool) -> IOSComparisonCanvasLayer { referenceRole ? reference : target }
+  var color: CIColor {
+    switch background {
+      case 1: return CIColor(red:20.0/255,green:33.0/255,blue:35.0/255)
+      case 2: return CIColor(red:235.0/255,green:237.0/255,blue:235.0/255)
+      default: return .black
+    }
+  }
+}
 struct IOSComparisonCutoutFrame {
   let referencePtsUs: Int64
   let targetPtsUs: Int64
   let reference: IOSComparisonCutoutLayer?
   let target: IOSComparisonCutoutLayer?
+  var editedLayout: IOSComparisonCanvasLayout? = nil
 
   func layer(referenceRole: Bool) -> IOSComparisonCutoutLayer? {
     let value = referenceRole ? reference : target
@@ -104,16 +135,22 @@ struct IOSComparisonCutoutCache: Sendable {
   let offsetUs: Int64
   let timeScale: Double
   let window: Range<Int64>?
+  let editedLayout: IOSComparisonCanvasLayout?
   init(reference: IOSComparisonCutoutTrackCache,target: IOSComparisonCutoutTrackCache,
-    referenceStartUs: Int64,offsetUs: Int64,timeScale: Double,window: Range<Int64>? = nil) {
+    referenceStartUs: Int64,offsetUs: Int64,timeScale: Double,window: Range<Int64>? = nil,
+    editedLayout: IOSComparisonCanvasLayout? = nil) {
     self.reference=reference;self.target=target;self.referenceStartUs=referenceStartUs
-    self.offsetUs=offsetUs;self.timeScale=timeScale;self.window=window
+    self.offsetUs=offsetUs;self.timeScale=timeScale;self.window=window;self.editedLayout=editedLayout
+  }
+  func withLayout(_ value: IOSComparisonCanvasLayout?) -> Self {
+    Self(reference:reference,target:target,referenceStartUs:referenceStartUs,offsetUs:offsetUs,
+      timeScale:timeScale,window:window,editedLayout:value)
   }
   func frame(at compositionTime: CMTime, referenceBuffer: CVPixelBuffer,
              targetBuffer: CVPixelBuffer) -> IOSComparisonCutoutFrame {
     if let window {
       guard let time=IOSComparisonTimeCore.map(compositionTime),window.contains(time) else {
-        return IOSComparisonCutoutFrame(referencePtsUs:-1,targetPtsUs:-1,reference:nil,target:nil)
+        return IOSComparisonCutoutFrame(referencePtsUs:-1,targetPtsUs:-1,reference:nil,target:nil,editedLayout:editedLayout)
       }
     }
     let source = CMTimeAdd(compositionTime,CMTime(value: referenceStartUs,timescale: 1_000_000))
@@ -124,7 +161,7 @@ struct IOSComparisonCutoutCache: Sendable {
       return value.1.layer
     }
     return IOSComparisonCutoutFrame(referencePtsUs: r?.0 ?? -1,targetPtsUs: t?.0 ?? -1,
-      reference: layer(r,referenceBuffer),target: layer(t,targetBuffer))
+      reference: layer(r,referenceBuffer),target: layer(t,targetBuffer),editedLayout:editedLayout)
   }
 }
 
@@ -215,16 +252,16 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
     cutout: IOSComparisonCutoutFrame? = nil) {
     let layout = instruction.layout
     let canvas = CGRect(x: 0, y: 0, width: CGFloat(layout.width), height: CGFloat(layout.height))
-    var image = CIImage(color: .black).cropped(to: canvas)
+    var image = CIImage(color: cutout?.editedLayout?.color ?? .black).cropped(to: canvas)
     if let cutout {
-      // Never fall back to unmasked video for missing or stale masks.
-      if let layer = cutout.layer(referenceRole: true),
-         let foreground = cutoutImage(reference, layer: instruction.reference, cutout: layer, layout: layout) {
-        image = foreground.composited(over: image)
-      }
-      if let layer = cutout.layer(referenceRole: false),
-         let foreground = cutoutImage(target, layer: instruction.target, cutout: layer, layout: layout) {
-        image = foreground.composited(over: image)
+      // One immutable geometry snapshot per frame, including z order.
+      let order = cutout.editedLayout?.targetOnTop == false ? [false,true] : [true,false]
+      for referenceRole in order {
+        guard let layer = cutout.layer(referenceRole:referenceRole),
+          let foreground = cutoutImage(referenceRole ? reference : target,
+            layer:referenceRole ? instruction.reference : instruction.target,cutout:layer,layout:layout,
+            edited:cutout.editedLayout?.layer(referenceRole)) else { continue }
+        image = foreground.composited(over:image)
       }
     } else {
       image = pane(reference, layer: instruction.reference, reference: true, layout: layout).composited(over: image)
@@ -266,8 +303,8 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
   }
 
   private func cutoutImage(_ buffer: CVPixelBuffer, layer: IOSComparisonVideoLayer,
-    cutout: IOSComparisonCutoutLayer, layout: IOSComparisonLayout) -> CIImage? {
-    let placement = cutout.placement
+    cutout: IOSComparisonCutoutLayer, layout: IOSComparisonLayout, edited: IOSComparisonCanvasLayer? = nil) -> CIImage? {
+    let placement = edited?.apply(cutout.placement) ?? cutout.placement
     guard let quad = IOSComparisonTimeCore.cutoutQuad(width: layout.width, height: layout.height,
       aspect: layer.aspect, anchor: placement.anchor, x: placement.x, y: placement.y,
       subjectHeight: placement.subjectHeight, mirror: placement.mirror) else { return nil }

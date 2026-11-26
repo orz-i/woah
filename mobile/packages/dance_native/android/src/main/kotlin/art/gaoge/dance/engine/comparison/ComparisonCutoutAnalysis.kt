@@ -33,8 +33,10 @@ internal class ComparisonCutoutTrackCache(layers: Map<Long, ComparisonCutoutLaye
 
 internal data class ComparisonCutoutCache(val reference: ComparisonCutoutTrackCache,
     val target: ComparisonCutoutTrackCache) {
+    private val layout=java.util.concurrent.atomic.AtomicReference<ComparisonCanvasLayout?>(null)
+    fun setLayout(value:ComparisonCanvasLayout?): ComparisonCanvasLayout? = layout.getAndSet(value)
     fun frame(referencePts: Long, targetPts: Long) =
-        ComparisonCutoutFrame(reference.layer(referencePts),target.layer(targetPts))
+        ComparisonCutoutFrame(reference.layer(referencePts),target.layer(targetPts),layout.get())
 }
 
 /** Bounded M0 analysis for one common interval. No decoding/inference on the GL

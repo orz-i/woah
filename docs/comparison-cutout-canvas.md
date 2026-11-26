@@ -271,3 +271,66 @@ gateway, not a mocked inference engine. First-drop texture captures had
 visible reference, canvas and target regions (12,688 / 9,911 / 12,263
 nonblack pixels respectively). The second drag entered the dynamic canvas,
 and the exit button restored the original source panes.
+
+## Editable canvas and layout persistence (2026-11-26)
+
+The Debug-only dynamic canvas now offers an independent editing console.
+Pause and choose the reference or target layer explicitly, including when
+both people overlap. Drag changes the selected layer's normalized bottom
+center; pinch or the height slider adjusts its fixed calibration scale.
+Opacity, mirror, layer order, parallel/overlay presets, and black/charcoal/
+light backgrounds are editable. Geometry/slider gestures show a draft
+anchor/value during interaction and apply to the native video texture on
+release. The editor preserves the current texture aspect while the control
+panel changes its viewport size.
+
+The domain `ComparisonCanvasLayout` is independent of ordinary source
+picture settings. One complete validated layout crosses Pigeon. Android
+publishes a single atomic geometry snapshot, redraws the current decoded
+pair on the GL queue and acknowledges only after submission. iOS builds a
+new AVFoundation composition snapshot at the current position, retaining
+the same immutable PTS-keyed Alpha cache; failed edits restore the old
+snapshot where possible. Both renderers use the existing FrameKernel
+fixed-anchor quad and actual source color/Alpha. No editing operation
+runs segmentation or tracking, and no cached mask is copied per edit.
+Rendering order and background change together with the pair layout.
+
+Only layout preferences are written into the optional `canvasLayout`
+field of the existing project schema. Old projects omit the field and
+retain the old behavior. Source replacement or role swap clears it.
+A new cutout session reuses the saved layout after explicit selection;
+person identity anchors and masks are deliberately not persisted. This
+is layout restoration, not automatic subject reselection or cache reuse
+across sessions. Normal comparison export is still isolated from the
+experimental canvas.
+
+### Evidence
+
+* Flutter comparison regression: 129 tests passed, including 9 cutout
+  tests (gesture, layout edits, old JSON, validation, and reuse of saved
+  layout). Domain package: 28 passed. Scoped analyzer: clean.
+* Android: 13 focused JVM/JNI tests passed, including immutable selected
+  anchor and exact PTS cache reuse while changing geometry; no connected
+  device GPU test.
+* iPhone 15 Pro simulator iOS 17: all three previous real-video cases
+  passed again (each role 30/30 visible); native editing smoke in the
+  middle-anchor case also passed. Hiding/moving the target/reference
+  produced 4,186 left / 0 right foreground pixels, reversed overlapping
+  order produced different images, light background filled all 76,800
+  pixels, and parallel reset restored both subjects. All five edit
+  operations preserved the sampled source PTS. Native application times
+  were 211, 211, 215, 545 and 218 ms (simulator only).
+* The real Flutter screen + native gateway simulator gesture smoke
+  passed again. After overlay, independent target mirror and drag, the
+  target saved layout was x=0.68, y=0.75, height=0.70, opacity=0.5,
+  mirrored=true; reference remained x=0.5, y=0.88. The fixture gateway
+  isolates project writes while exercising the actual native bridge and
+  render pipeline. JSON round-trip and controller save/reselect are
+  separately tested; no user projects or media were modified.
+* Pigeon reproducibility and iOS Debug simulator builds passed.
+
+Still outstanding: fully live per-gesture native edits (current edits
+commit on release), durable person selection with source evidence,
+progressive/full-length chunked analysis (300 frames per analyzed window
+remains), cutout export, independent recordings and difficult occlusions,
+and real Android/iPhone performance. Keep Debug-only and draft PR.

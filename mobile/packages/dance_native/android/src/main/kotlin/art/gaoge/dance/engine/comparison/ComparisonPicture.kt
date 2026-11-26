@@ -1,6 +1,8 @@
 package art.gaoge.dance.engine.comparison
 
 import art.gaoge.dance.engine.bridge.comparison.ComparisonPictureDto
+import art.gaoge.dance.engine.bridge.comparison.ComparisonCanvasLayoutDto
+import art.gaoge.dance.engine.bridge.comparison.ComparisonCanvasLayerDto
 
 internal data class ComparisonQuad(val scaleX: Float,val scaleY: Float,val shiftX: Float,val shiftY: Float)
 
@@ -44,9 +46,41 @@ internal class ComparisonCutoutLayer(
         buffer.clear(); buffer.put(pixels); buffer.flip()
     }
 }
+/** Immutable editable layout; cached masks and calibration anchors are not copied. */
+internal data class ComparisonCanvasLayer(val x:Double,val y:Double,val height:Double,val opacity:Float,val mirror:Boolean) {
+    init {
+        require(x.isFinite() && y.isFinite() && height.isFinite() && opacity.isFinite() &&
+            x in 0.0..1.0 && y in 0.0..1.0 && height in .05..2.0 && opacity in 0f..1f)
+    }
+    fun apply(anchor: ComparisonCutoutPlacement)=anchor.copy(x=x,y=y,subjectHeight=height,opacity=opacity,mirror=mirror)
+    companion object {
+        fun fromDto(v:ComparisonCanvasLayerDto):ComparisonCanvasLayer {
+            require(v.opacity.isFinite() && v.opacity in 0.0..1.0)
+            return ComparisonCanvasLayer(v.x,v.y,v.height,v.opacity.toFloat(),v.mirror)
+        }
+    }
+}
+internal data class ComparisonCanvasLayout(val reference:ComparisonCanvasLayer,val target:ComparisonCanvasLayer,
+    val targetOnTop:Boolean,val background:Int) {
+    init {require(background in 0..2)}
+    fun layer(referenceRole:Boolean)=if(referenceRole)reference else target
+    fun color():FloatArray=when(background){
+        1->floatArrayOf(20f/255,33f/255,35f/255)
+        2->floatArrayOf(235f/255,237f/255,235f/255)
+        else->floatArrayOf(0f,0f,0f)
+    }
+    companion object {
+        fun fromDto(v:ComparisonCanvasLayoutDto):ComparisonCanvasLayout {
+            require(v.background in 0L..2L)
+            return ComparisonCanvasLayout(ComparisonCanvasLayer.fromDto(v.reference),
+                ComparisonCanvasLayer.fromDto(v.target),v.targetOnTop,v.background.toInt())
+        }
+    }
+}
 /** Missing or mismatched source PTS always hides that layer; no raw-video fallback. */
 internal data class ComparisonCutoutFrame(
-    val reference: ComparisonCutoutLayer?, val target: ComparisonCutoutLayer?
+    val reference: ComparisonCutoutLayer?, val target: ComparisonCutoutLayer?,
+    val layout: ComparisonCanvasLayout?=null
 ) {
     fun layer(referenceRole: Boolean, ptsUs: Long): ComparisonCutoutLayer? =
         (if(referenceRole) reference else target)?.takeIf { it.sourcePtsUs == ptsUs }

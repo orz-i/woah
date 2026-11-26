@@ -84,6 +84,34 @@ class ComparisonCutoutPreviewDto {
   });
 }
 
+class ComparisonCanvasLayerDto {
+  double x;
+  double y;
+  double height;
+  double opacity;
+  bool mirror;
+  ComparisonCanvasLayerDto({
+    required this.x,
+    required this.y,
+    required this.height,
+    required this.opacity,
+    required this.mirror,
+  });
+}
+
+class ComparisonCanvasLayoutDto {
+  ComparisonCanvasLayerDto reference;
+  ComparisonCanvasLayerDto target;
+  bool targetOnTop;
+  int background;
+  ComparisonCanvasLayoutDto({
+    required this.reference,
+    required this.target,
+    required this.targetOnTop,
+    required this.background,
+  });
+}
+
 class ComparisonCutoutResultDto {
   ComparisonPlaybackDto playback;
   int referenceVisible;
@@ -242,7 +270,10 @@ abstract class DanceComparisonApi {
   ComparisonCutoutResultDto prepareCutout(
     ComparisonCutoutSeedDto reference,
     ComparisonCutoutSeedDto target,
+    ComparisonCanvasLayoutDto? layout,
   );
+  @async
+  ComparisonPlaybackDto setCutoutLayout(ComparisonCanvasLayoutDto layout);
   @async
   ComparisonPlaybackDto clearCutout();
   @async

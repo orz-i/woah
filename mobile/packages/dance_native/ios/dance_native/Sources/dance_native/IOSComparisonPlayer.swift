@@ -241,7 +241,8 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
       width:Int64(inspected.width),height:Int64(inspected.height))
   }
 
-  func prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutResultDto {
+  func prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto,layout: ComparisonCanvasLayoutDto?) async throws -> ComparisonCutoutResultDto {
+    let requestedLayout = try layout.map(Self.canvasLayout)
     try requireReady()
     guard !hasCutout, foreground, !wantsPlay, let config, let composition, let referenceIndex, let targetIndex,
           presentedReferenceUs == reference.sourcePtsUs, presentedTargetUs == target.sourcePtsUs else {
@@ -273,7 +274,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     defer { if cutoutRevision == revision { cutoutTask = nil } }
     let cache = try await task.value
     guard !closed, foreground, cutoutRevision == revision, let current = self.config else { throw CancellationError() }
-    cutoutCache = cache;cutoutWindow=window
+    cutoutCache = cache.withLayout(requestedLayout);cutoutWindow=window
     referenceInspection=nil;targetInspection=nil
     do {
       let state = try await rebuild(current,positionUs: positionUs(),sourcePositionUs: nil,resume: false)
@@ -285,6 +286,40 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
       if !closed && cutoutRevision == revision {
         cutoutCache = nil;cutoutWindow=nil
         _ = try? await rebuild(current,positionUs: pendingUs,sourcePositionUs: nil,resume: false)
+      }
+      throw error
+    }
+  }
+
+  private static func canvasLayout(_ value: ComparisonCanvasLayoutDto) throws -> IOSComparisonCanvasLayout {
+    func layer(_ v:ComparisonCanvasLayerDto)->IOSComparisonCanvasLayer {
+      IOSComparisonCanvasLayer(x:v.x,y:v.y,height:v.height,opacity:v.opacity,mirror:v.mirror)
+    }
+    let layout=IOSComparisonCanvasLayout(reference:layer(value.reference),target:layer(value.target),
+      targetOnTop:value.targetOnTop,background:value.background)
+    guard layout.valid else { throw IOSComparisonModelError.invalidRange }
+    return layout
+  }
+
+  func setCutoutLayout(_ value: ComparisonCanvasLayoutDto) async throws -> ComparisonPlaybackDto {
+    try requireReady()
+    guard foreground,!wantsPlay,cutoutTask==nil,inspectionTask==nil,
+      let old=cutoutCache,let config else { throw failure("请暂停画布后再调整") }
+    let layout=try Self.canvasLayout(value)
+    let position=positionUs()
+    cutoutRevision &+= 1
+    let revision=cutoutRevision
+    cutoutCache=old.withLayout(layout)
+    // AVFoundation caches composed frames. Rebuild the composition with a
+    // frozen geometry snapshot and the SAME analyzed source cache.
+    do {
+      let state=try await rebuild(config,positionUs:position,sourcePositionUs:nil,resume:false)
+      guard cutoutRevision==revision else {throw CancellationError()}
+      return state
+    } catch {
+      if !closed && cutoutRevision==revision {
+        cutoutCache=old
+        _ = try? await rebuild(config,positionUs:position,sourcePositionUs:nil,resume:false)
       }
       throw error
     }

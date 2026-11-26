@@ -1,3 +1,4 @@
+import 'comparison_canvas.dart';
 import 'comparison_picture.dart';
 import 'comparison_marker.dart';
 import 'comparison_music_mapping.dart';
@@ -54,6 +55,7 @@ class ComparisonProject {
   final bool mirrorTeacher;
   final bool mirrorLearner;
   final ComparisonPicture teacherPicture, learnerPicture;
+  final ComparisonCanvasLayout? canvasLayout;
   final List<ComparisonMarker> markers;
 
   /// A/B points use the shared overlap timeline, with an exclusive end.
@@ -80,6 +82,7 @@ class ComparisonProject {
     this.mirrorLearner = false,
     this.teacherPicture = const ComparisonPicture(),
     this.learnerPicture = const ComparisonPicture(),
+    this.canvasLayout,
     this.markers = const [],
     this.loopStartUs,
     this.loopEndUs,
@@ -109,6 +112,7 @@ class ComparisonProject {
     'mirrorLearner': mirrorLearner,
     'teacherPicture': teacherPicture.toJson(),
     'learnerPicture': learnerPicture.toJson(),
+    if (canvasLayout != null) 'canvasLayout': canvasLayout!.toJson(),
     'markers': markers.map((marker) => marker.toJson()).toList(),
     'loopStartUs': loopStartUs,
     'loopEndUs': loopEndUs,
@@ -201,6 +205,11 @@ class ComparisonProject {
           : ComparisonPicture.fromJson(
               Map<String, dynamic>.from(json['learnerPicture'] as Map),
             ),
+      canvasLayout: json['canvasLayout'] == null
+          ? null
+          : ComparisonCanvasLayout.fromJson(
+              Map<String, dynamic>.from(json['canvasLayout'] as Map),
+            ),
       markers: List.unmodifiable(markers),
       loopStartUs: loopStart,
       loopEndUs: loopEnd,
@@ -227,6 +236,8 @@ class ComparisonProject {
     bool? mirrorLearner,
     ComparisonPicture? teacherPicture,
     ComparisonPicture? learnerPicture,
+    ComparisonCanvasLayout? canvasLayout,
+    bool clearCanvasLayout = false,
     List<ComparisonMarker>? markers,
     int? loopStartUs,
     int? loopEndUs,
@@ -260,6 +271,12 @@ class ComparisonProject {
     mirrorLearner: mirrorLearner ?? this.mirrorLearner,
     teacherPicture: teacherPicture ?? this.teacherPicture,
     learnerPicture: learnerPicture ?? this.learnerPicture,
+    canvasLayout:
+        clearCanvasLayout ||
+            (teacher != null && teacher.uri != this.teacher?.uri) ||
+            (learner != null && learner.uri != this.learner?.uri)
+        ? null
+        : canvasLayout ?? this.canvasLayout,
     markers: markers == null ? this.markers : List.unmodifiable(markers),
     loopStartUs: clearLoop ? null : loopStartUs ?? this.loopStartUs,
     loopEndUs: clearLoop || clearLoopEnd ? null : loopEndUs ?? this.loopEndUs,

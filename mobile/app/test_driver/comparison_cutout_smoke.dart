@@ -171,6 +171,105 @@ class _CutoutSmoke extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, Object?>> editCanvas(
+    String id,
+    int start,
+    bool targetMirror,
+  ) async {
+    final state = await ready(
+      await host(api.control(ComparisonCommand.seek, start, 1)),
+    );
+    ComparisonCanvasLayerDto layer(
+      double x,
+      double opacity, {
+      bool mirror = false,
+      double height = .70,
+    }) => ComparisonCanvasLayerDto(
+      x: x,
+      y: .88,
+      height: height,
+      opacity: opacity,
+      mirror: mirror,
+    );
+    ComparisonCanvasLayoutDto layout(
+      ComparisonCanvasLayerDto a,
+      ComparisonCanvasLayerDto b, {
+      bool top = true,
+      int background = 0,
+    }) => ComparisonCanvasLayoutDto(
+      reference: a,
+      target: b,
+      targetOnTop: top,
+      background: background,
+    );
+    final evidence = <String, Object?>{};
+    Future<void> apply(ComparisonCanvasLayoutDto value, String name) async {
+      final watch = Stopwatch()..start();
+      final after = await ready(await host(api.setCutoutLayout(value)));
+      require(
+        after.teacherFrameUs == state.teacherFrameUs &&
+            after.learnerFrameUs == state.learnerFrameUs,
+        'Layout edit changed source frame',
+      );
+      evidence[name] = {
+        'ms': watch.elapsedMilliseconds,
+        ...await capture('$id-edit-$name'),
+      };
+    }
+
+    final a = layer(.20, 1, height: .45),
+        hidden = layer(.73, 0, mirror: targetMirror);
+    await apply(layout(a, hidden), 'hidden');
+    final isolated = evidence['hidden'] as Map;
+    require(
+      (isolated['leftPixels'] as int) > 80 &&
+          (isolated['rightPixels'] as int) < 80,
+      'Moving reference and hiding target did not change output: $isolated',
+    );
+    await apply(
+      layout(layer(.5, 1), layer(.5, 1, mirror: targetMirror), top: true),
+      'target-front',
+    );
+    await apply(
+      layout(layer(.5, 1), layer(.5, 1, mirror: targetMirror), top: false),
+      'reference-front',
+    );
+    String png(String name) => base64Encode(
+      File('${folder.path}/$id-edit-$name.png').readAsBytesSync(),
+    );
+    require(
+      png('target-front') != png('reference-front'),
+      'Layer order had no effect',
+    );
+    await apply(layout(layer(.5, 0), hidden, background: 2), 'light');
+    final light = evidence['light'] as Map;
+    require(
+      light['leftPixels'] == 38400 &&
+          light['rightPixels'] == 38400 &&
+          light['topPixels'] == 7680,
+      'Background did not fill the canvas: $light',
+    );
+    await apply(
+      layout(layer(.27, 1), layer(.73, 1, mirror: targetMirror)),
+      'reset',
+    );
+    final reset = evidence['reset'] as Map;
+    require(
+      (reset['leftPixels'] as int) > 80 &&
+          (reset['rightPixels'] as int) > 80 &&
+          (reset['topPixels'] as int) < 20,
+      'Parallel reset failed',
+    );
+    var rejected = false;
+    try {
+      await host(api.setCutoutLayout(layout(layer(.5, 1.1), hidden)));
+    } catch (_) {
+      rejected = true;
+    }
+    require(rejected, 'Invalid opacity was accepted');
+    return evidence;
+  }
+
   Future<void> probe(
     String id,
     String target,
@@ -246,7 +345,7 @@ class _CutoutSmoke extends ChangeNotifier {
       row['referenceStill'] = await inspect(true, ra, '$id-reference-still');
       row['targetStill'] = await inspect(false, ta, '$id-target-still');
       final watch = Stopwatch()..start();
-      final result = await host(api.prepareCutout(ra, ta));
+      final result = await host(api.prepareCutout(ra, ta, null));
       row['analysisMs'] = watch.elapsedMilliseconds;
       row['visibility'] = [
         result.referenceVisible,
@@ -333,6 +432,13 @@ class _CutoutSmoke extends ChangeNotifier {
             (during['topPixels'] as int) < 20,
         'Cutout missing after actual playback',
       );
+      if (id == 'middle') {
+        row['canvasEdits'] = await editCanvas(
+          id,
+          start,
+          target.contains('variant'),
+        );
+      }
       state = await ready(await host(api.clearCutout()));
       row['restored'] = await capture('$id-restored');
       row['passed'] = true;

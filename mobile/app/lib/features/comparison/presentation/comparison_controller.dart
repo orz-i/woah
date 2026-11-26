@@ -31,6 +31,14 @@ class ComparisonController extends ChangeNotifier {
       cutoutInspecting = false;
   ComparisonCutoutResultDto? cutoutResult;
   bool get cutoutActive => cutoutResult != null;
+  bool cutoutEditing = false, cutoutApplying = false;
+  ComparisonCanvasLayout get canvasLayout =>
+      project.canvasLayout ??
+      ComparisonCanvasLayout.sideBySide(
+        mirrorReference: project.mirrorTeacher,
+        mirrorTarget: project.mirrorLearner,
+      );
+
   (int, int)? get cutoutPracticeRange {
     final a = project.loopStartUs, b = project.loopEndUs;
     return project.loopEnabled && a != null && b != null && a >= 0 && b > a
@@ -63,6 +71,8 @@ class ComparisonController extends ChangeNotifier {
   bool get busy =>
       cutoutSelecting ||
       cutoutPreparing ||
+      cutoutEditing ||
+      cutoutApplying ||
       picking ||
       matching ||
       calibrating ||
@@ -100,6 +110,8 @@ class ComparisonController extends ChangeNotifier {
     cutoutSelecting = false;
     cutoutPreparing = false;
     cutoutInspecting = false;
+    cutoutEditing = false;
+    cutoutApplying = false;
     cutoutResult = null;
   }
 
@@ -156,6 +168,8 @@ class ComparisonController extends ChangeNotifier {
     if (_closed ||
         cutoutSelecting ||
         cutoutPreparing ||
+        cutoutEditing ||
+        cutoutApplying ||
         width < 2 ||
         height < 2 ||
         (_width == width && _height == height && _horizontal == horizontal)) {
@@ -244,6 +258,7 @@ class ComparisonController extends ChangeNotifier {
     if (_closed ||
         cutoutSelecting ||
         cutoutPreparing ||
+        cutoutApplying ||
         calibrating ||
         exporting ||
         enteringPractice ||
@@ -879,6 +894,7 @@ class ComparisonController extends ChangeNotifier {
       final result = await (gateway as ComparisonCutoutGateway).prepareCutout(
         reference,
         target,
+        canvasLayoutDto(canvasLayout),
       );
       if (_closed || request != _cutoutRequest) return;
       playback = result.playback;
@@ -895,8 +911,79 @@ class ComparisonController extends ChangeNotifier {
     }
   }
 
+  Future<bool> beginCanvasEditing() async {
+    if (_closed ||
+        !cutoutActive ||
+        cutoutEditing ||
+        cutoutApplying ||
+        !canPlay ||
+        _activeResizes > 0 ||
+        _resize?.isActive == true) {
+      return false;
+    }
+    final request = ++_cutoutRequest;
+    cutoutEditing = true;
+    error = null;
+    _notify();
+    final ok = await _control(ComparisonCommand.pause, 0);
+    if (_closed || request != _cutoutRequest) return false;
+    if (!ok || playback?.phase != 'paused') {
+      cutoutEditing = false;
+      error = '请等待画布暂停后再编辑。';
+      _notify();
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> applyCanvasLayout(ComparisonCanvasLayout value) async {
+    if (_closed ||
+        !cutoutActive ||
+        !cutoutEditing ||
+        cutoutApplying ||
+        !value.valid) {
+      return false;
+    }
+    final request = ++_cutoutRequest;
+    cutoutApplying = true;
+    error = null;
+    _controlRequest++;
+    _notify();
+    try {
+      final state = await (gateway as ComparisonCutoutGateway).setCutoutLayout(
+        canvasLayoutDto(value),
+      );
+      if (_closed || request != _cutoutRequest) return false;
+      if (state.phase == 'error') throw StateError('Canvas update failed');
+      playback = state;
+      project = project.copyWith(
+        canvasLayout: value,
+        positionUs: state.positionUs,
+      );
+      _dirty = true;
+      await save();
+      return !_closed && request == _cutoutRequest;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) error = '画布调整未应用，请重试。';
+      return false;
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutApplying = false;
+        _notify();
+      }
+    }
+  }
+
+  void finishCanvasEditing() {
+    if (!cutoutApplying) {
+      cutoutEditing = false;
+      _notify();
+    }
+  }
+
   Future<void> exitCutout() async {
-    if (_closed || !cutoutMode) return;
+    if (_closed || !cutoutMode || cutoutApplying) return;
+    cutoutEditing = false;
     final request = ++_cutoutRequest;
     final needsNative =
         cutoutSelecting || cutoutPreparing || cutoutInspecting || cutoutActive;
@@ -942,7 +1029,13 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> seek(int positionUs) async {
-    if (stepping || cutoutSelecting || cutoutPreparing) return;
+    if (stepping ||
+        cutoutSelecting ||
+        cutoutPreparing ||
+        cutoutEditing ||
+        cutoutApplying) {
+      return;
+    }
     final selected = cutoutActive ? cutoutPracticeRange : null;
     if (selected != null) {
       positionUs = positionUs.clamp(selected.$1, selected.$2 - 1);
@@ -1455,6 +1548,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> background() async {
+    if (cutoutApplying) return;
     if (cutoutSelecting || cutoutPreparing) await exitCutout();
     await pause();
     if (!adjusting) await save();

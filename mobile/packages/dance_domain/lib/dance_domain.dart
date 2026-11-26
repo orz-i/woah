@@ -9,3 +9,5 @@ export 'src/comparison_picture.dart';
 export 'src/comparison_marker.dart';
 export 'src/comparison_music_mapping.dart';
 export 'src/comparison_export_plan.dart';
+
+export 'src/comparison_canvas.dart';

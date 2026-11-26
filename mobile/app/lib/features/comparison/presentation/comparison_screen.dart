@@ -61,6 +61,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   Offset? _cutoutDragStart, _cutoutDragPosition;
   bool? _cutoutDragReference;
   bool _cutoutStarting = false;
+  bool _canvasReference = true;
+  bool _canvasEntering = false;
+  ComparisonCanvasLayout? _canvasDraft;
+  ComparisonCanvasLayer? _canvasGestureStart;
+  Offset? _canvasFocal;
 
   static const _viewTriggerWidth = 104.0, _viewMenuWidth = 200.0;
   static const _orientationChannel = MethodChannel(
@@ -123,6 +128,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   Future<void> _exit() async {
     if (_finishingManual || _finishingPicture) return;
     if (controller.cutoutMode) {
+      if (controller.cutoutApplying || _canvasEntering) return;
+      if (controller.cutoutEditing) {
+        _finishCanvasEditing();
+        return;
+      }
       await _exitCutout();
       return;
     }
@@ -397,7 +407,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     );
   }
 
-  Widget _mainControls() => controller.cutoutMode && !controller.cutoutActive
+  Widget _mainControls() => controller.cutoutEditing
+      ? _canvasEditorControls()
+      : controller.cutoutMode && !controller.cutoutActive
       ? _cutoutControls()
       : controller.adjusting
       ? ComparisonPictureControls(
@@ -1047,7 +1059,15 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   }
 
   Future<void> _exitCutout() async {
-    if (mounted) setState(_resetCutoutSeeds);
+    if (controller.cutoutApplying || _canvasEntering) return;
+    if (mounted) {
+      setState(() {
+        _resetCutoutSeeds();
+        _canvasDraft = null;
+        _canvasGestureStart = null;
+        _canvasFocal = null;
+      });
+    }
     await controller.exitCutout();
   }
 
@@ -1349,6 +1369,327 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     );
   }
 
+  Future<void> _beginCanvasEditing() async {
+    if (_canvasEntering) return;
+    setState(() {
+      _canvasEntering = true;
+      _canvasReference = true;
+      _canvasDraft = null;
+    });
+    await controller.beginCanvasEditing();
+    if (mounted) setState(() => _canvasEntering = false);
+  }
+
+  bool get _canvasEditEnabled =>
+      controller.cutoutEditing &&
+      !_canvasEntering &&
+      !controller.cutoutApplying &&
+      controller.playback?.phase == 'paused';
+  ComparisonCanvasLayout get _canvasValue =>
+      _canvasDraft ?? controller.canvasLayout;
+
+  Future<void> _applyCanvas(ComparisonCanvasLayout value) async {
+    if (!_canvasEditEnabled) return;
+    setState(() => _canvasDraft = value);
+    await controller.applyCanvasLayout(value);
+    if (mounted) setState(() => _canvasDraft = null);
+  }
+
+  void _finishCanvasEditing() {
+    if (controller.cutoutApplying || _canvasEntering) return;
+    setState(() {
+      _canvasDraft = null;
+      _canvasGestureStart = null;
+      _canvasFocal = null;
+    });
+    controller.finishCanvasEditing();
+  }
+
+  void _draftCanvasLayer(ComparisonCanvasLayer layer) {
+    if (!_canvasEditEnabled) return;
+    setState(
+      () => _canvasDraft = _canvasValue.withLayer(_canvasReference, layer),
+    );
+  }
+
+  Widget _canvasEditorControls() {
+    final layout = _canvasValue;
+    final layer = layout.layer(_canvasReference);
+    final enabled = _canvasEditEnabled;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '编辑画布',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              TextButton(
+                key: const ValueKey('comparison-canvas-done'),
+                onPressed: enabled ? _finishCanvasEditing : null,
+                child: const Text('完成'),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: ChoiceChip(
+                  key: const ValueKey('comparison-canvas-reference'),
+                  label: const Text('参考人物'),
+                  selected: _canvasReference,
+                  onSelected: enabled
+                      ? (_) => setState(() => _canvasReference = true)
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ChoiceChip(
+                  key: const ValueKey('comparison-canvas-target'),
+                  label: const Text('目标人物'),
+                  selected: !_canvasReference,
+                  onSelected: enabled
+                      ? (_) => setState(() => _canvasReference = false)
+                      : null,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            '拖动所选人物位置，双指缩放；松手应用。',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          Row(
+            children: [
+              const Text('高度', style: TextStyle(fontSize: 12)),
+              Expanded(
+                child: Slider(
+                  key: const ValueKey('comparison-canvas-height'),
+                  min: .15,
+                  max: 1.5,
+                  value: layer.height.clamp(.15, 1.5),
+                  onChanged: enabled
+                      ? (v) => _draftCanvasLayer(layer.copyWith(height: v))
+                      : null,
+                  onChangeEnd: (v) => unawaited(
+                    _applyCanvas(
+                      _canvasValue.withLayer(
+                        _canvasReference,
+                        layer.copyWith(height: v),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 38,
+                child: Text(
+                  '${(layer.height * 100).round()}%',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              const Text('透明度', style: TextStyle(fontSize: 12)),
+              Expanded(
+                child: Slider(
+                  key: const ValueKey('comparison-canvas-opacity'),
+                  min: 0,
+                  max: 1,
+                  value: layer.opacity,
+                  onChanged: enabled
+                      ? (v) => _draftCanvasLayer(layer.copyWith(opacity: v))
+                      : null,
+                  onChangeEnd: (v) => unawaited(
+                    _applyCanvas(
+                      _canvasValue.withLayer(
+                        _canvasReference,
+                        layer.copyWith(opacity: v),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 38,
+                child: Text(
+                  '${(layer.opacity * 100).round()}%',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 2,
+            children: [
+              FilterChip(
+                key: const ValueKey('comparison-canvas-mirror'),
+                label: const Text('镜像'),
+                selected: layer.mirror,
+                onSelected: enabled
+                    ? (v) => unawaited(
+                        _applyCanvas(
+                          layout.withLayer(
+                            _canvasReference,
+                            layer.copyWith(mirror: v),
+                          ),
+                        ),
+                      )
+                    : null,
+              ),
+              ActionChip(
+                key: const ValueKey('comparison-canvas-front'),
+                label: const Text('置于顶层'),
+                onPressed: enabled
+                    ? () => unawaited(
+                        _applyCanvas(
+                          layout.copyWith(targetOnTop: !_canvasReference),
+                        ),
+                      )
+                    : null,
+              ),
+              ActionChip(
+                key: const ValueKey('comparison-canvas-parallel'),
+                label: const Text('并排'),
+                onPressed: enabled
+                    ? () => unawaited(_applyCanvas(layout.resetPlacement()))
+                    : null,
+              ),
+              ActionChip(
+                key: const ValueKey('comparison-canvas-overlay'),
+                label: const Text('重叠'),
+                onPressed: enabled
+                    ? () => unawaited(_applyCanvas(layout.overlay()))
+                    : null,
+              ),
+              PopupMenuButton<int>(
+                key: const ValueKey('comparison-canvas-background'),
+                enabled: enabled,
+                tooltip: '画布背景',
+                onSelected: (v) =>
+                    unawaited(_applyCanvas(layout.copyWith(background: v))),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 0, child: Text('黑色背景')),
+                  PopupMenuItem(value: 1, child: Text('深色背景')),
+                  PopupMenuItem(value: 2, child: Text('浅色背景')),
+                ],
+                child: const Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Text('背景'),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(
+            height: 4,
+            child: controller.cutoutApplying || _canvasEntering
+                ? const LinearProgressIndicator()
+                : null,
+          ),
+          if (controller.error != null)
+            Text(
+              controller.error!,
+              style: TextStyle(fontSize: 12, color: AppTheme.of(context).error),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _canvasEditSurface(Size available, int textureId) {
+    final (w, h, _) = controller.cutoutViewport;
+    final factor = math.min(
+      available.width / math.max(1, w),
+      available.height / math.max(1, h),
+    );
+    final size = Size(w * factor, h * factor);
+    final layer = _canvasValue.layer(_canvasReference);
+    return Center(
+      child: SizedBox.fromSize(
+        size: size,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Texture(textureId: textureId, filterQuality: FilterQuality.low),
+            if (size.width > 0 && size.height > 0)
+              Positioned(
+                left: layer.x * size.width - 11,
+                top: layer.y * size.height - 11,
+                child: IgnorePointer(
+                  child: Container(
+                    key: const ValueKey('comparison-canvas-anchor'),
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppTheme.of(context).editorSelection,
+                        width: 2,
+                      ),
+                    ),
+                    child: const Icon(Icons.add, size: 16, color: Colors.white),
+                  ),
+                ),
+              ),
+            GestureDetector(
+              key: const ValueKey('comparison-canvas-edit-gesture'),
+              behavior: HitTestBehavior.opaque,
+              onScaleStart: !_canvasEditEnabled
+                  ? null
+                  : (details) {
+                      _canvasGestureStart = _canvasValue.layer(
+                        _canvasReference,
+                      );
+                      _canvasFocal = details.localFocalPoint;
+                    },
+              onScaleUpdate: !_canvasEditEnabled
+                  ? null
+                  : (details) {
+                      final base = _canvasGestureStart, origin = _canvasFocal;
+                      if (base == null || origin == null || size.isEmpty) {
+                        return;
+                      }
+                      final delta = details.localFocalPoint - origin;
+                      _draftCanvasLayer(
+                        base.copyWith(
+                          x: (base.x + delta.dx / size.width)
+                              .clamp(0, 1)
+                              .toDouble(),
+                          y: (base.y + delta.dy / size.height)
+                              .clamp(0, 1)
+                              .toDouble(),
+                          height: (base.height * details.scale)
+                              .clamp(.15, 1.5)
+                              .toDouble(),
+                        ),
+                      );
+                    },
+              onScaleEnd: !_canvasEditEnabled
+                  ? null
+                  : (_) {
+                      final value = _canvasDraft;
+                      _canvasGestureStart = null;
+                      _canvasFocal = null;
+                      if (value != null) unawaited(_applyCanvas(value));
+                    },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _cutoutPlaybackInfo() {
     final result = controller.cutoutResult!;
     final missing =
@@ -1364,6 +1705,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
             '${missing > 0 ? ' · 缺失帧已隐藏' : ''}',
             style: const TextStyle(fontSize: 12),
           ),
+        ),
+        IconButton(
+          key: const ValueKey('comparison-canvas-edit'),
+          tooltip: '编辑画布',
+          onPressed: controller.canPlay ? _beginCanvasEditing : null,
+          icon: const Icon(Icons.tune_rounded),
         ),
         TextButton(onPressed: _exitCutout, child: const Text('退出画布')),
       ],
@@ -1394,7 +1741,13 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (state != null && state.textureId >= 0 && !expandedSelection)
+            if (controller.cutoutEditing &&
+                state != null &&
+                state.textureId >= 0)
+              _canvasEditSurface(viewport.biggest, state.textureId)
+            else if (state != null &&
+                state.textureId >= 0 &&
+                !expandedSelection)
               Texture(
                 textureId: state.textureId,
                 filterQuality: FilterQuality.low,

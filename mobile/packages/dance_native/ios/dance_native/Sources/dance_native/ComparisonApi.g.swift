@@ -415,6 +415,111 @@ struct ComparisonCutoutPreviewDto: Hashable, CustomStringConvertible {
 }
 
 /// Generated class from Pigeon that represents data sent in messages.
+struct ComparisonCanvasLayerDto: Hashable, CustomStringConvertible {
+  var x: Double
+  var y: Double
+  var height: Double
+  var opacity: Double
+  var mirror: Bool
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> ComparisonCanvasLayerDto? {
+    let x = pigeonVar_list[0] as! Double
+    let y = pigeonVar_list[1] as! Double
+    let height = pigeonVar_list[2] as! Double
+    let opacity = pigeonVar_list[3] as! Double
+    let mirror = pigeonVar_list[4] as! Bool
+
+    return ComparisonCanvasLayerDto(
+      x: x,
+      y: y,
+      height: height,
+      opacity: opacity,
+      mirror: mirror
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      x,
+      y,
+      height,
+      opacity,
+      mirror,
+    ]
+  }
+  static func == (lhs: ComparisonCanvasLayerDto, rhs: ComparisonCanvasLayerDto) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return ComparisonPigeonInternal.deepEquals(lhs.x, rhs.x) && ComparisonPigeonInternal.deepEquals(lhs.y, rhs.y) && ComparisonPigeonInternal.deepEquals(lhs.height, rhs.height) && ComparisonPigeonInternal.deepEquals(lhs.opacity, rhs.opacity) && ComparisonPigeonInternal.deepEquals(lhs.mirror, rhs.mirror)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("ComparisonCanvasLayerDto")
+    ComparisonPigeonInternal.deepHash(value: x, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: y, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: height, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: opacity, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: mirror, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "ComparisonCanvasLayerDto(x: \(String(describing: x)), y: \(String(describing: y)), height: \(String(describing: height)), opacity: \(String(describing: opacity)), mirror: \(String(describing: mirror)))"
+  }
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
+struct ComparisonCanvasLayoutDto: Hashable, CustomStringConvertible {
+  var reference: ComparisonCanvasLayerDto
+  var target: ComparisonCanvasLayerDto
+  var targetOnTop: Bool
+  var background: Int64
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> ComparisonCanvasLayoutDto? {
+    let reference = pigeonVar_list[0] as! ComparisonCanvasLayerDto
+    let target = pigeonVar_list[1] as! ComparisonCanvasLayerDto
+    let targetOnTop = pigeonVar_list[2] as! Bool
+    let background = pigeonVar_list[3] as! Int64
+
+    return ComparisonCanvasLayoutDto(
+      reference: reference,
+      target: target,
+      targetOnTop: targetOnTop,
+      background: background
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      reference,
+      target,
+      targetOnTop,
+      background,
+    ]
+  }
+  static func == (lhs: ComparisonCanvasLayoutDto, rhs: ComparisonCanvasLayoutDto) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return ComparisonPigeonInternal.deepEquals(lhs.reference, rhs.reference) && ComparisonPigeonInternal.deepEquals(lhs.target, rhs.target) && ComparisonPigeonInternal.deepEquals(lhs.targetOnTop, rhs.targetOnTop) && ComparisonPigeonInternal.deepEquals(lhs.background, rhs.background)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("ComparisonCanvasLayoutDto")
+    ComparisonPigeonInternal.deepHash(value: reference, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: target, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: targetOnTop, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: background, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "ComparisonCanvasLayoutDto(reference: \(String(describing: reference)), target: \(String(describing: target)), targetOnTop: \(String(describing: targetOnTop)), background: \(String(describing: background)))"
+  }
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
 struct ComparisonCutoutResultDto: Hashable, CustomStringConvertible {
   var playback: ComparisonPlaybackDto
   var referenceVisible: Int64
@@ -812,16 +917,20 @@ private class ComparisonPigeonCodecReader: FlutterStandardReader {
     case 133:
       return ComparisonCutoutPreviewDto.fromList(self.readValue() as! [Any?])
     case 134:
-      return ComparisonCutoutResultDto.fromList(self.readValue() as! [Any?])
+      return ComparisonCanvasLayerDto.fromList(self.readValue() as! [Any?])
     case 135:
-      return ComparisonPictureDto.fromList(self.readValue() as! [Any?])
+      return ComparisonCanvasLayoutDto.fromList(self.readValue() as! [Any?])
     case 136:
-      return ComparisonPracticeDto.fromList(self.readValue() as! [Any?])
+      return ComparisonCutoutResultDto.fromList(self.readValue() as! [Any?])
     case 137:
-      return MusicCandidateDto.fromList(self.readValue() as! [Any?])
+      return ComparisonPictureDto.fromList(self.readValue() as! [Any?])
     case 138:
-      return MusicAlignmentDto.fromList(self.readValue() as! [Any?])
+      return ComparisonPracticeDto.fromList(self.readValue() as! [Any?])
     case 139:
+      return MusicCandidateDto.fromList(self.readValue() as! [Any?])
+    case 140:
+      return MusicAlignmentDto.fromList(self.readValue() as! [Any?])
+    case 141:
       return ComparisonExportDto.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
@@ -846,23 +955,29 @@ private class ComparisonPigeonCodecWriter: FlutterStandardWriter {
     } else if let value = value as? ComparisonCutoutPreviewDto {
       super.writeByte(133)
       super.writeValue(value.toList())
-    } else if let value = value as? ComparisonCutoutResultDto {
+    } else if let value = value as? ComparisonCanvasLayerDto {
       super.writeByte(134)
       super.writeValue(value.toList())
-    } else if let value = value as? ComparisonPictureDto {
+    } else if let value = value as? ComparisonCanvasLayoutDto {
       super.writeByte(135)
       super.writeValue(value.toList())
-    } else if let value = value as? ComparisonPracticeDto {
+    } else if let value = value as? ComparisonCutoutResultDto {
       super.writeByte(136)
       super.writeValue(value.toList())
-    } else if let value = value as? MusicCandidateDto {
+    } else if let value = value as? ComparisonPictureDto {
       super.writeByte(137)
       super.writeValue(value.toList())
-    } else if let value = value as? MusicAlignmentDto {
+    } else if let value = value as? ComparisonPracticeDto {
       super.writeByte(138)
       super.writeValue(value.toList())
-    } else if let value = value as? ComparisonExportDto {
+    } else if let value = value as? MusicCandidateDto {
       super.writeByte(139)
+      super.writeValue(value.toList())
+    } else if let value = value as? MusicAlignmentDto {
+      super.writeByte(140)
+      super.writeValue(value.toList())
+    } else if let value = value as? ComparisonExportDto {
+      super.writeByte(141)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -898,7 +1013,8 @@ protocol DanceComparisonApi {
   func stepFrame(forward: Bool) async throws -> ComparisonPlaybackDto
   func getState() async throws -> ComparisonPlaybackDto
   func inspectCutout(reference: Bool, seed: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutPreviewDto
-  func prepareCutout(reference: ComparisonCutoutSeedDto, target: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutResultDto
+  func prepareCutout(reference: ComparisonCutoutSeedDto, target: ComparisonCutoutSeedDto, layout: ComparisonCanvasLayoutDto?) async throws -> ComparisonCutoutResultDto
+  func setCutoutLayout(layout: ComparisonCanvasLayoutDto) async throws -> ComparisonPlaybackDto
   func clearCutout() async throws -> ComparisonPlaybackDto
   func alignMusic(teacherUri: String, learnerUri: String) async throws -> MusicAlignmentDto
   func cancelAlignment() async throws
@@ -1121,9 +1237,10 @@ class DanceComparisonApiSetup {
         let args = message as! [Any?]
         let referenceArg = args[0] as! ComparisonCutoutSeedDto
         let targetArg = args[1] as! ComparisonCutoutSeedDto
+        let layoutArg: ComparisonCanvasLayoutDto? = nilOrValue(args[2])
         Task { @MainActor in
           do {
-            let result = try await api.prepareCutout(reference: referenceArg, target: targetArg)
+            let result = try await api.prepareCutout(reference: referenceArg, target: targetArg, layout: layoutArg)
             reply(wrapResult(result))
           } catch {
             reply(wrapError(error))
@@ -1132,6 +1249,23 @@ class DanceComparisonApiSetup {
       }
     } else {
       prepareCutoutChannel.setMessageHandler(nil)
+    }
+    let setCutoutLayoutChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.setCutoutLayout\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      setCutoutLayoutChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let layoutArg = args[0] as! ComparisonCanvasLayoutDto
+        Task { @MainActor in
+          do {
+            let result = try await api.setCutoutLayout(layout: layoutArg)
+            reply(wrapResult(result))
+          } catch {
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      setCutoutLayoutChannel.setMessageHandler(nil)
     }
     let clearCutoutChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.clearCutout\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

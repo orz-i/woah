@@ -163,9 +163,13 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
         check(art.gaoge.dance.engine.BuildConfig.DEBUG)
         return requireNotNull(session).inspectCutout(reference,seed)
     }
-    override suspend fun prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto): ComparisonCutoutResultDto {
+    override suspend fun prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto,layout: ComparisonCanvasLayoutDto?): ComparisonCutoutResultDto {
         check(art.gaoge.dance.engine.BuildConfig.DEBUG) { "抠像画布正在测试" }
-        return requireNotNull(session).prepareCutout(reference,target)
+        return requireNotNull(session).prepareCutout(reference,target,layout)
+    }
+    override suspend fun setCutoutLayout(layout: ComparisonCanvasLayoutDto): ComparisonPlaybackDto {
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).setCutoutLayout(layout)
     }
     override suspend fun clearCutout(): ComparisonPlaybackDto = requireNotNull(session).clearCutout()
     override suspend fun alignMusic(teacherUri: String,learnerUri: String): MusicAlignmentDto {

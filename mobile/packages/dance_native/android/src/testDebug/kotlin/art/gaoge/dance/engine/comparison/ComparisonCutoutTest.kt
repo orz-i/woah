@@ -89,4 +89,19 @@ class ComparisonCutoutTest {
         assertEquals(pts[980],result.last())
         assertFailsWith<IllegalArgumentException> { ComparisonCutoutAnalysis.window(pts,first,last,pts[100]) }
     }
+    @Test fun canvasEditReusesExactCachedMaskAndFixedAnchor() {
+        val base=ComparisonCutoutPlacement(FloatRect(.1f,.2f,.5f,.8f),.25,.85,.6,false)
+        val layer=ComparisonCutoutLayer(33_333,2,2,byteArrayOf(1,2,3,4),base)
+        val cache=ComparisonCutoutCache(ComparisonCutoutTrackCache(mapOf(33_333L to layer)),ComparisonCutoutTrackCache(emptyMap()))
+        val settings=ComparisonCanvasLayer(.5,.9,.8,.5f,true)
+        val layout=ComparisonCanvasLayout(settings,settings,false,2)
+        cache.setLayout(layout)
+        val frame=cache.frame(33_333,33_333)
+        assertEquals(layer,frame.layer(true,33_333));assertNull(frame.layer(false,33_333))
+        val edited=frame.layout!!.reference.apply(layer.placement)
+        assertEquals(base.anchor,edited.anchor);assertEquals(.5,edited.x);assertEquals(.5f,edited.opacity)
+        assertEquals(true,edited.mirror);assertEquals(false,frame.layout.targetOnTop)
+        assertFailsWith<IllegalArgumentException>{ComparisonCanvasLayer(Double.NaN,.5,.8,1f,false)}
+        assertFailsWith<IllegalArgumentException>{ComparisonCanvasLayout(settings,settings,true,3)}
+    }
 }
