@@ -71,7 +71,7 @@ class ComparisonCutoutBackendInstrumentedTest {
     private fun ms(start:Long)= (System.nanoTime()-start)/1_000_000.0
 
     private suspend fun runBackend(context:Context,sources:List<Source>,backend:LiteRtAccelerator,threads:Int,
-        evidenceRoot:File?=null):Run {
+        evidenceRoot:File?=null,detailEnabled:Boolean=true):Run {
         val start=System.nanoTime()
         YoloLiteRtSegmenter(context,requestedAccelerator=backend,cpuNumThreads=threads).use { segmenter ->
             segmenter.initialize()
@@ -94,7 +94,7 @@ class ComparisonCutoutBackendInstrumentedTest {
                 sources.forEachIndexed { i,src ->
                     works.add(analysis.begin(src.file.absolutePath,src.description,0,src.times.last(),
                         max(0,src.seed.ptsUs-500_000),min(src.times.last(),src.seed.ptsUs+499_999),
-                        src.seed,src.reference,!src.reference,segmenter,{true},inspected[i]))
+                        src.seed,src.reference,!src.reference,segmenter,{true},inspected[i],detailEnabled=detailEnabled))
                 }
                 val firstMs=ms(first)
                 val lanes=ArrayList<Lane>()
@@ -267,7 +267,7 @@ class ComparisonCutoutBackendInstrumentedTest {
         }
         for(backend in backends){
             val row=try {
-                runBackend(context,sources,backend,4,root).evidence
+                runBackend(context,sources,backend,4,root,args.getString("detailEnabled")!="false").evidence
             }catch(e:Exception){
                 JSONObject().put("requested",backend.name).put("status","failed").put("errorClass",e.javaClass.simpleName)
             }

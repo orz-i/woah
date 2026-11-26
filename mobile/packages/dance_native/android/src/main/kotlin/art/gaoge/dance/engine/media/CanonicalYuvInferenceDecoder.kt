@@ -117,6 +117,11 @@ class CanonicalYuvInferenceDecoder(
         return decodeRgbaFrame(targetPtsUs,mapper,true,destination).rgbaBuffer
     }
 
+    internal fun decodeDetailAtPts(targetPtsUs:Long,mapper:ModelCoordinateMapper,roi:IntArray,sceneWidth:Int,sceneHeight:Int):ByteBuffer {
+        require(roi.size==4 && mapper.srcWidth==roi[2] && mapper.srcHeight==roi[3])
+        return decodeRgbaFrame(targetPtsUs,mapper,true,rgbaBuffer,roi+intArrayOf(sceneWidth,sceneHeight)).rgbaBuffer
+    }
+
     /**
      * Decodes the first display frame at or after [targetPtsUs]. This is used by one-shot
      * analysis where a millisecond trim boundary is not guaranteed to be an exact source PTS.
@@ -134,7 +139,8 @@ class CanonicalYuvInferenceDecoder(
         targetPtsUs: Long,
         mapper: ModelCoordinateMapper,
         requireExactPts: Boolean,
-        destination:ByteBuffer=rgbaBuffer
+        destination:ByteBuffer=rgbaBuffer,
+        detail:IntArray?=null
     ): DecodedRgbaFrame {
         val decoder = codec ?: error("Canonical inference decoder not prepared")
         var emptyOutputCount = 0
@@ -173,7 +179,7 @@ class CanonicalYuvInferenceDecoder(
                                 rotationDegrees = rotationDegrees,
                                 colorStandard = colorInt(outputFormat, MediaFormat.KEY_COLOR_STANDARD),
                                 colorRange = colorInt(outputFormat, MediaFormat.KEY_COLOR_RANGE),
-                                workspace = conversionWorkspace
+                                workspace = conversionWorkspace,detail=detail
                             )
                             return DecodedRgbaFrame(ptsUs = ptsUs, rgbaBuffer = destination)
                         }
@@ -237,10 +243,28 @@ internal object CanonicalYuvToRgba {
     internal class Workspace(val modelInputSize: Int)
     fun convert(image: Image, output: ByteBuffer, mapper: ModelCoordinateMapper,
         rotationDegrees: Int, colorStandard: Int?, colorRange: Int?,
-        workspace: Workspace = Workspace(mapper.modelInputSize)) {
+        workspace: Workspace = Workspace(mapper.modelInputSize),detail:IntArray?=null) {
         require(image.planes.size >= 3)
         require(workspace.modelInputSize == mapper.modelInputSize)
-        val crop = image.cropRect
+        val crop = android.graphics.Rect(image.cropRect)
+        if(detail!=null){
+            val (x,y,w,h)=detail
+            val cw=crop.width();val ch=crop.height()
+            val rotation=((rotationDegrees%360)+360)%360
+            val dw=if(rotation%180==0)cw else ch
+            val dh=if(rotation%180==0)ch else cw
+            require(detail.size==6 && detail[4]==dw && detail[5]==dh &&
+                x>=0 && y>=0 && w>0 && h>0 && x+w<=dw && y+h<=dh)
+            val local=when(rotation){
+                0->android.graphics.Rect(x,y,x+w,y+h)
+                90->android.graphics.Rect(y,ch-x-w,y+h,ch-x)
+                180->android.graphics.Rect(cw-x-w,ch-y-h,cw-x,ch-y)
+                270->android.graphics.Rect(cw-y-h,x,cw-y,x+w)
+                else->error("Invalid detail rotation")
+            }
+            local.offset(crop.left,crop.top)
+            crop.set(local)
+        }
         val matrix = when (colorStandard ?: MediaFormat.COLOR_STANDARD_BT709) {
             MediaFormat.COLOR_STANDARD_BT601_PAL, MediaFormat.COLOR_STANDARD_BT601_NTSC -> 0
             MediaFormat.COLOR_STANDARD_BT2020 -> 2

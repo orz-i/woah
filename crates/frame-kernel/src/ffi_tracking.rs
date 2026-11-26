@@ -112,6 +112,16 @@ struct Session {
     snapshot: Vec<u8>,
     cutout: Option<CutoutClock>,
     dance: Option<CutoutPolicy>,
+    detail_trial: Option<DetailTrial>,
+    detail_pending: Option<crate::tracking_cutout::PendingMatch>,
+}
+// The tentative detail evaluation may never replace the canonical full
+// observation result. Keep the full-only commit while the caller decodes ROI.
+struct DetailTrial {
+    at: i64,
+    count: usize,
+    tracker: Tracker,
+    policy: CutoutPolicy,
 }
 #[derive(Clone, Copy)]
 struct CutoutClock {
@@ -163,6 +173,8 @@ fn create_session(config: TrackingConfig, dance: Option<CutoutPolicy>) -> u64 {
             snapshot: Vec::new(),
             cutout: None,
             dance,
+            detail_trial: None,
+            detail_pending: None,
         })),
     );
     id
@@ -200,9 +212,17 @@ pub(crate) fn step_dance_session(
 ) -> i32 {
     let Some(owner) = session(id) else { return -2 };
     let Ok(mut s) = owner.lock() else { return -2 };
-    let Session { tracker, dance, .. } = &mut *s;
+    if s.detail_trial.is_some() {
+        return -2;
+    }
+    let Session {
+        tracker,
+        dance,
+        detail_pending,
+        ..
+    } = &mut *s;
     let Some(policy) = dance else { return -2 };
-    crate::dance_cutout::step(
+    let result = crate::dance_cutout::step(
         tracker,
         policy,
         at,
@@ -214,8 +234,154 @@ pub(crate) fn step_dance_session(
             features: f,
         },
     )
-    .unwrap_or(-2)
+    .unwrap_or(-2);
+    if result >= -1 {
+        *detail_pending = None;
+    }
+    result
 }
+/// Transactional preview: commit the full-frame observation immediately if
+/// valid, otherwise keep its next state for a bounded current-frame retry.
+pub(crate) fn step_or_detail(
+    id: u64,
+    at: i64,
+    o: crate::dance_cutout::CutoutObservation<'_>,
+    roi: &mut crate::composition::Viewport,
+) -> i32 {
+    let Some(owner) = session(id) else { return -2 };
+    let Ok(mut s) = owner.lock() else { return -2 };
+    let Session {
+        tracker,
+        dance,
+        detail_trial,
+        detail_pending,
+        ..
+    } = &mut *s;
+    let Some(policy) = dance else { return -2 };
+    if detail_trial.is_some() {
+        return -2;
+    }
+    let Some(view) = crate::dance_detail::view(tracker, policy, at) else {
+        let result = crate::dance_cutout::step(tracker, policy, at, -1, o).unwrap_or(-2);
+        if result >= -1 {
+            *detail_pending = None;
+        }
+        return result;
+    };
+    let count = o.detections.len();
+    let mut trial = tracker.clone();
+    let mut trial_policy = policy.clone();
+    let result = crate::dance_cutout::step(&mut trial, &mut trial_policy, at, -1, o).unwrap_or(-2);
+    if result == -1 {
+        *roi = view;
+        *detail_trial = Some(DetailTrial {
+            at,
+            count,
+            tracker: trial,
+            policy: trial_policy,
+        });
+        -3
+    } else {
+        if result >= 0 {
+            *tracker = trial;
+            *policy = trial_policy;
+            *detail_pending = None;
+        }
+        result
+    }
+}
+
+/// Confirm current-frame local candidates against the SAME prior identity
+/// table. Commit the already-computed full-only state, never the detail
+/// trial. A compact current-match confirmation is the only local evidence
+/// carried forward; it cannot change track IDs, Kalman or appearance memory.
+pub(crate) fn finish_detail(
+    id: u64,
+    at: i64,
+    full_count: usize,
+    o: crate::dance_cutout::CutoutObservation<'_>,
+) -> i32 {
+    use crate::{
+        appearance::{APPEARANCE_BINS, feature},
+        tracking_cutout::PendingMatch,
+    };
+    let Some(owner) = session(id) else { return -2 };
+    let Ok(mut s) = owner.lock() else { return -2 };
+    let Session {
+        tracker,
+        dance,
+        detail_trial,
+        detail_pending,
+        ..
+    } = &mut *s;
+    let Some(policy) = dance else { return -2 };
+    let Some(base) = detail_trial.as_ref() else {
+        return -2;
+    };
+    if at != base.at
+        || full_count != base.count
+        || full_count > o.detections.len()
+        || policy
+            .clock
+            .as_ref()
+            .is_none_or(|c| c.transform != o.transform)
+    {
+        return -2;
+    }
+    let mut result = -1;
+    let mut next_pending = None;
+    if o.detections.len() > full_count {
+        let mut trial = tracker.clone();
+        let mut trial_policy = policy.clone();
+        if detail_pending.is_some() {
+            trial_policy.pending = detail_pending.clone();
+        }
+        let at_elapsed = at
+            .checked_sub(policy.clock.as_ref().unwrap().anchor)
+            .and_then(i64::checked_abs)
+            .and_then(|v| v.checked_add(1));
+        let Some(elapsed) = at_elapsed else { return -2 };
+        let rows = o.detections;
+        let features = o.features;
+        let selected =
+            crate::dance_cutout::step(&mut trial, &mut trial_policy, at, -1, o).unwrap_or(-2);
+        if selected < -1 {
+            return -2;
+        }
+        if selected >= full_count as i32 {
+            let index = selected as usize;
+            let Some(d) = rows.get(index) else { return -2 };
+            let Some(f) =
+                feature(&features[index * APPEARANCE_BINS..(index + 1) * APPEARANCE_BINS])
+            else {
+                return -2;
+            };
+            result = selected;
+            next_pending = Some(PendingMatch {
+                at: elapsed,
+                bounds: d.bounds,
+                appearance: f,
+            });
+        } else if selected == -1 {
+            // A pending local observation can confirm the next *current*
+            // detail candidate; it never creates/relearns a competitor.
+            next_pending = trial_policy.pending.filter(|p| {
+                p.at == elapsed
+                    && rows.iter().enumerate().skip(full_count).any(|(i, d)| {
+                        d.bounds == p.bounds
+                            && feature(&features[i * APPEARANCE_BINS..(i + 1) * APPEARANCE_BINS])
+                                == Some(p.appearance)
+                    })
+            });
+        }
+    }
+    let base = detail_trial.take().unwrap();
+    *tracker = base.tracker;
+    *policy = base.policy;
+    *detail_pending = next_pending;
+    result
+}
+
 pub(crate) unsafe fn borrowed<'a, T>(p: *const T, n: usize) -> Option<&'a [T]> {
     if n == 0 {
         return Some(&[]);
@@ -574,8 +740,128 @@ mod cutout_tracking_tests {
             snapshot: Vec::new(),
             cutout: None,
             dance: None,
+            detail_trial: None,
+            detail_pending: None,
         }
     }
+    #[test]
+    fn detail_overlay_cannot_mutate_full_identity_or_learn_competitors() {
+        use crate::{
+            appearance::APPEARANCE_BINS, composition::Viewport, dance_cutout::CutoutObservation,
+        };
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 0.,
+            source_width: 160,
+            source_height: 160,
+            input_size: 160,
+            proto_size: 16,
+        };
+        let d = InstanceDetection {
+            bounds: Rect {
+                left: 60.,
+                top: 50.,
+                right: 90.,
+                bottom: 100.,
+            },
+            confidence: 0.9,
+        };
+        let local = InstanceDetection {
+            bounds: Rect {
+                left: 62.,
+                right: 92.,
+                ..d.bounds
+            },
+            ..d
+        };
+        let mask = [255u8; 256];
+        let mut feature = [0.; APPEARANCE_BINS];
+        feature[0] = 1.;
+        let baseline = create_dance_session();
+        let detail = create_dance_session();
+        for id in [baseline, detail] {
+            assert_eq!(
+                step_dance_session(id, 100_000, 0, &[d], &mask, t, &feature),
+                0
+            );
+        }
+        let mut roi = Viewport::default();
+        for at in [140_000, 180_000, 220_000, 260_000, 300_000] {
+            assert_eq!(step_dance_session(baseline, at, -1, &[], &[], t, &[]), -1);
+            assert_eq!(
+                step_or_detail(
+                    detail,
+                    at,
+                    CutoutObservation {
+                        detections: &[],
+                        masks: &[],
+                        transform: t,
+                        features: &[]
+                    },
+                    &mut roi
+                ),
+                -3
+            );
+            // Invalid time must not consume the transaction.
+            assert_eq!(
+                finish_detail(
+                    detail,
+                    at + 1,
+                    0,
+                    CutoutObservation {
+                        detections: &[local],
+                        masks: &mask,
+                        transform: t,
+                        features: &feature
+                    }
+                ),
+                -2
+            );
+            assert_eq!(
+                finish_detail(
+                    detail,
+                    at,
+                    0,
+                    CutoutObservation {
+                        detections: &[local],
+                        masks: &mask,
+                        transform: t,
+                        features: &feature
+                    }
+                ),
+                0
+            );
+            let aa = super::session(baseline).unwrap();
+            let bb = super::session(detail).unwrap();
+            let a = aa.lock().unwrap();
+            let b = bb.lock().unwrap();
+            assert_eq!(a.tracker.tracks.len(), b.tracker.tracks.len());
+            let x = &a.tracker.tracks[0];
+            let y = &b.tracker.tracks[0];
+            assert_eq!(x.id, y.id);
+            assert_eq!(x.observed_bounds, y.observed_bounds);
+            assert_eq!(x.state, y.state);
+            assert_eq!(
+                x.appearance.as_ref().unwrap().last_seen,
+                y.appearance.as_ref().unwrap().last_seen
+            );
+            assert_eq!(
+                x.appearance.as_ref().unwrap().bank,
+                y.appearance.as_ref().unwrap().bank
+            );
+        }
+        // Long full gap remains a full gap, even though detail had output.
+        // Re-enter the exact same full observation on two consecutive samples.
+        for at in [340_000, 380_000] {
+            let x = step_dance_session(baseline, at, -1, &[d], &mask, t, &feature);
+            let y = step_dance_session(detail, at, -1, &[d], &mask, t, &feature);
+            assert_eq!(x, y);
+        }
+        assert_eq!(destroy_dance_session(baseline), 0);
+        assert_eq!(destroy_dance_session(detail), 0);
+    }
+
     #[test]
     fn weak_observation_only_continues_a_recent_unique_seed() {
         let left = [

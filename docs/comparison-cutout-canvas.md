@@ -1722,3 +1722,177 @@ exact microseconds for a configured run. Actual Android and iOS
 instrumentation/QA finished successfully, which is evidence execution,
 not release-quality acceptance. Scoped Dart analyzer and Python syntax
 checks passed.
+
+## Stage C6: bounded adaptive current-frame detail recovery
+
+C5 identified a detector-observation bottleneck, not a missing tracker.
+C6 adds an adaptive source ROI on the shared FrameKernel Tracker.
+No new model, second persistent tracker, or changed privacy policy.
+
+### Algorithm and ownership contract
+
+- Full-frame YOLO and canonical selected-person association always run
+  first. On a valid full-frame match, return it immediately and do not
+  run detail inference.
+- For a missing match with a small subject (last confirmed long side
+  <=48% of source long side) and recent full observation (<=1.2s),
+  derive a bounded source-space ROI from the existing observed bbox
+  and bounded Kalman prediction. Expand the region with age, clamp it
+  to the source. No manual fixed ROI or global color-only re-ID.
+- FrameKernel returns a transactional -3 request without advancing
+  the committed source PTS. Native reopens the original source at the
+  exact requested PTS, crops display-oriented pixels, and runs the
+  same YOLO once with the existing strong 0.25 threshold.
+- Reuse FrameKernel detail_complete and reproject_mask to map local
+  candidates to the full scene's canonical proto grid. Reject crop-edge
+  truncation, empty masks and strong duplicates of original candidates.
+  Preserve all original full rows; appended local rows must pass the
+  same multi-person ownership, motion, appearance and candidate margin.
+- **Non-destructive output-only detail:** the stored full-only next
+  state is the sole committed identity state. A temporary copy of that
+  same prior Tracker evaluates appended current observations; never
+  commit its track table, prediction, competing IDs, or appearance
+  bank. At most a single current-candidate confirmation record is
+  carried forward, without a new motion filter/track. The local
+  candidate is eligible only for the missing frame. An already
+  valid full-frame observation cannot be replaced or modified by ROI.
+  All full-only selected outputs are retained byte-exact on identical
+  observations. A failed detail attempt commits the stored full-only
+  missing state. Repeated or mismatched PTS/count is rejected.
+- Per-role budget min(160, ceil(sample count/4)), one ROI per requested
+  source sample across both directions. After budget exhaustion, or a
+  long unsupported full gap, continue original tracking, no stale
+  alpha. Native re-decodes exact PTS rather than persisting raw RGB,
+  including reverse-prefix samples. Android canonical YUV crop uses
+  inverse display rotation and actual decoded crop bounds; iOS uses
+  the original oriented CI image with top-left ROI remapped into
+  source pixels and the existing source stamp check.
+- The temporary source reader is closed after each attempt. This
+  protects lifecycle and memory bounds but adds decoder startup and
+  seek latency. Crop/decoder/inference failures fall back to the
+  original current full observation; cancellation is not swallowed.
+  Local masks currently remap to the existing 160 proto grid; this
+  improves recall but is not a learned matte or full-resolution
+  edge refinement. Cache key detail-overlay-v2 prevents reuse of
+  previous analysis under a different policy.
+- Debug experimental feature only, GPU remains isolated QA opt-in.
+  Strict complete-export and archive checks remain unchanged.
+
+### Why the initial implementation was rejected
+
+The first implementation appended local candidates and committed the
+resulting association state. Although the Baganda host improved from
+238 to 294/300 and iOS from 231 to 289/300, the earlier independent
+Vogue development clip regressed from 556 to 89/750 in host replay.
+This exposed identity-memory/ownership contamination. Do not retain
+that implementation or interpret its device results as final C6.
+The final policy isolates detail evaluation from the canonical state.
+The new regression compares track IDs, observed bounds, states,
+last_seen and appearance bank after successive local fills against
+a parallel full-only session, and confirms the same next full
+association. This is a temporary transaction on the same shared
+algorithm, not a second long-lived tracker.
+
+### Final same-observation host replay (C5 development fixture)
+
+Full-frame observations calculated once, both policies consume the
+exact same full detections/features; additional model invocations
+only on shared Tracker's adaptive request. No source videos or raw
+observations committed.
+
+| Metric | Full-only | Final detail overlay |
+| --- | ---: | ---: |
+| Baganda output masks | 238/300 | 290/300 |
+| Baganda selected point hits | 8/12 | 11/12 |
+| Baganda distractor hits | 0/12 | 0/12 |
+| Baganda longest missing run | 0.760s | 0.120s |
+| Baganda detail attempts / accepted | 0 / 0 | 62 / 52 |
+| Baganda prior valid alpha byte-exact | baseline | 238/238 |
+| Danzon output masks | 299/300 | 300/300 |
+| Danzon selected point hits | 12/12 | 12/12 |
+| Danzon detail attempts / accepted | 0 / 0 | 1 / 1 |
+| Danzon prior valid alpha byte-exact | baseline | 299/299 |
+
+At Baganda 6s and 9s the previous zero approximate contour IoU
+recovers to 0.874 and 0.851 respectively; the 8s point still fails.
+The C5 fixture was previously seen for diagnosis, not a fresh
+holdout. Sparse points and approximate silhouettes are not full
+identity or matting ground truth. The host timings isolate the
+replay/extra inference after precomputing full observations; they
+are not an end-to-end mobile throughput measurement.
+
+Reproduce:
+```sh
+python tools/comparison/replay_adaptive_detail.py \
+  --manifest testdata/comparison/real-dance-c5-holdout.json \
+  --media /path/to/exact/tested/mp4s \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c6-detail
+```
+The same script accepts the B5 manifest and exact media. It asserts
+that all prior valid full-only alpha samples are preserved byte-exact.
+The Android instrumentation supports `-e detailEnabled false` for
+a direct full-only comparison with the same installed QA build.
+`review_holdout.py --baseline /path/to/prior/native/evidence` compares
+per-backend exact PTS, old/new availability and joint alpha similarity.
+
+The final B5 regression (same-observation host replay) preserves all
+former full-only alpha bytes while recovering some extra samples:
+
+| Scene | Full-only | Detail overlay | Prior valid exact | Longest gap old -> new |
+| --- | ---: | ---: | ---: | ---: |
+| Breaking | 648/750 | 663/750 | 648/648 | 0.640 -> 0.640s |
+| Vogue | 556/750 | 584/750 | 556/556 | 2.680 -> 2.520s |
+
+Both retain 9/10 selected-point checks, zero original annotated
+distractor hits, and no new supplemental spectator hits. B5 and C5
+together preserve all 1741 previously visible alpha frames across
+2100 source observations. This directly catches the abandoned C6
+first implementation's Vogue regression; it is not an identity
+ground-truth guarantee for previously missing frames.
+
+### Final native verification (C5 diagnostic pair)
+
+On the OnePlus 8T (Android 14), the final GPU path recovered Baganda
+227 -> 285/300 samples, retaining all 227 former valid alpha buffers
+byte-exact. The CPU reference lane recovered 231 -> 287/300, retaining
+all 231 byte-exact. Both hit 11/12 selected and 0/12 distractor points;
+maximum missing run is 0.20s on both. Approximate all-frame contour
+IoU for GPU/CPU is 0.794/0.796 (four annotated silhouettes). The GPU
+Danzon lane remains 300/300 with every previous alpha byte preserved.
+GPU requested and effective backend both GPU; the full pair analysis
+cost increased from 57.105s to 103.039s, with 7.596s first preview.
+The GPU reference used 73 detail attempts and accepted 58; its extra
+source decoding took 27.971s versus 6.088s local inference. This is
+an important throughput limitation, not a GPU speedup claim.
+
+On the iOS simulator, the final reference/target visibility is
+285/300 and 300/300 (previously 231/300 and 300/300). Reference detail
+attempted/accepted/failed: 69/54/0; target did not require detail.
+Analysis increased 44.310 -> 68.033s; first preview 4.128 -> 6.701s.
+All 24 sampled canvas timestamps passed; the incomplete-pair archive
+and export were correctly refused and ordinary playback restored.
+The independent iOS short repair/cancel/cache-restore/export regression
+also passed: 90 output frames, 3.0 seconds, 440Hz audio; outside patch
+unchanged, real identity correction passed. This is not a successful
+complete export of the C5 diagnostic pair.
+
+Final shared-kernel regression: 152 tests passed, 1 ignored; Clippy
+all targets with warnings denied passed. Android native comparison and
+privacy reference unit tests passed (28 + 3); iOS simulator built and
+ran. No new models, privacy tracking changes, or persistent second
+tracker. C5 material is now seen; a new holdout, physical iPhone,
+rotated-source detail validation and cancellation during an active
+ROI decode remain outstanding. Keep debug-only feature scope and
+CPU4 default/GPU opt-in. Next: reduce repeated exact-source decoder
+startup/seek cost without persisting source RGB, then fresh quality
+acceptance. Do not promote based on visibility alone.
+
+The final complete Android instrumentation passed (CPU4 and GPU both
+requested/effective as specified). CPU Danzon likewise remains 300/300
+with all prior alpha buffers byte-exact. Thus the full native Android
+pair comparison preserved 1058/1058 previously valid alpha buffers
+across the two backend runs, with 114 added and none lost. CPU pair
+analysis increased from 92.580s to 141.111s, first preview 10.801s.
+Both complete run reports and per-frame reviews were checked; device
+QA alpha files are temporary local evidence only.

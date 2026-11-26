@@ -145,9 +145,243 @@ pub unsafe extern "C" fn frame_kernel_dance_cutout_step(
     step_dance_session(id, at, seed, d, m, t, f)
 }
 
+/// # Safety
+/// Arrays must be readable and the ROI output uniquely writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_dance_step_or_detail(
+    id: u64,
+    at: i64,
+    d: *const InstanceDetection,
+    count: usize,
+    m: *const u8,
+    mask_len: usize,
+    t: Transform,
+    f: *const f32,
+    feature_len: usize,
+    roi: *mut crate::composition::Viewport,
+) -> i32 {
+    if !valid_lengths(t, count, mask_len, feature_len) {
+        return -2;
+    }
+    // SAFETY: checked lengths and the caller's exclusive output region.
+    let (Some(d), Some(m), Some(f), Some(roi)) = (
+        unsafe { borrowed(d, count) },
+        unsafe { borrowed(m, mask_len) },
+        unsafe { borrowed(f, feature_len) },
+        unsafe { write(roi, 1) },
+    ) else {
+        return -2;
+    };
+    roi[0] = crate::composition::Viewport::default();
+    crate::ffi_tracking::step_or_detail(
+        id,
+        at,
+        crate::dance_cutout::CutoutObservation {
+            detections: d,
+            masks: m,
+            transform: t,
+            features: f,
+        },
+        &mut roi[0],
+    )
+}
+/// # Safety
+/// Arrays must describe the original full-frame rows followed by detail rows.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_dance_finish_detail(
+    id: u64,
+    at: i64,
+    full_count: usize,
+    d: *const InstanceDetection,
+    count: usize,
+    m: *const u8,
+    mask_len: usize,
+    t: Transform,
+    f: *const f32,
+    feature_len: usize,
+) -> i32 {
+    if full_count > count || !valid_lengths(t, count, mask_len, feature_len) {
+        return -2;
+    }
+    // SAFETY: checked lengths and caller-owned readable regions.
+    let (Some(d), Some(m), Some(f)) = (
+        unsafe { borrowed(d, count) },
+        unsafe { borrowed(m, mask_len) },
+        unsafe { borrowed(f, feature_len) },
+    ) else {
+        return -2;
+    };
+    crate::ffi_tracking::finish_detail(
+        id,
+        at,
+        full_count,
+        crate::dance_cutout::CutoutObservation {
+            detections: d,
+            masks: m,
+            transform: t,
+            features: f,
+        },
+    )
+}
+/// # Safety
+/// Buffers must be readable/writable at the given lengths and disjoint.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_dance_detail_remap(
+    local: InstanceDetection,
+    mask: *const u8,
+    mask_len: usize,
+    local_t: Transform,
+    scene: Transform,
+    roi: crate::composition::Viewport,
+    full: *const InstanceDetection,
+    count: usize,
+    full_masks: *const u8,
+    full_len: usize,
+    out: *mut u8,
+    out_len: usize,
+    result: *mut InstanceDetection,
+) -> i32 {
+    if count > 256
+        || !valid_lengths(scene, count, full_len, count * APPEARANCE_BINS)
+        || !local_t.valid()
+        || local_t.input_size > 1024
+        || local_t.proto_size > 1024
+        || mask_len != (local_t.proto_size as usize).pow(2)
+        || out_len != (scene.proto_size as usize).pow(2)
+    {
+        return -1;
+    }
+    // SAFETY: checked lengths and caller-owned disjoint buffers.
+    let (Some(m), Some(d), Some(f), Some(out), Some(result)) = (
+        unsafe { borrowed(mask, mask_len) },
+        unsafe { borrowed(full, count) },
+        unsafe { borrowed(full_masks, full_len) },
+        unsafe { write(out, out_len) },
+        unsafe { write(result, 1) },
+    ) else {
+        return -1;
+    };
+    match crate::dance_detail::remap(local, m, local_t, scene, roi, d, f, out) {
+        Some(value) => {
+            result[0] = value;
+            1
+        }
+        None => 0,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn detail_retry_does_not_advance_pts_or_replace_a_valid_full_observation() {
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 0.,
+            source_width: 160,
+            source_height: 160,
+            input_size: 160,
+            proto_size: 16,
+        };
+        let d = InstanceDetection {
+            bounds: crate::geometry::Rect {
+                left: 60.,
+                top: 50.,
+                right: 90.,
+                bottom: 100.,
+            },
+            confidence: 0.9,
+        };
+        let masks = [255u8; 256];
+        let mut feature = [0.; APPEARANCE_BINS];
+        feature[0] = 1.;
+        let id = frame_kernel_dance_cutout_create();
+        let mut roi = crate::composition::Viewport::default();
+        // SAFETY: all arrays are owned and match their lengths, null arrays have zero length.
+        unsafe {
+            assert_eq!(
+                frame_kernel_dance_cutout_step(
+                    id,
+                    100_000,
+                    0,
+                    &d,
+                    1,
+                    masks.as_ptr(),
+                    masks.len(),
+                    t,
+                    feature.as_ptr(),
+                    feature.len()
+                ),
+                0
+            );
+            assert_eq!(
+                frame_kernel_dance_step_or_detail(
+                    id,
+                    140_000,
+                    std::ptr::null(),
+                    0,
+                    std::ptr::null(),
+                    0,
+                    t,
+                    std::ptr::null(),
+                    0,
+                    &mut roi
+                ),
+                -3
+            );
+            assert!(roi.width > 0 && roi.height > 0);
+            // Commit the same source PTS with the newly supplied current mask.
+            assert_eq!(
+                frame_kernel_dance_finish_detail(
+                    id,
+                    140_000,
+                    0,
+                    &d,
+                    1,
+                    masks.as_ptr(),
+                    masks.len(),
+                    t,
+                    feature.as_ptr(),
+                    feature.len()
+                ),
+                0
+            );
+            assert_eq!(
+                frame_kernel_dance_step_or_detail(
+                    id,
+                    180_000,
+                    &d,
+                    1,
+                    masks.as_ptr(),
+                    masks.len(),
+                    t,
+                    feature.as_ptr(),
+                    feature.len(),
+                    &mut roi
+                ),
+                0
+            );
+            assert_eq!(roi.width, 0);
+            assert_eq!(
+                frame_kernel_dance_cutout_step(
+                    id,
+                    180_000,
+                    -1,
+                    &d,
+                    1,
+                    masks.as_ptr(),
+                    masks.len(),
+                    t,
+                    feature.as_ptr(),
+                    feature.len()
+                ),
+                -2
+            );
+        }
+        assert_eq!(frame_kernel_dance_cutout_destroy(id), 0);
+    }
+
     #[test]
     fn shared_registry_preserves_session_mode_boundaries() {
         let privacy = crate::frame_kernel_tracking_create(crate::frame_kernel_tracking_defaults());

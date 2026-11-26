@@ -224,6 +224,22 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         fun select(seed: ComparisonCutoutSeed) =
             FrameKernel.cutoutSelectNative(masks,transform,seed.x,seed.y)
         fun track(session:FrameKernel.DanceCutoutTrack,seed:Int=-1)=session.step(pts,seed,rows,masks,transform,appearance)
+        fun stepOrDetail(session:FrameKernel.DanceCutoutTrack,roi:IntArray)=session.stepOrDetail(pts,rows,masks,transform,appearance,roi)
+        fun finishDetail(session:FrameKernel.DanceCutoutTrack,fullCount:Int)=session.finishDetail(pts,fullCount,rows,masks,transform,appearance)
+        fun withDetail(local:Observation,roi:IntArray):Observation {
+            require(local.pts==pts)
+            var allRows=rows;var allMasks=masks;var allAppearance=appearance
+            for(i in local.bounds.indices){
+                if(allRows.size/5>=256)break
+                val mask=ByteArray(area)
+                val row=FrameKernel.danceDetailRemapNative(local.rows.copyOfRange(i*5,(i+1)*5),
+                    local.mask(i),local.transform,transform,roi,allRows,allMasks,mask) ?: continue
+                allRows+=row;allMasks+=mask
+                val n=FrameKernel.DANCE_APPEARANCE_BINS
+                allAppearance+=local.appearance.copyOfRange(i*n,(i+1)*n)
+            }
+            return if(allRows===rows)this else Observation(pts,transform,allRows,allMasks,allAppearance)
+        }
         private fun mask(index: Int) = masks.copyOfRange(index*area,(index+1)*area)
         fun alpha(index: Int, width: Int,height: Int) =
             FrameKernel.cutoutAlphaNative(mask(index),transform,width,height)
@@ -291,7 +307,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     fun begin(uri: String, description: ComparisonVideoDescription, start: Long,endInclusive: Long,
         firstPreview:Long,lastPreview:Long,seed: ComparisonCutoutSeed, reference: Boolean, mirror: Boolean,
         segmenter: YoloLiteRtSegmenter,current: () -> Boolean, inspection: Inspection? = null,
-        fixedGrid:Pair<Int,Int>?=null): Work {
+        fixedGrid:Pair<Int,Int>?=null,detailEnabled:Boolean=true): Work {
         val measure=art.gaoge.dance.engine.BuildConfig.DEBUG
         val wallStart=System.nanoTime()
         val timing=linkedMapOf<String,Long>()
@@ -348,6 +364,36 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             val fixed=requireNotNull(placement)
             timed("alphaStore"){layers.add(o.pts,aw,ah,alpha,fixed)}
             if(initial)small[o.pts]=alpha?.let{ComparisonCutoutLayer(o.pts,aw,ah,it,fixed)}
+        }
+        // Budget applies across both directions and all chunks. Re-decode
+        // only exact PTS requested by shared Tracker, never spool RGB.
+        val detailBudget=minOf(160,maxOf(1,(times.size+3)/4))
+        var detailAttempts=0;var detailAccepted=0;var detailFailures=0
+        fun addTracked(o:Observation,session:FrameKernel.DanceCutoutTrack,initial:Boolean){
+            checkCurrent(current)
+            if(!detailEnabled || detailAttempts>=detailBudget){
+                add(o,timed("track"){o.track(session)},initial);return
+            }
+            val roi=IntArray(4)
+            val selected=timed("track"){o.stepOrDetail(session,roi)}
+            if(selected!=-3){add(o,selected,initial);return}
+            detailAttempts++
+            val merged=try{
+                val cropMapper=ModelCoordinateMapper(roi[2],roi[3])
+                CanonicalYuvInferenceDecoder(context,uri,description.rotation,startUs=o.pts).use{decoder->
+                    decoder.prepare()
+                    val frame=timed("detailDecode"){decoder.decodeDetailAtPts(o.pts,cropMapper,roi,sw,sh)}
+                    checkCurrent(current)
+                    val local=timed("detailInference"){segmenter.segmentGlReadbackRgbaSync(frame,cropMapper,o.pts,
+                        confidenceThreshold=.25f)}
+                    o.withDetail(Observation(o.pts,local.persons,cropMapper,frame),roi)
+                }
+            }catch(e:CancellationException){throw e}
+            catch(e:Exception){detailFailures++;o}
+            checkCurrent(current)
+            val index=timed("track"){merged.finishDetail(session,o.bounds.size)}
+            if(index>=o.bounds.size)detailAccepted++
+            add(merged,index,initial)
         }
         fun decode(from:Int,to:Int,consume:(Observation)->Unit) {
             if(from>=to)return
@@ -413,7 +459,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 for(record in records.asReversed()){
                     checkCurrent(current)
                     val prior=timed("prefixRead"){Observation.decode(spool.read(record))}
-                    add(prior,timed("track"){prior.track(reverse)},initial)
+                    addTracked(prior,reverse,initial)
                 }
             }
         }
@@ -430,12 +476,12 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 add(observation,chosen,true)
             }
             backwards(first,anchor,true)
-            decode(anchor+1,last+1){add(it,timed("track"){it.track(forward)},true)}
+            decode(anchor+1,last+1){addTracked(it,forward,true)}
             require(small.size==nearby.size && small[seed.ptsUs]!=null)
             val preview=ComparisonCutoutTrackCache(small) // no fingerprint: cannot export a partial
             small.clear()
             return Work(preview,times.size,layers,finishWork={
-                decode(last+1,times.size){add(it,timed("track"){it.track(forward)},false)}
+                decode(last+1,times.size){addTracked(it,forward,false)}
                 backwards(0,first,false)
                 layers.seal(seed.ptsUs)
                 require(fingerprint==timed("fingerprint"){ComparisonCutoutFingerprint.read(context,uri,current)}) { "源视频已变化" }
@@ -448,7 +494,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                         .put("accelerator",segmenter.effectiveAccelerator.toString()).put("decodePrefetch",prefetch)
                         .put("wallMs",(System.nanoTime()-wallStart)/1_000_000)
                         .put("prefixBytes",prefixBytes).put("alphaBytesPerFrame",aw*ah)
-                        .put("stageMs",stages).toString())
+                        .put("detailAttempts",detailAttempts).put("detailAccepted",detailAccepted).put("detailFailures",detailFailures)
+                        .put("detailEnabled",detailEnabled).put("stageMs",stages).toString())
                 }
                 ComparisonCutoutTrackCache(layers,fingerprint)
             },cleanup={try{forward.close()}finally{reverse.close()}})

@@ -17,9 +17,9 @@ const MARGIN: f32 = 0.045;
 
 #[derive(Clone)]
 pub(crate) struct PendingMatch {
-    at: i64,
-    bounds: Rect,
-    appearance: Appearance,
+    pub(crate) at: i64,
+    pub(crate) bounds: Rect,
+    pub(crate) appearance: Appearance,
 }
 #[derive(Clone, Copy, Default)]
 struct Evidence {

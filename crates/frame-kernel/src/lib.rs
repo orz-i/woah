@@ -14,6 +14,7 @@ pub mod box_filter;
 pub mod camera;
 pub mod composition;
 pub mod dance_cutout;
+mod dance_detail;
 pub mod face_geometry;
 pub mod face_localization;
 pub mod face_observations;

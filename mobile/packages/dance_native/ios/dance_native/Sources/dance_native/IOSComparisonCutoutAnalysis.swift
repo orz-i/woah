@@ -37,6 +37,27 @@ final class IOSComparisonCutoutAnalysis {
       guard result >= -1 else { throw IOSComparisonCutoutAnalysisError.invalidTracking }
       return Int(result)
     }
+    func stepOrDetail(_ o:Observation)throws->(Int,FrameKernelViewport){
+      var roi=FrameKernelViewport()
+      let status=o.rows.withUnsafeBufferPointer { rows in o.masks.withUnsafeBufferPointer { masks in
+        o.appearance.withUnsafeBufferPointer { f in
+          frame_kernel_dance_step_or_detail(id,o.pts,rows.baseAddress,rows.count,masks.baseAddress,masks.count,
+            o.transform,f.baseAddress,f.count,&roi)
+        }
+      } }
+      guard status>=(-1) || status == -3 else{throw IOSComparisonCutoutAnalysisError.invalidTracking}
+      return (Int(status),roi)
+    }
+    func finishDetail(_ o:Observation,fullCount:Int)throws->Int{
+      let status=o.rows.withUnsafeBufferPointer { rows in o.masks.withUnsafeBufferPointer { masks in
+        o.appearance.withUnsafeBufferPointer { f in
+          frame_kernel_dance_finish_detail(id,o.pts,fullCount,rows.baseAddress,rows.count,
+            masks.baseAddress,masks.count,o.transform,f.baseAddress,f.count)
+        }
+      } }
+      guard status>=(-1) else{throw IOSComparisonCutoutAnalysisError.invalidTracking}
+      return Int(status)
+    }
   }
 
   struct Observation: @unchecked Sendable {
@@ -114,6 +135,28 @@ final class IOSComparisonCutoutAnalysis {
     func select(_ seed: IOSComparisonCutoutSeed) -> Int {
       masks.withUnsafeBufferPointer { Int(frame_kernel_cutout_select($0.baseAddress,$0.count,transform,seed.x,seed.y)) }
     }
+    func withDetail(_ local:Self,roi:FrameKernelViewport)throws->Self{
+      guard pts==local.pts,stamp.agrees(with:local.stamp) else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      var allRows=rows,allMasks=masks,allAppearance=appearance
+      for i in local.rows.indices{
+        if allRows.count>=256{break}
+        var output=[UInt8](repeating:0,count:area)
+        var mapped=FrameKernelInstanceDetection()
+        let status=local.masks.withUnsafeBufferPointer{raw in allRows.withUnsafeBufferPointer{full in
+          allMasks.withUnsafeBufferPointer{fullMasks in output.withUnsafeMutableBufferPointer{out in
+            frame_kernel_dance_detail_remap(local.rows[i],raw.baseAddress?.advanced(by:i*area),area,
+              local.transform,transform,roi,full.baseAddress,full.count,fullMasks.baseAddress,fullMasks.count,
+              out.baseAddress,out.count,&mapped)
+          } }
+        } }
+        guard status>=0 else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+        if status==0{continue}
+        allRows.append(mapped);allMasks.append(contentsOf:output)
+        allAppearance.append(contentsOf:local.appearance[i*Self.appearanceBins..<(i+1)*Self.appearanceBins])
+      }
+      return Self(pts:pts,stamp:stamp,rows:allRows,masks:allMasks,transform:transform,appearance:allAppearance)
+    }
+
     func thumbnail(index: Int,input: [Float32]) throws -> (Data,Int,Int) {
       let n = Int(transform.input_size), count = n*n
       guard rows.indices.contains(index), (1...1024).contains(n), input.count == count*3 else {
@@ -255,7 +298,7 @@ final class IOSComparisonCutoutAnalysis {
 
   func begin(url: URL,index: IOSComparisonFrameIndex,start: Int64,end: Int64,
     firstPreview:Int64,lastPreview:Int64,seed: IOSComparisonCutoutSeed,reference: Bool,mirror: Bool,
-    inspection: Inspection? = nil,fixedGrid:(Int,Int)?=nil,isCancelled: @escaping () -> Bool) throws -> Work {
+    inspection: Inspection? = nil,fixedGrid:(Int,Int)?=nil,detailEnabled:Bool=true,isCancelled: @escaping () -> Bool) throws -> Work {
     func check() throws { if isCancelled() { throw CancellationError() } }
     try check()
     guard seed.x.isFinite, seed.y.isFinite, (0..<1).contains(seed.x), (0..<1).contains(seed.y) else {
@@ -333,6 +376,69 @@ final class IOSComparisonCutoutAnalysis {
       }
       guard cursor==to else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
     }
+    let detailBudget=min(160,max(1,(times.count+3)/4))
+    var detailAttempts=0,detailAccepted=0,detailFailures=0
+    func localObservation(_ original:Observation,_ roi:FrameKernelViewport)throws->Observation{
+      let scoped=url.isFileURL && url.startAccessingSecurityScopedResource()
+      defer{if scoped{url.stopAccessingSecurityScopedResource()}}
+      let reader=try AVAssetReader(asset:asset)
+      defer{reader.cancelReading()}
+      let output=AVAssetReaderTrackOutput(track:video,outputSettings:[
+        kCVPixelBufferPixelFormatTypeKey as String:kCVPixelFormatType_32BGRA,
+        kCVPixelBufferIOSurfacePropertiesKey as String:[:]])
+      output.alwaysCopiesSampleData=false
+      let begin=CMTimeMaximum(video.timeRange.start,CMTime(value:max(0,original.pts-1),timescale:1_000_000))
+      reader.timeRange=CMTimeRange(start:begin,end:CMTimeRangeGetEnd(video.timeRange))
+      guard reader.canAdd(output) else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      reader.add(output)
+      guard reader.startReading() else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+      while let sample=output.copyNextSampleBuffer(){
+        try check()
+        guard let pts=IOSComparisonTimeCore.map(CMSampleBufferGetOutputPresentationTimeStamp(sample)) else{continue}
+        if pts<original.pts{continue}
+        guard pts==original.pts,let pixel=CMSampleBufferGetImageBuffer(sample),
+          let stamp=IOSComparisonSourceStamp(pixel),original.stamp.agrees(with:stamp) else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
+        let image=IOSComparisonCompositor.oriented(pixel,transform:orientation)
+        let extent=image.extent,sw=CGFloat(original.transform.source_width),sh=CGFloat(original.transform.source_height)
+        let w=CGFloat(roi.width),h=CGFloat(roi.height)
+        guard w>0,h>0,roi.x>=0,roi.top>=0,CGFloat(roi.x)+w<=sw,CGFloat(roi.top)+h<=sh else{
+          throw IOSComparisonCutoutAnalysisError.invalidFrame
+        }
+        // Tracker coordinates use the display-oriented full inference image;
+        // convert that ROI back to the original source pixel extent, not the
+        // already letterboxed input. CI uses bottom-left coordinates.
+        let region=CGRect(x:CGFloat(roi.x)*extent.width/sw,
+          y:(sh-CGFloat(roi.top)-h)*extent.height/sh,width:w*extent.width/sw,height:h*extent.height/sh)
+        let cropped=image.cropped(to:region)
+          .transformed(by:CGAffineTransform(translationX:-region.minX,y:-region.minY))
+          .transformed(by:CGAffineTransform(scaleX:w/region.width,y:h/region.height))
+        guard let cg=self.context.createCGImage(cropped,from:CGRect(x:0,y:0,width:w,height:h)) else{
+          throw IOSComparisonCutoutAnalysisError.invalidFrame
+        }
+        let result=try self.runner.run(image:cg,preferredBackend:.xnnpack,confidenceThreshold:0.25)
+        return try Observation(pts:pts,stamp:stamp,result:result)
+      }
+      throw IOSComparisonCutoutAnalysisError.invalidFrame
+    }
+    func addTracked(_ o:Observation,_ track:Track,_ initial:Bool)throws{
+      try check()
+      if !detailEnabled || detailAttempts>=detailBudget{
+        try add(o,track.step(o),initial);return
+      }
+      let (selected,roi)=try track.stepOrDetail(o)
+      if selected != -3{try add(o,selected,initial);return}
+      detailAttempts+=1
+      var merged=o
+      do{
+        let local=try localObservation(o,roi)
+        merged=try o.withDetail(local,roi:roi)
+      }catch is CancellationError{throw CancellationError()}
+      catch{detailFailures+=1}
+      try check()
+      let index=try track.finishDetail(merged,fullCount:o.rows.count)
+      if index>=o.rows.count{detailAccepted+=1}
+      try add(merged,index,initial)
+    }
     func backwards(_ from:Int,_ to:Int,_ initial:Bool)throws{
       if from>=to{return}
       let spool=try IOSComparisonCutoutDisk(budget:Self.maximumPrefixBytes)
@@ -342,7 +448,7 @@ final class IOSComparisonCutoutAnalysis {
       for record in records.reversed(){
         try check()
         let prior=try Observation.decode(spool.read(record))
-        try add(prior,reverse.step(prior),initial)
+        try addTracked(prior,reverse,initial)
       }
     }
     try decode(anchor,anchor+1){o in
@@ -364,14 +470,18 @@ final class IOSComparisonCutoutAnalysis {
       try add(o,selected,true)
     }
     try backwards(first,anchor,true)
-    try decode(anchor+1,last+1){try add($0,forward.step($0),true)}
+    try decode(anchor+1,last+1){try addTracked($0,forward,true)}
     guard small.count==nearby.count,small[seed.ptsUs]?.layer != nil else{throw IOSComparisonCutoutAnalysisError.invalidFrame}
     let preview=IOSComparisonCutoutTrackCache(entries:small,times:nearby)
     small.removeAll()
     return Work(preview:preview,total:times.count,disk:entries){
-      try decode(last+1,times.count){try add($0,forward.step($0),false)}
+      try decode(last+1,times.count){try addTracked($0,forward,false)}
       try backwards(0,first,false)
       try entries.seal(anchor:seed.ptsUs)
+      #if DEBUG
+      NSLog("WoahCutoutDetail role=%@ frames=%d attempts=%d accepted=%d failures=%d",reference ? "reference":"target",times.count,detailAttempts,detailAccepted,detailFailures)
+      #endif
+
       guard try IOSComparisonCutoutFingerprint.read(url,current:{!isCancelled()})==fingerprint else{
         throw IOSComparisonCutoutAnalysisError.invalidFrame
       }

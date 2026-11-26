@@ -825,7 +825,7 @@ JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutD
     (void)self;if(frame_kernel_dance_cutout_destroy((uint64_t)id))invalid(env);
 }
 JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutStepNative(
-    JNIEnv *env,jobject self,jlong id,jlong pts,jint seed,jfloatArray rows,jbyteArray masks,jfloatArray transform,jfloatArray features) {
+    JNIEnv *env,jobject self,jlong id,jlong pts,jint seed,jfloatArray rows,jbyteArray masks,jfloatArray transform,jfloatArray features,jintArray roi,jint fullCount) {
     (void)self;FrameKernelTransform t;
     if(!rows||!masks||!features||!read_transform(env,transform,&t))return -2;
     jsize n=(*env)->GetArrayLength(env,rows),bytes=(*env)->GetArrayLength(env,masks),nf=(*env)->GetArrayLength(env,features);
@@ -837,12 +837,46 @@ JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutS
     jint result=-2;
     if((n&&!v)||(bytes&&!m)||(nf&&!f))goto done_dance;
     for(jsize i=0;i<n/5;i++)d[i]=(FrameKernelInstanceDetection){{v[5*i],v[5*i+1],v[5*i+2],v[5*i+3]},v[5*i+4]};
-    result=frame_kernel_dance_cutout_step((uint64_t)id,pts,seed,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf);
+    if(roi){
+        if(seed!=-1 || (*env)->GetArrayLength(env,roi)!=4)goto done_dance;
+        FrameKernelViewport view={0};
+        result=frame_kernel_dance_step_or_detail((uint64_t)id,pts,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf,&view);
+        jint v[4]={view.x,view.top,view.width,view.height};
+        (*env)->SetIntArrayRegion(env,roi,0,4,v);
+    }else if(fullCount>=0)result=frame_kernel_dance_finish_detail((uint64_t)id,pts,(size_t)fullCount,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf);
+    else result=frame_kernel_dance_cutout_step((uint64_t)id,pts,seed,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf);
  done_dance:
     if(v)(*env)->ReleaseFloatArrayElements(env,rows,v,JNI_ABORT);
     if(m)(*env)->ReleaseByteArrayElements(env,masks,m,JNI_ABORT);
     if(f)(*env)->ReleaseFloatArrayElements(env,features,f,JNI_ABORT);
     return result;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceDetailRemapNative(
+    JNIEnv *env,jobject self,jfloatArray local,jbyteArray mask,jfloatArray lt,jfloatArray st,
+    jintArray viewport,jfloatArray full,jbyteArray fullMasks,jbyteArray output){
+    (void)self;FrameKernelTransform l,t;FrameKernelViewport roi;
+    if(!local||!mask||!full||!fullMasks||!output||!read_transform(env,lt,&l)||!read_transform(env,st,&t)||
+       !viewport_input(env,viewport,&roi)||(*env)->GetArrayLength(env,local)!=5)return NULL;
+    jsize n=(*env)->GetArrayLength(env,full);
+    if(n%5||n>1280)return NULL;
+    jfloat row[5],rows[1280];FrameKernelInstanceDetection d[256],mapped;
+    (*env)->GetFloatArrayRegion(env,local,0,5,row);
+    if(n)(*env)->GetFloatArrayRegion(env,full,0,n,rows);
+    for(jsize i=0;i<n/5;i++)d[i]=(FrameKernelInstanceDetection){{rows[i*5],rows[i*5+1],rows[i*5+2],rows[i*5+3]},rows[i*5+4]};
+    FrameKernelInstanceDetection value={{row[0],row[1],row[2],row[3]},row[4]};
+    jsize ml=(*env)->GetArrayLength(env,mask),fl=(*env)->GetArrayLength(env,fullMasks),ol=(*env)->GetArrayLength(env,output);
+    jbyte *m=(*env)->GetByteArrayElements(env,mask,NULL),*f=fl?(*env)->GetByteArrayElements(env,fullMasks,NULL):NULL;
+    jbyte *o=(*env)->GetByteArrayElements(env,output,NULL);
+    jint result=-1;
+    if(m&&o&&(!fl||f)) result=frame_kernel_dance_detail_remap(value,(const uint8_t*)m,ml,l,t,roi,d,n/5,(const uint8_t*)f,fl,(uint8_t*)o,ol,&mapped);
+    if(m)(*env)->ReleaseByteArrayElements(env,mask,m,JNI_ABORT);
+    if(f)(*env)->ReleaseByteArrayElements(env,fullMasks,f,JNI_ABORT);
+    if(o)(*env)->ReleaseByteArrayElements(env,output,o,result==1?0:JNI_ABORT);
+    if(result!=1)return NULL;
+    jfloat a[5]={mapped.bounds.left,mapped.bounds.top,mapped.bounds.right,mapped.bounds.bottom,mapped.confidence};
+    jfloatArray out=(*env)->NewFloatArray(env,5);
+    if(out)(*env)->SetFloatArrayRegion(env,out,0,5,a);
+    return out;
 }
 JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutSelectNative(JNIEnv *env,jobject self,jbyteArray masks,jfloatArray transform,jfloat x,jfloat y) {
     (void)self; FrameKernelTransform t;

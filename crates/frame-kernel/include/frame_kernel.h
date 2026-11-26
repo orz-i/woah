@@ -290,6 +290,20 @@ int32_t frame_kernel_dance_appearance_planar(const float *rgb, size_t rgb_len,
 int32_t frame_kernel_dance_cutout_step(uint64_t session, int64_t at, int32_t seed,
     const FrameKernelInstanceDetection *detections, size_t count, const uint8_t *masks,
     size_t mask_len, FrameKernelTransform transform, const float *features, size_t features_len);
+/* Full-frame first. -3 requests one same-PTS detail retry without state commit.
+   Otherwise returns current selected raw index or -1; -2 invalid. */
+int32_t frame_kernel_dance_step_or_detail(uint64_t session,int64_t at,
+    const FrameKernelInstanceDetection *detections,size_t count,const uint8_t *masks,size_t mask_len,
+    FrameKernelTransform transform,const float *features,size_t features_len,FrameKernelViewport *roi);
+/* Commit the stored full-frame state; only a current appended detail
+   index may be returned for this frame. No detail track memory is committed. */
+int32_t frame_kernel_dance_finish_detail(uint64_t session,int64_t at,size_t full_count,
+    const FrameKernelInstanceDetection *detections,size_t count,const uint8_t *masks,size_t mask_len,
+    FrameKernelTransform transform,const float *features,size_t features_len);
+int32_t frame_kernel_dance_detail_remap(FrameKernelInstanceDetection local,const uint8_t *mask,size_t mask_len,
+    FrameKernelTransform local_transform,FrameKernelTransform scene,FrameKernelViewport roi,
+    const FrameKernelInstanceDetection *full,size_t count,const uint8_t *full_masks,size_t full_len,
+    uint8_t *out,size_t out_len,FrameKernelInstanceDetection *result);
 /* Snapshot v1 uses little-endian fixed-width fields, as documented in
    tracking-session-v1.md. Null/zero queries the required size. A successful
    copy returns its byte count; -1 invalid handle/buffer, -2 insufficient space.

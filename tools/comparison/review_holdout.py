@@ -56,6 +56,7 @@ def main():
     p.add_argument("--manifest",required=True,type=Path)
     p.add_argument("--media",required=True,type=Path)
     p.add_argument("--output",required=True,type=Path)
+    p.add_argument("--baseline",type=Path,help="optional prior native alpha evidence for the same fixture/backend")
     args=p.parse_args()
     manifest=json.loads(args.manifest.read_text())
     duration=manifest["durationUs"];count=manifest["framesPerRole"]
@@ -64,6 +65,10 @@ def main():
     assert native["limitUs"]==duration and native["anchorUs"]==manifest["anchorUs"]
     result={"manifestSha256":sha(args.manifest),"frozenCommit":manifest["frozenCommit"],
             "native":native,"manualContoursApproximate":True,"roles":{}}
+    if args.baseline:
+        prior=json.loads((args.baseline/"report.json").read_text())
+        assert prior["limitUs"]==duration and prior["anchorUs"]==manifest["anchorUs"]
+        result["baselineNative"]=prior
     args.output.mkdir(parents=True,exist_ok=True)
     for role,source in manifest["sources"].items():
         video=args.media/source["file"]
@@ -90,6 +95,12 @@ def main():
             stats["meanContourIouVisible"]=float(np.mean([x["iou"] for x in visible])) if visible else None
             stats["meanBoundaryF1Visible"]=float(np.mean([x["boundaryF1"] for x in visible])) if visible else None
             row[backend]=stats
+            if args.baseline:
+                old=list(frames(args.baseline/f"{backend}-{role}.alpha"))
+                delta=compare(old,data)
+                delta["candidateMissingVsBaseline"]=delta.pop("gpuMissingVsCpu")
+                delta["candidateExtraVsBaseline"]=delta.pop("gpuExtraVsCpu")
+                stats["baselineComparison"]=delta
             sheets(video,data,args.output,role,backend,annotations,duration)
             print(role,backend,json.dumps({k:v for k,v in stats.items() if k not in ("checkpoints","missingSpansUs","contours")}),flush=True)
             print("contours",[(x["ptsUs"],round(x["iou"],3),round(x["boundaryF1"],3)) for x in contour],flush=True)
