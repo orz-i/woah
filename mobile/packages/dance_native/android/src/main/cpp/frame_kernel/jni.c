@@ -794,6 +794,45 @@ JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_quadN
     return out;
 }
 
+/* Cutout inputs are immutable source-frame data; no GPU or selection policy in JNI. */
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutSelectNative(JNIEnv *env,jobject self,jbyteArray masks,jfloatArray transform,jfloat x,jfloat y) {
+    (void)self; FrameKernelTransform t;
+    if(!masks || !read_transform(env,transform,&t)) return -3;
+    jsize n=(*env)->GetArrayLength(env,masks);
+    if(!n) return frame_kernel_cutout_select(NULL,0,t,x,y);
+    jbyte *bytes=(*env)->GetByteArrayElements(env,masks,NULL);
+    if(!bytes) return -3;
+    jint result=frame_kernel_cutout_select((const uint8_t*)bytes,(size_t)n,t,x,y);
+    (*env)->ReleaseByteArrayElements(env,masks,bytes,JNI_ABORT);
+    return result;
+}
+JNIEXPORT jbyteArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutAlphaNative(JNIEnv *env,jobject self,jbyteArray mask,jfloatArray transform,jint width,jint height) {
+    (void)self; FrameKernelTransform t;
+    if(!mask || width<1 || height<1 || width>4096 || height>4096 || !read_transform(env,transform,&t)) {invalid(env);return NULL;}
+    jsize n=(*env)->GetArrayLength(env,mask), count=width*height;
+    jbyteArray output=(*env)->NewByteArray(env,count);
+    if(!output) return NULL;
+    jbyte *input=(*env)->GetByteArrayElements(env,mask,NULL);
+    if(!input) return NULL;
+    jbyte *out=(*env)->GetByteArrayElements(env,output,NULL);
+    if(!out) {(*env)->ReleaseByteArrayElements(env,mask,input,JNI_ABORT);return NULL;}
+    int result=frame_kernel_cutout_alpha((const uint8_t*)input,(size_t)n,t,width,height,(uint8_t*)out,(size_t)count);
+    (*env)->ReleaseByteArrayElements(env,output,out,result==0?0:JNI_ABORT);
+    (*env)->ReleaseByteArrayElements(env,mask,input,JNI_ABORT);
+    if(result!=0) {invalid(env);return NULL;}
+    return output;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutQuadNative(JNIEnv *env,jobject self,jint width,jint height,jdouble aspect,jfloatArray anchor,jdouble x,jdouble y,jdouble subjectHeight,jboolean mirror) {
+    (void)self; FrameKernelRect a;
+    if(!read_rect(env,anchor,&a)) return NULL;
+    FrameKernelQuad q=frame_kernel_cutout_quad(width,height,aspect,a,x,y,subjectHeight,mirror);
+    if(!q.valid) {invalid(env);return NULL;}
+    jfloat values[4]={q.scale_x,q.scale_y,q.shift_x,q.shift_y};
+    jfloatArray out=(*env)->NewFloatArray(env,4);
+    if(out) (*env)->SetFloatArrayRegion(env,out,0,4,values);
+    return out;
+}
+
 /* Shared audio transport; no DSP or matching policy in JNI. */
 static void audio_error(JNIEnv *env,int64_t code) {
     const char *name=code==-2 ? "art/gaoge/dance/engine/comparison/ComparisonAlignmentTooLong":

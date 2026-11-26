@@ -19,6 +19,11 @@ internal object FrameKernel {
     external fun paneNative(width:Int,height:Int,gap:Int,reference:Boolean,sideBySide:Boolean):IntArray
     external fun fitNative(pane:IntArray,aspect:Double):IntArray
     external fun quadNative(pane:IntArray,fit:IntArray,zoom:Double,panX:Double,panY:Double):FloatArray
+    external fun cutoutSelectNative(masks:ByteArray,transform:FloatArray,x:Float,y:Float):Int
+    external fun cutoutAlphaNative(mask:ByteArray,transform:FloatArray,width:Int,height:Int):ByteArray
+    external fun cutoutQuadNative(width:Int,height:Int,aspect:Double,anchor:FloatArray,
+        x:Double,y:Double,subjectHeight:Double,mirror:Boolean):FloatArray
+
     external fun projectFaceRegionNative(current:FloatArray,previous:FloatArray,seed:FloatArray,ageUs:Long):FloatArray?
     external fun faceRegionNative(row:FloatArray,view:FloatArray?,size:Float,yaw:Float):FloatArray?
     external fun headFallbackNative(person:FloatArray):FloatArray?

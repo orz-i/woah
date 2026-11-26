@@ -101,6 +101,14 @@ typedef struct FrameKernelTransform {
     float scale, pad_left, pad_top;
     uint32_t source_width, source_height, input_size, proto_size;
 } FrameKernelTransform;
+/* Cutout: display-oriented unmirrored normalized points and immutable anchor.
+   Select: >=0 instance index, -1 background, -2 ambiguous, -3 invalid.
+   All masks share the exact frame transform, contiguous proto bytes.
+   Alpha: 0 success, -1 invalid, no aliasing or retained pointers. */
+int32_t frame_kernel_cutout_select(const uint8_t *masks, size_t len, FrameKernelTransform transform, float x, float y);
+int32_t frame_kernel_cutout_alpha(const uint8_t *mask, size_t len, FrameKernelTransform transform, uint32_t width, uint32_t height, uint8_t *out, size_t out_len);
+FrameKernelQuad frame_kernel_cutout_quad(uint32_t width, uint32_t height, double aspect, FrameKernelRect anchor, double x, double y, double subject_height, uint32_t mirror);
+
 uint32_t frame_kernel_abi_version(void);
 typedef struct FrameKernelAssociationWeights { float bounds, mask, motion, direction, gating_threshold; } FrameKernelAssociationWeights;
 typedef struct FrameKernelAssociationEvidence {

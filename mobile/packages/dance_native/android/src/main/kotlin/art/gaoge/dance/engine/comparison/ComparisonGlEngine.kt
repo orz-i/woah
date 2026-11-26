@@ -51,7 +51,8 @@ internal class ComparisonGlEngine(
     initialTeacherPicture: ComparisonPicture = ComparisonPicture(),
     initialLearnerPicture: ComparisonPicture = ComparisonPicture(),
     private val recordable: Boolean = false,
-    private val exportCurrent: () -> Boolean = { true }
+    private val exportCurrent: () -> Boolean = { true },
+    private val cutoutProvider: ((Long, Long) -> ComparisonCutoutFrame)? = null
 ) {
     private val main = Handler(Looper.getMainLooper())
     private val thread = HandlerThread("WoahComparisonGL").apply { start() }
@@ -72,6 +73,9 @@ internal class ComparisonGlEngine(
     private var eglContext: EGLContext = EGL14.EGL_NO_CONTEXT
     private var window: EGLSurface = EGL14.EGL_NO_SURFACE
     private var program = 0
+    private var cutoutProgram = 0
+    private var alphaTexture = 0
+    private var alphaUpload: ByteBuffer? = null
     private var teacher: ComparisonCodecVideo? = null
     private var learner: ComparisonCodecVideo? = null
     private var teacherTexture: SurfaceTexture? = null
@@ -314,8 +318,19 @@ internal class ComparisonGlEngine(
         GLES20.glDisable(GLES20.GL_SCISSOR_TEST)
         GLES20.glClearColor(0f,0f,0f,1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        drawTexture(a,textures[0],true)
-        drawTexture(b,textures[1],false)
+        val provider = cutoutProvider
+        if (provider == null) {
+            drawTexture(a,textures[0],true)
+            drawTexture(b,textures[1],false)
+        } else {
+            val frame = provider(ta.startUs,lb.startUs)
+            GLES20.glEnable(GLES20.GL_BLEND)
+            GLES20.glBlendFunc(GLES20.GL_ONE,GLES20.GL_ONE_MINUS_SRC_ALPHA)
+            try {
+                frame.layer(true,ta.startUs)?.let { drawTexture(a,textures[0],true,it) }
+                frame.layer(false,lb.startUs)?.let { drawTexture(b,textures[1],false,it) }
+            } finally { GLES20.glDisable(GLES20.GL_BLEND) }
+        }
         check(GLES20.glGetError()==GLES20.GL_NO_ERROR) { "GL composition error" }
         checkCurrent()
         val submitNs=System.nanoTime()
@@ -333,25 +348,34 @@ internal class ComparisonGlEngine(
         presentedReference=ta
     }
 
-    private fun drawTexture(video: ComparisonCodecVideo,textureId: Int,isTeacher: Boolean) {
+    private fun drawTexture(video: ComparisonCodecVideo,textureId: Int,isTeacher: Boolean,
+        cutout: ComparisonCutoutLayer? = null) {
         val d=video.description
         val rotated=d.rotation%180!=0
-        val rect=ComparisonGlLayout.viewport(width,height,gap,
-            if (rotated) d.height else d.width,if (rotated) d.width else d.height,isTeacher,sideBySide)
-        val pane=ComparisonGlLayout.pane(width,height,gap,isTeacher,sideBySide)
+        val pane=if (cutout == null) ComparisonGlLayout.pane(width,height,gap,isTeacher,sideBySide)
+            else ComparisonViewport(0,0,width,height)
         val picture=if (isTeacher) teacherPicture else learnerPicture
-        val quad=picture.quad(pane,rect)
+        val aspect=if(rotated) d.height.toDouble()/d.width else d.width.toDouble()/d.height
+        val quad=cutout?.placement?.quad(width,height,aspect) ?: picture.quad(pane,
+            ComparisonGlLayout.viewport(width,height,gap,
+                if(rotated) d.height else d.width,if(rotated) d.width else d.height,isTeacher,sideBySide))
+        val shaderProgram=if(cutout == null) program else cutoutProgram
         GLES20.glViewport(pane.x,height-pane.top-pane.height,pane.width,pane.height)
         GLES20.glEnable(GLES20.GL_SCISSOR_TEST)
         GLES20.glScissor(pane.x,height-pane.top-pane.height,pane.width,pane.height)
-        GLES20.glUseProgram(program)
-        GLES20.glUniform2f(GLES20.glGetUniformLocation(program,"frameScale"),quad.scaleX,quad.scaleY)
-        GLES20.glUniform2f(GLES20.glGetUniformLocation(program,"frameShift"),quad.shiftX,quad.shiftY)
-        GLES20.glUniform1f(GLES20.glGetUniformLocation(program,"mirrorX"),
-            if (if (isTeacher) mirrorTeacher else mirrorLearner) -1f else 1f)
+        GLES20.glUseProgram(shaderProgram)
+        GLES20.glUniform2f(GLES20.glGetUniformLocation(shaderProgram,"frameScale"),quad.scaleX,quad.scaleY)
+        GLES20.glUniform2f(GLES20.glGetUniformLocation(shaderProgram,"frameShift"),quad.shiftX,quad.shiftY)
+        GLES20.glUniform1f(GLES20.glGetUniformLocation(shaderProgram,"mirrorX"),
+            if (cutout?.placement?.mirror ?: (if (isTeacher) mirrorTeacher else mirrorLearner)) -1f else 1f)
+        if (cutout != null) {
+            GLES20.glUniform1i(GLES20.glGetUniformLocation(shaderProgram,"alphaMask"),1)
+            GLES20.glUniform1f(GLES20.glGetUniformLocation(shaderProgram,"opacity"),cutout.placement.opacity)
+            uploadAlpha(cutout)
+        }
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,textureId)
-        GLES20.glUniform1i(GLES20.glGetUniformLocation(program,"image"),0)
+        GLES20.glUniform1i(GLES20.glGetUniformLocation(shaderProgram,"image"),0)
         val transform=video.matrix.copyOf()
         if (d.rotation!=0) {
             val rotation=FloatArray(16)
@@ -361,10 +385,10 @@ internal class ComparisonGlEngine(
             Matrix.translateM(rotation,0,-.5f,-.5f,0f)
             Matrix.multiplyMM(transform,0,video.matrix,0,rotation,0)
         }
-        GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(program,"texMatrix"),
+        GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(shaderProgram,"texMatrix"),
             1,false,transform,0)
-        val position=GLES20.glGetAttribLocation(program,"position")
-        val uv=GLES20.glGetAttribLocation(program,"uv")
+        val position=GLES20.glGetAttribLocation(shaderProgram,"position")
+        val uv=GLES20.glGetAttribLocation(shaderProgram,"uv")
         vertices.position(0)
         GLES20.glVertexAttribPointer(position,2,GLES20.GL_FLOAT,false,16,vertices)
         GLES20.glEnableVertexAttribArray(position)
@@ -372,6 +396,28 @@ internal class ComparisonGlEngine(
         GLES20.glVertexAttribPointer(uv,2,GLES20.GL_FLOAT,false,16,vertices)
         GLES20.glEnableVertexAttribArray(uv)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP,0,4)
+    }
+
+    private fun uploadAlpha(layer: ComparisonCutoutLayer) {
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
+        if (alphaTexture == 0) {
+            val ids = IntArray(1)
+            GLES20.glGenTextures(1,ids,0); alphaTexture=ids[0]
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,alphaTexture)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,GLES20.GL_TEXTURE_MIN_FILTER,GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,GLES20.GL_TEXTURE_MAG_FILTER,GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,GLES20.GL_TEXTURE_WRAP_S,GLES20.GL_CLAMP_TO_EDGE)
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,GLES20.GL_TEXTURE_WRAP_T,GLES20.GL_CLAMP_TO_EDGE)
+        }
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,alphaTexture)
+        val size=layer.width*layer.height
+        val buffer=alphaUpload?.takeIf { it.capacity() >= size }
+            ?: ByteBuffer.allocateDirect(size).also { alphaUpload=it }
+        layer.uploadTo(buffer)
+        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT,1)
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D,0,GLES20.GL_ALPHA,layer.width,layer.height,0,
+            GLES20.GL_ALPHA,GLES20.GL_UNSIGNED_BYTE,buffer)
+        GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT,4)
     }
 
     private fun shader(type: Int,source: String): Int {
@@ -382,6 +428,21 @@ internal class ComparisonGlEngine(
         GLES20.glGetShaderiv(shader,GLES20.GL_COMPILE_STATUS,ok,0)
         check(ok[0]!=0) { "GL shader: ${GLES20.glGetShaderInfoLog(shader)}" }
         return shader
+    }
+
+    private fun linkProgram(vertex: Int, fragment: Int): Int {
+        val linkedProgram=GLES20.glCreateProgram()
+        GLES20.glAttachShader(linkedProgram,vertex)
+        GLES20.glAttachShader(linkedProgram,fragment)
+        GLES20.glLinkProgram(linkedProgram)
+        val linked=IntArray(1)
+        GLES20.glGetProgramiv(linkedProgram,GLES20.GL_LINK_STATUS,linked,0)
+        if (linked[0]==0) {
+            val reason=GLES20.glGetProgramInfoLog(linkedProgram)
+            GLES20.glDeleteProgram(linkedProgram)
+            throw IllegalStateException("GL link: $reason")
+        }
+        return linkedProgram
     }
 
     private fun initGl() {
@@ -408,9 +469,9 @@ internal class ComparisonGlEngine(
         val vertex=shader(GLES20.GL_VERTEX_SHADER,"""
             attribute vec2 position; attribute vec2 uv;
             uniform mat4 texMatrix; uniform float mirrorX;
-            uniform vec2 frameScale; uniform vec2 frameShift; varying vec2 texUv;
+            uniform vec2 frameScale; uniform vec2 frameShift; varying vec2 texUv; varying vec2 maskUv;
             void main() { gl_Position=vec4(vec2(position.x*mirrorX,position.y)*frameScale+frameShift,0.0,1.0);
-              texUv=(texMatrix*vec4(uv,0.0,1.0)).xy; }
+              texUv=(texMatrix*vec4(uv,0.0,1.0)).xy; maskUv=vec2(uv.x,1.0-uv.y); }
         """.trimIndent())
         val fragment=shader(GLES20.GL_FRAGMENT_SHADER,"""
             #extension GL_OES_EGL_image_external : require
@@ -418,13 +479,24 @@ internal class ComparisonGlEngine(
             varying vec2 texUv;
             void main() { gl_FragColor=texture2D(image,texUv); }
         """.trimIndent())
-        program=GLES20.glCreateProgram()
-        GLES20.glAttachShader(program,vertex); GLES20.glAttachShader(program,fragment)
-        GLES20.glLinkProgram(program)
-        val linked=IntArray(1)
-        GLES20.glGetProgramiv(program,GLES20.GL_LINK_STATUS,linked,0)
-        check(linked[0]!=0) { "GL link: ${GLES20.glGetProgramInfoLog(program)}" }
-        GLES20.glDeleteShader(vertex); GLES20.glDeleteShader(fragment)
+        try {
+            program=linkProgram(vertex,fragment)
+            if (cutoutProvider!=null) {
+                val cutoutFragment=shader(GLES20.GL_FRAGMENT_SHADER,"""
+                    #extension GL_OES_EGL_image_external : require
+                    precision mediump float; uniform samplerExternalOES image;
+                    uniform sampler2D alphaMask; uniform float opacity;
+                    varying vec2 texUv; varying vec2 maskUv;
+                    void main() {
+                      vec4 color=texture2D(image,texUv);
+                      float a=texture2D(alphaMask,maskUv).a*opacity;
+                      gl_FragColor=vec4(color.rgb*a,a);
+                    }
+                """.trimIndent())
+                try { cutoutProgram=linkProgram(vertex,cutoutFragment) }
+                finally { GLES20.glDeleteShader(cutoutFragment) }
+            }
+        } finally { GLES20.glDeleteShader(vertex); GLES20.glDeleteShader(fragment) }
         GLES20.glGenTextures(2,textures,0)
         textures.forEach {
             GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,it)
@@ -501,6 +573,9 @@ internal class ComparisonGlEngine(
                 runCatching { teacherTexture?.release() }; runCatching { learnerTexture?.release() }
                 if (display!=EGL14.EGL_NO_DISPLAY) {
                     if (program!=0) GLES20.glDeleteProgram(program)
+                    if (cutoutProgram!=0) GLES20.glDeleteProgram(cutoutProgram)
+                    if (alphaTexture!=0) GLES20.glDeleteTextures(1,intArrayOf(alphaTexture),0)
+                    alphaUpload=null
                     GLES20.glDeleteTextures(2,textures,0)
                     EGL14.eglMakeCurrent(display,EGL14.EGL_NO_SURFACE,
                         EGL14.EGL_NO_SURFACE,EGL14.EGL_NO_CONTEXT)

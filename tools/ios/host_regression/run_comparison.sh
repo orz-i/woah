@@ -40,3 +40,12 @@ swiftc -O -parse-as-library -D COMPARISON_EXPORT_STANDALONE -I "$CORE/include" -
   "$ROOT/mobile/packages/dance_native/ios/tests/comparison_export_av/main.swift" \
   "$CORE/target/release/libframe_kernel.a" -liconv
 "$OUT/export-av"
+
+swiftc -O -I "$CORE/include" -o "$OUT/render" \
+  "$N/IOSComparisonTimeCore.swift" "$N/IOSComparisonModels.swift" \
+  "$N/IOSComparisonFrameIndex.swift" "$N/IOSComparisonCompositor.swift" \
+  "$N/IOSComparisonComposition.swift" \
+  "$ROOT/mobile/packages/dance_native/ios/tests/comparison_render/BridgeStubs.swift" \
+  "$ROOT/mobile/packages/dance_native/ios/tests/comparison_render/main.swift" \
+  "$CORE/target/release/libframe_kernel.a" -liconv
+"$OUT/render" --cutout-only

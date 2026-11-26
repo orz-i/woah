@@ -54,4 +54,33 @@ enum IOSComparisonTimeCore {
     return IOSComparisonQuad(scaleX: q.scale_x, scaleY: q.scale_y, shiftX: q.shift_x, shiftY: q.shift_y)
   }
 
+  static func cutoutSelect(masks: [UInt8], scale: Float, padLeft: Float, padTop: Float,
+    sourceWidth: UInt32, sourceHeight: UInt32, inputSize: UInt32, protoSize: UInt32,
+    x: Float, y: Float) -> Int {
+    let t = FrameKernelTransform(scale: scale, pad_left: padLeft, pad_top: padTop,
+      source_width: sourceWidth, source_height: sourceHeight, input_size: inputSize, proto_size: protoSize)
+    return masks.withUnsafeBufferPointer { Int(frame_kernel_cutout_select($0.baseAddress, $0.count, t, x, y)) }
+  }
+
+  static func cutoutAlpha(mask: [UInt8], scale: Float, padLeft: Float, padTop: Float,
+    sourceWidth: UInt32, sourceHeight: UInt32, inputSize: UInt32, protoSize: UInt32,
+    width: Int, height: Int) -> [UInt8]? {
+    guard (1...4096).contains(width), (1...4096).contains(height) else { return nil }
+    let t = FrameKernelTransform(scale: scale, pad_left: padLeft, pad_top: padTop,
+      source_width: sourceWidth, source_height: sourceHeight, input_size: inputSize, proto_size: protoSize)
+    var output = [UInt8](repeating: 0, count: width * height)
+    let result = mask.withUnsafeBufferPointer { input in output.withUnsafeMutableBufferPointer { out in
+      frame_kernel_cutout_alpha(input.baseAddress, input.count, t, UInt32(width), UInt32(height), out.baseAddress, out.count)
+    } }
+    return result == 0 ? output : nil
+  }
+
+  static func cutoutQuad(width: Int, height: Int, aspect: Double, anchor: SIMD4<Float>,
+    x: Double, y: Double, subjectHeight: Double, mirror: Bool) -> IOSComparisonQuad? {
+    guard (2...65535).contains(width), (2...65535).contains(height) else { return nil }
+    let rect = FrameKernelRect(left: anchor.x, top: anchor.y, right: anchor.z, bottom: anchor.w)
+    let q = frame_kernel_cutout_quad(UInt32(width), UInt32(height), aspect, rect, x, y, subjectHeight, mirror ? 1 : 0)
+    return q.valid == 0 ? nil : IOSComparisonQuad(scaleX: q.scale_x, scaleY: q.scale_y, shiftX: q.shift_x, shiftY: q.shift_y)
+  }
+
 }
