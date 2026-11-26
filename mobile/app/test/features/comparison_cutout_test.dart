@@ -1,0 +1,212 @@
+import 'dart:async';
+import 'package:app/app/theme.dart';
+import 'package:app/features/comparison/data/comparison_gateway.dart';
+import 'package:app/features/comparison/presentation/comparison_controller.dart';
+import 'package:app/features/comparison/presentation/comparison_cutout_gesture.dart';
+import 'package:app/features/comparison/presentation/comparison_screen.dart';
+import 'package:dance_domain/dance_domain.dart';
+import 'package:dance_native/dance_native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'comparison_test.dart' show FakeComparisonGateway, savedProject;
+
+class CutoutGateway extends FakeComparisonGateway
+    implements ComparisonCutoutGateway {
+  CutoutGateway() : super(saved: [savedProject()]) {
+    current.teacherFrameUs = 1000000;
+    current.learnerFrameUs = 3000000;
+    current.teacherAspect = 1;
+    current.learnerAspect = 1;
+  }
+  final seeds = <ComparisonCutoutSeedDto>[];
+  Completer<ComparisonCutoutResultDto>? pending;
+  int clears = 0;
+  ComparisonCutoutResultDto result() => ComparisonCutoutResultDto(
+    playback: current,
+    referenceVisible: 30,
+    referenceFrames: 30,
+    targetVisible: 29,
+    targetFrames: 30,
+  );
+  @override
+  Future<ComparisonCutoutResultDto> prepareCutout(
+    ComparisonCutoutSeedDto reference,
+    ComparisonCutoutSeedDto target,
+  ) async {
+    seeds.addAll([reference, target]);
+    return pending == null ? result() : pending!.future;
+  }
+
+  @override
+  Future<ComparisonPlaybackDto> clearCutout() async {
+    clears++;
+    current.phase = 'paused';
+    return current;
+  }
+}
+
+void main() {
+  test(
+    'inverse native pane geometry rejects letterbox and divider, handles mirror',
+    () {
+      Offset? hit(
+        Offset p, {
+        bool reference = true,
+        bool mirrored = false,
+        bool horizontal = false,
+        double aspect = 1,
+        ComparisonPicture? picture,
+      }) => comparisonCutoutPoint(
+        viewport: const Size(400, 600),
+        point: p,
+        width: 400,
+        height: 600,
+        horizontal: horizontal,
+        reference: reference,
+        aspect: aspect,
+        picture: picture ?? ComparisonPicture.clamped(1, 0, 0),
+        mirrored: mirrored,
+      );
+      final a = hit(const Offset(126, 148))!;
+      expect(a.dx, closeTo(.25, .00001));
+      expect(a.dy, closeTo(.5, .00001));
+      expect(
+        hit(const Offset(126, 148), mirrored: true)!.dx,
+        closeTo(.75, .00001),
+      );
+      expect(hit(const Offset(10, 148)), isNull);
+      expect(hit(const Offset(200, 300)), isNull);
+      expect(hit(const Offset(200, 300), reference: false), isNull);
+      expect(
+        hit(const Offset(200, 452), reference: false)!.dy,
+        closeTo(.5, .00001),
+      );
+      expect(
+        hit(const Offset(98, 300), horizontal: true)!.dx,
+        closeTo(.5, .00001),
+      );
+      expect(
+        hit(
+          const Offset(200, 148),
+          picture: ComparisonPicture.clamped(2, 1, 0),
+        )!.dx,
+        closeTo(.5 - (.48 / 2.96), .00001),
+      );
+    },
+  );
+
+  test('drag must move toward the common drop region from either source', () {
+    const size = Size(400, 600);
+    expect(
+      comparisonCutoutDrop(
+        size,
+        const Offset(200, 130),
+        const Offset(200, 300),
+        horizontal: false,
+        reference: true,
+      ),
+      isTrue,
+    );
+    expect(
+      comparisonCutoutDrop(
+        size,
+        const Offset(200, 450),
+        const Offset(200, 300),
+        horizontal: false,
+        reference: false,
+      ),
+      isTrue,
+    );
+    expect(
+      comparisonCutoutDrop(
+        size,
+        const Offset(200, 130),
+        const Offset(200, 100),
+        horizontal: false,
+        reference: true,
+      ),
+      isFalse,
+    );
+    expect(
+      comparisonCutoutDrop(
+        size,
+        const Offset(100, 300),
+        const Offset(200, 300),
+        horizontal: true,
+        reference: true,
+      ),
+      isTrue,
+    );
+  });
+
+  testWidgets('paired long presses publish preview and keep export isolated', (
+    tester,
+  ) async {
+    final gateway = CutoutGateway();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: ComparisonScreen(gateway: gateway),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('comparison-view')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('抠像画布（实验）'));
+    await tester.pumpAndSettle();
+    final finder = find.byKey(const ValueKey('comparison-cutout-gesture'));
+    expect(finder, findsOneWidget);
+    final rect = tester.getRect(finder);
+    // Default widget viewport is landscape: reference left, target right.
+    for (final x in [.25, .75]) {
+      final g = await tester.startGesture(
+        Offset(rect.left + rect.width * x, rect.center.dy),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      await g.moveTo(rect.center);
+      await tester.pump();
+      await g.up();
+      await tester.pumpAndSettle();
+    }
+    expect(gateway.seeds.map((s) => s.sourcePtsUs), [1000000, 3000000]);
+    expect(find.textContaining('缺失帧已隐藏'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('comparison-cutout-gesture')),
+      findsNothing,
+    );
+    final menu = tester.widget<PopupMenuButton>(
+      find.byKey(const ValueKey('comparison-project-menu')),
+    );
+    expect(menu.enabled, isFalse);
+    await tester.tap(find.text('退出画布'));
+    await tester.pumpAndSettle();
+    expect(gateway.clears, 1);
+    expect(
+      find.byKey(const ValueKey('comparison-picture-pane-teacher')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  test('cancelling analysis discards a late result', () async {
+    final gateway = CutoutGateway()
+      ..pending = Completer<ComparisonCutoutResultDto>();
+    final controller = ComparisonController(gateway);
+    controller.setViewport(400, 600, false);
+    await controller.initialize();
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    expect(await controller.beginCutout(), isTrue);
+    final work = controller.prepareCutout(
+      ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5),
+      ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5),
+    );
+    await controller.exitCutout();
+    gateway.pending!.complete(gateway.result());
+    await work;
+    expect(controller.cutoutMode, isFalse);
+    expect(gateway.clears, 1);
+    controller.dispose();
+  });
+}

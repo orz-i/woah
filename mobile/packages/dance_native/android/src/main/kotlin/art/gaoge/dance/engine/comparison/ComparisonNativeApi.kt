@@ -159,6 +159,11 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
         requireNotNull(session).setPractice(practice)
     override suspend fun stepFrame(forward: Boolean): ComparisonPlaybackDto =
         requireNotNull(session).stepFrame(forward)
+    override suspend fun prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto): ComparisonCutoutResultDto {
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG) { "抠像画布正在测试" }
+        return requireNotNull(session).prepareCutout(reference,target)
+    }
+    override suspend fun clearCutout(): ComparisonPlaybackDto = requireNotNull(session).clearCutout()
     override suspend fun alignMusic(teacherUri: String,learnerUri: String): MusicAlignmentDto {
         session?.control(ComparisonCommand.PAUSE,0,1.0)
         val generation=alignmentGeneration.incrementAndGet()
@@ -204,6 +209,7 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
     }
     override suspend fun startExport(projectJson: String,startUs: Long,endUs: Long,width: Long,height: Long,
         gap: Long,sideBySide: Boolean,replacePreviousUnsaved: Boolean): ComparisonExportDto {
+        check(session?.hasCutout!=true) { "抠像画布暂不支持导出" }
         require(width in 16..1920 && height in 16..1920 && gap in 1..64)
         val spec=ComparisonExportSpec.fromProject(projectJson,startUs,endUs,width.toInt(),height.toInt(),gap.toInt(),sideBySide)
         session?.close();session=null

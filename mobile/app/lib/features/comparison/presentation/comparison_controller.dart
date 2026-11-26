@@ -26,6 +26,13 @@ class ComparisonController extends ChangeNotifier {
   bool calibrating = false, exporting = false;
   bool stepping = false;
   bool adjusting = false;
+  bool cutoutSelecting = false, cutoutPreparing = false;
+  ComparisonCutoutResultDto? cutoutResult;
+  bool get cutoutActive => cutoutResult != null;
+  bool get cutoutMode => cutoutSelecting || cutoutPreparing || cutoutActive;
+  bool get supportsCutout => kDebugMode && gateway is ComparisonCutoutGateway;
+  (int, int, bool) get cutoutViewport => (_width, _height, _horizontal);
+  int _cutoutRequest = 0;
   bool enteringPractice = false;
   bool _settingLoopRange = false;
   bool _settingPractice = false;
@@ -38,12 +45,15 @@ class ComparisonController extends ChangeNotifier {
   bool _closed = false, _opening = false, _polling = false, _dirty = false;
   int _revision = 0, _width = 0, _height = 0;
   bool _horizontal = false;
+  int _activeResizes = 0;
   bool _lastSaveSucceeded = true;
   int _openRequest = 0, _resizeRequest = 0;
   int _practiceRequest = 0, _controlRequest = 0, _pendingSaves = 0;
   Timer? _poll, _autosave, _resize;
   Future<void> _writeTail = Future.value();
   bool get busy =>
+      cutoutSelecting ||
+      cutoutPreparing ||
       picking ||
       matching ||
       calibrating ||
@@ -77,6 +87,10 @@ class ComparisonController extends ChangeNotifier {
     _practiceRequest++;
     _controlRequest++;
     _settingPractice = false;
+    _cutoutRequest++;
+    cutoutSelecting = false;
+    cutoutPreparing = false;
+    cutoutResult = null;
   }
 
   void _clearAlignmentReview() {
@@ -130,6 +144,8 @@ class ComparisonController extends ChangeNotifier {
 
   void setViewport(int width, int height, bool horizontal) {
     if (_closed ||
+        cutoutSelecting ||
+        cutoutPreparing ||
         width < 2 ||
         height < 2 ||
         (_width == width && _height == height && _horizontal == horizontal)) {
@@ -164,6 +180,7 @@ class ComparisonController extends ChangeNotifier {
           openRequest == _openRequest &&
           !calibrating &&
           !exporting;
+      _activeResizes++;
       try {
         final state = await gateway.resize(_width, _height, _horizontal);
         if (!isCurrent()) return;
@@ -174,6 +191,8 @@ class ComparisonController extends ChangeNotifier {
           error = '画面调整失败，请重新打开此项目。';
           _notify();
         }
+      } finally {
+        _activeResizes--;
       }
     });
   }
@@ -213,6 +232,8 @@ class ComparisonController extends ChangeNotifier {
 
   Future<void> _refresh() async {
     if (_closed ||
+        cutoutSelecting ||
+        cutoutPreparing ||
         calibrating ||
         exporting ||
         enteringPractice ||
@@ -265,7 +286,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> pick(String role) async {
-    if (busy || _closed) return;
+    if (busy || cutoutMode || _closed) return;
     picking = true;
     error = null;
     _notify();
@@ -310,6 +331,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> matchMusic() async {
+    if (cutoutMode) return;
     if (_closed || !project.hasPair || busy) return;
     matching = true;
     _clearAlignmentReview();
@@ -553,7 +575,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<(ComparisonExportPlan, ComparisonExportPlan?)?> prepareExport() async {
-    if (!canPlay || _closed) return null;
+    if (!canPlay || cutoutMode || _closed) return null;
     exporting = true;
     _invalidatePlayer();
     _resize?.cancel();
@@ -611,6 +633,7 @@ class ComparisonController extends ChangeNotifier {
   Future<bool> enterManualCalibration() => _enterPractice(manual: true);
 
   Future<bool> _enterPractice({required bool manual}) async {
+    if (cutoutMode) return false;
     if (_closed || busy || !project.hasPair || (!manual && !canPlay)) {
       return false;
     }
@@ -740,7 +763,107 @@ class ComparisonController extends ChangeNotifier {
     return saved;
   }
 
+  Future<bool> beginCutout() async {
+    if (!supportsCutout ||
+        !canPlay ||
+        cutoutMode ||
+        _opening ||
+        _activeResizes > 0 ||
+        _resize?.isActive == true ||
+        playback?.durationUs == 0) {
+      return false;
+    }
+    final request = ++_cutoutRequest;
+    // Freeze the viewport and reject concurrent edits before asking native to pause.
+    cutoutSelecting = true;
+    error = null;
+    _notify();
+    final paused = await _control(ComparisonCommand.pause, 0);
+    if (_closed || request != _cutoutRequest) return false;
+    final state = playback;
+    if (!paused ||
+        state?.phase != 'paused' ||
+        state?.teacherFrameUs == null ||
+        state?.learnerFrameUs == null ||
+        state?.teacherAspect == null ||
+        state?.learnerAspect == null) {
+      cutoutSelecting = false;
+      error = '请暂停在已显示的画面后重试。';
+      _notify();
+      return false;
+    }
+    _notify();
+    return true;
+  }
+
+  Future<void> prepareCutout(
+    ComparisonCutoutSeedDto reference,
+    ComparisonCutoutSeedDto target,
+  ) async {
+    if (_closed ||
+        !cutoutSelecting ||
+        cutoutPreparing ||
+        playback?.teacherFrameUs != reference.sourcePtsUs ||
+        playback?.learnerFrameUs != target.sourcePtsUs) {
+      return;
+    }
+    final request = ++_cutoutRequest;
+    cutoutPreparing = true;
+    error = null;
+    _notify();
+    try {
+      final result = await (gateway as ComparisonCutoutGateway).prepareCutout(
+        reference,
+        target,
+      );
+      if (_closed || request != _cutoutRequest) return;
+      playback = result.playback;
+      cutoutResult = result;
+      cutoutSelecting = false;
+    } catch (_) {
+      if (_closed || request != _cutoutRequest) return;
+      error = '人物分析未完成。请使用每路不超过300帧的较短片段，选中人物身体中央后重试。';
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutPreparing = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<void> exitCutout() async {
+    if (_closed || !cutoutMode) return;
+    final request = ++_cutoutRequest;
+    final needsNative = cutoutPreparing || cutoutActive;
+    if (!needsNative) {
+      cutoutSelecting = false;
+      error = null;
+      _notify();
+      return;
+    }
+    cutoutPreparing = true;
+    _notify();
+    try {
+      final state = await (gateway as ComparisonCutoutGateway).clearCutout();
+      if (_closed || request != _cutoutRequest) return;
+      playback = state;
+      cutoutResult = null;
+      cutoutSelecting = false;
+      error = state.error;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) {
+        error = '画布退出未完成，请重试。';
+      }
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutPreparing = false;
+        _notify();
+      }
+    }
+  }
+
   Future<void> toggle() async {
+    if (!canPlay) return;
     await _control(
       playing ? ComparisonCommand.pause : ComparisonCommand.play,
       0,
@@ -752,7 +875,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> seek(int positionUs) async {
-    if (stepping) return;
+    if (stepping || cutoutSelecting || cutoutPreparing) return;
     await _control(ComparisonCommand.seek, positionUs);
   }
 
@@ -779,6 +902,7 @@ class ComparisonController extends ChangeNotifier {
 
   Future<void> setMirror(bool reference) async {
     if (_closed ||
+        cutoutMode ||
         picking ||
         matching ||
         stepping ||
@@ -1092,6 +1216,7 @@ class ComparisonController extends ChangeNotifier {
 
   Future<void> setSideBySide(bool value) async {
     if (_closed ||
+        cutoutMode ||
         picking ||
         matching ||
         enteringPractice ||
@@ -1142,7 +1267,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> swap() async {
-    if (!project.hasPair || busy) return;
+    if (!project.hasPair || busy || cutoutMode) return;
     await pause();
     await gateway.cancelAlignment();
     _invalidatePlayer();
@@ -1171,6 +1296,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> selectProject(ComparisonProject value) async {
+    if (cutoutMode) return;
     await cancelMatching();
     await pause();
     await save();
@@ -1188,6 +1314,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> newProject() async {
+    if (cutoutMode) return;
     await cancelMatching();
     await pause();
     await save();
@@ -1254,6 +1381,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> background() async {
+    if (cutoutSelecting || cutoutPreparing) await exitCutout();
     await pause();
     if (!adjusting) await save();
   }

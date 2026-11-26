@@ -158,7 +158,23 @@ func cutoutSmoke(reference: URL, target: URL) async throws {
   color(canvas, 20, 25, 0, 0, 0)
   color(canvas, 80, 75, 0, 0, 255)
   color(canvas, 175, 25, 0, 0, 0)
-  print("Comparison Cutout Canvas: decoded pixels, top-down alpha, mirror, fixed anchor and stale PTS passed (macOS)")
+  let rStamp = IOSComparisonSourceStamp(r)!, tStamp = IOSComparisonSourceStamp(t)!
+  precondition(rStamp.agrees(with: IOSComparisonSourceStamp(r)!))
+  precondition(!rStamp.agrees(with: tStamp))
+  let rc = IOSComparisonCutoutTrackCache(entries: [
+    0: IOSComparisonCachedCutout(stamp: rStamp,layer: mask(0,topLeft,a)),
+    40_000: IOSComparisonCachedCutout(stamp: rStamp,layer: nil)],times: [0,40_000])
+  let tc = IOSComparisonCutoutTrackCache(entries: [
+    0: IOSComparisonCachedCutout(stamp: tStamp,layer: mask(0,topLeft,b))],times: [0])
+  let cache = IOSComparisonCutoutCache(reference: rc,target: tc,referenceStartUs: 0,offsetUs: 0,timeScale: 1)
+  precondition(rc.visibleCount == 1)
+  let good = cache.frame(at: .zero,referenceBuffer: r,targetBuffer: t)
+  precondition(good.layer(referenceRole: true) != nil && good.layer(referenceRole: false) != nil)
+  let mismatch = cache.frame(at: .zero,referenceBuffer: t,targetBuffer: r)
+  precondition(mismatch.layer(referenceRole: true) == nil && mismatch.layer(referenceRole: false) == nil)
+  let missing = cache.frame(at: CMTime(value: 40_000,timescale: 1_000_000),referenceBuffer: r,targetBuffer: t)
+  precondition(missing.layer(referenceRole: true) == nil)
+  print("Comparison Cutout Canvas: decoded pixels, top-down alpha, mirror, fixed anchor and stale PTS, sample-stamp mismatch passed (macOS)")
 }
 
 func run() async throws {

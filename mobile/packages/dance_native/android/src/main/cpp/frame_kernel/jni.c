@@ -795,6 +795,27 @@ JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_quadN
 }
 
 /* Cutout inputs are immutable source-frame data; no GPU or selection policy in JNI. */
+JNIEXPORT jlong JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutTrackCreateNative(JNIEnv *env,jobject self) {
+    (void)self;uint64_t id=frame_kernel_tracking_create(frame_kernel_tracking_defaults());
+    if(!id)invalid(env);return (jlong)id;
+}
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutTrackStepNative(JNIEnv *env,jobject self,jlong id,jlong pts,jint seed,jfloatArray rows,jbyteArray masks,jfloatArray transform) {
+    (void)self;FrameKernelTransform t;
+    if(!rows||!masks||!read_transform(env,transform,&t))return -2;
+    jsize n=(*env)->GetArrayLength(env,rows), bytes=(*env)->GetArrayLength(env,masks);
+    if(n%5||n>256*5)return -2;
+    FrameKernelInstanceDetection d[256];
+    jfloat *v=n?(*env)->GetFloatArrayElements(env,rows,NULL):NULL;
+    jbyte *p=bytes?(*env)->GetByteArrayElements(env,masks,NULL):NULL;
+    jint result=-2;
+    if((n&&!v)||(bytes&&!p))goto done;
+    for(jsize i=0;i<n/5;i++)d[i]=(FrameKernelInstanceDetection){{v[5*i],v[5*i+1],v[5*i+2],v[5*i+3]},v[5*i+4]};
+    result=frame_kernel_cutout_track_step((uint64_t)id,pts,seed,d,(size_t)n/5,(const uint8_t*)p,(size_t)bytes,t);
+ done:
+    if(v)(*env)->ReleaseFloatArrayElements(env,rows,v,JNI_ABORT);
+    if(p)(*env)->ReleaseByteArrayElements(env,masks,p,JNI_ABORT);
+    return result;
+}
 JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutSelectNative(JNIEnv *env,jobject self,jbyteArray masks,jfloatArray transform,jfloat x,jfloat y) {
     (void)self; FrameKernelTransform t;
     if(!masks || !read_transform(env,transform,&t)) return -3;

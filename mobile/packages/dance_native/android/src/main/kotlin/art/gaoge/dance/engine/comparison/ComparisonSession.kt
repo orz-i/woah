@@ -12,11 +12,21 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
+import art.gaoge.dance.engine.bridge.comparison.ComparisonCutoutResultDto
+import art.gaoge.dance.engine.bridge.comparison.ComparisonCutoutSeedDto
+import art.gaoge.dance.engine.inference.YoloLiteRtSegmenter
+import art.gaoge.dance.engine.litert.LiteRtAccelerator
+import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import art.gaoge.dance.engine.bridge.comparison.ComparisonCommand
 import art.gaoge.dance.engine.bridge.comparison.ComparisonPlaybackDto
 import art.gaoge.dance.engine.bridge.comparison.ComparisonPracticeDto
 import io.flutter.view.TextureRegistry
 import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -63,6 +73,11 @@ internal class ComparisonSession(
     private var silentPlaying=false
     private var silentAnchorNs=0L
     private var silentAnchorTeacherUs=0L
+    private val cutoutRevision=AtomicLong(0)
+    private var cutoutCache: ComparisonCutoutCache?=null
+    private var cutoutPreparing=false
+    private var cutoutDone: CompletableDeferred<Unit>?=null
+    val hasCutout: Boolean get() = cutoutCache!=null || cutoutPreparing
     private var pendingStep: CancellableContinuation<ComparisonPlaybackDto>?=null
     private fun loop(): ComparisonLoop? {
         val start=practice.loopStartUs; val end=practice.loopEndUs
@@ -195,7 +210,8 @@ internal class ComparisonSession(
             initialSideBySide=horizontal,
             initialMirrorTeacher=practice.mirrorTeacher,initialMirrorLearner=practice.mirrorLearner,
             initialTeacherPicture=ComparisonPicture.fromDto(practice.teacherPicture),
-            initialLearnerPicture=ComparisonPicture.fromDto(practice.learnerPicture))
+            initialLearnerPicture=ComparisonPicture.fromDto(practice.learnerPicture),
+            cutoutProvider=cutoutCache?.let { cache -> { r,t -> cache.frame(r,t) } })
         engine!!.open(Uri.parse(teacherUri),Uri.parse(learnerUri))
     }
     private fun seek(valueUs: Long) {
@@ -211,7 +227,7 @@ internal class ComparisonSession(
         } }
     }
     fun control(command: ComparisonCommand,valueUs: Long,newSpeed: Double): ComparisonPlaybackDto {
-        check(!closed)
+        check(!closed && (!cutoutPreparing || command==ComparisonCommand.PAUSE)) { "人物分析进行中" }
         when (command) {
             ComparisonCommand.PLAY -> {
                 val bounds=range
@@ -241,7 +257,7 @@ internal class ComparisonSession(
         return state()
     }
     fun setAlignment(valueUs: Long,scale: Double): ComparisonPlaybackDto {
-        check(!closed)
+        check(!closed && !hasCutout) { "请先退出抠像画布" }
         ComparisonMusicMapping(valueUs,scale)
         val teacher=a; val learner=b
         val previous=range
@@ -270,6 +286,10 @@ internal class ComparisonSession(
         return state()
     }
     fun setPractice(value: ComparisonPracticeDto): ComparisonPlaybackDto {
+        check(!cutoutPreparing) { "人物分析进行中" }
+        check(!hasCutout || (value.mirrorTeacher==practice.mirrorTeacher && value.mirrorLearner==practice.mirrorLearner)) {
+            "请先退出抠像画布再调整镜像"
+        }
         val teacherPicture=ComparisonPicture.fromDto(value.teacherPicture)
         val learnerPicture=ComparisonPicture.fromDto(value.learnerPicture)
         val duration=range?.durationUs
@@ -286,7 +306,7 @@ internal class ComparisonSession(
         return state()
     }
     suspend fun stepFrame(forward: Boolean): ComparisonPlaybackDto {
-        check(ready && pendingStep==null) { "请等待画面就绪" }
+        check(ready && pendingStep==null && !cutoutPreparing) { "请等待画面就绪" }
         val bounds=requireNotNull(range)
         pendingUs=positionUs(); wantsPlay=false; pauseClock(); ready=false
         return suspendCancellableCoroutine { continuation ->
@@ -304,6 +324,54 @@ internal class ComparisonSession(
             }
         }
     }
+    suspend fun prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto): ComparisonCutoutResultDto {
+        check(!closed && ready && !hasCutout && foreground && !wantsPlay) { "请暂停并等待画面就绪" }
+        val bounds=requireNotNull(range)
+        val teacher=requireNotNull(a);val learner=requireNotNull(b)
+        val pair=requireNotNull(engine?.presentedFrame)
+        require(pair.first==reference.sourcePtsUs && pair.second==target.sourcePtsUs) { "选人画面已变化" }
+        val ra=ComparisonCutoutSeed(reference.sourcePtsUs,reference.x.toFloat(),reference.y.toFloat())
+        val ta=ComparisonCutoutSeed(target.sourcePtsUs,target.x.toFloat(),target.y.toFloat())
+        val mirrorR=practice.mirrorTeacher;val mirrorT=practice.mirrorLearner
+        val revision=cutoutRevision.incrementAndGet()
+        cutoutPreparing=true
+        val done=CompletableDeferred<Unit>();cutoutDone=done
+        try {
+            val cache=withContext(Dispatchers.Default) {
+                val scope=currentCoroutineContext()
+                val current={scope.isActive && cutoutRevision.get()==revision}
+                val segmenter=YoloLiteRtSegmenter(context,requestedAccelerator=LiteRtAccelerator.CPU,cpuNumThreads=4)
+                segmenter.use {
+                    it.initialize()
+                    val analysis=ComparisonCutoutAnalysis(context)
+                    val r=analysis.analyze(teacherUri,teacher,bounds.teacherStartUs,bounds.teacherEndUs-1,ra,true,mirrorR,it,current)
+                    val t=analysis.analyze(learnerUri,learner,bounds.learnerTimeUs(0),bounds.learnerTimeUs(bounds.durationUs-1),ta,false,mirrorT,it,current)
+                    ComparisonCutoutCache(r,t)
+                }
+            }
+            check(!closed && foreground && cutoutRevision.get()==revision && range==bounds) { "人物分析已取消" }
+            cutoutCache=cache
+            pendingUs=positionUs()
+            buildEngine()
+            return ComparisonCutoutResultDto(state(),cache.reference.visibleCount.toLong(),cache.reference.frameCount.toLong(),
+                cache.target.visibleCount.toLong(),cache.target.frameCount.toLong())
+        } finally {
+            if(cutoutDone===done) {cutoutPreparing=false;cutoutDone=null}
+            done.complete(Unit)
+        }
+    }
+
+    suspend fun clearCutout(): ComparisonPlaybackDto {
+        val revision=cutoutRevision.incrementAndGet()
+        cutoutDone?.await()
+        if(closed || cutoutRevision.get()!=revision)return state()
+        if(cutoutCache!=null) {
+            pendingUs=positionUs();wantsPlay=false;pauseClock();cutoutCache=null
+            buildEngine()
+        }
+        return state()
+    }
+
     fun resize(newWidth: Int,newHeight: Int,sideBySide: Boolean): ComparisonPlaybackDto {
         require(newWidth in 2..4096 && newHeight in 2..4096)
         if (width==newWidth && height==newHeight) {
@@ -322,6 +390,7 @@ internal class ComparisonSession(
         return state()
     }
     fun background() { if (!closed) {
+        cutoutRevision.incrementAndGet()
         pendingUs=positionUs();wantsPlay=false;foreground=false;pauseClock()
     } }
     fun foreground() { foreground=true }
@@ -346,6 +415,7 @@ internal class ComparisonSession(
     override fun close() {
         if (closed) return
         pendingUs=positionUs();wantsPlay=false;pauseClock();closed=true
+        cutoutRevision.incrementAndGet();cutoutPreparing=false;cutoutCache=null
         choreographer.removeFrameCallback(frames)
         releaseEngine();producer.setCallback(null);producer.release()
     }

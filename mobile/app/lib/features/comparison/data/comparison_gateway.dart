@@ -42,7 +42,16 @@ abstract interface class ComparisonGateway {
   Future<void> close();
 }
 
-class NativeComparisonGateway implements ComparisonGateway {
+abstract interface class ComparisonCutoutGateway {
+  Future<ComparisonCutoutResultDto> prepareCutout(
+    ComparisonCutoutSeedDto reference,
+    ComparisonCutoutSeedDto target,
+  );
+  Future<ComparisonPlaybackDto> clearCutout();
+}
+
+class NativeComparisonGateway
+    implements ComparisonGateway, ComparisonCutoutGateway {
   final DanceComparisonApi _api;
   NativeComparisonGateway({DanceComparisonApi? api})
     : _api = api ?? DanceComparisonApi();
@@ -138,6 +147,13 @@ class NativeComparisonGateway implements ComparisonGateway {
     int height,
     bool horizontal,
   ) => _api.resize(width, height, horizontal);
+  @override
+  Future<ComparisonCutoutResultDto> prepareCutout(
+    ComparisonCutoutSeedDto reference,
+    ComparisonCutoutSeedDto target,
+  ) => _api.prepareCutout(reference, target);
+  @override
+  Future<ComparisonPlaybackDto> clearCutout() => _api.clearCutout();
   @override
   Future<ComparisonPlaybackDto> state() => _api.getState();
   @override

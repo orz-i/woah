@@ -64,6 +64,18 @@ internal class PrivateComparisonApi(private val delegate: DanceComparisonApi) : 
         throw NativeDiagnosticPrivacy.comparison(error)
     }
 
+    override suspend fun prepareCutout(reference: ComparisonCutoutSeedDto, target: ComparisonCutoutSeedDto): ComparisonCutoutResultDto = try {
+        delegate.prepareCutout(reference, target)
+    } catch (error: Throwable) {
+        throw NativeDiagnosticPrivacy.comparison(error)
+    }
+
+    override suspend fun clearCutout(): ComparisonPlaybackDto = try {
+        delegate.clearCutout()
+    } catch (error: Throwable) {
+        throw NativeDiagnosticPrivacy.comparison(error)
+    }
+
     override suspend fun alignMusic(teacherUri: String, learnerUri: String): MusicAlignmentDto = try {
         delegate.alignMusic(teacherUri, learnerUri)
     } catch (error: Throwable) {

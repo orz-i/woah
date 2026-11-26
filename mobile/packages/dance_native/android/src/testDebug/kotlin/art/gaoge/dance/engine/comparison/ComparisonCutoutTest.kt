@@ -7,6 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertFailsWith
 
 class ComparisonCutoutTest {
     @Test fun maskHitAndAlphaUseTheSharedRustContract() {
@@ -39,5 +40,33 @@ class ComparisonCutoutTest {
         layer.uploadTo(out)
         val received=ByteArray(4);out.get(received)
         assertContentEquals(byteArrayOf(1,2,3,4),received)
+    }
+    @Test fun weakCurrentObservationCanContinueBothDirectionsButNotSeed() {
+        val t = floatArrayOf(1f,0f,0f,4f,4f,4f,4f)
+        val m = ByteArray(16) { if(it%4<2) 255.toByte() else 0 }
+        fun row(conf: Float) = floatArrayOf(0f,0f,2f,4f,conf)
+        FrameKernel.CutoutTrack().use { track ->
+            assertEquals(0,track.step(100_000,0,row(.8f),m,t))
+            assertEquals(0,track.step(133_333,-1,row(.22f),m,t))
+            assertEquals(-1,track.step(166_667,-1,floatArrayOf(),byteArrayOf(),t))
+            assertEquals(-1,track.step(200_000,-1,row(.22f),m,t))
+        }
+        FrameKernel.CutoutTrack().use { track ->
+            assertEquals(0,track.step(100_000,0,row(.8f),m,t))
+            assertEquals(0,track.step(66_667,-1,row(.22f),m,t))
+        }
+    }
+    @Test fun cacheRequiresExactSourcePtsAndWindowIncludesPredecessorAndAnchor() {
+        val pts=listOf(0L,33_333L,66_667L,100_000L)
+        assertEquals(pts.subList(1,4),ComparisonCutoutAnalysis.window(pts,40_000,100_000,66_667))
+        assertFailsWith<IllegalArgumentException> { ComparisonCutoutAnalysis.window(pts,40_000,100_000,66_666) }
+        assertFailsWith<IllegalArgumentException> {
+            ComparisonCutoutAnalysis.window((0L..300L).toList(),0,300,50)
+        }
+        val p=ComparisonCutoutPlacement(FloatRect(.1f,.2f,.5f,.8f),.25,.85,.6,false)
+        val a=ComparisonCutoutLayer(33_333,2,2,byteArrayOf(1,2,3,4),p)
+        val cache=ComparisonCutoutTrackCache(mapOf(33_333L to a,66_667L to null))
+        assertEquals(2,cache.frameCount);assertEquals(1,cache.visibleCount)
+        assertEquals(a,cache.layer(33_333));assertNull(cache.layer(33_334));assertNull(cache.layer(66_667))
     }
 }

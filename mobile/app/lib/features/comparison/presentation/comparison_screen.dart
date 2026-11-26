@@ -5,10 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import 'package:dance_domain/dance_domain.dart';
+import 'package:dance_native/dance_native.dart';
 import '../../../app/system_ui.dart';
 import '../../../app/theme.dart';
 import '../data/comparison_gateway.dart';
 import 'comparison_controller.dart';
+import 'comparison_cutout_gesture.dart';
 import 'comparison_manual_session.dart';
 import 'comparison_manual_view.dart';
 import 'comparison_picture_controls.dart';
@@ -25,6 +27,7 @@ enum _ComparisonViewAction {
   mirrorLearner,
   adjust,
   rotate,
+  cutout,
 }
 
 class ComparisonScreen extends StatefulWidget {
@@ -50,6 +53,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   Offset? _gestureFocal;
   bool? _gestureReference;
   double? _referenceAspect, _targetAspect;
+  ComparisonCutoutSeedDto? _cutoutReference, _cutoutTarget, _dragSeed;
+  Offset? _cutoutDragStart, _cutoutDragPosition;
+  bool? _cutoutDragReference;
+  bool _cutoutStarting = false;
+
   static const _viewTriggerWidth = 104.0, _viewMenuWidth = 200.0;
   static const _orientationChannel = MethodChannel(
     'art.gaoge.dance/orientation',
@@ -109,6 +117,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
 
   Future<void> _exit() async {
     if (_finishingManual || _finishingPicture) return;
+    if (controller.cutoutMode) {
+      await _exitCutout();
+      return;
+    }
     if (controller.adjusting) {
       await _finishPicture(false);
       return;
@@ -379,7 +391,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     );
   }
 
-  Widget _mainControls() => controller.adjusting
+  Widget _mainControls() => controller.cutoutMode && !controller.cutoutActive
+      ? _cutoutControls()
+      : controller.adjusting
       ? ComparisonPictureControls(
           project: controller.project,
           reference: _pictureReference,
@@ -576,6 +590,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     surfaceTintColor: Colors.transparent,
     enabled:
         controller.initialized &&
+        !controller.cutoutMode &&
         !controller.picking &&
         !controller.matching &&
         !controller.stepping &&
@@ -591,7 +606,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              _sideBySide ? '左右' : '上下',
+              controller.cutoutMode
+                  ? '抠像画布'
+                  : _sideBySide
+                  ? '左右'
+                  : '上下',
               style: TextStyle(
                 color: AppTheme.of(context).textPrimary,
                 fontSize: 13.5,
@@ -622,9 +641,18 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           unawaited(_adjustPicture());
         case _ComparisonViewAction.rotate:
           unawaited(_rotate());
+        case _ComparisonViewAction.cutout:
+          unawaited(_beginCutout());
       }
     },
     itemBuilder: (_) => [
+      if (controller.supportsCutout)
+        _viewOption(
+          _ComparisonViewAction.cutout,
+          '抠像画布（实验）',
+          Icons.content_cut_rounded,
+          enabled: controller.canPlay && _manualSession == null,
+        ),
       _viewOption(
         _ComparisonViewAction.stacked,
         '上下视图',
@@ -693,13 +721,18 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 IconButton(
                   key: const ValueKey('comparison-history'),
                   tooltip: '历史',
-                  onPressed: controller.busy ? null : _history,
+                  onPressed: controller.busy || controller.cutoutMode
+                      ? null
+                      : _history,
                   icon: const Icon(Icons.history_rounded, size: 20),
                 ),
                 PopupMenuButton<_ComparisonProjectAction>(
                   key: const ValueKey('comparison-project-menu'),
                   tooltip: '更多操作',
-                  enabled: !controller.busy && !controller.saving,
+                  enabled:
+                      !controller.busy &&
+                      !controller.cutoutMode &&
+                      !controller.saving,
                   onSelected: (action) {
                     switch (action) {
                       case _ComparisonProjectAction.export:
@@ -904,6 +937,237 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     );
   }
 
+  void _resetCutoutSeeds() {
+    _cutoutReference = null;
+    _cutoutTarget = null;
+    _dragSeed = null;
+    _cutoutDragStart = null;
+    _cutoutDragPosition = null;
+    _cutoutDragReference = null;
+  }
+
+  Future<void> _beginCutout() async {
+    setState(() {
+      _resetCutoutSeeds();
+      _cutoutStarting = true;
+    });
+    final ready = await controller.beginCutout();
+    if (!mounted) return;
+    setState(() => _cutoutStarting = false);
+    if (!ready && controller.error == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请在画面稳定后开启抠像画布。')));
+    }
+  }
+
+  Future<void> _exitCutout() async {
+    if (mounted) setState(_resetCutoutSeeds);
+    await controller.exitCutout();
+  }
+
+  Widget _cutoutControls() {
+    final reference = _cutoutReference != null;
+    final target = _cutoutTarget != null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            controller.cutoutPreparing
+                ? '正在分析参考与目标人物…'
+                : '长按人物身体中央，拖向两路视频之间的画布。',
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '参考：${reference ? '已标记' : '未选择'}   目标：${target ? '已标记' : '未选择'}',
+          ),
+          if (controller.cutoutPreparing) const LinearProgressIndicator(),
+          if (controller.error != null)
+            Text(
+              controller.error!,
+              style: TextStyle(color: AppTheme.of(context).error, fontSize: 13),
+            ),
+          TextButton(
+            key: const ValueKey('comparison-cutout-cancel'),
+            onPressed: _exitCutout,
+            child: const Text('退出抠像画布'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cutoutOverlay(Size size, bool horizontal) {
+    final state = controller.playback;
+    final (w, h, nativeHorizontal) = controller.cutoutViewport;
+    final ready =
+        !_cutoutStarting &&
+        !controller.cutoutPreparing &&
+        state?.phase == 'paused' &&
+        w > 8 &&
+        h > 8;
+    final visible =
+        _dragSeed != null || _cutoutReference != null || _cutoutTarget != null;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (visible)
+          IgnorePointer(
+            child: Align(
+              alignment: Alignment.center,
+              child: Container(
+                width: horizontal ? size.width * .32 : size.width * .84,
+                height: horizontal ? size.height * .84 : size.height * .32,
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  border: Border.all(color: Colors.white70),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '抠像画布\n${_cutoutReference != null ? '参考已标记' : '参考待选'} · ${_cutoutTarget != null ? '目标已标记' : '目标待选'}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            ),
+          ),
+        if (_cutoutDragPosition case final point?)
+          Positioned(
+            left: point.dx - 17,
+            top: point.dy - 17,
+            child: IgnorePointer(
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black54,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: const Icon(
+                  Icons.person_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+        GestureDetector(
+          key: const ValueKey('comparison-cutout-gesture'),
+          behavior: HitTestBehavior.opaque,
+          onLongPressStart: !ready
+              ? null
+              : (details) {
+                  final p = details.localPosition;
+                  final reference = nativeHorizontal
+                      ? p.dx < size.width / 2
+                      : p.dy < size.height / 2;
+                  final aspect = reference
+                      ? state!.teacherAspect!
+                      : state!.learnerAspect!;
+                  final pts = reference
+                      ? state.teacherFrameUs
+                      : state.learnerFrameUs;
+                  final point = comparisonCutoutPoint(
+                    viewport: size,
+                    point: p,
+                    width: w,
+                    height: h,
+                    horizontal: nativeHorizontal,
+                    reference: reference,
+                    aspect: aspect,
+                    picture: reference
+                        ? controller.project.teacherPicture
+                        : controller.project.learnerPicture,
+                    mirrored: reference
+                        ? controller.project.mirrorTeacher
+                        : controller.project.mirrorLearner,
+                  );
+                  if (pts == null || point == null) return;
+                  setState(() {
+                    _dragSeed = ComparisonCutoutSeedDto(
+                      sourcePtsUs: pts,
+                      x: point.dx,
+                      y: point.dy,
+                    );
+                    _cutoutDragStart = p;
+                    _cutoutDragPosition = p;
+                    _cutoutDragReference = reference;
+                  });
+                },
+          onLongPressMoveUpdate: (details) {
+            if (_dragSeed != null) {
+              setState(() => _cutoutDragPosition = details.localPosition);
+            }
+          },
+          onLongPressCancel: () => setState(() {
+            _dragSeed = null;
+            _cutoutDragStart = null;
+            _cutoutDragPosition = null;
+            _cutoutDragReference = null;
+          }),
+          onLongPressEnd: (details) {
+            final seed = _dragSeed, start = _cutoutDragStart;
+            final reference = _cutoutDragReference;
+            final accepted =
+                seed != null &&
+                start != null &&
+                reference != null &&
+                comparisonCutoutDrop(
+                  size,
+                  start,
+                  details.localPosition,
+                  horizontal: nativeHorizontal,
+                  reference: reference,
+                );
+            setState(() {
+              if (accepted) {
+                if (reference) {
+                  _cutoutReference = seed;
+                } else {
+                  _cutoutTarget = seed;
+                }
+              }
+              _dragSeed = null;
+              _cutoutDragStart = null;
+              _cutoutDragPosition = null;
+              _cutoutDragReference = null;
+            });
+            final a = _cutoutReference, b = _cutoutTarget;
+            if (accepted && a != null && b != null) {
+              unawaited(controller.prepareCutout(a, b));
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _cutoutPlaybackInfo() {
+    final result = controller.cutoutResult!;
+    final missing =
+        result.referenceFrames -
+        result.referenceVisible +
+        result.targetFrames -
+        result.targetVisible;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '实验画布 · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}'
+            '${missing > 0 ? ' · 缺失帧已隐藏' : ''}',
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+        TextButton(onPressed: _exitCutout, child: const Text('退出画布')),
+      ],
+    );
+  }
+
   Widget _preview(bool horizontal) => LayoutBuilder(
     builder: (context, viewport) {
       final ratio = math.min(
@@ -916,6 +1180,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         if (mounted) controller.setViewport(width, height, horizontal);
       });
       final state = controller.playback;
+      final selecting = controller.cutoutSelecting;
+      final sourceHorizontal = selecting
+          ? controller.cutoutViewport.$3
+          : horizontal;
       return Container(
         key: const ValueKey('comparison-stage'),
         color: Colors.black,
@@ -935,25 +1203,27 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                   color: AppTheme.of(context).brandAction,
                 ),
               ),
-            Flex(
-              direction: horizontal ? Axis.horizontal : Axis.vertical,
-              children: [
-                Expanded(
-                  child: _sourceSlot(
-                    'teacher',
-                    '参考',
-                    controller.project.teacher,
+            if (!controller.cutoutActive)
+              Flex(
+                direction: sourceHorizontal ? Axis.horizontal : Axis.vertical,
+                children: [
+                  Expanded(
+                    child: _sourceSlot(
+                      'teacher',
+                      '参考',
+                      controller.project.teacher,
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _sourceSlot(
-                    'learner',
-                    '目标',
-                    controller.project.learner,
+                  Expanded(
+                    child: _sourceSlot(
+                      'learner',
+                      '目标',
+                      controller.project.learner,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            if (selecting) _cutoutOverlay(viewport.biggest, sourceHorizontal),
           ],
         ),
       );
@@ -1159,9 +1429,13 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                   ),
                 ),
               ),
-            if (controller.project.hasPair || controller.matching)
+            if (controller.cutoutActive)
+              _cutoutPlaybackInfo()
+            else if (controller.project.hasPair || controller.matching)
               _musicSummary(),
-            if (!controller.matching && controller.alignmentNotice != null)
+            if (!controller.cutoutActive &&
+                !controller.matching &&
+                controller.alignmentNotice != null)
               Semantics(
                 liveRegion: true,
                 child: Text(
@@ -1185,7 +1459,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
               onRange: controller.setLoopRange,
             ),
             _transportControls(stepUs, position.round(), ended),
-            _practiceControls(),
+            if (!controller.cutoutActive) _practiceControls(),
           ],
         ),
       ),

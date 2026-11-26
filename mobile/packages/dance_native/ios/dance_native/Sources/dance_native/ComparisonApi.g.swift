@@ -320,6 +320,106 @@ struct ComparisonPlaybackDto: Hashable, CustomStringConvertible {
 }
 
 /// Generated class from Pigeon that represents data sent in messages.
+struct ComparisonCutoutSeedDto: Hashable, CustomStringConvertible {
+  var sourcePtsUs: Int64
+  var x: Double
+  var y: Double
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> ComparisonCutoutSeedDto? {
+    let sourcePtsUs = pigeonVar_list[0] as! Int64
+    let x = pigeonVar_list[1] as! Double
+    let y = pigeonVar_list[2] as! Double
+
+    return ComparisonCutoutSeedDto(
+      sourcePtsUs: sourcePtsUs,
+      x: x,
+      y: y
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      sourcePtsUs,
+      x,
+      y,
+    ]
+  }
+  static func == (lhs: ComparisonCutoutSeedDto, rhs: ComparisonCutoutSeedDto) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return ComparisonPigeonInternal.deepEquals(lhs.sourcePtsUs, rhs.sourcePtsUs) && ComparisonPigeonInternal.deepEquals(lhs.x, rhs.x) && ComparisonPigeonInternal.deepEquals(lhs.y, rhs.y)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("ComparisonCutoutSeedDto")
+    ComparisonPigeonInternal.deepHash(value: sourcePtsUs, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: x, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: y, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "ComparisonCutoutSeedDto(sourcePtsUs: \(String(describing: sourcePtsUs)), x: \(String(describing: x)), y: \(String(describing: y)))"
+  }
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
+struct ComparisonCutoutResultDto: Hashable, CustomStringConvertible {
+  var playback: ComparisonPlaybackDto
+  var referenceVisible: Int64
+  var referenceFrames: Int64
+  var targetVisible: Int64
+  var targetFrames: Int64
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> ComparisonCutoutResultDto? {
+    let playback = pigeonVar_list[0] as! ComparisonPlaybackDto
+    let referenceVisible = pigeonVar_list[1] as! Int64
+    let referenceFrames = pigeonVar_list[2] as! Int64
+    let targetVisible = pigeonVar_list[3] as! Int64
+    let targetFrames = pigeonVar_list[4] as! Int64
+
+    return ComparisonCutoutResultDto(
+      playback: playback,
+      referenceVisible: referenceVisible,
+      referenceFrames: referenceFrames,
+      targetVisible: targetVisible,
+      targetFrames: targetFrames
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      playback,
+      referenceVisible,
+      referenceFrames,
+      targetVisible,
+      targetFrames,
+    ]
+  }
+  static func == (lhs: ComparisonCutoutResultDto, rhs: ComparisonCutoutResultDto) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return ComparisonPigeonInternal.deepEquals(lhs.playback, rhs.playback) && ComparisonPigeonInternal.deepEquals(lhs.referenceVisible, rhs.referenceVisible) && ComparisonPigeonInternal.deepEquals(lhs.referenceFrames, rhs.referenceFrames) && ComparisonPigeonInternal.deepEquals(lhs.targetVisible, rhs.targetVisible) && ComparisonPigeonInternal.deepEquals(lhs.targetFrames, rhs.targetFrames)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("ComparisonCutoutResultDto")
+    ComparisonPigeonInternal.deepHash(value: playback, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: referenceVisible, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: referenceFrames, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: targetVisible, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: targetFrames, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "ComparisonCutoutResultDto(playback: \(String(describing: playback)), referenceVisible: \(String(describing: referenceVisible)), referenceFrames: \(String(describing: referenceFrames)), targetVisible: \(String(describing: targetVisible)), targetFrames: \(String(describing: targetFrames)))"
+  }
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
 struct ComparisonPictureDto: Hashable, CustomStringConvertible {
   var zoom: Double
   var panX: Double
@@ -658,14 +758,18 @@ private class ComparisonPigeonCodecReader: FlutterStandardReader {
     case 131:
       return ComparisonPlaybackDto.fromList(self.readValue() as! [Any?])
     case 132:
-      return ComparisonPictureDto.fromList(self.readValue() as! [Any?])
+      return ComparisonCutoutSeedDto.fromList(self.readValue() as! [Any?])
     case 133:
-      return ComparisonPracticeDto.fromList(self.readValue() as! [Any?])
+      return ComparisonCutoutResultDto.fromList(self.readValue() as! [Any?])
     case 134:
-      return MusicCandidateDto.fromList(self.readValue() as! [Any?])
+      return ComparisonPictureDto.fromList(self.readValue() as! [Any?])
     case 135:
-      return MusicAlignmentDto.fromList(self.readValue() as! [Any?])
+      return ComparisonPracticeDto.fromList(self.readValue() as! [Any?])
     case 136:
+      return MusicCandidateDto.fromList(self.readValue() as! [Any?])
+    case 137:
+      return MusicAlignmentDto.fromList(self.readValue() as! [Any?])
+    case 138:
       return ComparisonExportDto.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
@@ -684,20 +788,26 @@ private class ComparisonPigeonCodecWriter: FlutterStandardWriter {
     } else if let value = value as? ComparisonPlaybackDto {
       super.writeByte(131)
       super.writeValue(value.toList())
-    } else if let value = value as? ComparisonPictureDto {
+    } else if let value = value as? ComparisonCutoutSeedDto {
       super.writeByte(132)
       super.writeValue(value.toList())
-    } else if let value = value as? ComparisonPracticeDto {
+    } else if let value = value as? ComparisonCutoutResultDto {
       super.writeByte(133)
       super.writeValue(value.toList())
-    } else if let value = value as? MusicCandidateDto {
+    } else if let value = value as? ComparisonPictureDto {
       super.writeByte(134)
       super.writeValue(value.toList())
-    } else if let value = value as? MusicAlignmentDto {
+    } else if let value = value as? ComparisonPracticeDto {
       super.writeByte(135)
       super.writeValue(value.toList())
-    } else if let value = value as? ComparisonExportDto {
+    } else if let value = value as? MusicCandidateDto {
       super.writeByte(136)
+      super.writeValue(value.toList())
+    } else if let value = value as? MusicAlignmentDto {
+      super.writeByte(137)
+      super.writeValue(value.toList())
+    } else if let value = value as? ComparisonExportDto {
+      super.writeByte(138)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -732,6 +842,8 @@ protocol DanceComparisonApi {
   func setPractice(practice: ComparisonPracticeDto) async throws -> ComparisonPlaybackDto
   func stepFrame(forward: Bool) async throws -> ComparisonPlaybackDto
   func getState() async throws -> ComparisonPlaybackDto
+  func prepareCutout(reference: ComparisonCutoutSeedDto, target: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutResultDto
+  func clearCutout() async throws -> ComparisonPlaybackDto
   func alignMusic(teacherUri: String, learnerUri: String) async throws -> MusicAlignmentDto
   func cancelAlignment() async throws
   func startExport(projectJson: String, startUs: Int64, endUs: Int64, width: Int64, height: Int64, gap: Int64, sideBySide: Bool, replacePreviousUnsaved: Bool) async throws -> ComparisonExportDto
@@ -928,6 +1040,39 @@ class DanceComparisonApiSetup {
       }
     } else {
       getStateChannel.setMessageHandler(nil)
+    }
+    let prepareCutoutChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.prepareCutout\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      prepareCutoutChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let referenceArg = args[0] as! ComparisonCutoutSeedDto
+        let targetArg = args[1] as! ComparisonCutoutSeedDto
+        Task { @MainActor in
+          do {
+            let result = try await api.prepareCutout(reference: referenceArg, target: targetArg)
+            reply(wrapResult(result))
+          } catch {
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      prepareCutoutChannel.setMessageHandler(nil)
+    }
+    let clearCutoutChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.clearCutout\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      clearCutoutChannel.setMessageHandler { _, reply in
+        Task { @MainActor in
+          do {
+            let result = try await api.clearCutout()
+            reply(wrapResult(result))
+          } catch {
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      clearCutoutChannel.setMessageHandler(nil)
     }
     let alignMusicChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.alignMusic\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

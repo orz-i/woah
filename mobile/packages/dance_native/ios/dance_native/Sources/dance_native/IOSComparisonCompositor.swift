@@ -15,7 +15,7 @@ struct IOSComparisonVideoLayer {
 
 /// M0 input: top-down alpha in display-oriented source space and fixed placement.
 /// A runtime track ID alone is not a durable selection.
-struct IOSComparisonCutoutPlacement {
+struct IOSComparisonCutoutPlacement: Sendable {
   let anchor: SIMD4<Float>
   let x: Double
   let y: Double
@@ -23,7 +23,7 @@ struct IOSComparisonCutoutPlacement {
   let mirror: Bool
   let opacity: Double
 }
-struct IOSComparisonCutoutLayer {
+struct IOSComparisonCutoutLayer: Sendable {
   let sourcePtsUs: Int64
   let width: Int
   let height: Int
@@ -50,6 +50,73 @@ struct IOSComparisonCutoutFrame {
   }
 }
 
+/// AVFoundation's composition request exposes image buffers, not original
+/// track sample timestamps. Check the independently decoded sample signature
+/// in addition to the exact source-index lookup before using its alpha.
+struct IOSComparisonSourceStamp: Sendable {
+  let width: Int
+  let height: Int
+  let samples: [UInt8]
+
+  init?(_ pixel: CVPixelBuffer) {
+    guard CVPixelBufferGetPixelFormatType(pixel) == kCVPixelFormatType_32BGRA,
+          CVPixelBufferLockBaseAddress(pixel, .readOnly) == kCVReturnSuccess else { return nil }
+    defer { CVPixelBufferUnlockBaseAddress(pixel, .readOnly) }
+    guard let base = CVPixelBufferGetBaseAddress(pixel)?.assumingMemoryBound(to: UInt8.self) else { return nil }
+    width = CVPixelBufferGetWidth(pixel); height = CVPixelBufferGetHeight(pixel)
+    guard width > 0, height > 0 else { return nil }
+    let stride = CVPixelBufferGetBytesPerRow(pixel)
+    // Dense enough to sample small dancers, still bounded independently of
+    // source resolution. This is a mismatch guard, not a unique frame hash.
+    let grid = 32
+    var values: [UInt8] = []; values.reserveCapacity(grid*grid*3)
+    for y in 0..<grid { for x in 0..<grid {
+      let offset = ((2*y+1)*height/(2*grid))*stride + ((2*x+1)*width/(2*grid))*4
+      values.append(contentsOf: [base[offset],base[offset+1],base[offset+2]])
+    } }
+    samples = values
+  }
+  func agrees(with other: Self) -> Bool {
+    guard width == other.width, height == other.height, samples.count == other.samples.count else { return false }
+    let differences = zip(samples,other.samples).map { abs(Int($0.0)-Int($0.1)) }
+    return (differences.max() ?? 255) <= 12 && differences.reduce(0,+) <= differences.count*2
+  }
+}
+
+struct IOSComparisonCachedCutout: Sendable {
+  let stamp: IOSComparisonSourceStamp
+  let layer: IOSComparisonCutoutLayer?
+}
+struct IOSComparisonCutoutTrackCache: Sendable {
+  let entries: [Int64: IOSComparisonCachedCutout]
+  let times: [Int64]
+  var visibleCount: Int { entries.values.filter { $0.layer != nil }.count }
+  func entry(at time: Int64) -> (Int64,IOSComparisonCachedCutout)? {
+    guard let i = IOSComparisonTimeCore.frameIndex(times,time: time),
+          let entry = entries[times[i]] else { return nil }
+    return (times[i],entry)
+  }
+}
+struct IOSComparisonCutoutCache: Sendable {
+  let reference: IOSComparisonCutoutTrackCache
+  let target: IOSComparisonCutoutTrackCache
+  let referenceStartUs: Int64
+  let offsetUs: Int64
+  let timeScale: Double
+  func frame(at compositionTime: CMTime, referenceBuffer: CVPixelBuffer,
+             targetBuffer: CVPixelBuffer) -> IOSComparisonCutoutFrame {
+    let source = CMTimeAdd(compositionTime,CMTime(value: referenceStartUs,timescale: 1_000_000))
+    let r = IOSComparisonTimeCore.map(source).flatMap { reference.entry(at: $0) }
+    let t = IOSComparisonTimeCore.map(source,scale: timeScale,offset: offsetUs).flatMap { target.entry(at: $0) }
+    func layer(_ value: (Int64,IOSComparisonCachedCutout)?, _ buffer: CVPixelBuffer) -> IOSComparisonCutoutLayer? {
+      guard let value, let stamp = IOSComparisonSourceStamp(buffer), value.1.stamp.agrees(with: stamp) else { return nil }
+      return value.1.layer
+    }
+    return IOSComparisonCutoutFrame(referencePtsUs: r?.0 ?? -1,targetPtsUs: t?.0 ?? -1,
+      reference: layer(r,referenceBuffer),target: layer(t,targetBuffer))
+  }
+}
+
 final class IOSComparisonVideoInstruction: NSObject, AVVideoCompositionInstructionProtocol {
   let timeRange: CMTimeRange
   let enablePostProcessing = false
@@ -59,13 +126,15 @@ final class IOSComparisonVideoInstruction: NSObject, AVVideoCompositionInstructi
   let layout: IOSComparisonLayout
   let reference: IOSComparisonVideoLayer
   let target: IOSComparisonVideoLayer
+  let cutout: IOSComparisonCutoutCache?
 
   init(timeRange: CMTimeRange, layout: IOSComparisonLayout,
-    reference: IOSComparisonVideoLayer, target: IOSComparisonVideoLayer) {
+    reference: IOSComparisonVideoLayer, target: IOSComparisonVideoLayer, cutout: IOSComparisonCutoutCache? = nil) {
     self.timeRange = timeRange
     self.layout = layout
     self.reference = reference
     self.target = target
+    self.cutout = cutout
     requiredSourceTrackIDs = [NSNumber(value: reference.trackID), NSNumber(value: target.trackID)]
     super.init()
   }
@@ -110,7 +179,8 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
               userInfo: [NSLocalizedDescriptionKey: "Could not obtain both comparison frames and a render buffer."])
           }
           render(reference: reference, target: target, instruction: instruction, output: output,
-            renderTransform: request.renderContext.renderTransform)
+            renderTransform: request.renderContext.renderTransform,
+            cutout: instruction.cutout?.frame(at: request.compositionTime, referenceBuffer: reference, targetBuffer: target))
           if currentGeneration() == requestedGeneration {
             request.finish(withComposedVideoFrame: output)
           } else {
@@ -170,7 +240,7 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
     return generation
   }
 
-  private func oriented(_ buffer: CVPixelBuffer, transform: CGAffineTransform) -> CIImage {
+  static func oriented(_ buffer: CVPixelBuffer, transform: CGAffineTransform) -> CIImage {
     let source = CIImage(cvPixelBuffer: buffer)
     // Track transforms use top-left video coordinates. Conjugate the transform
     // into Core Image's bottom-left coordinates before normalizing its extent.
@@ -190,7 +260,7 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
     guard let quad = IOSComparisonTimeCore.cutoutQuad(width: layout.width, height: layout.height,
       aspect: layer.aspect, anchor: placement.anchor, x: placement.x, y: placement.y,
       subjectHeight: placement.subjectHeight, mirror: placement.mirror) else { return nil }
-    var source = oriented(buffer, transform: layer.preferredTransform)
+    var source = Self.oriented(buffer, transform: layer.preferredTransform)
     let extent = source.extent
     // Build an alpha-only signal via premultiplied RGBA. CGImage has top-down
     // scanlines, matching the canonical mask; alpha is independent of color space.
@@ -231,7 +301,7 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
     let height = Double(quad.scaleY) * Double(pane.height)
     let left = Double(pane.x) + (1 + Double(quad.shiftX) - Double(quad.scaleX)) * Double(pane.width) / 2
     let top = Double(pane.top) + (1 - Double(quad.shiftY) - Double(quad.scaleY)) * Double(pane.height) / 2
-    var image = oriented(buffer, transform: layer.preferredTransform)
+    var image = Self.oriented(buffer, transform: layer.preferredTransform)
     let extent = image.extent
     if layer.mirror {
       image = image.transformed(by: CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: extent.width, ty: 0))

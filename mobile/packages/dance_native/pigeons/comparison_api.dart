@@ -60,6 +60,32 @@ class ComparisonPlaybackDto {
   });
 }
 
+class ComparisonCutoutSeedDto {
+  int sourcePtsUs;
+  double x;
+  double y;
+  ComparisonCutoutSeedDto({
+    required this.sourcePtsUs,
+    required this.x,
+    required this.y,
+  });
+}
+
+class ComparisonCutoutResultDto {
+  ComparisonPlaybackDto playback;
+  int referenceVisible;
+  int referenceFrames;
+  int targetVisible;
+  int targetFrames;
+  ComparisonCutoutResultDto({
+    required this.playback,
+    required this.referenceVisible,
+    required this.referenceFrames,
+    required this.targetVisible,
+    required this.targetFrames,
+  });
+}
+
 class ComparisonPictureDto {
   double zoom;
   double panX;
@@ -194,6 +220,13 @@ abstract class DanceComparisonApi {
   ComparisonPlaybackDto stepFrame(bool forward);
   @async
   ComparisonPlaybackDto getState();
+  @async
+  ComparisonCutoutResultDto prepareCutout(
+    ComparisonCutoutSeedDto reference,
+    ComparisonCutoutSeedDto target,
+  );
+  @async
+  ComparisonPlaybackDto clearCutout();
   @async
   MusicAlignmentDto alignMusic(String teacherUri, String learnerUri);
   @async

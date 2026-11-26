@@ -123,6 +123,20 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
       durationUs: 0, teacherStartUs: 0, offsetUs: 0, speed: 1)
   }
 
+  func prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutResultDto {
+    do {
+      #if DEBUG
+      return try await requirePlayer().prepareCutout(reference: reference,target: target)
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    } catch { throw IOSDiagnosticPrivacy.pigeon(error,stage: .comparison) }
+  }
+  func clearCutout() async throws -> ComparisonPlaybackDto {
+    do { return try await requirePlayer().clearCutout() }
+    catch { throw IOSDiagnosticPrivacy.pigeon(error,stage: .comparison) }
+  }
+
   func alignMusic(teacherUri: String, learnerUri: String) async throws -> MusicAlignmentDto {
     do {
       matchRevision &+= 1
@@ -172,6 +186,7 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
     replacePreviousUnsaved: Bool) async throws -> ComparisonExportDto {
     do {
       try canvas(width, height)
+          guard player?.hasCutout != true else { throw invalid("抠像画布暂不支持导出") }
           guard gap > 0 && gap <= 64 else { throw invalid("画面间距无效") }
           closePlayer()
           return try await withCheckedThrowingContinuation { continuation in

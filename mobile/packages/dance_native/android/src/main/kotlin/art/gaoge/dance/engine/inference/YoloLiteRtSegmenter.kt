@@ -94,7 +94,8 @@ class YoloLiteRtSegmenter(
         mapper: art.gaoge.dance.engine.geometry.ModelCoordinateMapper,
         timestampUs: Long = 0,
         colOrder: RgbaColOrder = RgbaColOrder.LEFT_TO_RIGHT,
-        diagnosticJobId: String? = null
+        diagnosticJobId: String? = null,
+        confidenceThreshold: Float = 0.25f
     ): SegmentationFrame {
         return segmentRgbaSync(
             rgbaBuffer = rgbaBuffer,
@@ -102,7 +103,8 @@ class YoloLiteRtSegmenter(
             timestampUs = timestampUs,
             rowOrder = RgbaRowOrder.BOTTOM_TO_TOP,
             colOrder = colOrder,
-            diagnosticJobId = diagnosticJobId
+            diagnosticJobId = diagnosticJobId,
+            confidenceThreshold = confidenceThreshold
         )
     }
 
@@ -112,8 +114,10 @@ class YoloLiteRtSegmenter(
         timestampUs: Long = 0,
         rowOrder: RgbaRowOrder = RgbaRowOrder.TOP_TO_BOTTOM,
         colOrder: RgbaColOrder = RgbaColOrder.LEFT_TO_RIGHT,
-        diagnosticJobId: String? = null
+        diagnosticJobId: String? = null,
+        confidenceThreshold: Float = 0.25f
     ): SegmentationFrame {
+        require(confidenceThreshold.isFinite() && confidenceThreshold in 0f..1f)
         val modelRunner = runner ?: throw DanceNativeException(
             DanceNativeException.MODEL_INIT_FAILED,
             "YoloLiteRtSegmenter not initialized. Call initialize() first."
@@ -140,7 +144,8 @@ class YoloLiteRtSegmenter(
 
         val replay = observationReplay
         val replayStartNs = System.nanoTime()
-        val replayKey = replay?.key("yolo", "${mapper.srcWidth},${mapper.srcHeight},${mapper.modelInputSize},${mapper.protoSize}|${modelRunner.effectiveAccelerator}|threads=$cpuNumThreads|${modelRunner.runtimeInfo?.inputShapes}|${modelRunner.runtimeInfo?.outputShapes}", workspace.floatArray)
+        val confidenceKey = if (confidenceThreshold == 0.25f) "" else "|confidence=${confidenceThreshold.toRawBits()}"
+        val replayKey = replay?.key("yolo", "${mapper.srcWidth},${mapper.srcHeight},${mapper.modelInputSize},${mapper.protoSize}|${modelRunner.effectiveAccelerator}|threads=$cpuNumThreads|${modelRunner.runtimeInfo?.inputShapes}|${modelRunner.runtimeInfo?.outputShapes}$confidenceKey", workspace.floatArray)
         if (replayKey != null) {
             val cached = replay.read(replayKey)
             if (cached != null) {
@@ -186,7 +191,7 @@ class YoloLiteRtSegmenter(
                 output0 = out0Floats,
                 output1 = out1Floats,
                 preprocess = preprocess,
-                confThreshold = 0.25f,
+                confThreshold = confidenceThreshold,
                 iouThreshold = 0.50f,
                 stageTimingsMs = stageTimings
             )

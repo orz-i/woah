@@ -34,7 +34,7 @@ discard selection.
 * M0 fixtures test deterministic masks with decoded video pixels. These
   checks do not establish person inference quality or mobile GPU throughput.
 
-## Remaining implementation (not enabled in production yet)
+## Original implementation plan (M0 baseline)
 
 1. Connect the pinned YOLO segmentation results and shared tracking to an
    independent subject-analysis job per source, anchored at the selected PTS.
@@ -50,7 +50,7 @@ discard selection.
    before enabling the mode; retain ordinary comparison and protection
    regression coverage. No new model or inference runtime is required for M0.
 
-## Current limits
+## Initial M0 limits (historical)
 
 Black canvas, fixed reference-before-target draw order, no user controls or
 project persistence. Neither renderer has a production subject-mask provider
@@ -106,8 +106,9 @@ $P tools/comparison/cutout_m0.py --library "$L" --reference "$S" \
   --output /tmp/woah-cutout-variant
 ```
 
-The second command is an explicit failing regression case. The manifest is
-written before the nonzero exit. No derived video, mask, or image is committed.
+At the initial M0 commit the second command was an explicit failing regression
+case. With the continuation fix below it is expected to pass. The manifest is
+written before a strict nonzero exit. No derived video, mask, or image is committed.
 
 ## Local verification
 
@@ -121,5 +122,72 @@ written before the nonzero exit. No derived video, mask, or image is committed.
   reproduces with source files from master `7e82ec33` on this host, so it is
   recorded separately; this change does not alter that behavior.
 
-M0 remains incomplete on actual mobile inference/rendering. Production gesture,
-tracking cache, playback and export wiring remain disabled.
+The initial M0 results above preceded the native preview integration.
+
+
+## Experimental native preview (2026-11-26)
+
+The target loss was a detector observation gap: after frame 6, mirrored
+H.264 target confidence was about 0.221–0.245, below 0.25. A dedicated
+FrameKernel cutout session now seeds only on >=0.25; subsequent observations
+>=0.20 may continue an active, recently observed identity when a unique
+candidate passes raw-mask and box overlap checks (0.50 and 0.55, within
+150 ms), with a separate competing-mask veto. Only the current uniquely
+matched raw detector mask is returned. Weak candidates cannot seed a new
+subject or directly reacquire a lost identity. Ordinary privacy inference
+keeps its existing confidence threshold and session API.
+
+Independent forward/backward sessions anchor on the same real source PTS;
+reverse traversal runs on increasing elapsed time internally. Android
+uses MediaExtractor PTS and exact canonical decoder frames. iOS uses the
+source presentation index and decoded AVAssetReader samples. For preview,
+AVVideoCompositing cannot expose the source buffer PTS directly, so the
+mapped source-index lookup is checked against a bounded 32x32 color-sample
+stamp; disagreement hides the layer. The stamp is a mismatch guard, not a
+collision-free proof of sample identity.
+
+The Debug-only view menu offers 抠像画布（实验）. Pause the pair, long-press
+the reference and target subjects, and drag each toward the common center
+drop region. The first selection is marked and the canvas drop region
+appears; actual dynamic cutout is prepared after both selections. Drag
+feedback is a marker, not the extracted person image. Coordinates invert
+the existing pane, fit, zoom, pan and mirror geometry. Both sources are
+analyzed with the pinned YOLO CPU runner; masks are bounded to a 256-pixel
+long edge and cached for at most 300 source frames per source (prefix
+observation bytes capped at 32 MiB per source). Missing masks are hidden.
+The same native texture and synchronized clock play the canvas; clear
+returns to the ordinary comparison. Active preview prevents source
+replacement, calibration changes and new export. Project persistence,
+single-subject live drag preview, editing/overlap controls, long-video
+chunking and canvas export remain outstanding.
+
+### Verification
+
+| Case | Reference visible | Target visible |
+| --- | ---: | ---: |
+| Host original + mirrored variant, anchor 0 | 30/30 | 30/30 |
+| Host original pair, anchor frame 12 | 30/30 | 30/30 |
+| iPhone 15 Pro simulator iOS 17, original + mirrored variant | 30/30 | 30/30 |
+| iPhone 15 Pro simulator iOS 17, original pair, anchor 400000 us | 30/30 | 30/30 |
+
+The host middle-anchor test uses the preceding command with the original
+source for both roles, target point `.676,.86`, and flags
+`--reference-anchor-frame 12 --target-anchor-frame 12`.
+The simulator uses `mobile/app/test_driver/comparison_cutout_smoke.dart`
+as its debug entrypoint, with `source.mp4` and `variant.mp4` in the
+app Documents/comparison-cutout-fixtures directory. It verifies real
+Pigeon, model inference, native texture output (both halves nonempty,
+top 10% black), seeks to 0/400000/800000 us, playback advance and exit.
+The app writes local report.json and texture captures; no source frames
+or derived media are added to Git.
+
+Rust 137 passed/1 ignored, strict Clippy passed. Android 10 focused
+JVM/JNI tests passed. Flutter comparison tests 124 passed including the
+new gesture/cancellation tests; Flutter analyzer passed. macOS focused
+native render/PTS/stamp smoke passed; iOS debug simulator build passed.
+Android hardware was not connected. The two simulator cases use the same
+short source and its derived variant, not independent dance recordings;
+counts are visibility, not measured identity accuracy or quality. Real
+device performance, complex motion/occlusion, rotated or edited source
+timelines and broader VFR behavior still need testing. Do not enable
+release or canvas export until these risks are addressed.

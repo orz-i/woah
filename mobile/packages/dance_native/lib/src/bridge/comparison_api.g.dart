@@ -270,6 +270,126 @@ class ComparisonPlaybackDto {
   }
 }
 
+class ComparisonCutoutSeedDto {
+  ComparisonCutoutSeedDto({
+    required this.sourcePtsUs,
+    required this.x,
+    required this.y,
+  });
+
+  int sourcePtsUs;
+
+  double x;
+
+  double y;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      sourcePtsUs,
+      x,
+      y,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static ComparisonCutoutSeedDto decode(Object result) {
+    result as List<Object?>;
+    return ComparisonCutoutSeedDto(
+      sourcePtsUs: result[0]! as int,
+      x: result[1]! as double,
+      y: result[2]! as double,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! ComparisonCutoutSeedDto || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(sourcePtsUs, other.sourcePtsUs) && _deepEquals(x, other.x) && _deepEquals(y, other.y);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'ComparisonCutoutSeedDto(sourcePtsUs: $sourcePtsUs, x: $x, y: $y)';
+  }
+}
+
+class ComparisonCutoutResultDto {
+  ComparisonCutoutResultDto({
+    required this.playback,
+    required this.referenceVisible,
+    required this.referenceFrames,
+    required this.targetVisible,
+    required this.targetFrames,
+  });
+
+  ComparisonPlaybackDto playback;
+
+  int referenceVisible;
+
+  int referenceFrames;
+
+  int targetVisible;
+
+  int targetFrames;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      playback,
+      referenceVisible,
+      referenceFrames,
+      targetVisible,
+      targetFrames,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static ComparisonCutoutResultDto decode(Object result) {
+    result as List<Object?>;
+    return ComparisonCutoutResultDto(
+      playback: result[0]! as ComparisonPlaybackDto,
+      referenceVisible: result[1]! as int,
+      referenceFrames: result[2]! as int,
+      targetVisible: result[3]! as int,
+      targetFrames: result[4]! as int,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! ComparisonCutoutResultDto || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(playback, other.playback) && _deepEquals(referenceVisible, other.referenceVisible) && _deepEquals(referenceFrames, other.referenceFrames) && _deepEquals(targetVisible, other.targetVisible) && _deepEquals(targetFrames, other.targetFrames);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'ComparisonCutoutResultDto(playback: $playback, referenceVisible: $referenceVisible, referenceFrames: $referenceFrames, targetVisible: $targetVisible, targetFrames: $targetFrames)';
+  }
+}
+
 class ComparisonPictureDto {
   ComparisonPictureDto({
     required this.zoom,
@@ -662,20 +782,26 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is ComparisonPlaybackDto) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
-    }    else if (value is ComparisonPictureDto) {
+    }    else if (value is ComparisonCutoutSeedDto) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    }    else if (value is ComparisonPracticeDto) {
+    }    else if (value is ComparisonCutoutResultDto) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    }    else if (value is MusicCandidateDto) {
+    }    else if (value is ComparisonPictureDto) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    }    else if (value is MusicAlignmentDto) {
+    }    else if (value is ComparisonPracticeDto) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    }    else if (value is ComparisonExportDto) {
+    }    else if (value is MusicCandidateDto) {
       buffer.putUint8(136);
+      writeValue(buffer, value.encode());
+    }    else if (value is MusicAlignmentDto) {
+      buffer.putUint8(137);
+      writeValue(buffer, value.encode());
+    }    else if (value is ComparisonExportDto) {
+      buffer.putUint8(138);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -693,14 +819,18 @@ class _PigeonCodec extends StandardMessageCodec {
       case 131:
         return ComparisonPlaybackDto.decode(readValue(buffer)!);
       case 132:
-        return ComparisonPictureDto.decode(readValue(buffer)!);
+        return ComparisonCutoutSeedDto.decode(readValue(buffer)!);
       case 133:
-        return ComparisonPracticeDto.decode(readValue(buffer)!);
+        return ComparisonCutoutResultDto.decode(readValue(buffer)!);
       case 134:
-        return MusicCandidateDto.decode(readValue(buffer)!);
+        return ComparisonPictureDto.decode(readValue(buffer)!);
       case 135:
-        return MusicAlignmentDto.decode(readValue(buffer)!);
+        return ComparisonPracticeDto.decode(readValue(buffer)!);
       case 136:
+        return MusicCandidateDto.decode(readValue(buffer)!);
+      case 137:
+        return MusicAlignmentDto.decode(readValue(buffer)!);
+      case 138:
         return ComparisonExportDto.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -897,6 +1027,44 @@ class DanceComparisonApi {
 
   Future<ComparisonPlaybackDto> getState() async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.getState$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as ComparisonPlaybackDto;
+  }
+
+  Future<ComparisonCutoutResultDto> prepareCutout(ComparisonCutoutSeedDto reference, ComparisonCutoutSeedDto target) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.prepareCutout$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[reference, target]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as ComparisonCutoutResultDto;
+  }
+
+  Future<ComparisonPlaybackDto> clearCutout() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.clearCutout$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
