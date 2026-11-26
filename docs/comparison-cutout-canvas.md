@@ -3085,3 +3085,174 @@ candidate instance-mask models or a bounded selected-subject
 refinement with actual independent edge/recall evidence), rather
 than repeated incremental tracker-threshold or morphology tuning.
 Physical iPhone and independent release validation remain open.
+
+## Stage C9.2: instance observation and selected-mask refinement A/B
+
+Host development experiments on the existing C5, C7.3 and C8.3
+manually marked dance pairs. C9.1 production policy, model,
+privacy behavior, archive and release state are unchanged.
+These six clips were previously reviewed; they are not a fresh
+holdout. Sparse points/approximate silhouettes are not dense identity
+or boundary truth. No candidate model weights, environment, media,
+raw alpha or per-frame observation records are committed.
+
+### Expanded selected-subject crop: reject replacement
+
+`probe_selected_refinement.py` uses the existing native selected
+alpha at a frozen source PTS, expands its bounding box by 35% per
+side, aligns crop edges to source and alpha grids, and runs the
+pinned Nano model on exact source pixels. Only crops with at least
+1.25x linear input magnification are considered. The geometry-only
+provisional choice must have IoU >= .65, both agreement directions
+>= .80, no other candidate with IoU >= .25, no foreground on an
+artificial crop edge, and no competitor covering >10% of the added
+foreground. A rejected candidate preserves the original alpha;
+a missing baseline stays missing. These are experimental parameters,
+not production or privacy acceptance rules.
+
+Use C5 and C8.2 native evidence for their corresponding C5 and C7.3
+pairs, and C9.1 native evidence for the C8.3 pair. Across CPU/GPU
+evidence, 142 marked source positions (71 unique), 46 contour
+samples (23 unique): 85 candidate masks accepted, 25 insufficient
+agreement, 16 competing addition, 14 missing baseline, 2 no
+candidate. On all marked contours including missing:
+
+| Metric | Original | Crop replacement |
+| --- | ---: | ---: |
+| Mean approximate IoU | .6323 | .6425 |
+| Mean boundary F1 | .4945 | .5000 |
+| Selected landmark hits | 128/142 | 126/142 |
+| Marked distractor hits | 0 | 0 |
+
+The two lost checks are the same Basque source sample on the two
+native backends. Stage solo boundary F1 decreases on both backends.
+Median additional host inference/project/select time 24.79ms,
+p95 26.33ms, median magnification 1.78x. These are not mobile
+timings. Reject; geometry overlap alone does not establish improved
+identity or edges, even on a current-frame crop.
+
+### Controlled raw model-observation A/B
+
+`probe_instance_models.py` uses the same bounded source basis,
+FrameKernel letterbox, normalization, instance decode and alpha
+projection for the pinned LiteRT YOLO11n and two local PyTorch FP32
+models. It uses the existing .20/.25 person-confidence boundaries,
+.5 box/mask NMS thresholds and 640 input. The PyTorch head explicitly
+reports pixel coordinates; the canonical LiteRT decoder keeps its
+existing automatic coordinate contract. A mask is eligible for
+measurement if it hits the annotated selected point and none of the
+marked distractors. The best-contour score uses the eligible mask
+with greatest approximate IoU; missing eligible observations score
+zero. This oracle is only an observation-level upper bound, never a
+tracker selection rule.
+
+Host environment: Python 3.12, Torch 2.9.1, torchvision 0.24.1,
+Ultralytics 8.3.250, ai-edge-litert 2.4.0, 4 CPU threads.
+Explicit trusted local weights were fetched from the official
+Ultralytics assets v8.3.0 release for the experiment:
+
+- `yolo11n-seg.pt`: SHA-256
+  `55ed65c56c91713d23e8402371c6c49a6fd84f257f7dce452e8d70e41dcbe152`
+  (6,182,636 bytes).
+- `yolo11s-seg.pt`: SHA-256
+  `1caa81c0195412efa411b632bcfb8c184939dddb6ae41f6a80c41b211ff257c3`
+  (20,669,228 bytes).
+
+| Observation metric (71 unique points, 23 contours) | Canonical LiteRT n | PyTorch n | PyTorch s |
+| --- | ---: | ---: | ---: |
+| Eligible at >= .20 | 63 | 63 | 69 |
+| Eligible at >= .25 | 62 | 62 | 68 |
+| Strong oracle mean IoU | .5658 | .5658 | .7285 |
+| Strong oracle mean boundary F1 | .4353 | .4353 | .6050 |
+| Host inference/decode/project median ms | 24.30 | 38.63 | 75.39 |
+| Host inference/decode/project p95 ms | 25.39 | 43.62 | 81.37 |
+
+The Nano Torch and canonical LiteRT arms agree on all reported
+aggregate quality measures. Small adds four strong observations in
+the stage solo and three in the Baganda clip but loses one strong
+observation in Baganda. This shows a real model-capacity opportunity,
+not universal dominance. Host FP32 performance and weight-file size
+cannot be interpreted as mobile LiteRT speed or package size.
+
+### Complete host tracking replay: replacement and detail-only
+
+`replay_instance_models.py` uses the current shared tracker,
+existing scheduled detail recovery, frozen user touch seed, exact
+source PTS, and the same core instance decoder. It runs complete
+300-frame clips, not just annotated frames. In detail-only mode the
+same canonical full-frame observations are reused byte-for-byte
+and only an existing local detail request runs the Small model.
+There is no extra request, tracking threshold change, manual
+correction or annotation-derived selection. All numbers below are
+host results, not device results.
+
+| Fixture | Model | Visible | Selected checks | Longest missing | Mean IoU/F1 | ROI requested/adopted |
+| --- | --- | ---: | ---: | ---: | --- | --- |
+| C8.3 outdoor | canonical | 300/300 | 12/12 | 0ms | .6916/.4644 | 0/0 |
+| C8.3 outdoor | full Small | 292/300 | 12/12 | 240ms | .7556/.5351 | 0/0 |
+| C8.3 stage | canonical | 268/300 | 12/12 | 320ms | .7398/.6044 | 56/21 |
+| C8.3 stage | full Small | 268/300 | 12/12 | 840ms | .7983/.7001 | 29/2 |
+| C8.3 stage | detail Small | 277/300 | 11/12 | 320ms | .7732/.6534 | 56/30 |
+| C5 Baganda | canonical | 290/300 | 11/12 | 120ms | .7885/.7394 | 62/52 |
+| C5 Baganda | full Small | 287/300 | 10/12 | 160ms | .6137/.5628 | 49/36 |
+| C5 Baganda | detail Small | 289/300 | 11/12 | 120ms | .7870/.7262 | 62/51 |
+
+Zero marked distractor hits on these arms. Full replacement loses
+8 previously visible outdoor masks; stage loses 17 and gains 17,
+with a much longer missing interval; Baganda loses 13 and gains 10
+and two previously correct landmark checks are lost (one new hit).
+Detail-only stage adds 10 previously missing masks but loses one
+previously valid mask and the 2s selected-point check. Baganda
+detail-only adds two and loses three. The candidate does not meet
+the no-regression objective. Retain neither in production.
+
+Full model replacement totals (host, each clip 300 frames):
+outdoor 8.82s -> 24.33s, stage 12.45s -> 27.74s,
+Baganda 13.98s -> 31.06s. Detail-only stage 12.64s -> 15.55s,
+Baganda 14.06s -> 17.27s. These are development-run observations,
+not release latency benchmarks. No native model conversion,
+installation, or effective mobile delegate testing was performed.
+
+Reproduce with the same local media/evidence and trusted weights:
+
+```sh
+python tools/comparison/probe_selected_refinement.py \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --media /path/to/c83-media --evidence /path/to/c91-native \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c92-refinement.json
+
+python tools/comparison/probe_instance_models.py \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --media /path/to/c83-media \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --nano-weights /path/to/yolo11n-seg.pt \
+  --small-weights /path/to/yolo11s-seg.pt \
+  --output /tmp/c92-models.json
+
+python tools/comparison/replay_instance_models.py \
+  --manifest testdata/comparison/real-dance-c83-holdout.json \
+  --media /path/to/c83-media \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --small-weights /path/to/yolo11s-seg.pt --role target --mode both \
+  --output /tmp/c92-tracking.json
+
+python -m unittest discover -s tools/comparison \
+  -p 'test_segmentation_probes.py' -v
+```
+
+Six focused host-probe tests pass. The optional Python/Torch tools
+are deliberately separate from the app dependencies and build.
+
+**C9.2 disposition:** the larger model provides better raw instance
+observations, but neither replacing canonical inference nor replacing
+existing local recovery preserves all incumbent valid outputs.
+A bounded additional-model fallback only after the existing full
+and local candidates are rejected is the next candidate experiment.
+It must use the same immutable canonical state, never overwrite an
+accepted incumbent mask, keep per-frame identity/competition checks
+and have a strict additional inference budget. Validate independently
+before considering a native candidate model or modifying the app.
+Do not promote release status, tune incumbent tracker thresholds
+against these same clips, or claim device improvement from host
+metrics. The C9.1 production configuration remains unchanged.
