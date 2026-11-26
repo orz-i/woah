@@ -11,7 +11,7 @@ struct IOSComparisonCutoutArchiveKey:Sendable {
   let mirrorR:Bool,mirrorT:Bool
   let referenceDigest:Data,targetDigest:Data,modelDigest:Data,buildDigest:Data
   var encoded:String {
-    ["ios-cutout-v1/shared-identity-v3","xnnpack",ProcessInfo.processInfo.operatingSystemVersionString,
+    ["ios-cutout-v1/shared-identity-v3/alpha-grid-v2","xnnpack",ProcessInfo.processInfo.operatingSystemVersionString,
       buildDigest.base64EncodedString(),String(origin),String(offset),String(scale.bitPattern),
       String(window.lowerBound),String(window.upperBound),String(mirrorR),String(mirrorT),
       referenceDigest.base64EncodedString(),targetDigest.base64EncodedString(),modelDigest.base64EncodedString()].joined(separator:"|")
@@ -104,7 +104,7 @@ enum IOSComparisonCutoutArchive {
   private static func writeTrack(_ handle:FileHandle,_ track:IOSComparisonCutoutTrackCache,
     _ seed:IOSComparisonCutoutSeed,current:()->Bool)throws{
     guard (1...3600).contains(track.times.count),let anchor=track.exact(seed.ptsUs)?.layer,anchor.valid,
-          anchor.width<=256,anchor.height<=256 else{throw IOSComparisonCutoutExportUnavailable()}
+          anchor.width<=384,anchor.height<=384 else{throw IOSComparisonCutoutExportUnavailable()}
     let p=anchor.placement
     var header=IOSCutoutBytes();header.put(UInt32(track.times.count));header.put(UInt32(anchor.width));header.put(UInt32(anchor.height))
     for i in 0..<4{header.putFloat(p.anchor[i])}
@@ -125,7 +125,7 @@ enum IOSComparisonCutoutArchive {
     var header=IOSCutoutBytes(try read(handle,28))
     let n=Int(try header.get(UInt32.self)),w=Int(try header.get(UInt32.self)),h=Int(try header.get(UInt32.self))
     let b=try (0..<4).map{_ in try header.getFloat()}
-    guard n==times.count,(1...3600).contains(n),(1...256).contains(w),(1...256).contains(h),
+    guard n==times.count,(1...3600).contains(n),(1...384).contains(w),(1...384).contains(h),
           b.allSatisfy({$0.isFinite && (0...1).contains($0)}),b[2]>b[0],b[3]>b[1] else{
       throw IOSComparisonCutoutExportUnavailable()
     }

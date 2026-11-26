@@ -255,7 +255,7 @@ final class IOSComparisonCutoutAnalysis {
 
   func begin(url: URL,index: IOSComparisonFrameIndex,start: Int64,end: Int64,
     firstPreview:Int64,lastPreview:Int64,seed: IOSComparisonCutoutSeed,reference: Bool,mirror: Bool,
-    inspection: Inspection? = nil,isCancelled: @escaping () -> Bool) throws -> Work {
+    inspection: Inspection? = nil,fixedGrid:(Int,Int)?=nil,isCancelled: @escaping () -> Bool) throws -> Work {
     func check() throws { if isCancelled() { throw CancellationError() } }
     try check()
     guard seed.x.isFinite, seed.y.isFinite, (0..<1).contains(seed.x), (0..<1).contains(seed.y) else {
@@ -275,13 +275,18 @@ final class IOSComparisonCutoutAnalysis {
     let entries=try IOSComparisonCutoutDiskTrack(times:times)
     var small:[Int64:IOSComparisonCachedCutout]=[:]
     var placement:IOSComparisonCutoutPlacement?
+    var dimensions=fixedGrid
     func add(_ o:Observation,_ selected:Int,_ initial:Bool) throws {
       try check()
       guard let placement else {throw IOSComparisonCutoutAnalysisError.invalidTracking}
       var layer:IOSComparisonCutoutLayer?
       if selected>=0 {
-        let sw=Double(o.transform.source_width),sh=Double(o.transform.source_height)
-        let scale=256/max(sw,sh),w=max(1,Int((sw*scale).rounded())),h=max(1,Int((sh*scale).rounded()))
+        if dimensions==nil {
+          let grid=frame_kernel_cutout_grid(o.transform.source_width,o.transform.source_height,UInt32(times.count),UInt32(nearby.count))
+          dimensions=(Int(grid.width),Int(grid.height))
+        }
+        guard let (w,h)=dimensions,(1...384).contains(w),(1...384).contains(h),
+          (w*h+3200)*times.count<=256*1024*1024,(w*h+3200)*nearby.count<=18*1024*1024 else{throw IOSComparisonCutoutAnalysisError.unsupportedRange}
         let alpha=try o.alpha(index:selected,width:w,height:h)
         if alpha.contains(where:{$0 != 0}){
           layer=IOSComparisonCutoutLayer(sourcePtsUs:o.pts,width:w,height:h,alpha:alpha,placement:placement)

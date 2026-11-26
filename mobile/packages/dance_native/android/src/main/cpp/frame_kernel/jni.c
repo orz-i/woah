@@ -882,6 +882,17 @@ JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutT
     if(r)(*env)->ReleaseByteArrayElements(env,rgba,r,JNI_ABORT);
     free(output);free(pixels);return result;
 }
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutGridNative(
+    JNIEnv *env,jobject self,jint width,jint height,jint frames,jint preview) {
+    (void)self;
+    if(width<=0 || height<=0 || frames<=0 || preview<=0){invalid(env);return NULL;}
+    FrameKernelViewport grid=frame_kernel_cutout_grid((uint32_t)width,(uint32_t)height,(uint32_t)frames,(uint32_t)preview);
+    if(grid.width<=0 || grid.height<=0){invalid(env);return NULL;}
+    jint data[2]={grid.width,grid.height};
+    jintArray result=(*env)->NewIntArray(env,2);
+    if(result)(*env)->SetIntArrayRegion(env,result,0,2,data);
+    return result;
+}
 JNIEXPORT jbyteArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutAlphaNative(JNIEnv *env,jobject self,jbyteArray mask,jfloatArray transform,jint width,jint height) {
     (void)self; FrameKernelTransform t;
     if(!mask || width<1 || height<1 || width>4096 || height>4096 || !read_transform(env,transform,&t)) {invalid(env);return NULL;}

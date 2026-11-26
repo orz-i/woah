@@ -17,7 +17,7 @@ internal data class ComparisonCutoutArchiveKey(
     val mirrorR:Boolean,val mirrorT:Boolean,val backend:String,
     val referenceDigest:String,val targetDigest:String,val modelDigest:String
 ) {
-    fun encoded()=listOf("android-cutout-v1/shared-identity-v3",BuildConfig.GIT_COMMIT_SHA,android.os.Build.VERSION.SDK_INT,
+    fun encoded()=listOf("android-cutout-v1/shared-identity-v3/alpha-grid-v2",BuildConfig.GIT_COMMIT_SHA,android.os.Build.VERSION.SDK_INT,
         android.os.Build.FINGERPRINT,origin,offset,scale.toBits(),start,end,mirrorR,mirrorT,backend,
         referenceDigest,targetDigest,modelDigest).joinToString("|")
 }
@@ -90,7 +90,7 @@ internal class ComparisonCutoutArchive(private val root:File,private val scratch
     private fun readTrack(input:DataInputStream,times:List<Long>,seed:ComparisonCutoutSeed,reference:Boolean,
                           mirror:Boolean,digest:String,current:()->Boolean):ComparisonCutoutTrackCache {
         val n=input.readInt();val w=input.readInt();val h=input.readInt()
-        require(n==times.size && n in 1..ComparisonCutoutAnalysis.MAX_FRAMES && w in 1..256 && h in 1..256)
+        require(n==times.size && n in 1..ComparisonCutoutAnalysis.MAX_FRAMES && w in 1..384 && h in 1..384)
         val b=FloatArray(4){input.readFloat()}
         require(b.all{it.isFinite() && it in 0f..1f} && b[2]>b[0] && b[3]>b[1])
         val p=ComparisonCutoutPlacement(FloatRect(b[0],b[1],b[2],b[3]),if(reference).27 else .73,.88,.70,mirror)

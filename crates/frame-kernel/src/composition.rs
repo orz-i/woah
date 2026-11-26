@@ -216,6 +216,62 @@ pub fn cutout_select(masks: &[u8], t: Transform, x: f32, y: f32) -> i32 {
     }
 }
 
+/// Choose the largest supported display-oriented alpha grid that fits a
+/// worst-case dense track in the existing per-role budget. Reserve space
+/// for stamps/record headers on both platforms and bound the partial preview
+/// resident bytes. Never change the detector's proto grid or threshold.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_cutout_grid(
+    sw: u32,
+    sh: u32,
+    frames: u32,
+    preview_frames: u32,
+) -> Viewport {
+    if sw == 0
+        || sh == 0
+        || !(1..=3600).contains(&frames)
+        || !(1..=256).contains(&preview_frames)
+        || preview_frames > frames
+    {
+        return Viewport::default();
+    }
+    let longest = u64::from(sw.max(sh));
+    for edge in [384u64, 320, 256] {
+        let dim = |source: u32| ((u64::from(source) * edge + longest / 2) / longest).max(1);
+        let (w, h) = (dim(sw), dim(sh));
+        let bytes = w * h;
+        if (bytes + 3200) * u64::from(frames) <= 256 * 1024 * 1024
+            && (bytes + 3200) * u64::from(preview_frames) <= 18 * 1024 * 1024
+        {
+            return Viewport {
+                x: 0,
+                top: 0,
+                width: w as i32,
+                height: h as i32,
+            };
+        }
+    }
+    Viewport::default()
+}
+
+/// Precompute each independent coordinate using the same floating point
+/// expression as mask_sample. Retain the exact old bilinear arithmetic.
+fn alpha_axis(size: u32, source: u32, pad: f32, t: Transform) -> Vec<Option<(usize, usize, f32)>> {
+    let n = t.proto_size as usize;
+    (0..size)
+        .map(|x| {
+            let p = (x as f32 + 0.5) / size as f32;
+            let u = (p * source as f32 * t.scale + pad) * n as f32 / t.input_size as f32 - 0.5;
+            if !(0.0..1.0).contains(&p) || u < -0.5 || u > n as f32 - 0.5 {
+                return None;
+            }
+            let u = u.clamp(0.0, (n - 1) as f32);
+            let i = u.floor() as usize;
+            Some((i, (i + 1).min(n - 1), u - i as f32))
+        })
+        .collect()
+}
+
 /// Convert model confidence to an initial soft alpha, not to a learned matte.
 /// No dilation, privacy fallback region or retained mask is applied.
 pub fn cutout_alpha(mask: &[u8], t: Transform, width: u32, height: u32, output: &mut [u8]) -> bool {
@@ -228,16 +284,34 @@ pub fn cutout_alpha(mask: &[u8], t: Transform, width: u32, height: u32, output: 
     {
         return false;
     }
-    for y in 0..height {
-        for x in 0..width {
-            let score = mask_sample(
-                mask,
-                t,
-                (x as f32 + 0.5) / width as f32,
-                (y as f32 + 0.5) / height as f32,
-            );
+    let xs = alpha_axis(width, t.source_width, t.pad_left, t);
+    let ys = alpha_axis(height, t.source_height, t.pad_top, t);
+    let n = t.proto_size as usize;
+    for (row, y) in output.chunks_exact_mut(width as usize).zip(ys) {
+        let Some((j, j1, dy)) = y else {
+            row.fill(0);
+            continue;
+        };
+        let top = &mask[j * n..(j + 1) * n];
+        let bottom = &mask[j1 * n..(j1 + 1) * n];
+        for (pixel, x) in row.iter_mut().zip(&xs) {
+            let Some((i, i1, dx)) = *x else {
+                *pixel = 0;
+                continue;
+            };
+            let (a, b, c, d) = (top[i], top[i1], bottom[i], bottom[i1]);
+            if a <= 96 && b <= 96 && c <= 96 && d <= 96 {
+                *pixel = 0;
+                continue;
+            }
+            if a >= 192 && b >= 192 && c >= 192 && d >= 192 {
+                *pixel = 255;
+                continue;
+            }
+            let (a, b, c, d) = (a as f32, b as f32, c as f32, d as f32);
+            let score = (a + (b - a) * dx) * (1.0 - dy) + (c + (d - c) * dx) * dy;
             let a = ((score - 96.0) / 96.0).clamp(0.0, 1.0);
-            output[(y * width + x) as usize] = (a * a * (3.0 - 2.0 * a) * 255.0).round() as u8;
+            *pixel = (a * a * (3.0 - 2.0 * a) * 255.0).round() as u8;
         }
     }
     true
@@ -390,6 +464,75 @@ mod cutout_tests {
         assert!(cutout_alpha(&m, t, 4, 2, &mut a));
         assert_eq!(a, [0, 66, 255, 255, 0, 66, 255, 255]);
         assert!(!cutout_alpha(&m, t, 4, 3, &mut a));
+    }
+    #[test]
+    fn alpha_grid_is_budgeted_and_aspect_preserving() {
+        let wide = frame_kernel_cutout_grid(768, 432, 750, 26);
+        assert_eq!((wide.width, wide.height), (384, 216));
+        let tall = frame_kernel_cutout_grid(432, 768, 750, 26);
+        assert_eq!((tall.width, tall.height), (216, 384));
+        let long = frame_kernel_cutout_grid(1080, 1080, 3600, 256);
+        assert_eq!((long.width, long.height), (256, 256));
+        for &(w, h) in &[(1, 1), (1080, 1920), (1920, 1080), (4096, 1), (100, 100)] {
+            for count in [1, 90, 750, 1800, 3600] {
+                let preview = count.min(256);
+                let grid = frame_kernel_cutout_grid(w, h, count, preview);
+                let bytes = i64::from(grid.width) * i64::from(grid.height) + 3200;
+                assert!(
+                    grid.valid()
+                        && bytes * i64::from(count) <= 256 * 1024 * 1024
+                        && bytes * i64::from(preview) <= 18 * 1024 * 1024
+                );
+            }
+        }
+        assert_eq!(
+            frame_kernel_cutout_grid(0, 100, 100, 30),
+            Viewport::default()
+        );
+    }
+    #[test]
+    fn optimized_projection_is_exact_against_original_sampling() {
+        for &(sw, sh, pad_x, pad_y) in &[
+            (768, 432, 0., 140.),
+            (432, 768, 140., 0.),
+            (640, 640, 0., 0.),
+        ] {
+            let t = Transform {
+                source_width: sw,
+                source_height: sh,
+                scale: 640. / sw.max(sh) as f32,
+                pad_left: pad_x,
+                pad_top: pad_y,
+                input_size: 640,
+                proto_size: 160,
+            };
+            let mut state = 42u32;
+            let raw = (0..160 * 160)
+                .map(|_| {
+                    state = state.wrapping_mul(1664525).wrapping_add(1013904223);
+                    (state >> 24) as u8
+                })
+                .collect::<Vec<_>>();
+            for (w, h) in [(1, 1), (257, 143), (216, 384), (384, 216)] {
+                let mut output = vec![0; w * h];
+                assert!(cutout_alpha(&raw, t, w as u32, h as u32, &mut output));
+                for y in 0..h {
+                    for x in 0..w {
+                        let value = mask_sample(
+                            &raw,
+                            t,
+                            (x as f32 + 0.5) / w as f32,
+                            (y as f32 + 0.5) / h as f32,
+                        );
+                        let a = ((value - 96.) / 96.).clamp(0., 1.);
+                        assert_eq!(
+                            output[y * w + x],
+                            (a * a * (3. - 2. * a) * 255.).round() as u8
+                        );
+                    }
+                }
+            }
+        }
     }
     #[test]
     fn fixed_anchor_and_mirror_preserve_translation_and_aspect() {

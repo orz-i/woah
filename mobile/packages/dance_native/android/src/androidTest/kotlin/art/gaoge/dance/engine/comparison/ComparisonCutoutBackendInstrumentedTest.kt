@@ -259,7 +259,13 @@ class ComparisonCutoutBackendInstrumentedTest {
             tmp.writeText(report.toString(2));check(tmp.renameTo(evidence))
         }
         publish(false)
-        for(backend in listOf(LiteRtAccelerator.GPU,LiteRtAccelerator.CPU)){
+        val backends=when(args.getString("backend")){
+            null,"both"->listOf(LiteRtAccelerator.GPU,LiteRtAccelerator.CPU)
+            "cpu"->listOf(LiteRtAccelerator.CPU)
+            "gpu"->listOf(LiteRtAccelerator.GPU)
+            else->error("Invalid QA backend")
+        }
+        for(backend in backends){
             val row=try {
                 runBackend(context,sources,backend,4,root).evidence
             }catch(e:Exception){

@@ -1427,3 +1427,132 @@ repair confirmation, preview restored, a second repair cancelled, then
 ordinary exit and explicit clear/reselect. The controller test also
 covers a late correction reply after cancellation; actual device
 cancel was exercised before applying, not during active model inference.
+
+## Stage C4: performance and alpha projection fidelity
+
+The shared tracking policy, raw model, source sample cadence, association
+thresholds and privacy output policy are unchanged. C4 optimizes the actual
+math: exact raw-mask IoU via high-bit word popcount (same >=128 and
+empty-union semantics), cheap necessary gates before walking full masks,
+reuse of the appearance bank score, and mask-scoped lazy color bins.
+Alpha projection precomputes its separable coordinate mapping and handles
+fully transparent/opaque neighborhoods without repeating bilinear math.
+At the same output grid the numerical result is unchanged.
+
+Android GPU comparison analysis additionally overlaps one next-frame
+decode/conversion with the current inference and association using two
+caller-owned 640x640 RGBA slots. The producer owns the decoder on one
+thread; the consumer processes exact PTS in order and releases a slot
+before it can be reused. The producer closes the decoder before the
+span returns. No concurrent model use, skipped samples, or new
+privacy-path decoder behavior is introduced. CPU prefetch is disabled
+in the final policy after the measured contention regression; CPU retains
+serial decode, GPU remains isolated QA opt-in.
+
+Both platforms choose a shared display-oriented alpha grid (maximum
+long edge 384, then 320 or 256) according to worst-case source frame
+count and initial preview sample count. Each role remains within its
+256 MiB scratch budget including a conservative 3200 byte per-frame
+stamp/record reserve. The initial alpha payload budget is 18 MiB per
+role including that reserve. At 384 the raw alpha footprint is about
+2.25x the old 256 grid; two 32-frame LRU chunks are still bounded.
+Local repair uses the exact existing grid so it can replace records
+without resampling their neighbors. The archive compatibility key
+includes alpha-grid-v2; older alpha archives are invalidated rather
+than silently mixing grids. No learned matte or RGB-guided foreground
+estimation was introduced.
+
+### Same-observation and projection evidence
+
+Baseline library built from C2/C3 unchanged core, candidate C4,
+same pinned model and the two B5 30s source clips. Five alternating
+host trials, all raw selected instance indices (including -1)
+identical for all 1500 source samples. On every selected sample,
+optimized fixed-grid alpha was byte-exact at the original 256 grid.
+
+| Metric | Breaking | Vogue |
+| --- | ---: | ---: |
+| Selected indices identical | 750/750 | 750/750 |
+| Fixed-grid alpha exact | 648/648 | 556/556 |
+| Tracker median baseline | 424.428ms | 49.522ms |
+| Tracker median C4 | 170.733ms | 29.290ms |
+| Alpha generation baseline 256 (all selected) | 146.816ms | 193.368ms |
+| Alpha generation C4 256 | 29.520ms | 31.960ms |
+| Alpha generation C4 384 | 61.514ms | 66.701ms |
+| Dense-reference edge samples | 82 | 68 |
+| Edge MAE 256 vs dense 1024 reference | 13.900 | 20.985 |
+| Edge MAE 384 vs dense 1024 reference | 6.776 | 10.749 |
+
+The dense projection uses the same raw detector mask and confidence-to-alpha
+mapping. The metric measures interpolation fidelity on the union of
+non-binary edge regions; it is not human-annotated matte accuracy.
+The source model's 160x160 prototype grid is unchanged. No evidence
+of recovered undetected fingers, hair, or occluded limbs is claimed.
+
+Reproduce the host run with the two exact B5 files and the saved prior
+release library:
+```sh
+python tools/comparison/benchmark_cutout_core.py \
+  --baseline-library /path/to/c3/libframe_kernel.dylib \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --manifest testdata/comparison/real-dance-b5.json \
+  --media /path/to/exact/tested/mp4s --output /tmp/c4-core.json
+```
+
+### Android paired device benchmark
+
+OnePlus 8T, 6-second continuous initial segment of each B5 clip,
+150 frames per role at 25fps, anchor 3s, actual GPU then CPU4. All
+300 availability flags identical between the old grid and the
+new grid on each backend. Both candidate grids were 384x216
+(82,944 bytes/sample). At a common 768x432 interpolation grid, mean
+threshold-128 IoU old/new was 0.99013/0.96327 (GPU Breaking/Vogue)
+and 0.98959/0.96248 (CPU Breaking/Vogue); grid changes alter boundary
+values even with equal source identity. The host same-observation
+comparison above is the exact identity-index check.
+
+| Analysis metric | C3 serial 256 | C4 trial prefetch 384 |
+| --- | ---: | ---: |
+| GPU full analysis | 26.120s | 21.178s |
+| GPU initial neighborhood | 5.835s | 4.844s |
+| CPU4 full analysis | 38.364s | 42.320s |
+| CPU4 initial neighborhood | 7.742s | 8.684s |
+
+GPU per-role summed tracking stage 271 -> 99ms, projection
+385 -> 97ms despite the larger grid, appearance observation construction
+616 -> 262ms. The GPU's total decoder conversion service time rose
+to 10.126s under overlap, but consumer wait for decode was 2.603s
+(the old serial decode+conversion was 7.666s). These timings overlap
+and must not be summed as wall time. CPU prefetch regressed in this
+single device trial and is not the final CPU policy. Battery sensor
+baseline start/end 27.7/29.1 C, trial start/end 28.1/29.5 C; these are
+not thermally controlled repeated end-to-end trials. The measured GPU
+gain applies to this device and input only; no cross-device promise.
+
+Final CPU serial 384-grid retest: 47.853s full analysis, 8.778s
+initial neighborhood, 143/150 Breaking and 42/150 Vogue visible.
+All 300 availability flags still agree with the serial 256 baseline.
+Device sensor 30.7 -> 31.4 C after preceding QA. This run is slower,
+not evidence of CPU end-to-end acceleration. The CPU profile retains
+its original serial decoder policy rather than adopting CPU prefetch;
+the exact host core speedup is independently measured. Thermal control
+and CPU model/decoder throughput remain unresolved.
+
+### Integration and regression
+
+Actual Android CPU app (final serial policy) and iOS simulator completed
+the prior C3 repair/restore/export smoke at the new adaptive grid.
+Android initial-preview cancellation passed (late result rejected,
+ordinary playback restored, reopen clean); Android repair 4.974s,
+iOS repair 2.403s. Both 3-second, 90-frame 320x240 H.264/AAC outputs
+independently decoded with exact PTS and 440Hz tone; unchanged outside
+samples, repair cancel, repaired archive restore, and distinct
+real-person replacement all passed. Android MediaStore file bytes
+matched the local MP4. iOS local file only. GPU prefetch mid-inference
+cancellation was not independently repeated in C4. Rust full suite
+147 passed/1 ignored plus two focused exactness tests passed, Clippy
+clean, Android 28 focused + 3 privacy reference regressions passed,
+macOS host comparison passed, Flutter smoke analyzer clean. No raw
+media or masks were committed. Retain experimental Debug/draft and
+GPU opt-in; independent dense identity/edge holdouts and physical
+iPhone release evidence remain outstanding.

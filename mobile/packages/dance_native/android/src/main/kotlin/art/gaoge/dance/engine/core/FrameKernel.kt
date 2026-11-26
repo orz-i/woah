@@ -35,6 +35,7 @@ internal object FrameKernel {
     }
     external fun cutoutSelectNative(masks:ByteArray,transform:FloatArray,x:Float,y:Float):Int
     external fun cutoutThumbnailNative(mask:ByteArray,transform:FloatArray,rgba:ByteArray,bottomUp:Boolean):IntArray?
+    external fun cutoutGridNative(width:Int,height:Int,frames:Int,previewFrames:Int):IntArray
     external fun cutoutAlphaNative(mask:ByteArray,transform:FloatArray,width:Int,height:Int):ByteArray
     external fun cutoutQuadNative(width:Int,height:Int,aspect:Double,anchor:FloatArray,
         x:Double,y:Double,subjectHeight:Double,mirror:Boolean):FloatArray

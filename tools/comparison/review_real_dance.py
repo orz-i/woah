@@ -27,7 +27,7 @@ def frames(path):
         prior = -1
         for _ in range(count):
             pts, w, h = struct.unpack(">qII", f.read(16))
-            if pts <= prior or ((w, h) != (0, 0) and not (1 <= w <= 256 and 1 <= h <= 256)):
+            if pts <= prior or ((w, h) != (0, 0) and not (1 <= w <= 384 and 1 <= h <= 384)):
                 raise ValueError("Invalid selected-alpha record")
             prior = pts
             n = w * h

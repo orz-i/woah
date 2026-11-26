@@ -116,7 +116,7 @@ final class IOSComparisonCutoutDiskTrack: @unchecked Sendable {
     var value=IOSCutoutBytes()
     value.put(pts);value.put(UInt32(stamp.width));value.put(UInt32(stamp.height));value.putBytes(stamp.samples)
     if let layer {
-      guard layer.valid,layer.sourcePtsUs==pts,layer.width<=256,layer.height<=256 else {throw IOSComparisonCutoutExportUnavailable()}
+      guard layer.valid,layer.sourcePtsUs==pts,layer.width<=384,layer.height<=384 else {throw IOSComparisonCutoutExportUnavailable()}
       value.put(UInt32(layer.width));value.put(UInt32(layer.height));value.putBytes(layer.alpha)
     } else {value.put(UInt32(0));value.put(UInt32(0))}
     records[i]=try disk.append(value.data)
@@ -144,7 +144,7 @@ final class IOSComparisonCutoutDiskTrack: @unchecked Sendable {
           let layer:IOSComparisonCutoutLayer?
           if w==0 && h==0 {layer=nil}
           else {
-            guard (1...256).contains(w),(1...256).contains(h),let fixed else {throw IOSComparisonCutoutExportUnavailable()}
+            guard (1...384).contains(w),(1...384).contains(h),let fixed else {throw IOSComparisonCutoutExportUnavailable()}
             layer=IOSComparisonCutoutLayer(sourcePtsUs:times[j],width:w,height:h,alpha:try data.getBytes(w*h),placement:fixed)
           }
           guard data.remaining==0 else {throw IOSComparisonCutoutExportUnavailable()}

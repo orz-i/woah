@@ -528,6 +528,7 @@ internal class ComparisonSession(
         val expected=ComparisonCutoutAnalysis.window(oldTrack.times,start,end,seed.ptsUs)
         require(expected.size<=600)
         val anchor=if(request.reference)selection.reference.ptsUs else selection.target.ptsUs
+        val grid=requireNotNull(oldTrack.layer(anchor)).let{it.width to it.height}
         val previewStart=sourceTime(maxOf(request.window.startUs,positionUs()-500_000))
         val previewEnd=sourceTime(minOf(request.window.endUs-1,positionUs()+499_999))
         val frozen=original.frozen()
@@ -542,7 +543,7 @@ internal class ComparisonSession(
                 try {
                     initializeCutoutRuntime(segmenter)
                     ComparisonCutoutAnalysis(context).begin(uri,description,start,end,previewStart,previewEnd,
-                        seed,request.reference,mirror,segmenter,current,inspected).use{work->
+                        seed,request.reference,mirror,segmenter,current,inspected,fixedGrid=grid).use{work->
                         work.finish().use{patch->
                             require(patch.layer(seed.ptsUs)!=null)
                             frozen.replacing(request.reference,context.cacheDir,patch,expected,anchor,current).also{pending=it}

@@ -404,11 +404,13 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     let expected=try IOSComparisonCutoutAnalysis.window(oldTrack.times,start:start,end:end,anchor:seed.ptsUs)
     guard expected.count<=600 else{throw IOSComparisonCutoutExportUnavailable()}
     let anchor=request.reference ? selection.reference.ptsUs:selection.target.ptsUs
+    guard let layer=oldTrack.exact(anchor)?.layer else{throw IOSComparisonCutoutExportUnavailable()}
+    let grid=(layer.width,layer.height)
     cutoutRevision &+= 1;let revision=cutoutRevision
     let task=Task.detached(priority:.userInitiated){()->IOSComparisonCutoutCache in
       let work=try IOSComparisonCutoutAnalysis().begin(url:url,index:index,start:start,end:end,
         firstPreview:previewStart,lastPreview:previewEnd,seed:seed,reference:request.reference,mirror:mirror,
-        inspection:inspection,isCancelled:{Task.isCancelled})
+        inspection:inspection,fixedGrid:grid,isCancelled:{Task.isCancelled})
       let patch=try work.finish()
       guard patch.exact(seed.ptsUs)?.layer != nil else{throw IOSComparisonCutoutExportUnavailable()}
       let merged=try oldTrack.replacing(patch,expected:expected,originalAnchor:anchor,current:{!Task.isCancelled})

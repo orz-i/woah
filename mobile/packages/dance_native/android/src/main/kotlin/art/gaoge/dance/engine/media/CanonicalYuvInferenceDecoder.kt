@@ -45,8 +45,10 @@ class CanonicalYuvInferenceDecoder(
     private var outputEos = false
     private var outputFormat: MediaFormat? = null
     private val bufferInfo = MediaCodec.BufferInfo()
-    private val rgbaBuffer = ByteBuffer.allocateDirect(modelInputSize * modelInputSize * 4).apply {
-        order(ByteOrder.nativeOrder())
+    private val rgbaBuffer by lazy {
+        ByteBuffer.allocateDirect(modelInputSize * modelInputSize * 4).apply {
+            order(ByteOrder.nativeOrder())
+        }
     }
     private val conversionWorkspace = CanonicalYuvToRgba.Workspace(modelInputSize)
 
@@ -105,6 +107,16 @@ class CanonicalYuvInferenceDecoder(
         requireExactPts = true
     ).rgbaBuffer
 
+    /** Exact-PTS decode into an exclusively owned caller buffer. The
+     * comparison producer alternates two buffers; other decoder callers
+     * continue to use the original single reusable buffer contract. */
+    internal fun decodeRgbaAtPtsInto(
+        targetPtsUs:Long, mapper:ModelCoordinateMapper, destination:ByteBuffer
+    ):ByteBuffer {
+        require(destination.isDirect && destination.capacity()==modelInputSize*modelInputSize*4)
+        return decodeRgbaFrame(targetPtsUs,mapper,true,destination).rgbaBuffer
+    }
+
     /**
      * Decodes the first display frame at or after [targetPtsUs]. This is used by one-shot
      * analysis where a millisecond trim boundary is not guaranteed to be an exact source PTS.
@@ -121,7 +133,8 @@ class CanonicalYuvInferenceDecoder(
     private fun decodeRgbaFrame(
         targetPtsUs: Long,
         mapper: ModelCoordinateMapper,
-        requireExactPts: Boolean
+        requireExactPts: Boolean,
+        destination:ByteBuffer=rgbaBuffer
     ): DecodedRgbaFrame {
         val decoder = codec ?: error("Canonical inference decoder not prepared")
         var emptyOutputCount = 0
@@ -155,14 +168,14 @@ class CanonicalYuvInferenceDecoder(
                                 ?: error("Canonical decoder returned null YUV image at pts=$ptsUs")
                             CanonicalYuvToRgba.convert(
                                 image = image,
-                                output = rgbaBuffer,
+                                output = destination,
                                 mapper = mapper,
                                 rotationDegrees = rotationDegrees,
                                 colorStandard = colorInt(outputFormat, MediaFormat.KEY_COLOR_STANDARD),
                                 colorRange = colorInt(outputFormat, MediaFormat.KEY_COLOR_RANGE),
                                 workspace = conversionWorkspace
                             )
-                            return DecodedRgbaFrame(ptsUs = ptsUs, rgbaBuffer = rgbaBuffer)
+                            return DecodedRgbaFrame(ptsUs = ptsUs, rgbaBuffer = destination)
                         }
                     } finally {
                         try { image?.close() } catch (_: Throwable) {}

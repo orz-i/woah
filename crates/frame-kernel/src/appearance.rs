@@ -50,36 +50,42 @@ pub fn appearance_features(
     if count == 0 {
         return Some(());
     }
-    let bins = (0..area)
-        .map(|i| {
-            let x = i % n;
-            let y = i / n;
-            let px = ((2 * x + 1) * input / (2 * n)).min(input - 1);
-            let py = ((2 * y + 1) * input / (2 * n)).min(input - 1);
-            let sx = (px as f32 - transform.pad_left) / transform.scale;
-            let sy = (py as f32 - transform.pad_top) / transform.scale;
-            if sx < 0.
-                || sy < 0.
-                || sx >= transform.source_width as f32
-                || sy >= transform.source_height as f32
-            {
-                None
-            } else {
-                Some(color_bin(rgb(px, py)))
-            }
-        })
-        .collect::<Vec<_>>();
+    // Geometry depends on one coordinate only. Lazily compute the color
+    // bin of a cell only if some current mask has >=128 confidence there.
+    // Dense spectators may share a cell, so cache its bin across instances.
+    let coordinates = |source: u32, pad: f32| {
+        (0..n)
+            .map(|i| {
+                let p = ((2 * i + 1) * input / (2 * n)).min(input - 1);
+                let v = (p as f32 - pad) / transform.scale;
+                (v >= 0. && v < source as f32).then_some(p)
+            })
+            .collect::<Vec<_>>()
+    };
+    let xs = coordinates(transform.source_width, transform.pad_left);
+    let ys = coordinates(transform.source_height, transform.pad_top);
+    const UNSEEN: u8 = 255;
+    const PADDING: u8 = 254;
+    let mut bins = vec![UNSEEN; area];
     for (mask, out) in masks
         .chunks_exact(area)
         .zip(output.chunks_exact_mut(APPEARANCE_BINS))
     {
         let mut high = [0u32; APPEARANCE_BINS];
         let mut low = [0u32; APPEARANCE_BINS];
-        for (&m, &bin) in mask.iter().zip(&bins) {
-            if let Some(b) = bin {
-                if m >= 128 {
-                    low[b] += 1;
-                }
+        for (i, (&m, bin)) in mask.iter().zip(&mut bins).enumerate() {
+            if m < 128 {
+                continue;
+            }
+            if *bin == UNSEEN {
+                *bin = match (xs[i % n], ys[i / n]) {
+                    (Some(x), Some(y)) => color_bin(rgb(x, y)) as u8,
+                    _ => PADDING,
+                };
+            }
+            if *bin != PADDING {
+                let b = *bin as usize;
+                low[b] += 1;
                 if m >= 160 {
                     high[b] += 1;
                 }
@@ -140,10 +146,8 @@ impl AppearanceMemory {
             .map(|v| similarity(v, f))
             .fold(0., f32::max)
     }
-    pub fn score(&self, f: &Appearance) -> f32 {
-        0.20 * similarity(&self.anchor, f)
-            + 0.25 * similarity(&self.recent, f)
-            + 0.55 * self.best(f)
+    pub fn score_with_best(&self, f: &Appearance, best: f32) -> f32 {
+        0.20 * similarity(&self.anchor, f) + 0.25 * similarity(&self.recent, f) + 0.55 * best
     }
     pub fn learn(&mut self, f: Appearance) {
         for (r, x) in self.recent.iter_mut().zip(f) {
@@ -151,6 +155,65 @@ impl AppearanceMemory {
         }
         if self.bank.len() < 12 && self.best(&f) < 0.96 {
             self.bank.push(f);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn lazy_foreground_bins_match_eager_reference_including_padding() {
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 2.,
+            source_width: 8,
+            source_height: 4,
+            input_size: 8,
+            proto_size: 8,
+        };
+        let mut state = 19u32;
+        let mut random = || {
+            state = state.wrapping_mul(1664525).wrapping_add(1013904223);
+            (state >> 24) as u8
+        };
+        let rgb = (0..64)
+            .map(|_| [random(), random(), random()])
+            .collect::<Vec<_>>();
+        let mut masks = (0..5 * 64).map(|_| random()).collect::<Vec<_>>();
+        masks[0..64].fill(0);
+        masks[64..128].fill(150); // fallback histogram
+        let mut output = [0.; 5 * APPEARANCE_BINS];
+        appearance_features(t, &masks, 5, |x, y| rgb[y * 8 + x], &mut output).unwrap();
+        for (mask, out) in masks
+            .chunks_exact(64)
+            .zip(output.chunks_exact(APPEARANCE_BINS))
+        {
+            let mut high = [0u32; APPEARANCE_BINS];
+            let mut low = [0u32; APPEARANCE_BINS];
+            for (i, &v) in mask.iter().enumerate() {
+                let y = i / 8;
+                if !(2..6).contains(&y) {
+                    continue;
+                }
+                let b = color_bin(rgb[i]);
+                if v >= 128 {
+                    low[b] += 1;
+                }
+                if v >= 160 {
+                    high[b] += 1;
+                }
+            }
+            let n: u32 = high.iter().sum();
+            let (hist, n) = if n >= 12 {
+                (high, n)
+            } else {
+                let n = low.iter().sum();
+                (low, n)
+            };
+            let expected = hist.map(|c| if n >= 8 { c as f32 / n as f32 } else { 0. });
+            assert_eq!(out, expected);
         }
     }
 }

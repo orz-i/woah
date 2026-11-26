@@ -49,6 +49,7 @@ class _CutoutSmoke extends ChangeNotifier {
   static const persistQa = bool.fromEnvironment('WOAH_CUTOUT_PERSIST_QA');
   static const realQa = bool.fromEnvironment('WOAH_CUTOUT_REAL_QA');
   static const repairQa = bool.fromEnvironment('WOAH_CUTOUT_REPAIR_QA');
+  static const perfQa = bool.fromEnvironment('WOAH_CUTOUT_PERF_QA');
   final api = DanceComparisonApi();
   final previewKey = GlobalKey();
   String status = 'waiting';
@@ -1608,6 +1609,22 @@ class _CutoutSmoke extends ChangeNotifier {
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    if (perfQa) {
+      final file = File('${folder.path}/cancel-report.json');
+      try {
+        file.writeAsStringSync(
+          jsonEncode(await cancellationProbe()),
+          flush: true,
+        );
+      } catch (error) {
+        file.writeAsStringSync(
+          jsonEncode({'passed': false, 'error': '$error'}),
+          flush: true,
+        );
+      }
+      await repairProbe();
+      return;
     }
     if (repairQa) {
       await repairProbe();

@@ -85,7 +85,7 @@ internal class ComparisonCutoutDiskTrack(directory: File, times: List<Long>) : A
         check(!sealed && owners > 0)
         val i = pts.binarySearch(at)
         require(i >= 0 && !known[i])
-        require(w in 1..256 && h in 1..256 && (alpha == null || alpha.size == w*h))
+        require(w in 1..384 && h in 1..384 && (alpha == null || alpha.size == w*h))
         if (placement == null) { placement=fixed; width=w; height=h }
         require(placement == fixed && width == w && height == h)
         if (alpha != null) {

@@ -73,30 +73,44 @@ fn candidate(
     {
         return Evidence::default();
     }
-    let (bi, mi) = overlaps(track, d);
-    let geom = bi
-        .max(mi)
-        .max(overlap_iou(track.predicted_bounds, d.bounds));
-    let app = memory.score(f);
+    // Apply only logically necessary cheap guards before walking the full
+    // mask grid. Do not approximate IoU, or change any score/threshold/tie.
+    let s = scale(track);
+    let gap = elapsed as f32 / 1_000_000.;
+    let dist = distance(track.predicted_bounds, d.bounds) / s;
+    if !chosen {
+        if d.confidence < STRONG_CONF || elapsed > 500_000 || dist > 0.7 {
+            return Evidence::default();
+        }
+    } else if (elapsed <= CONTINUITY_US && dist > 1.25)
+        || (elapsed > CONTINUITY_US
+            && (d.confidence < STRONG_CONF || dist > 1.8_f32.min(0.55 + gap * 0.35)))
+        || (d.confidence < STRONG_CONF && (elapsed > 150_000 || !track.observed_this_frame))
+    {
+        return Evidence::default();
+    }
     let bank = memory.best(f);
+    let app = memory.score_with_best(f, bank);
+    if (!chosen && app < 0.74)
+        || (chosen && elapsed <= CONTINUITY_US && app < 0.66)
+        || (chosen && elapsed > CONTINUITY_US && (bank < 0.82 || app < 0.74))
+    {
+        return Evidence::default();
+    }
     let negative = negatives
         .iter()
         .map(|x| similarity(x, f))
         .fold(0., f32::max);
     let contrast = bank - negative;
-    let s = scale(track);
-    let gap = elapsed as f32 / 1_000_000.;
-    let dist = distance(track.predicted_bounds, d.bounds) / s;
+    if chosen && contrast < -0.035 {
+        return Evidence::default();
+    }
+    let (bi, mi) = overlaps(track, d);
+    let geom = bi
+        .max(mi)
+        .max(overlap_iou(track.predicted_bounds, d.bounds));
     if !chosen {
-        // A competing person must own a continuous, current instance, not
-        // merely look similar to the selected person elsewhere in the frame.
-        // Strong predecessor matches are reserved before the selected row.
-        if d.confidence < STRONG_CONF
-            || elapsed > 500_000
-            || app < 0.74
-            || dist > 0.7
-            || (bi < 0.25 && mi < 0.25)
-        {
+        if bi < 0.25 && mi < 0.25 {
             return Evidence::default();
         }
         let owner = elapsed <= CONTINUITY_US && app >= 0.82 && (mi >= 0.42 || bi >= 0.60);
@@ -109,26 +123,16 @@ fn candidate(
             owner,
         };
     }
-    if contrast < -0.035 {
-        return Evidence::default();
-    }
-    if d.confidence < STRONG_CONF
-        && (elapsed > 150_000 || bi < 0.55 || mi < 0.50 || !track.observed_this_frame)
-    {
+    if d.confidence < STRONG_CONF && (bi < 0.55 || mi < 0.50) {
         return Evidence::default();
     }
     let score = if elapsed <= CONTINUITY_US {
-        if app < 0.66 || dist > 1.25 || (geom < 0.06 && dist > 0.50) {
+        if geom < 0.06 && dist > 0.50 {
             return Evidence::default();
         }
         0.52 * app + 0.29 * geom + 0.15 * (1. - dist).max(0.) + 0.04 * contrast
     } else {
-        if d.confidence < STRONG_CONF
-            || bank < 0.82
-            || app < 0.74
-            || dist > 1.8_f32.min(0.55 + gap * 0.35)
-            || (contrast < -0.03 && (geom < 0.35 || gap > 0.4))
-        {
+        if contrast < -0.03 && (geom < 0.35 || gap > 0.4) {
             return Evidence::default();
         }
         0.65 * app + 0.17 * geom + 0.13 * (1. - dist).max(0.) + 0.05 * contrast

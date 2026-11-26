@@ -16,8 +16,6 @@ import art.gaoge.dance.engine.inference.PersonDetection
 import art.gaoge.dance.engine.inference.YoloLiteRtSegmenter
 import art.gaoge.dance.engine.media.CanonicalYuvInferenceDecoder
 import kotlinx.coroutines.CancellationException
-import kotlin.math.max
-import kotlin.math.roundToInt
 
 internal data class ComparisonCutoutSeed(val ptsUs: Long, val x: Float, val y: Float) {
     init { require(ptsUs >= 0 && x.isFinite() && y.isFinite() && x >= 0 && x < 1 && y >= 0 && y < 1) }
@@ -141,7 +139,6 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     companion object {
         const val MAX_FRAMES = 3600
         private const val MAX_PREFIX_BYTES = 512 * 1024 * 1024L
-        private const val ALPHA_EDGE = 256
 
         fun window(sorted: List<Long>, start: Long, endInclusive: Long, anchor: Long): List<Long> {
             require(start >= 0 && endInclusive >= start && anchor >= 0)
@@ -293,7 +290,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
 
     fun begin(uri: String, description: ComparisonVideoDescription, start: Long,endInclusive: Long,
         firstPreview:Long,lastPreview:Long,seed: ComparisonCutoutSeed, reference: Boolean, mirror: Boolean,
-        segmenter: YoloLiteRtSegmenter,current: () -> Boolean, inspection: Inspection? = null): Work {
+        segmenter: YoloLiteRtSegmenter,current: () -> Boolean, inspection: Inspection? = null,
+        fixedGrid:Pair<Int,Int>?=null): Work {
         val measure=art.gaoge.dance.engine.BuildConfig.DEBUG
         val wallStart=System.nanoTime()
         val timing=linkedMapOf<String,Long>()
@@ -316,15 +314,33 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         val sw=if(swapped)description.height else description.width
         val sh=if(swapped)description.width else description.height
         val mapper=ModelCoordinateMapper(sw,sh)
-        val scale=ALPHA_EDGE.toDouble()/max(sw,sh)
-        val aw=(sw*scale).roundToInt().coerceAtLeast(1)
-        val ah=(sh*scale).roundToInt().coerceAtLeast(1)
+        val dimensions=fixedGrid ?: FrameKernel.cutoutGridNative(sw,sh,times.size,nearby.size).let{it[0] to it[1]}
+        val (aw,ah)=dimensions
+        require(aw in 1..384 && ah in 1..384 &&
+            (aw.toLong()*ah+3200)*times.size<=256L*1024*1024 &&
+            (aw.toLong()*ah+3200)*nearby.size<=18L*1024*1024)
         val layers=ComparisonCutoutDiskTrack(context.cacheDir,times)
         val forward=try{FrameKernel.DanceCutoutTrack()}catch(e:Throwable){layers.close();throw e}
         val reverse=try{FrameKernel.DanceCutoutTrack()}catch(e:Throwable){forward.close();layers.close();throw e}
         val small=HashMap<Long,ComparisonCutoutLayer?>()
         var placement:ComparisonCutoutPlacement?=null
         var prefixBytes=0L
+        // Device A/B showed CPU contention with its four inference threads.
+        // Prefetch only for effective GPU, keeping CPU on its serial path.
+        val prefetch=segmenter.effectiveAccelerator==art.gaoge.dance.engine.litert.LiteRtAccelerator.GPU
+        val decodeBuffers=if(prefetch) Array(2){ByteBuffer.allocateDirect(mapper.modelInputSize*mapper.modelInputSize*4)} else null
+        fun observe(pts:Long,frame:ByteBuffer,consume:(Observation)->Unit){
+            checkCurrent(current)
+            val inspected=inspection?.takeIf { it.seed==seed && pts==seed.ptsUs }
+            require(inspected==null || inspected.sourceDigest.contentEquals(digest(frame))) { "选人画面已变化，请重新选择" }
+            val observation=inspected?.observation ?: run {
+                val detected=timed("segmentTotal"){segmenter.segmentGlReadbackRgbaSync(frame,mapper,pts,
+                    confidenceThreshold=if(pts==seed.ptsUs) .25f else .20f)}
+                if(measure)detected.stageTimingsMs.forEach{(name,ms)->addTime(name,ms*1_000_000)}
+                timed("observation"){Observation(pts,detected.persons,mapper,frame)}
+            }
+            consume(observation)
+        }
         fun add(o:Observation,index:Int,initial:Boolean) {
             checkCurrent(current)
             val alpha=if(index<0)null else timed("alpha"){o.alpha(index,aw,ah)}
@@ -335,22 +351,57 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         }
         fun decode(from:Int,to:Int,consume:(Observation)->Unit) {
             if(from>=to)return
-            CanonicalYuvInferenceDecoder(context,uri,description.rotation,startUs=times[from]).use { decoder ->
-                decoder.prepare()
+            val buffers=decodeBuffers
+            if(buffers==null || to-from==1){
+                CanonicalYuvInferenceDecoder(context,uri,description.rotation,startUs=times[from]).use{decoder->
+                    decoder.prepare()
+                    for(i in from until to){
+                        checkCurrent(current)
+                        val pts=times[i]
+                        observe(pts,timed("decodeAndConvert"){decoder.decodeRgbaAtPts(pts,mapper)},consume)
+                    }
+                }
+                return
+            }
+            val producer=java.util.concurrent.Executors.newSingleThreadExecutor{job->
+                Thread(job,"WoahCutoutDecode").apply{isDaemon=true}
+            }
+            var decoder:CanonicalYuvInferenceDecoder?=null // producer only
+            data class Decoded(val pts:Long,val buffer:ByteBuffer,val elapsed:Long)
+            fun submit(i:Int)=producer.submit(java.util.concurrent.Callable{
+                checkCurrent(current)
+                val value=decoder ?: CanonicalYuvInferenceDecoder(context,uri,description.rotation,startUs=times[from]).also{
+                    decoder=it;it.prepare()
+                }
+                val start=System.nanoTime()
+                val pts=times[i]
+                val frame=value.decodeRgbaAtPtsInto(pts,mapper,buffers[(i-from)%2])
+                Decoded(pts,frame,System.nanoTime()-start)
+            })
+            try {
+                var next=submit(from)
                 for(i in from until to){
                     checkCurrent(current)
-                    val pts=times[i]
-                    val frame=timed("decodeAndConvert"){decoder.decodeRgbaAtPts(pts,mapper)}
-                    val inspected=inspection?.takeIf { it.seed==seed && pts==seed.ptsUs }
-                    require(inspected==null || inspected.sourceDigest.contentEquals(digest(frame))) { "选人画面已变化，请重新选择" }
-                    val observation=inspected?.observation ?: run {
-                        val detected=timed("segmentTotal"){segmenter.segmentGlReadbackRgbaSync(frame,mapper,pts,
-                            confidenceThreshold=if(pts==seed.ptsUs) .25f else .20f)}
-                        if(measure)detected.stageTimingsMs.forEach{(name,ms)->addTime(name,ms*1_000_000)}
-                        timed("observation"){Observation(pts,detected.persons,mapper,frame)}
-                    }
-                    consume(observation)
+                    val decoded=timed("decodeWait"){next.get()}
+                    require(decoded.pts==times[i])
+                    addTime("decodeAndConvert",decoded.elapsed)
+                    // The next task owns the other buffer. We consume this
+                    // frame completely before its slot can be reused.
+                    if(i+1<to)next=submit(i+1)
+                    observe(decoded.pts,decoded.buffer,consume)
                 }
+            }finally{
+                // Wait for an in-flight decode, then close on its own thread.
+                // Do not release/reuse the buffers while the producer owns them.
+                val cleanup=producer.submit{decoder?.close();decoder=null}
+                producer.shutdown()
+                var interrupted=false
+                try{
+                    while(true){
+                        try{cleanup.get();break}
+                        catch(_:InterruptedException){interrupted=true}
+                    }
+                }finally{if(interrupted)Thread.currentThread().interrupt()}
             }
         }
         fun backwards(from:Int,to:Int,initial:Boolean) {
@@ -394,7 +445,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                     android.util.Log.i("WoahCutoutPerf",org.json.JSONObject()
                         .put("role",if(reference)"reference" else "target").put("frames",times.size)
                         .put("visible",layers.visibleCount).put("alphaDiskBytes",layers.bytes)
-                        .put("accelerator",segmenter.effectiveAccelerator.toString())
+                        .put("accelerator",segmenter.effectiveAccelerator.toString()).put("decodePrefetch",prefetch)
                         .put("wallMs",(System.nanoTime()-wallStart)/1_000_000)
                         .put("prefixBytes",prefixBytes).put("alphaBytesPerFrame",aw*ah)
                         .put("stageMs",stages).toString())
