@@ -1319,6 +1319,53 @@ class _CutoutSmoke extends ChangeNotifier {
         });
       }
       row['samples'] = samples;
+      final reviewLayout = config['referenceReviewLayout'];
+      if (reviewLayout != null) {
+        require(
+          reviewLayout is List &&
+              reviewLayout.length == 3 &&
+              reviewLayout.every((v) => v is num && v.isFinite),
+          'Invalid reference-only review layout',
+        );
+        final values = (reviewLayout as List).cast<num>();
+        await ready(
+          await host(
+            api.setCutoutLayout(
+              ComparisonCanvasLayoutDto(
+                reference: ComparisonCanvasLayerDto(
+                  x: values[0].toDouble(),
+                  y: values[1].toDouble(),
+                  height: values[2].toDouble(),
+                  opacity: 1,
+                  mirror: false,
+                ),
+                target: ComparisonCanvasLayerDto(
+                  x: .5,
+                  y: .85,
+                  height: .3,
+                  opacity: 0,
+                  mirror: false,
+                ),
+                targetOnTop: false,
+                background: 0,
+              ),
+            ),
+          ),
+        );
+        final review = <Map<String, Object?>>[];
+        for (final us in times) {
+          final frame = await ready(
+            await host(api.control(ComparisonCommand.seek, us, 1)),
+          );
+          review.add({
+            'positionUs': us,
+            'pts': [frame.teacherFrameUs, frame.learnerFrameUs],
+            ...await capture('real-reference-review-us-$us'),
+          });
+        }
+        row['referenceReviewLayout'] = values;
+        row['referenceReviewSamples'] = review;
+      }
       final full =
           result.referenceVisible == result.referenceFrames &&
           result.targetVisible == result.targetFrames;

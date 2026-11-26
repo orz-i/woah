@@ -141,14 +141,24 @@ def main():
     p.add_argument("--manifest",required=True,type=Path);p.add_argument("--media",required=True,type=Path)
     p.add_argument("--library",required=True,type=Path);p.add_argument("--output",required=True,type=Path)
     p.add_argument("--scheduled",action="store_true",help="also compare the bounded failure-backoff policy, sharing exact local observations")
+    p.add_argument("--baseline-library",type=Path,help="compare two compatible FrameKernel builds with the scheduled ROI pipeline on identical full observations")
     p.add_argument("--no-sheets",action="store_true",help="skip rendering contact sheets")
-    a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True)
+    a=p.parse_args()
+    if a.baseline_library and a.scheduled:p.error("choose scheduler A/B or two-library association A/B")
+    a.output.mkdir(parents=True,exist_ok=True)
     mfest=json.loads(a.manifest.read_text())
     model=m.ROOT/"models/litert/yolo11n-seg-fp16.tflite"
     assert hashlib.sha256(model.read_bytes()).hexdigest()==mfest["modelSha256"]
     lib=m.api(a.library);bind_detail(lib)
     runner=Interpreter(model_path=str(model),num_threads=4);runner.allocate_tensors()
     report={"roles":{},"hostOnly":True}
+    previous=None
+    if a.baseline_library:
+        previous=m.api(a.baseline_library);bind_detail(previous)
+        report.update(baselineLibrarySha256=hashlib.sha256(a.baseline_library.read_bytes()).hexdigest(),
+            candidateLibrarySha256=hashlib.sha256(a.library.read_bytes()).hexdigest(),
+            manifestSha256=hashlib.sha256(a.manifest.read_bytes()).hexdigest(),
+            associationAB=True)
     for role,s in mfest["sources"].items():
         path=a.media/s["file"]
         assert hashlib.sha256(path.read_bytes()).hexdigest()==s["testedMp4Sha256"]
@@ -158,13 +168,17 @@ def main():
         seed=lib.frame_kernel_cutout_select(m.ptr(raw),raw.size,t,*s["seed"]);assert seed>=0
         row={}
         baseline=None; prior_detail=None
-        variants=[("fullOnly",False,False),("detail",True,False)]
-        if a.scheduled:variants.append(("scheduled",True,True))
-        local_cache={} if a.scheduled else None
-        for key,enable,scheduled in variants:
-            records,timing=replay(lib,runner,path,obs,anchor,seed,enable,scheduled,local_cache)
+        variants=[("fullOnly",lib,False,False),("detail",lib,True,False)]
+        if a.scheduled:variants.append(("scheduled",lib,True,True))
+        if previous is not None:
+            variants=[("baseline",previous,True,True),("candidate",lib,True,True)]
+        local_cache={} if a.scheduled or previous is not None else None
+        for key,engine,enable,scheduled in variants:
+            records,timing=replay(engine,runner,path,obs,anchor,seed,enable,scheduled,local_cache)
             stats=assess(records,mfest["annotations"][role],mfest["durationUs"])
-            if baseline is None:baseline=records
+            if previous is not None:
+                if key=="baseline":prior_detail=records
+            elif baseline is None:baseline=records
             else:
                 # Local fill is output-only. All formerly visible full-frame
                 # masks must remain byte-exact; no availability regression.
@@ -172,7 +186,7 @@ def main():
                 assert all(y is not None and np.array_equal(x,y) for _,x,y in retained), "Detail changed canonical full-frame outputs"
                 stats["exactBaselineVisibleFrames"]=len(retained)
             if key=="detail":prior_detail=records
-            if scheduled:
+            if scheduled and key!="baseline":
                 assert prior_detail is not None
                 shared=[(p,x,y) for (p,x),(q,y) in zip(prior_detail,records) if x is not None]
                 stats["priorDetailVisible"]=len(shared)

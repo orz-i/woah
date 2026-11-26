@@ -163,6 +163,37 @@ fn candidate(
     }
 }
 
+/// A stale competing owner may not steal the incumbent selected track
+/// solely by bbox overlap. Release only when the current *raw* mask
+/// uniquely supports the more recent observed selected identity.
+fn incumbent_continuity(
+    selected: &Track,
+    competitor: &Track,
+    observation: &Detection,
+    at: i64,
+    chosen_score: f32,
+    chosen_margin: f32,
+) -> bool {
+    let (Some(a), Some(b)) = (&selected.appearance, &competitor.appearance) else {
+        return false;
+    };
+    let age = at - a.last_seen;
+    if !selected.observed_this_frame
+        || age <= 0
+        || age > CONTINUITY_US
+        || b.last_seen >= a.last_seen
+        || observation.confidence < STRONG_CONF
+        || chosen_score < 0.40
+        || chosen_margin < MARGIN
+        || overlap_iou(selected.observed_bounds, competitor.observed_bounds) < 0.20
+    {
+        return false;
+    }
+    let (_, own) = overlaps(selected, observation);
+    let (_, rival) = overlaps(competitor, observation);
+    own >= 0.45 && own - rival >= 0.15
+}
+
 impl Tracker {
     pub(crate) fn initialize_appearance(
         &mut self,
@@ -251,6 +282,7 @@ impl Tracker {
             .collect::<Vec<Vec<f32>>>();
         let mut owned = BTreeSet::new();
         let mut assigned = Vec::new();
+        let incumbent = vec![evidence[chosen].iter().map(|e| e.score).collect::<Vec<_>>()];
         for (r, c) in pairs(&matrix, 0.55) {
             let row = competitors[r];
             let rank = ranking(&matrix, r, c);
@@ -260,7 +292,17 @@ impl Tracker {
                 && rank.col_margin >= MARGIN
             {
                 if evidence[row][c].owner {
-                    owned.insert(c);
+                    let rank = ranking(&incumbent, 0, c);
+                    if !incumbent_continuity(
+                        &self.tracks[chosen],
+                        &self.tracks[row],
+                        &d[c],
+                        at,
+                        rank.score,
+                        rank.row_margin,
+                    ) {
+                        owned.insert(c);
+                    }
                 }
                 assigned.push((row, c));
             }
@@ -397,5 +439,168 @@ impl Tracker {
             t.appearance = Some(AppearanceMemory::new(f[c], at));
         }
         Some(selected)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{appearance::APPEARANCE_BINS, geometry::Transform, tracking::Mask};
+    use std::sync::Arc;
+
+    fn observation(bounds: Rect, left: usize, right: usize) -> Detection {
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 0.,
+            source_width: 160,
+            source_height: 160,
+            input_size: 160,
+            proto_size: 16,
+        };
+        let raw = (0..256)
+            .map(|i| {
+                if (left..right).contains(&(i % 16)) && (2..12).contains(&(i / 16)) {
+                    255
+                } else {
+                    0
+                }
+            })
+            .collect::<Vec<u8>>();
+        Detection {
+            bounds,
+            confidence: 0.9,
+            foot_y: bounds.bottom,
+            mask: Some(Mask {
+                width: 16,
+                height: 16,
+                pixels: Arc::from(raw),
+                transform: t,
+            }),
+        }
+    }
+
+    #[test]
+    fn stale_box_owner_yields_only_to_unique_fresher_raw_mask() {
+        let selected = observation(
+            Rect {
+                left: 20.,
+                top: 20.,
+                right: 100.,
+                bottom: 120.,
+            },
+            2,
+            8,
+        );
+        let competitor = observation(
+            Rect {
+                left: 30.,
+                top: 20.,
+                right: 110.,
+                bottom: 120.,
+            },
+            6,
+            11,
+        );
+        let current = observation(
+            Rect {
+                left: 30.,
+                top: 20.,
+                right: 110.,
+                bottom: 120.,
+            },
+            3,
+            9,
+        );
+        let mut f = [0.; APPEARANCE_BINS];
+        f[0] = 1.;
+        let mut a = Track::observed(0, selected.clone());
+        let mut b = Track::observed(1, competitor.clone());
+        a.appearance = Some(AppearanceMemory::new(f, 40_001));
+        b.appearance = Some(AppearanceMemory::new(f, 1));
+        b.observed_this_frame = false;
+        assert!(incumbent_continuity(&a, &b, &current, 80_001, 0.8, 0.2));
+        assert!(!incumbent_continuity(&a, &b, &current, 80_001, 0.8, 0.01));
+        assert!(!incumbent_continuity(&a, &b, &competitor, 80_001, 0.8, 0.2));
+        let mut weak = current.clone();
+        weak.confidence = 0.22;
+        assert!(!incumbent_continuity(&a, &b, &weak, 80_001, 0.8, 0.2));
+        b.appearance.as_mut().unwrap().last_seen = 40_001;
+        assert!(!incumbent_continuity(&a, &b, &current, 80_001, 0.8, 0.2));
+        b.appearance.as_mut().unwrap().last_seen = 1;
+        assert!(!incumbent_continuity(&a, &b, &current, 240_001, 0.8, 0.2));
+        a.observed_this_frame = false;
+        assert!(!incumbent_continuity(&a, &b, &current, 80_001, 0.8, 0.2));
+    }
+
+    #[test]
+    fn crossing_owner_release_preserves_incumbent_and_does_not_learn_competitor() {
+        let a = observation(
+            Rect {
+                left: 20.,
+                top: 20.,
+                right: 100.,
+                bottom: 120.,
+            },
+            2,
+            8,
+        );
+        let b = observation(
+            Rect {
+                left: 30.,
+                top: 20.,
+                right: 110.,
+                bottom: 120.,
+            },
+            6,
+            11,
+        );
+        let current = observation(
+            Rect {
+                left: 30.,
+                top: 20.,
+                right: 110.,
+                bottom: 120.,
+            },
+            3,
+            9,
+        );
+        let mut f = [0.; APPEARANCE_BINS];
+        f[0] = 1.;
+        let mut tracker = Tracker::new(crate::tracking::TrackingConfig::default());
+        tracker
+            .initialize_appearance(&[a.clone(), b.clone()], &[f, f], 0)
+            .unwrap();
+        tracker.tracks[0].appearance.as_mut().unwrap().last_seen = 40_001;
+        tracker.tracks[0].filter.init(a.bounds, 40_001);
+        tracker.tracks[1].observed_this_frame = false;
+        let clock = CutoutClock {
+            chosen: 0,
+            anchor: 0,
+            last: 40_000,
+            direction: 1,
+            transform: a.mask.as_ref().unwrap().transform,
+            anchor_bounds: a.bounds,
+            initial_competitors: vec![f],
+        };
+        let mut pending = None;
+        assert_eq!(
+            tracker.update_cutout(
+                std::slice::from_ref(&current),
+                &[f],
+                80_001,
+                &clock,
+                &mut pending
+            ),
+            Some(Some(0))
+        );
+        let selected = tracker.tracks.iter().find(|t| t.id == 0).unwrap();
+        let competitor = tracker.tracks.iter().find(|t| t.id == 1).unwrap();
+        assert_eq!(selected.observed_bounds, current.bounds);
+        assert_eq!(selected.appearance.as_ref().unwrap().last_seen, 80_001);
+        assert_eq!(competitor.observed_bounds, b.bounds);
+        assert_eq!(competitor.appearance.as_ref().unwrap().last_seen, 1);
+        assert_eq!(competitor.state, TrackState::Lost);
+        assert!(!competitor.observed_this_frame);
     }
 }

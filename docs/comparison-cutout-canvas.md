@@ -2509,3 +2509,198 @@ gap 1.92 -> 0.72s. All four native full observation streams contain
 instrumentation completed and reported effective requested backends.
 The observation-capture run timing is deliberately not a performance
 benchmark; compression and device thermal state differ from C7.3.
+
+## Stage C8.2: protect the selected incumbent during competing ownership
+
+C8.1 fixed a background-size identity failure, but did not address the
+Basque crossing. Use the four captured C8.1 native full-observation
+streams (CPU/GPU, both roles; 300 exact source PTS each) instead of
+re-running YOLO for every association experiment.
+
+### Root cause
+
+In the Basque formation change, the selected blue-shawl dancer passes
+another dancer with overlapping bounds and separate, partially occluded
+masks. The competitor had missed the immediately preceding observation.
+The next current candidate was a unique strong match for the selected
+incumbent; on the actual GPU records its raw-mask IoU with the selected
+previous observation is 0.502, versus 0.260 with the older competitor
+mask. The two previous boxes overlap substantially. Nevertheless the
+competitor's bbox-continuity rule marks the candidate owned, suppresses
+the selected row, and commits that candidate to the competitor. Subsequent
+detections of the blue-shawl dancer remain owned by that competitor; the
+selected lane eventually confirms a wrong red-shawl candidate. The
+selected Kalman box also lags the fast transverse motion. This diagnosis
+is based on the actual observation records and temporary host-only
+association traces, not an assumption from output counts. Trace logging
+is not part of the retained implementation.
+
+### Retained fix
+
+Before zeroing selected-row evidence for a reciprocal competing owner,
+allow a narrowly bounded incumbent continuity exception, only when:
+
+- selected was observed in the preceding analysis step and its
+  observation age is at most the existing 160 ms continuity bound;
+- the competing track's last observation is strictly older;
+- the current detection passes strong confidence, existing selected
+  association score >= 0.40, and the original selected row has the
+  established unique-candidate margin >= 0.045;
+- selected and competitor last observed boxes overlap by IoU >= 0.20;
+- selected raw mask IoU >= 0.45, and exceeds competitor raw mask IoU
+  by at least 0.15.
+
+This refutes stale *box-based* ownership only in a genuine conflict
+with strong current-mask evidence. It cannot release equal-age/newer
+competitor ownership, override a stronger competing mask, seed an
+identity, bypass lost-track two-observation confirmation, or emit a
+predicted mask. The ordinary one-to-one assignment and observation
+commit still select at most one track per current instance. The released
+competitor cannot learn the incumbent's current observation. No new
+motion filter, descriptor, model, or tracking table; no changes to
+the privacy association profile. The native cache key adds
+identity-incumbent-v1. Two focused tests cover strict release
+preconditions, actual association, and non-mutation of the rival
+track. This is a conservative heuristic, not a universal proof of
+identity correctness during arbitrary occlusion.
+
+### Exact native full-observation A/B (C8.1 -> C8.2)
+
+| Role/backend | Full-only output masks | Selected point hits | Annotated distractor hits | Longest unavailable span |
+| --- | ---: | ---: | ---: | ---: |
+| Basque CPU4 | 287 -> 298/300 | 6/11 -> 10/11 | 3/11 -> 0/11 | 0.36 -> 0.04s |
+| Basque GPU | 272 -> 281/300 | 6/11 -> 10/11 | 3/11 -> 0/11 | 0.72 -> 0.72s |
+| Swing CPU4 | 240 -> 240/300 | 10/12 unchanged | 0/12 unchanged | 0.72s unchanged |
+| Swing GPU | 243 -> 243/300 | 10/12 unchanged | 0/12 unchanged | 0.72s unchanged |
+
+These are exact paired full-frame replays on the saved native
+observations, not new mobile runs or ROI-inclusive metrics. The three
+previously incorrect annotated red-shawl outputs are removed. The
+remaining 0s Basque checkpoint is not recovered. Sparse annotations
+do not establish dense identity ground truth.
+
+### Host complete scheduled ROI regression
+
+Both libraries used the same full detector and appearance observations,
+sharing local detections where the requested ROI matches. All 2700
+source sample positions across the six previously seen clips and
+all 2367 previously visible alpha buffers are unchanged, including
+absence markers. No new or missing masks. No change in selected
+or annotated distractor checks, longest gaps or ROI attempt counts.
+
+| Scene | Unchanged output masks | Prior valid alpha exact |
+| --- | ---: | ---: |
+| Basque | 280/300 | 280/280 |
+| Swing | 254/300 | 254/254 |
+| Baganda | 290/300 | 290/290 |
+| Danzón | 300/300 | 300/300 |
+| Breaking | 660/750 | 660/660 |
+| Vogue | 583/750 | 583/583 |
+
+The host Basque trajectory was already correct at the crossing
+with C8.1; the native observation comparison is essential to
+exercise the failure. No inference or throughput claim from host
+cached replay. These are development clips, not fresh holdout
+acceptance.
+
+Reproduce using the existing C8.1 captured QA observation streams
+and the prior C8.1 library:
+```sh
+python tools/comparison/replay_native_observations.py \
+  --evidence /path/to/c81-device \
+  --manifest testdata/comparison/real-dance-c73-holdout.json \
+  --baseline-library /path/to/c81/libframe_kernel.dylib \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c82-native-replay.json
+```
+The host complete scheduled A/B is reproducible with the new
+two-library option in the existing replay tool, for the C7.3,
+C5 or B5 manifests and exact fixture videos:
+```sh
+python tools/comparison/replay_adaptive_detail.py \
+  --manifest testdata/comparison/real-dance-c73-holdout.json \
+  --media /path/to/c73-media \
+  --baseline-library /path/to/c81/libframe_kernel.dylib \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c82-host-ab --no-sheets
+```
+Both builds must have compatible observation/appearance ABI and local
+mask remapping. A/B reports record library/manifest hashes and
+lost/changed/new PTS instead of asserting identity equality after
+an association change. No media/observations committed.
+
+### Actual device results
+
+The new Android GPU build on the same Basque/Swing 12-second pair
+reported effective GPU and completed both 300-PTS lanes without
+detail decode/inference exceptions. Basque 272 -> 281/300;
+selected checks 6/11 -> 10/11 and all three annotated red-shawl
+distractor hits removed. Mean approximate contour IoU over the
+three frozen silhouettes 0.5450 -> 0.8257, boundary F1 0.3873 ->
+0.6088. The post-crossing 9s contour goes from zero to 0.842.
+No old available frame becomes unavailable; 9 extra frames.
+The 98 changed common-visible masks reflect the changed
+post-crossing identity trajectory, not fixed-grid interpolation.
+All 300 Swing record positions (including unavailable records)
+are byte-identical to C8.1. The remaining missed points on the
+pair (one Basque, two Swing) have no current output, rather
+than an annotated distractor. This is sparse evidence, not
+dense confirmation of all accepted masks.
+
+Android CPU4 Basque likewise 287 -> 298/300, selected checks
+6/11 -> 10/11, distractor checks 3/11 -> 0/11, all 11 additional
+frames with no formerly available frame lost. Longest missing
+run 0.36 -> 0.04s, mean approximate contour IoU 0.5443 -> 0.8249,
+boundary F1 0.3865 -> 0.6083. The 9s contour is now 0.842.
+No new model or backend default policy. Prior C8.1 Android
+timings included gzip observation capture and cannot support a
+performance A/B with this run.
+
+The iOS actual simulator full+detail probe completed with
+281/300 + 255/300, up from 270/300 + 255/300. All 24 sampled
+source timestamps exact, incomplete archive/export refused and
+ordinary playback restored. At the crossing, the visible
+reference output returns to the blue-shawl dancer. The default
+fixed placement causes a large source-space movement to run off
+the canvas in later samples; black canvas pixels do not prove
+an absent mask or correct identity. A separate optional QA-only
+referenceReviewLayout in the real-dance driver scales and
+positions the reference, hides the target, and captures another
+set of the same exact-PTS samples without changing normal
+preview layout or production behavior. The format is [x,y,height]
+in the existing normalized layout coordinates; for this fixture
+[.18,.83,.30]. The first extra QA run accidentally staged the
+config under the wrong filename; it repeated the normal probe.
+The corrected QA config is staged as real-dance-config.json.
+
+The corrected iOS QA configuration completed with the same
+281/300 + 255/300 visibility and passed ordinary restore and
+incomplete archive/export refusal. All 24 normal and 24 isolated
+reference canvas captures matched the requested exact source PTS.
+Visual inspection of the reduced-scale reference-only samples at
+8, 9, 10 and 11 seconds confirms the blue-shawl dancer rather
+than the previously selected red-shawl distractor. This is
+actual rendered-frame evidence, not raw-mask equality on iOS.
+Default placement remains unchanged; large transverse motion can
+move a subject outside the canvas and requires layout adjustment.
+
+Final Android CPU/GPU completed, both effective as requested.
+CPU Swing 243/300 and GPU Swing 244/300, with each complete
+300-record alpha file byte-identical to its C8.1 baseline.
+Both Android backends' remaining three missed selected-point
+checks are absent current masks, not annotated wrong subjects.
+Rust full suite 157 passed/1 ignored, Clippy all targets clean
+(after replacing a test-only unnecessary clone); Android 28
+focused + 3 frozen privacy reference tests passed; iOS actual
+player/texture and scoped Flutter analyzer passed. Replayed
+two-library tool verified on the C7.3 pair. Device diagnostics
+were stored locally only. No new source media or alpha files
+committed.
+
+The two identified C7.3 identity-failure mechanisms now have
+targeted device evidence of improvement, not an assertion
+that all real scenes are solved. C8.3 must freeze the candidate
+and use truly unseen material with identity/edge assessment.
+Incomplete export remains blocked, physical iPhone and full
+rotated-container/active ROI inference cancellation acceptance
+remain outstanding. Keep Debug/draft and CPU4 default/GPU QA.
