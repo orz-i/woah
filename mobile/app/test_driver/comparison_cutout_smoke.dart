@@ -44,6 +44,7 @@ Future<void> main() async {
 
 class _CutoutSmoke extends ChangeNotifier {
   static const extended = bool.fromEnvironment('WOAH_CUTOUT_EXTENDED_QA');
+  static const fullLength = bool.fromEnvironment('WOAH_CUTOUT_FULL_QA');
   final api = DanceComparisonApi();
   final previewKey = GlobalKey();
   String status = 'waiting';
@@ -56,7 +57,7 @@ class _CutoutSmoke extends ChangeNotifier {
   }
 
   Future<T> host<T>(Future<T> value) =>
-      value.timeout(const Duration(seconds: 90));
+      value.timeout(Duration(seconds: fullLength ? 600 : 90));
   Future<ComparisonPlaybackDto> ready(ComparisonPlaybackDto s) async {
     final until = DateTime.now().add(const Duration(seconds: 30));
     while (s.phase != 'paused' ||
@@ -76,7 +77,11 @@ class _CutoutSmoke extends ChangeNotifier {
 
   void publish(bool finished) {
     File(
-      '${folder.path}/${extended ? 'extended-report' : 'report'}.json',
+      '${folder.path}/${fullLength
+          ? 'full-report'
+          : extended
+          ? 'extended-report'
+          : 'report'}.json',
     ).writeAsStringSync(
       jsonEncode({
         'finished': finished,
@@ -332,7 +337,12 @@ class _CutoutSmoke extends ChangeNotifier {
       'mirrorTeacher': false,
       'mirrorLearner': target.contains('variant'),
     });
-    for (final us in [start, start + 400000, start + 800000]) {
+    for (final us in [
+      start,
+      start + 400000,
+      start + 800000,
+      if (fullLength) ...[start + 1066667, start + 5000000, end - 100000],
+    ]) {
       await ready(await host(api.control(ComparisonCommand.seek, us, 1)));
       await capture('$id-export-preview-${us - start}');
     }
@@ -521,8 +531,8 @@ class _CutoutSmoke extends ChangeNotifier {
       require(
         result.referenceVisible == result.referenceFrames &&
             result.targetVisible == result.targetFrames &&
-            result.referenceFrames >= 29 &&
-            result.targetFrames >= 29,
+            result.referenceFrames >= (fullLength ? 360 : 29) &&
+            result.targetFrames >= (fullLength ? 360 : 29),
         'Some tracked frames were missing',
       );
       final start = window?.$1 ?? 0;
@@ -725,6 +735,25 @@ class _CutoutSmoke extends ChangeNotifier {
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    if (fullLength) {
+      require(
+        File('${folder.path}/long-source.mp4').existsSync() &&
+            File('${folder.path}/long-variant.mp4').existsSync(),
+        'Full fixtures missing',
+      );
+      await probe(
+        'full-length',
+        'long-variant.mp4',
+        .324,
+        10000000,
+        source: 'long-source.mp4',
+        exportWidth: 1440,
+        exportHeight: 1080,
+      );
+      status = 'finished';
+      publish(true);
+      return;
     }
     if (extended) {
       require(

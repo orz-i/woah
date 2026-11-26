@@ -202,6 +202,30 @@ func cutoutSmoke(reference: URL, target: URL) async throws {
     try complete.verifySources(referenceURL:changed,targetURL:target,current:{true})
     preconditionFailure("Changed source bytes became an export input")
   } catch {precondition(error is IOSComparisonCutoutExportUnavailable)}
+  let dir=reference.deletingLastPathComponent()
+  let diskTimes=(0..<400).map{Int64($0*33333)}
+  let store=try IOSComparisonCutoutDiskTrack(times:diskTimes,directory:dir)
+  for i in diskTimes.indices.reversed(){
+    try store.add(diskTimes[i],stamp:rStamp,
+      layer:i==5 ? nil : mask(diskTimes[i],Array(repeating:UInt8(i%255+1),count:16),a),placement:a)
+  }
+  try store.seal(anchor:diskTimes[200])
+  let diskCache=IOSComparisonCutoutTrackCache(disk:store,fingerprint:referenceDigest)
+  precondition(diskCache.visibleCount==399)
+  for i in [0,31,32,350,399,15,200]{
+    precondition(diskCache.exact(diskTimes[i])?.layer?.alpha.first==UInt8(i%255+1))
+  }
+  precondition(diskCache.exact(diskTimes[5])?.layer==nil)
+  precondition(diskCache.exact(diskTimes[200]+1)==nil)
+  let spool=try IOSComparisonCutoutDisk(directory:dir,budget:100)
+  let record=try spool.append(Data([1,2,3]))
+  let decoded=try spool.read(record)
+  precondition(decoded==Data([1,2,3]))
+  do{_=try spool.append(Data(repeating:0,count:100));preconditionFailure("budget accepted")}
+  catch{precondition(error is IOSComparisonCutoutExportUnavailable)}
+  spool.close()
+  let files=try FileManager.default.contentsOfDirectory(atPath:dir.path)
+  precondition(files.allSatisfy{!$0.hasSuffix(".scratch")})
   print("Comparison Cutout Canvas: decoded pixels, top-down alpha, mirror, fixed anchor and stale PTS, sample-stamp mismatch, strict export and source mutation passed (macOS)")
 }
 

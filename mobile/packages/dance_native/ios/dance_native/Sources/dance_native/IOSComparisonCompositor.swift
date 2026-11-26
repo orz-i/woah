@@ -90,6 +90,7 @@ struct IOSComparisonSourceStamp: Sendable {
   let height: Int
   let samples: [UInt8]
 
+  init(width:Int,height:Int,samples:[UInt8]) {self.width=width;self.height=height;self.samples=samples}
   init?(_ pixel: CVPixelBuffer) {
     guard CVPixelBufferGetPixelFormatType(pixel) == kCVPixelFormatType_32BGRA,
           CVPixelBufferLockBaseAddress(pixel, .readOnly) == kCVReturnSuccess else { return nil }
@@ -123,13 +124,18 @@ struct IOSComparisonCutoutTrackCache: Sendable {
   let entries: [Int64: IOSComparisonCachedCutout]
   let times: [Int64]
   let fingerprint: Data?
+  private let disk:IOSComparisonCutoutDiskTrack?
   init(entries:[Int64:IOSComparisonCachedCutout],times:[Int64],fingerprint:Data?=nil) {
-    self.entries=entries;self.times=times;self.fingerprint=fingerprint
+    self.entries=entries;self.times=times;self.fingerprint=fingerprint;disk=nil
   }
-  var visibleCount: Int { entries.values.filter { $0.layer != nil }.count }
+  init(disk:IOSComparisonCutoutDiskTrack,fingerprint:Data){
+    self.disk=disk;self.fingerprint=fingerprint;times=disk.times;entries=[:]
+  }
+  var visibleCount: Int { disk?.visibleCount ?? entries.values.filter { $0.layer != nil }.count }
+  func exact(_ pts:Int64)->IOSComparisonCachedCutout? {disk?.exact(pts) ?? entries[pts]}
   func entry(at time: Int64) -> (Int64,IOSComparisonCachedCutout)? {
     guard let i = IOSComparisonTimeCore.frameIndex(times,time: time),
-          let entry = entries[times[i]] else { return nil }
+          let entry = exact(times[i]) else { return nil }
     return (times[i],entry)
   }
 }
@@ -182,7 +188,7 @@ struct IOSComparisonCutoutCache: Sendable {
   /// Unlike preview, it cannot silently hide a missing or mismatched observation.
   func strictFrame(referencePts:Int64,targetPts:Int64,referenceBuffer:CVPixelBuffer,
       targetBuffer:CVPixelBuffer) throws -> IOSComparisonCutoutFrame {
-    guard let r=reference.entries[referencePts],let t=target.entries[targetPts],
+    guard let r=reference.exact(referencePts),let t=target.exact(targetPts),
       let a=r.layer,let b=t.layer,a.valid,b.valid,a.sourcePtsUs==referencePts,b.sourcePtsUs==targetPts,
       let rs=IOSComparisonSourceStamp(referenceBuffer),let ts=IOSComparisonSourceStamp(targetBuffer),
       r.stamp.agrees(with:rs),t.stamp.agrees(with:ts) else {throw IOSComparisonCutoutExportUnavailable()}

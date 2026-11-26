@@ -382,6 +382,7 @@ internal class ComparisonSession(
         val revision=cutoutRevision.incrementAndGet()
         cutoutPreparing=true
         val done=CompletableDeferred<Unit>();cutoutDone=done
+        var pendingCache:ComparisonCutoutCache?=null
         try {
             val cache=withContext(Dispatchers.Default) {
                 val scope=currentCoroutineContext()
@@ -391,19 +392,24 @@ internal class ComparisonSession(
                     it.initialize()
                     val analysis=ComparisonCutoutAnalysis(context)
                     val r=analysis.analyze(teacherUri,teacher,bounds.teacherTimeUs(first),bounds.teacherTimeUs(last),ra,true,mirrorR,it,current,inspectedR)
-                    val t=analysis.analyze(learnerUri,learner,bounds.learnerTimeUs(first),bounds.learnerTimeUs(last),ta,false,mirrorT,it,current,inspectedT)
-                    ComparisonCutoutCache(r,t)
+                    try {
+                        val t=analysis.analyze(learnerUri,learner,bounds.learnerTimeUs(first),bounds.learnerTimeUs(last),ta,false,mirrorT,it,current,inspectedT)
+                        ComparisonCutoutCache(r,t).also{pendingCache=it}
+                    } catch(error:Throwable){r.close();throw error}
                 }
             }
-            check(!closed && foreground && cutoutRevision.get()==revision && range==bounds) { "人物分析已取消" }
+            if(closed || !foreground || cutoutRevision.get()!=revision || range!=bounds) {
+                cache.close();error("人物分析已取消")
+            }
             cache.setLayout(requestedLayout)
-            cutoutCache=cache;cutoutWindow=selectedWindow
+            cutoutCache=cache;pendingCache=null;cutoutWindow=selectedWindow
             referenceInspection=null;targetInspection=null
             pendingUs=positionUs()
             buildEngine()
             return ComparisonCutoutResultDto(state(),cache.reference.visibleCount.toLong(),cache.reference.frameCount.toLong(),
                 cache.target.visibleCount.toLong(),cache.target.frameCount.toLong())
         } finally {
+            pendingCache?.close()
             if(cutoutDone===done) {cutoutPreparing=false;cutoutDone=null}
             done.complete(Unit)
         }
@@ -446,8 +452,8 @@ internal class ComparisonSession(
         require(spec.cutout && spec.teacherUri==teacherUri && spec.learnerUri==learnerUri &&
             spec.offsetUs==offsetUs && spec.timeScale==timeScale &&
             spec.startUs==window.startUs && spec.endUs==window.endUs)
+        cache.requireComplete()
         val frozen=cache.frozen()
-        frozen.requireComplete()
         return ComparisonCutoutExportSnapshot(frozen,bounds.teacherStartUs)
     }
 
@@ -469,8 +475,9 @@ internal class ComparisonSession(
         if(closed || cutoutRevision.get()!=revision)return state()
         referenceInspection=null;targetInspection=null
         if(cutoutCache!=null) {
-            pendingUs=positionUs();wantsPlay=false;pauseClock();cutoutCache=null;cutoutWindow=null;cutoutExportSuspended=false
-            buildEngine()
+            pendingUs=positionUs();wantsPlay=false;pauseClock()
+            val old=cutoutCache;cutoutCache=null;cutoutWindow=null;cutoutExportSuspended=false
+            try { buildEngine() } finally { old?.close() }
         }
         return state()
     }
@@ -519,8 +526,9 @@ internal class ComparisonSession(
     override fun close() {
         if (closed) return
         pendingUs=positionUs();wantsPlay=false;pauseClock();closed=true
+        val old=cutoutCache
         cutoutRevision.incrementAndGet();cutoutPreparing=false;cutoutCache=null;cutoutWindow=null;referenceInspection=null;targetInspection=null
         choreographer.removeFrameCallback(frames)
-        releaseEngine();producer.setCallback(null);producer.release()
+        try {releaseEngine();producer.setCallback(null);producer.release()} finally {old?.close()}
     }
 }

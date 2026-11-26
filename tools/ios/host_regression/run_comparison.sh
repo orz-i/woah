@@ -33,7 +33,7 @@ swiftc -O -I "$CORE/include" -o "$OUT/export" \
 
 swiftc -O -parse-as-library -D COMPARISON_EXPORT_STANDALONE -I "$CORE/include" -o "$OUT/export-av" \
   "$N/IOSComparisonTimeCore.swift" "$N/IOSComparisonModels.swift" \
-  "$N/IOSComparisonFrameIndex.swift" "$N/IOSComparisonCompositor.swift" \
+  "$N/IOSComparisonFrameIndex.swift" "$N/IOSComparisonCompositor.swift" "$N/IOSComparisonCutoutDisk.swift" \
   "$N/IOSComparisonComposition.swift" "$N/IOSComparisonExportSpec.swift" \
   "$N/IOSComparisonExportPipeline.swift" \
   "$ROOT/mobile/packages/dance_native/ios/tests/comparison_export_av/Fixtures.swift" \
@@ -43,7 +43,7 @@ swiftc -O -parse-as-library -D COMPARISON_EXPORT_STANDALONE -I "$CORE/include" -
 
 swiftc -O -I "$CORE/include" -o "$OUT/render" \
   "$N/IOSComparisonTimeCore.swift" "$N/IOSComparisonModels.swift" \
-  "$N/IOSComparisonFrameIndex.swift" "$N/IOSComparisonCompositor.swift" \
+  "$N/IOSComparisonFrameIndex.swift" "$N/IOSComparisonCompositor.swift" "$N/IOSComparisonCutoutDisk.swift" \
   "$N/IOSComparisonComposition.swift" \
   "$ROOT/mobile/packages/dance_native/ios/tests/comparison_render/BridgeStubs.swift" \
   "$ROOT/mobile/packages/dance_native/ios/tests/comparison_render/main.swift" \

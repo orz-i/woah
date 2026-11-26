@@ -24,21 +24,29 @@ internal data class ComparisonCutoutSeed(val ptsUs: Long, val x: Float, val y: F
 }
 
 /** Immutable, source-scoped preview cache. A known missing observation has no layer. */
-internal class ComparisonCutoutTrackCache(layers: Map<Long, ComparisonCutoutLayer?>,
-    val fingerprint:String?=null) {
-    private val entries = layers.toMap()
-    val frameCount: Int get() = entries.size
-    val visibleCount: Int get() = entries.values.count { it != null }
-    fun layer(ptsUs: Long): ComparisonCutoutLayer? = entries[ptsUs]
+internal class ComparisonCutoutTrackCache private constructor(
+    private val entries: Map<Long, ComparisonCutoutLayer?>?,
+    private val disk: ComparisonCutoutDiskTrack?, val fingerprint:String?
+) : AutoCloseable {
+    constructor(layers:Map<Long,ComparisonCutoutLayer?>,fingerprint:String?=null):this(layers.toMap(),null,fingerprint)
+    constructor(disk:ComparisonCutoutDiskTrack,fingerprint:String):this(null,disk,fingerprint)
+    val frameCount:Int get()=disk?.frameCount ?: entries!!.size
+    val visibleCount:Int get()=disk?.visibleCount ?: entries!!.values.count{it!=null}
+    fun layer(ptsUs:Long):ComparisonCutoutLayer?=disk?.layer(ptsUs) ?: entries?.get(ptsUs)
+    fun retained()=ComparisonCutoutTrackCache(entries,disk?.retain(),fingerprint)
+    private val released=java.util.concurrent.atomic.AtomicBoolean(false)
+    override fun close(){if(released.compareAndSet(false,true))disk?.close()}
 }
 
-internal data class ComparisonCutoutCache(val reference: ComparisonCutoutTrackCache,
-    val target: ComparisonCutoutTrackCache) {
+internal class ComparisonCutoutCache(val reference: ComparisonCutoutTrackCache,
+    val target: ComparisonCutoutTrackCache):AutoCloseable {
     private val layout=java.util.concurrent.atomic.AtomicReference<ComparisonCanvasLayout?>(null)
-    fun setLayout(value:ComparisonCanvasLayout?): ComparisonCanvasLayout? = layout.getAndSet(value)
+    private val released=java.util.concurrent.atomic.AtomicBoolean(false)
+    fun setLayout(value:ComparisonCanvasLayout?) = layout.getAndSet(value)
     fun frame(referencePts: Long, targetPts: Long) =
         ComparisonCutoutFrame(reference.layer(referencePts),target.layer(targetPts),layout.get())
-    fun frozen(): ComparisonCutoutCache = ComparisonCutoutCache(reference,target).also { it.setLayout(layout.get()) }
+    fun frozen(): ComparisonCutoutCache = ComparisonCutoutCache(reference.retained(),target.retained()).also { it.setLayout(layout.get()) }
+    override fun close(){if(released.compareAndSet(false,true)){reference.close();target.close()}}
     fun strictFrame(referencePts:Long,targetPts:Long):ComparisonCutoutFrame = frame(referencePts,targetPts).also {
         if(it.layer(true,referencePts)==null || it.layer(false,targetPts)==null)throw ComparisonCutoutExportUnavailable()
     }
@@ -76,6 +84,8 @@ internal object ComparisonCutoutFingerprint {
     }
 }
 internal data class ComparisonCutoutExportSnapshot(val cache:ComparisonCutoutCache,val originUs:Long) {
+    fun retained()=ComparisonCutoutExportSnapshot(cache.frozen(),originUs)
+    fun close()=cache.close()
     fun validate(spec:ComparisonExportSpec,range:SourceInterval) {
         if(!spec.cutout || originUs+spec.startUs!=range.startUs || originUs+spec.endUs!=range.endUs)
             throw ComparisonCutoutExportUnavailable()
@@ -87,8 +97,8 @@ internal data class ComparisonCutoutExportSnapshot(val cache:ComparisonCutoutCac
  * thread. Both directions are anchored at the same real selected source sample. */
 internal class ComparisonCutoutAnalysis(private val context: Context) {
     companion object {
-        const val MAX_FRAMES = 300
-        private const val MAX_PREFIX_BYTES = 32 * 1024 * 1024L
+        const val MAX_FRAMES = 3600
+        private const val MAX_PREFIX_BYTES = 512 * 1024 * 1024L
         private const val ALPHA_EDGE = 256
 
         fun window(sorted: List<Long>, start: Long, endInclusive: Long, anchor: Long): List<Long> {
@@ -96,7 +106,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             val first = sorted.binarySearch(start).let { if(it >= 0) it else -it-2 }
             require(first >= 0) { "选区首帧不可读取" }
             val last = sorted.binarySearch(endInclusive).let { if(it >= 0) it else -it-2 }
-            require(last >= first && last-first+1 <= MAX_FRAMES) { "抠像画布预览目前每段最多支持 300 帧" }
+            require(last >= first && last-first+1 <= MAX_FRAMES) { "抠像画布当前每路最多支持 3600 帧" }
             val result = sorted.subList(first,last+1)
             require(result.binarySearch(anchor) >= 0) { "选人画面已变化，请暂停后重试" }
             return result.toList()
@@ -129,22 +139,42 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         } finally { extractor.release() }
     }
 
-    internal class Observation(val pts: Long, persons: List<PersonDetection>, mapper: ModelCoordinateMapper) {
-        val transform = floatArrayOf(mapper.scale,mapper.padLeft,mapper.padTop,mapper.srcWidth.toFloat(),
-            mapper.srcHeight.toFloat(),mapper.modelInputSize.toFloat(),mapper.protoSize.toFloat())
-        val area = mapper.protoSize * mapper.protoSize
-        val bounds = persons.map { it.bbox }
-        val rows = FloatArray(persons.size*5)
-        val masks: ByteArray
-        init {
-            require(persons.size<=256)
-            masks = ByteArray(persons.size*area)
-            persons.forEachIndexed { i,d ->
-                val b=d.bbox
-                floatArrayOf(b.left,b.top,b.right,b.bottom,d.confidence).copyInto(rows,i*5)
-                val m=requireNotNull(d.mask)
-                require(m.width==mapper.protoSize && m.height==mapper.protoSize)
-                m.buffer.duplicate().apply { rewind();get(masks,i*area,area) }
+    internal class Observation private constructor(val pts:Long,val transform:FloatArray,
+        val rows:FloatArray,val masks:ByteArray) {
+        val area=transform[6].toInt()*transform[6].toInt()
+        val bounds=rows.asList().chunked(5).map { FloatRect(it[0],it[1],it[2],it[3]) }
+        constructor(pts:Long,persons:List<PersonDetection>,mapper:ModelCoordinateMapper):this(pts,
+            floatArrayOf(mapper.scale,mapper.padLeft,mapper.padTop,mapper.srcWidth.toFloat(),
+                mapper.srcHeight.toFloat(),mapper.modelInputSize.toFloat(),mapper.protoSize.toFloat()),
+            FloatArray(persons.size*5).apply { persons.forEachIndexed { i,d ->
+                val b=d.bbox;floatArrayOf(b.left,b.top,b.right,b.bottom,d.confidence).copyInto(this,i*5)
+            } },
+            ByteArray(persons.size*mapper.protoSize*mapper.protoSize).apply bytes@{
+                require(persons.size<=256)
+                val area=mapper.protoSize*mapper.protoSize
+                persons.forEachIndexed { i,d ->
+                    val m=requireNotNull(d.mask)
+                    require(m.width==mapper.protoSize && m.height==mapper.protoSize)
+                    m.buffer.duplicate().apply{rewind();get(this@bytes,i*area,area)}
+                }
+            })
+        fun encode():ByteArray {
+            val data=ByteBuffer.allocate(8+7*4+4+rows.size*4+masks.size)
+            data.putLong(pts);transform.forEach{data.putFloat(it)}
+            data.putInt(rows.size);rows.forEach{data.putFloat(it)};data.put(masks)
+            return data.array()
+        }
+        companion object {
+            fun decode(bytes:ByteArray):Observation {
+                val data=ByteBuffer.wrap(bytes)
+                val pts=data.long
+                val t=FloatArray(7){data.float}
+                val n=data.int
+                require(pts>=0 && t.all{it.isFinite()} && t[6]==160f && n in 0..1280 && n%5==0 &&
+                    data.remaining()==n*4+n/5*160*160)
+                val rows=FloatArray(n){data.float}
+                val masks=ByteArray(data.remaining());data.get(masks)
+                return Observation(pts,t,rows,masks)
             }
         }
         fun select(seed: ComparisonCutoutSeed) =
@@ -220,16 +250,17 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         val scale=ALPHA_EDGE.toDouble()/max(sw,sh)
         val aw=(sw*scale).roundToInt().coerceAtLeast(1)
         val ah=(sh*scale).roundToInt().coerceAtLeast(1)
-        val prefix=ArrayList<Observation>()
+        val prefix=ArrayList<ComparisonCutoutDisk.Record>()
         var prefixBytes=0L
-        val layers=HashMap<Long,ComparisonCutoutLayer?>()
+        val spool=ComparisonCutoutDisk(context.cacheDir,MAX_PREFIX_BYTES)
+        val layers=try{ComparisonCutoutDiskTrack(context.cacheDir,times)}catch(error:Throwable){spool.close();throw error}
+        var committed=false
+        try {
         var placement: ComparisonCutoutPlacement?=null
         fun add(o: Observation, index: Int) {
             checkCurrent(current)
             val alpha=if(index<0)null else timed("alpha"){o.alpha(index,aw,ah)}
-            layers[o.pts]=alpha?.takeIf { bytes -> bytes.any { it.toInt()!=0 } }?.let {
-                ComparisonCutoutLayer(o.pts,aw,ah,it,requireNotNull(placement))
-            }
+            timed("alphaStore"){layers.add(o.pts,aw,ah,alpha?.takeIf{bytes->bytes.any{it.toInt()!=0}},requireNotNull(placement))}
         }
         FrameKernel.CutoutTrack().use { forward ->
             FrameKernel.CutoutTrack().use { reverse ->
@@ -251,9 +282,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                             timed("observation"){Observation(pts,detected.persons,mapper)}
                         }
                         if(pts<seed.ptsUs) {
-                            prefixBytes+=observation.masks.size
-                            require(prefixBytes<=MAX_PREFIX_BYTES) { "多人画面超出本次预览分析内存范围" }
-                            prefix.add(observation)
+                            prefix.add(timed("prefixWrite"){spool.append(observation.encode())})
+                            prefixBytes=spool.bytes
                             continue
                         }
                         if(pts==seed.ptsUs) {
@@ -267,14 +297,19 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                             placement!!.quad(960,540,sw.toDouble()/sh)
                             require(timed("track"){observation.track(forward,index)==index && observation.track(reverse,index)==index})
                             add(observation,index)
-                            for (prior in prefix.asReversed()) add(prior,timed("track"){prior.track(reverse)})
-                            prefix.clear()
+                            for (record in prefix.asReversed()) {
+                                checkCurrent(current)
+                                val prior=timed("prefixRead"){Observation.decode(spool.read(record))}
+                                add(prior,timed("track"){prior.track(reverse)})
+                            }
+                            prefix.clear();spool.close()
                         } else add(observation,timed("track"){observation.track(forward)})
                     }
                 }
             }
         }
-        require(placement!=null && layers.size==times.size && layers[seed.ptsUs]!=null) { "人物分析未完成" }
+        require(placement!=null)
+        layers.seal(seed.ptsUs)
         require(fingerprint==timed("fingerprint"){ComparisonCutoutFingerprint.read(context,uri,current)}) { "源视频已变化" }
         if(measure) {
             // Aggregated, URI-free stage timing. Nested YOLO stages are included
@@ -284,7 +319,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             val summary=org.json.JSONObject()
                 .put("role",if(reference)"reference" else "target")
                 .put("frames",times.size)
-                .put("visible",layers.values.count{it!=null})
+                .put("visible",layers.visibleCount)
+                .put("alphaDiskBytes",layers.bytes)
                 .put("accelerator",segmenter.effectiveAccelerator.toString())
                 .put("wallMs",(System.nanoTime()-wallStart)/1_000_000)
                 .put("prefixBytes",prefixBytes)
@@ -292,7 +328,9 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 .put("stageMs",stages)
             android.util.Log.i("WoahCutoutPerf",summary.toString())
         }
+        committed=true
         return ComparisonCutoutTrackCache(layers,fingerprint)
+        } finally {spool.close();if(!committed)layers.close()}
     }
 
 }

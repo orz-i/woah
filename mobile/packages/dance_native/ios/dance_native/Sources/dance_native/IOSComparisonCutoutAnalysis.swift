@@ -18,8 +18,8 @@ enum IOSComparisonCutoutAnalysisError: Error {
 /// Owns only the experimental comparison analysis. It does not mutate the
 /// privacy pipeline or its inference threshold.
 final class IOSComparisonCutoutAnalysis {
-  static let maximumFrames = 300
-  private static let maximumPrefixBytes = 32 * 1024 * 1024
+  static let maximumFrames = 3600
+  private static let maximumPrefixBytes:UInt64 = 512 * 1024 * 1024
   private let runner = IOSYoloRunner()
   private let context = CIContext(options: [.cacheIntermediates: false])
 
@@ -58,6 +58,39 @@ final class IOSComparisonCutoutAnalysis {
       masks = result.detections.flatMap(\.mask)
       transform = FrameKernelTransform(scale: p.scale,pad_left: p.padLeft,pad_top: p.padTop,
         source_width: UInt32(p.sourceWidth),source_height: UInt32(p.sourceHeight),input_size: UInt32(p.inputSize),proto_size: 160)
+    }
+
+    private init(pts:Int64,stamp:IOSComparisonSourceStamp,rows:[FrameKernelInstanceDetection],masks:[UInt8],transform:FrameKernelTransform){
+      self.pts=pts;self.stamp=stamp;self.rows=rows;self.masks=masks;self.transform=transform
+    }
+    func encode()->Data {
+      var data=IOSCutoutBytes()
+      data.put(pts);data.put(UInt32(stamp.width));data.put(UInt32(stamp.height));data.putBytes(stamp.samples)
+      data.putFloat(transform.scale);data.putFloat(transform.pad_left);data.putFloat(transform.pad_top)
+      data.put(transform.source_width);data.put(transform.source_height);data.put(transform.input_size);data.put(transform.proto_size)
+      data.put(UInt32(rows.count))
+      for row in rows {
+        data.putFloat(row.bounds.left);data.putFloat(row.bounds.top);data.putFloat(row.bounds.right)
+        data.putFloat(row.bounds.bottom);data.putFloat(row.confidence)
+      }
+      data.putBytes(masks);return data.data
+    }
+    static func decode(_ bytes:Data)throws->Observation {
+      var data=IOSCutoutBytes(bytes)
+      let pts=try data.get(Int64.self),w=Int(try data.get(UInt32.self)),h=Int(try data.get(UInt32.self))
+      let stamp=IOSComparisonSourceStamp(width:w,height:h,samples:try data.getBytes(3072))
+      let transform=FrameKernelTransform(scale:try data.getFloat(),pad_left:try data.getFloat(),pad_top:try data.getFloat(),
+        source_width:try data.get(UInt32.self),source_height:try data.get(UInt32.self),
+        input_size:try data.get(UInt32.self),proto_size:try data.get(UInt32.self))
+      let count=Int(try data.get(UInt32.self))
+      guard pts>=0,w>0,h>0,count<=256,transform.proto_size==160, data.remaining==count*(20+160*160) else {
+        throw IOSComparisonCutoutAnalysisError.invalidFrame
+      }
+      let rows=try (0..<count).map{_ in
+        FrameKernelInstanceDetection(bounds:FrameKernelRect(left:try data.getFloat(),top:try data.getFloat(),
+          right:try data.getFloat(),bottom:try data.getFloat()),confidence:try data.getFloat())
+      }
+      return Observation(pts:pts,stamp:stamp,rows:rows,masks:try data.getBytes(count*160*160),transform:transform)
     }
 
     func select(_ seed: IOSComparisonCutoutSeed) -> Int {
@@ -210,8 +243,9 @@ final class IOSComparisonCutoutAnalysis {
     guard reader.startReading() else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
 
     let forward = Track(), reverse = Track()
-    var prefix: [Observation] = [], prefixBytes = 0
-    var entries: [Int64: IOSComparisonCachedCutout] = [:]
+    let spool=try IOSComparisonCutoutDisk(budget:Self.maximumPrefixBytes)
+    let entries=try IOSComparisonCutoutDiskTrack(times:times)
+    var prefix:[IOSComparisonCutoutDisk.Record]=[]
     var placement: IOSComparisonCutoutPlacement?
     var cursor = 0
 
@@ -227,7 +261,8 @@ final class IOSComparisonCutoutAnalysis {
           layer = IOSComparisonCutoutLayer(sourcePtsUs: observation.pts,width: w,height: h,alpha: alpha,placement: placement)
         }
       }
-      entries[observation.pts] = IOSComparisonCachedCutout(stamp: observation.stamp,layer: layer)
+      guard let placement else {throw IOSComparisonCutoutAnalysisError.invalidTracking}
+      try entries.add(observation.pts,stamp:observation.stamp,layer:layer,placement:placement)
     }
     while cursor < times.count {
       try check()
@@ -247,9 +282,7 @@ final class IOSComparisonCutoutAnalysis {
         }
         cursor += 1
         if pts < seed.ptsUs {
-          prefixBytes += observation.masks.count
-          guard prefixBytes <= Self.maximumPrefixBytes else { throw IOSComparisonCutoutAnalysisError.unsupportedRange }
-          prefix.append(observation)
+          prefix.append(try spool.append(observation.encode()))
         } else if pts == seed.ptsUs {
           let selected = observation.select(seed)
           guard selected >= 0, inspected == nil || inspected?.index == selected else { throw IOSComparisonCutoutAnalysisError.invalidSelection }
@@ -265,8 +298,12 @@ final class IOSComparisonCutoutAnalysis {
           let f = try forward.step(observation,seed: selected), r = try reverse.step(observation,seed: selected)
           guard f == selected,r == selected else { throw IOSComparisonCutoutAnalysisError.invalidTracking }
           try add(observation,selected)
-          for prior in prefix.reversed() { try add(prior,reverse.step(prior)) }
-          prefix.removeAll()
+          for record in prefix.reversed() {
+            try check()
+            let prior=try Observation.decode(spool.read(record))
+            try add(prior,reverse.step(prior))
+          }
+          prefix.removeAll();spool.close()
         } else {
           try add(observation,forward.step(observation))
         }
@@ -275,12 +312,11 @@ final class IOSComparisonCutoutAnalysis {
       guard found else { break }
     }
     try check()
-    guard cursor == times.count,entries.count == times.count,entries[seed.ptsUs]?.layer != nil else {
-      throw IOSComparisonCutoutAnalysisError.invalidFrame
-    }
+    guard cursor==times.count else {throw IOSComparisonCutoutAnalysisError.invalidFrame}
+    try entries.seal(anchor:seed.ptsUs)
     guard try IOSComparisonCutoutFingerprint.read(url,current:{!isCancelled()})==fingerprint else {
       throw IOSComparisonCutoutAnalysisError.invalidFrame
     }
-    return IOSComparisonCutoutTrackCache(entries: entries,times: times,fingerprint:fingerprint)
+    return IOSComparisonCutoutTrackCache(disk:entries,fingerprint:fingerprint)
   }
 }

@@ -61,7 +61,7 @@ class ComparisonCutoutTest {
         assertEquals(pts.subList(1,4),ComparisonCutoutAnalysis.window(pts,40_000,100_000,66_667))
         assertFailsWith<IllegalArgumentException> { ComparisonCutoutAnalysis.window(pts,40_000,100_000,66_666) }
         assertFailsWith<IllegalArgumentException> {
-            ComparisonCutoutAnalysis.window((0L..300L).toList(),0,300,50)
+            ComparisonCutoutAnalysis.window((0L..3600L).toList(),0,3600,50)
         }
         val p=ComparisonCutoutPlacement(FloatRect(.1f,.2f,.5f,.8f),.25,.85,.6,false)
         val a=ComparisonCutoutLayer(33_333,2,2,byteArrayOf(1,2,3,4),p)
@@ -119,5 +119,79 @@ class ComparisonCutoutTest {
         assertFailsWith<ComparisonCutoutExportUnavailable>{
             ComparisonCutoutCache(track,ComparisonCutoutTrackCache(mapOf(33_333L to null),"fingerprint")).requireComplete()
         }
+    }
+    @Test fun anonymousDiskChunksKeepExactPtsAndFrozenLeases() {
+        val dir=java.nio.file.Files.createTempDirectory("cutout-disk-test").toFile()
+        try {
+            val pts=(0L..399L).map{it*33333}
+            assertEquals(400,ComparisonCutoutAnalysis.window(pts,0,pts.last(),pts[200]).size)
+            val base=ComparisonCutoutPlacement(FloatRect(.1f,.2f,.5f,.8f),.25,.85,.6,false)
+            val disk=ComparisonCutoutDiskTrack(dir,pts)
+            for(i in pts.indices.reversed()) disk.add(pts[i],2,2,if(i==5)null else byteArrayOf(i.toByte(),2,3,4),base)
+            disk.seal(pts[200])
+            val track=ComparisonCutoutTrackCache(disk,"digest")
+            val lease=track.retained()
+            track.close()
+            assertEquals(399,lease.visibleCount)
+            for(i in listOf(0,31,32,350,399,15,200)) {
+                val data=ByteBuffer.allocate(4)
+                lease.layer(pts[i])!!.uploadTo(data)
+                assertEquals(i.toByte(),data.get())
+            }
+            assertNull(lease.layer(pts[5]));assertNull(lease.layer(pts[200]+1))
+            assertEquals(0,dir.listFiles()!!.size)
+            lease.close()
+        } finally {dir.deleteRecursively()}
+    }
+
+    @Test fun reverseSpoolRejectsInvalidRecordAndBudget() {
+        val dir=java.nio.file.Files.createTempDirectory("cutout-spool-test").toFile()
+        try {
+            ComparisonCutoutDisk(dir,100).use { disk ->
+                val first=disk.append(byteArrayOf(1,2,3))
+                val second=disk.append(byteArrayOf(4,5,6))
+                assertContentEquals(byteArrayOf(4,5,6),disk.read(second))
+                assertContentEquals(byteArrayOf(1,2,3),disk.read(first))
+                assertFailsWith<IllegalStateException>{disk.read(first.copy(length=2))}
+                assertFailsWith<IllegalArgumentException>{disk.append(ByteArray(90))}
+            }
+            assertEquals(0,dir.listFiles()!!.size)
+        } finally {dir.deleteRecursively()}
+    }
+    @Test fun spilledRawObservationsPreserveReverseIdentityAcrossChunks() {
+        val dir=java.nio.file.Files.createTempDirectory("cutout-observation-test").toFile()
+        try {
+            val mapper=art.gaoge.dance.engine.geometry.ModelCoordinateMapper(640,640)
+            val left=ByteArray(160*160){if(it%160<80)255.toByte() else 0}
+            val right=ByteArray(160*160){if(it%160>=80)255.toByte() else 0}
+            fun person(mask:ByteArray,box:FloatRect,conf:Float)=art.gaoge.dance.engine.inference.PersonDetection(box,conf,
+                art.gaoge.dance.engine.inference.NativeMask(160,160,ByteBuffer.wrap(mask),640,640))
+            fun observation(i:Int):ComparisonCutoutAnalysis.Observation {
+                val a=person(left,FloatRect(0f,0f,320f,640f),if(i==31||i==32).22f else .8f)
+                val b=person(right,FloatRect(320f,0f,640f,640f),.8f)
+                return ComparisonCutoutAnalysis.Observation(i*33333L,
+                    if(i%2==0)listOf(a,b) else listOf(b,a),mapper)
+            }
+            ComparisonCutoutDisk(dir,16L*1024*1024).use { disk ->
+                val records=(0..96).map{disk.append(observation(it).encode())}
+                FrameKernel.CutoutTrack().use { direct ->
+                    FrameKernel.CutoutTrack().use { spilled ->
+                        for(i in 96 downTo 0) {
+                            val original=observation(i)
+                            val decoded=ComparisonCutoutAnalysis.Observation.decode(disk.read(records[i]))
+                            assertEquals(original.pts,decoded.pts)
+                            assertContentEquals(original.rows,decoded.rows)
+                            assertContentEquals(original.masks,decoded.masks)
+                            assertContentEquals(original.transform,decoded.transform)
+                            val seed=if(i==96)0 else -1
+                            val expected=original.track(direct,seed)
+                            val actual=decoded.track(spilled,seed)
+                            assertEquals(expected,actual)
+                            assertEquals(i%2,actual,"Selected left identity must survive the chunk boundary")
+                        }
+                    }
+                }
+            }
+        } finally {dir.deleteRecursively()}
     }
 }

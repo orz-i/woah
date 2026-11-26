@@ -129,18 +129,19 @@ internal class ComparisonExportManager private constructor(private val context: 
         val oldCancellation=cancelled
         val oldPublication=publication
         val oldSnapshot=cutoutSnapshot
-        cutoutSnapshot=snapshot
+        cutoutSnapshot=snapshot?.retained()
         current=job;cancelled=AtomicBoolean(false);publication=art.gaoge.dance.engine.core.FrameKernel.WorkLifecycle()
         try { persist() }
-        catch (e: Throwable) { current=previous;cancelled=oldCancellation;publication=oldPublication;cutoutSnapshot=oldSnapshot;throw e }
+        catch (e: Throwable) { current=previous;cancelled=oldCancellation;publication=oldPublication;cutoutSnapshot?.close();cutoutSnapshot=oldSnapshot;throw e }
         try { ComparisonExportService.start(context,job.id) }
         catch (e: Throwable) {
             // If Android refused the foreground service, retain the old job
             // and its sole local movie so a failed launch never discards data.
-            if (previous!=null) { current=previous;cancelled=oldCancellation;publication=oldPublication;cutoutSnapshot=oldSnapshot;persist() }
+            if (previous!=null) { current=previous;cancelled=oldCancellation;publication=oldPublication;cutoutSnapshot?.close();cutoutSnapshot=oldSnapshot;persist() }
             else { current=job.copy(state="failed",stage="导出未启动",error="无法启动导出，请回到应用后重试");persist() }
             throw e
         }
+        oldSnapshot?.close()
         // The new job owns the latest record. Only now can the user-confirmed
         // predecessor be retired; orphan cleanup is best effort.
         runCatching {
@@ -173,7 +174,7 @@ internal class ComparisonExportManager private constructor(private val context: 
         // Keep this worker's cancellation token even if an interrupted job is retried.
         val (job,cancellation,snapshot)=synchronized(this) {
             val value=current?.takeIf { it.id==id && it.active } ?: return
-            Triple(value,cancelled,cutoutSnapshot)
+            Triple(value,cancelled,cutoutSnapshot?.retained())
         }
         try {
             ComparisonExportPipeline(context).execute(job.spec,partial(id),packets(id),cancellation,snapshot) { stage,p ->
@@ -200,7 +201,7 @@ internal class ComparisonExportManager private constructor(private val context: 
                         pendingUri=null,error=if (stopped) null else if (error.message=="存储空间不足") "存储空间不足，请释放空间后重试"
                             else if(error is ComparisonCutoutExportUnavailable) "抠像画布分析不完整或源视频已变化，请重新选人"
                             else "导出未完成，请重试或重新关联源视频")
-                    if(error is ComparisonCutoutExportUnavailable)cutoutSnapshot=null
+                    if(error is ComparisonCutoutExportUnavailable){cutoutSnapshot?.close();cutoutSnapshot=null}
                     persist()
                 }
             }
@@ -210,9 +211,10 @@ internal class ComparisonExportManager private constructor(private val context: 
             packets(id).delete()
             synchronized(this) {
                 if(current?.id==id && (current?.state=="completed" || current?.error=="抠像画布分析不完整或源视频已变化，请重新选人")) {
-                    cutoutSnapshot=null
+                    cutoutSnapshot?.close();cutoutSnapshot=null
                 }
             }
+            snapshot?.close()
             status(id)?.let(notify)
         }
     }

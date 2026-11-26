@@ -529,3 +529,65 @@ are intentionally left in the device gallery; no existing user media was
 removed. Physical iPhone, genuinely independent long choreography,
 occlusions, real-device full-length analysis, and production-quality
 edge/identity evaluation remain outstanding.
+
+## Stage B1: bounded, process-scoped segmented storage (2026-11-26)
+
+- Replace the in-memory reverse-observation prefix on both native platforms with
+  an anonymous, app-private scratch file. Records retain source PTS, raw detector
+  rows, original masks and coordinate transforms; iOS also retains its sample
+  stamp. The same forward/reverse tracking handles are used across all records.
+- Selected-person alpha is stored on disk by exact source PTS. Reads use logical
+  32-sample chunks with at most two resident chunks per role. The cache validates
+  record integrity; a corrupt/missing record does not become a stale mask.
+  Export freezes the selection/layout and holds its own lease. Android explicitly
+  releases leases in session/export lifecycle paths; iOS uses object ownership.
+- Open scratch files are immediately unlinked. Their storage is reclaimed after
+  the last owner closes; no named scratch cache or persistent recovery manifest is
+  created. This is session storage, not cross-process resume.
+- Current bounded admission: up to 3600 samples per source, 512 MiB reverse
+  observation scratch per role and 256 MiB alpha scratch per role, subject to
+  available disk space. The exact supported duration varies with source cadence,
+  detector count and resolution. Analysis still completes both directions before
+  publishing the dynamic canvas. Chunk reads are synchronous; asynchronous
+  prefetch/progressive readiness are not implemented yet.
+
+### Full-interval device evidence
+
+Used the existing one-second source repeated to 12 seconds (not independent
+choreography), same 352x768 H.264 sources on both platforms, reference 440 Hz
+audio, anchor at 10 seconds, no A/B restriction, 1440x1080 export.
+
+| Metric | OnePlus 8T / Android 14 | iPhone 15 Pro simulator / iOS 17 |
+| --- | ---: | ---: |
+| Source samples, each role | 360 | 360 |
+| Visible samples, both roles | 720/720 | 720/720 |
+| Analysis wall (bridge) | 93.403 s | 64.288 s |
+| Export elapsed | 13.390 s (includes publication) | 4.915 s |
+| Encoded H.264 frames | 360 | 360 |
+| Container duration | 12.000 s | 12.000 s |
+| RGB MAE vs 320x240 preview, six samples | 1.673–1.977 | 1.330–1.343 |
+| Output audio tone | 439.96 Hz | 440.00 Hz |
+
+Android profiling: reference/target reverse spool 42,799,800 / 46,130,400
+bytes, exceeding the old 32 MiB limit on both roles. Each role's alpha scratch
+10,788,480 bytes; raw alpha payload per sample 29,952 bytes. Sum of native
+analysis wall times 93.256 s, including model run 68.068 s (~73%), decode /
+convert 11.003 s, reverse spool write/read 0.698 / 0.310 s, and alpha storage
+0.213 s. The temporary records were unlinked during analysis; after exit
+`/proc/<pid>/fd` contained no cutout scratch handles and no named cutout
+scratch file was left in the QA cache. Android MediaStore readback matched
+local MP4 bytes. Both platforms restored preview after export.
+
+Reproduce by building the existing cutout smoke entrypoint with
+`--dart-define=WOAH_CUTOUT_FULL_QA=true`, using the 12-second fixtures from
+the Android baseline, then run:
+```sh
+python3 tools/comparison/verify_cutout_export.py /path/to/results --platform android --full
+python3 tools/comparison/verify_cutout_export.py /path/to/results --platform ios --full
+```
+Android focused JNI/JVM tests: 26 passed, including 400-record chunk/lease
+roundtrip, spool bounds and reverse identity across chunk boundaries.
+macOS host regression passed; Flutter scoped analyzer clean. No new media
+or device-local evidence is committed. A real 30–60 s independent video,
+GPU equivalence, progressive/anchor-first analysis, asynchronous prefetch,
+and durable cache recovery remain to be verified/implemented.

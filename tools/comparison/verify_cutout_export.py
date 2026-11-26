@@ -145,12 +145,64 @@ def verify_extended(folder):
             "publicationBytesCompared": published.exists()}
 
 
+def verify_full(folder, platform):
+    """Untrimmed 12-second pair; includes a 300-frame reverse prefix and
+    seeks across the selected-alpha chunk boundary and far from the seed."""
+    report = json.loads((folder / "full-report.json").read_text())
+    assert report["finished"] and report["passed"], report
+    row, = report["results"]
+    assert row["id"] == "full-length" and row["visibility"] == [360] * 4
+    assert row["window"] is None and row["anchor"] == [10000000, 10000000]
+    assert row["export"]["resumed"] and row["export"]["startUs"] == 0
+    assert row["export"]["endUs"] == 12000000
+    if platform == "android":
+        assert row["export"]["savedToGallery"]
+    path = folder / "full-length-cutout.mp4"
+    metadata = media(path)
+    video = next(s for s in metadata["streams"] if s["codec_type"] == "video")
+    audio = next(s for s in metadata["streams"] if s["codec_type"] == "audio")
+    assert video["codec_name"] == "h264" and audio["codec_name"] == "aac"
+    assert (video["width"], video["height"]) == (1440, 1080)
+    assert int(audio["sample_rate"]) == 48000 and audio["channels"] == (1 if platform == "android" else 2)
+    assert abs(float(metadata["format"]["duration"]) - 12) <= .001
+    pts = [float(f["best_effort_timestamp_time"]) for f in metadata["frames"]
+           if f.get("media_type") == "video"]
+    assert len(pts) == 360 and all(abs(t-i/30)<2e-6 for i,t in enumerate(pts))
+    times=(0,400000,800000,1066667,5000000,11900000)
+    indices=[min(range(len(pts)),key=lambda i:abs(pts[i]-us/1e6)) for us in times]
+    selection="+".join(f"eq(n,{n})" for n in indices)
+    frames=run("ffmpeg","-v","error","-i",str(path),"-map","0:v:0",
+               "-vf",f"select='{selection}',scale=320:240","-fps_mode","passthrough",
+               "-pix_fmt","rgb24","-f","rawvideo","-")
+    assert len(frames)==len(times)*FRAME_BYTES
+    comparisons=[{"ptsUs":us,**compare(rgb(folder/f"full-length-export-preview-{us}.png"),
+                 frames[n*FRAME_BYTES:(n+1)*FRAME_BYTES])} for n,us in enumerate(times)]
+    assert rgb(folder/"full-length-export-resumed.png")==rgb(folder/"full-length-export-preview-400000.png")
+    pcm=run("ffmpeg","-v","error","-i",str(path),"-map","0:a:0","-ac","1","-ar","48000","-f","s16le","-")
+    samples=[v[0] for v in struct.iter_unpack("<h",pcm)]
+    interior=samples[4800:-4800]
+    hz=sum((a<0)!=(b<0) for a,b in zip(interior,interior[1:]))*24000/len(interior)
+    assert abs(hz-440)<8
+    published=folder/"full-length-published.mp4"
+    if published.exists():
+        assert published.read_bytes()==path.read_bytes()
+    return {"frames":len(pts),"duration":float(metadata["format"]["duration"]),
+            "audioHz":round(hz,2),"pixelComparisons":comparisons,
+            "publicationBytesCompared":published.exists(),"analysisMs":row["analysisMs"],
+            "exportMs":row["export"]["elapsedMs"]}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", type=Path)
     parser.add_argument("--platform", choices=("ios", "android"), default="ios")
     parser.add_argument("--extended", action="store_true", help="verify the separate Android 5-second high-resolution fixture")
+    parser.add_argument("--full", action="store_true", help="verify full 12-second segmented-cache fixture")
     args = parser.parse_args()
+    if args.extended and args.full:
+        parser.error("choose --extended or --full")
     if args.extended and args.platform != "android":
         parser.error("--extended requires --platform android")
-    print(json.dumps(verify_extended(args.folder) if args.extended else verify(args.folder, args.platform), indent=2))
+    result = verify_full(args.folder,args.platform) if args.full else (
+        verify_extended(args.folder) if args.extended else verify(args.folder,args.platform))
+    print(json.dumps(result,indent=2))

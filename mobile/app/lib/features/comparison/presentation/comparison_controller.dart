@@ -966,7 +966,7 @@ class ComparisonController extends ChangeNotifier {
       cutoutSelecting = false;
     } catch (_) {
       if (_closed || request != _cutoutRequest) return;
-      error = '人物分析未完成。较长视频请先设置并启用 A/B 选段（每路最多300帧），或重新选择人物。';
+      error = '人物分析未完成。请缩短 A/B 选段（每路最多3600帧，受存储空间限制），或重新选择人物。';
     } finally {
       if (!_closed && request == _cutoutRequest) {
         cutoutPreparing = false;

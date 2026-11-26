@@ -230,9 +230,11 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
         val spec=ComparisonExportSpec.fromProject(projectJson,startUs,endUs,width.toInt(),height.toInt(),gap.toInt(),sideBySide).copy(cutout=true)
         val owner=requireNotNull(session)
         val snapshot=owner.freezeCutoutExport(spec)
-        owner.suspendCutoutForExport()
-        try {return exports.start(spec,replacePreviousUnsaved,snapshot)}
-        catch(error:Throwable){owner.resumeCutoutPreview();throw error}
+        try {
+            owner.suspendCutoutForExport()
+            return exports.start(spec,replacePreviousUnsaved,snapshot)
+        } catch(error:Throwable){owner.resumeCutoutPreview();throw error}
+        finally {snapshot.close()}
     }
     override suspend fun resumeCutoutPreview():ComparisonPlaybackDto {
         check(exports.latest()?.state !in setOf("queued","encoding","cancelling","publishing"))
