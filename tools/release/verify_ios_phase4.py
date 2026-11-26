@@ -104,14 +104,33 @@ def verify_media_pipeline() -> None:
         "effects.legStretchEnabled ? legStretchTargetId : nil",
         "Self.buildLegStretchInputs(",
         "let legStretchValue = max(1.0, min(1.5, 1.0 + effects.legStretch))",
-        # Simulator Metal has 14 constant-buffer slots; the four selector
-        # flags (including leg-stretch) are packed without changing semantics.
-        "var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, legStretchFlag)",
-        "encoder.setBytes(&packedFlags",
-        "const uint legStretchEnabled = packedFlags.w;",
+        # Simulator Metal has 14 constant-buffer slots. The W lane packs
+        # independent leg-stretch (bit 0) and horizontal mirror (bit 1).
+        "legStretchFlag: UInt32 = legInputs.enabled ? 1 : 0",
+        "let geometryFlags = legStretchFlag | (mirrorHorizontally ? UInt32(2) : UInt32(0))",
+        "var packedFlags = SIMD4<UInt32>(fillMode, stickerFlag, customStickerFlag, geometryFlags)",
+        "encoder.setBytes(&packedFlags, length: MemoryLayout<SIMD4<UInt32>>.size, index: 0)",
+        "const uint legStretchEnabled = packedFlags.w & 1u;",
         "if (legStretchEnabled == 1 && legStretch > 1.0",
     ):
         check(token in renderer, f"iOS renderer leg stretch implementation missing: {token}")
+
+    # Check both sides of the packed flag ABI and the actual final pixel write,
+    # not just the presence of a mirror setting. Preserve the existing slots.
+    for token in (
+        "const bool mirrorHorizontally = (packedFlags.w & 2u) != 0u;",
+        "uint2 outputPixel = mirrorHorizontally ? uint2(width - 1u - gid.x, gid.y) : gid;",
+        "output.write(float4(color.rgb, 1.0), outputPixel);",
+    ):
+        check(token in renderer, f"iOS renderer horizontal mirror implementation missing: {token}")
+    for label, callsite in (
+        ("preview", source("IOSPreviewPipeline.swift")),
+        ("export", pipeline),
+    ):
+        check(
+            "mirrorHorizontally: request.mirrorHorizontally == true" in callsite,
+            f"iOS {label} must forward horizontal mirror to the renderer",
+        )
 
 
 def verify_temporal_privacy() -> None:

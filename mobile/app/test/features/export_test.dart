@@ -120,7 +120,7 @@ void main() {
     });
   });
 
-  test('ExportController forwards temporal trim bounds', () async {
+  test('Export forwards trim bounds and mirror', () async {
     final repository = _TrimCaptureRepository();
     final controller = ExportController(repository);
     addTearDown(controller.dispose);
@@ -143,6 +143,7 @@ void main() {
       selectedPersonIds: const {0},
       trimStartMs: 2300,
       trimEndMs: 8700,
+      mirrorHorizontally: true,
       createdAt: now,
       updatedAt: now,
     );
@@ -151,6 +152,7 @@ void main() {
 
     expect(repository.lastTrimStartMs, 2300);
     expect(repository.lastTrimEndMs, 8700);
+    expect(repository.lastMirrorHorizontally, isTrue);
     expect(repository.lastProcessingProfile, 'quality');
     expect(controller.state.jobId, 'trim-job');
   });
@@ -1328,6 +1330,7 @@ class _TrimCaptureRepository implements NativeProcessingRepository {
   int? lastVideoBitrate;
   double? lastCropClarityScale;
   FollowConfig lastFollow = const FollowConfig();
+  bool? lastMirrorHorizontally;
 
   _TrimCaptureRepository({
     this.maxEncodeWidth = 3840,
@@ -1371,6 +1374,7 @@ class _TrimCaptureRepository implements NativeProcessingRepository {
     bool enableLivePreview = false,
     int trimStartMs = 0,
     int? trimEndMs,
+    bool mirrorHorizontally = false,
   }) async {
     lastTrimStartMs = trimStartMs;
     lastTrimEndMs = trimEndMs;
@@ -1381,6 +1385,7 @@ class _TrimCaptureRepository implements NativeProcessingRepository {
     lastVideoBitrate = videoBitrate;
     lastCropClarityScale = cropClarityScale;
     lastFollow = follow;
+    lastMirrorHorizontally = mirrorHorizontally;
     return 'trim-job';
   }
 
@@ -1443,6 +1448,7 @@ class _PreviewToggleRepository implements NativeProcessingRepository {
     bool enableLivePreview = false,
     int trimStartMs = 0,
     int? trimEndMs,
+    bool mirrorHorizontally = false,
   }) {
     startExportCalls++;
     return startCompleter?.future ?? Future<String>.value('preview-toggle-job');

@@ -730,6 +730,84 @@ void main() {
     );
   }
 
+  testWidgets(
+    'Mirror toggles frame and moves hit targets without swapping identities',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final repository = _FakeProtectionRepository();
+      final container = ProviderContainer(
+        overrides: [nativeRepositoryProvider.overrideWithValue(repository)],
+      );
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: ProtectionEditorScreen(project: project)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _selectTool(tester, 'frame');
+
+      final toggle = find.byKey(const ValueKey('protection-mirror-toggle'));
+      final first = find.byKey(const ValueKey('protection-person-target-0'));
+      final second = find.byKey(const ValueKey('protection-person-target-1'));
+      expect(tester.widget<FilterChip>(toggle).selected, isFalse);
+      expect(tester.getCenter(first).dx, lessThan(tester.getCenter(second).dx));
+      final original = container
+          .read(personSelectionControllerProvider)
+          .isPersonSelected(0);
+      final analyzeRequests = repository.analyzeRequestCount;
+
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilterChip>(toggle).selected, isTrue);
+      expect(repository.lastMirrorHorizontally, isTrue);
+      expect(repository.analyzeRequestCount, analyzeRequests);
+      expect(
+        tester.getCenter(first).dx,
+        greaterThan(tester.getCenter(second).dx),
+      );
+
+      await tester.tapAt(tester.getCenter(first));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(personSelectionControllerProvider).isPersonSelected(0),
+        !original,
+      );
+      expect(repository.lastMirrorHorizontally, isTrue);
+
+      // Selecting a protagonist still uses the original ID, not the mirrored x.
+      await tester.ensureVisible(find.byKey(const ValueKey('reframe-mode')));
+      await tester.tap(find.text('9:16'));
+      await tester.pumpAndSettle();
+      await tester.tap(second);
+      await tester.pumpAndSettle();
+      final reframed = container.read(effectEditorControllerProvider).project!;
+      expect(reframed.follow.targetPersonId, 1);
+      expect(reframed.mirrorHorizontally, isTrue);
+      expect(repository.lastMirrorHorizontally, isTrue);
+
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilterChip>(toggle).selected, isFalse);
+      expect(repository.lastMirrorHorizontally, isFalse);
+      expect(
+        container
+            .read(effectEditorControllerProvider)
+            .project!
+            .follow
+            .targetPersonId,
+        1,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('leg stretch appears only after selecting a protagonist', (
     tester,
   ) async {
@@ -2514,6 +2592,7 @@ class _CancelRoundTripRepository extends _FakeProtectionRepository {
     bool enableLivePreview = false,
     int trimStartMs = 0,
     int? trimEndMs,
+    bool mirrorHorizontally = false,
   }) async {
     startExportCalls++;
     return 'roundtrip-job';
@@ -2570,6 +2649,7 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
   Set<int> lastFaceOnlyPersonIds = const {};
   int? lastPreviewTimestampMs;
   bool? lastTightMaskPreview;
+  bool? lastMirrorHorizontally;
   int previewRequestCount = 0;
   FollowConfig lastFollow = const FollowConfig();
 
@@ -2630,12 +2710,14 @@ class _FakeProtectionRepository implements NativeProcessingRepository {
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
     bool tightMaskPreview = false,
+    bool mirrorHorizontally = false,
   }) async {
     previewRequestCount += 1;
     lastSelectedPersonIds = selectedPersonIds.toSet();
     lastFaceOnlyPersonIds = faceOnlyPersonIds.toSet();
     lastPreviewTimestampMs = timestampMs;
     lastTightMaskPreview = tightMaskPreview;
+    lastMirrorHorizontally = mirrorHorizontally;
     lastFollow = follow;
     if (failPreview) throw StateError('preview rendering failed');
     return PreviewFrameDto(

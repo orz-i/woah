@@ -72,6 +72,7 @@ class DanceNativeClient implements DanceProcessingEvents {
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
     bool tightMaskPreview = false,
+    bool mirrorHorizontally = false,
   }) {
     return _api.getPreviewFrame(
       PreviewRequestDto(
@@ -82,6 +83,7 @@ class DanceNativeClient implements DanceProcessingEvents {
         follow: follow.toDto(),
         faceOnlyPersonIds: faceOnlyPersonIds,
         tightMaskPreview: tightMaskPreview,
+        mirrorHorizontally: mirrorHorizontally,
       ),
     );
   }
@@ -104,6 +106,7 @@ class DanceNativeClient implements DanceProcessingEvents {
     bool enableLivePreview = false,
     int trimStartMs = 0,
     int? trimEndMs,
+    bool mirrorHorizontally = false,
   }) {
     return _api.startExport(
       ExportRequestDto(
@@ -123,6 +126,7 @@ class DanceNativeClient implements DanceProcessingEvents {
         faceOnlyPersonIds: faceOnlyPersonIds,
         trimStartMs: trimStartMs,
         trimEndMs: trimEndMs,
+        mirrorHorizontally: mirrorHorizontally,
       ),
     );
   }

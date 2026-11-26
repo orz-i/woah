@@ -54,6 +54,7 @@ class NativeProcessingRepository {
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
     bool tightMaskPreview = false,
+    bool mirrorHorizontally = false,
   }) {
     return _client.getPreviewFrame(
       analysisCacheId: analysisCacheId,
@@ -63,6 +64,7 @@ class NativeProcessingRepository {
       effects: effects,
       follow: follow,
       tightMaskPreview: tightMaskPreview,
+      mirrorHorizontally: mirrorHorizontally,
     );
   }
 
@@ -83,6 +85,7 @@ class NativeProcessingRepository {
     bool enableLivePreview = false,
     int trimStartMs = 0,
     int? trimEndMs,
+    bool mirrorHorizontally = false,
   }) {
     return _client.startExport(
       sourceUri: sourceUri,
@@ -101,6 +104,7 @@ class NativeProcessingRepository {
       enableLivePreview: enableLivePreview,
       trimStartMs: trimStartMs,
       trimEndMs: trimEndMs,
+      mirrorHorizontally: mirrorHorizontally,
     );
   }
 

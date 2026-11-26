@@ -119,6 +119,10 @@ android {
     defaultConfig {
         minSdk = 24
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Opt-in local QA ID preserves previously installed, differently signed test packages.
+        if (providers.gradleProperty("WOAH_MIRROR_QA").orNull == "true") {
+            testApplicationId = "art.gaoge.dance.engine.mirrorqa.test"
+        }
         consumerProguardFiles("consumer-rules.pro")
         buildConfigField("String", "GIT_COMMIT_SHA", "\"$diagnosticGitCommitSha\"")
         buildConfigField("String", "BUILD_TIMESTAMP", "\"$diagnosticBuildTimestamp\"")

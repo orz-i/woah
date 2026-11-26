@@ -46,6 +46,9 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
         follow: state.project?.id == project.id
             ? state.project!.follow
             : project.follow,
+        mirrorHorizontally: state.project?.id == project.id
+            ? state.project!.mirrorHorizontally
+            : project.mirrorHorizontally,
         outputResolutionPreset: state.project?.id == project.id
             ? state.project!.outputResolutionPreset
             : project.outputResolutionPreset,
@@ -191,6 +194,16 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
     );
   }
 
+  void updateMirrorHorizontally(bool enabled) {
+    final project = state.project;
+    if (project == null || project.mirrorHorizontally == enabled) return;
+    state = state.copyWith(
+      project: project.copyWith(mirrorHorizontally: enabled),
+      clearPreview: true,
+    );
+    _requestPreview(debounce: false);
+  }
+
   /// Source-space hit targets must never be overlaid on a cropped image.
   void showSourceFrame(bool enabled) {
     if (state.showSourcePreview == enabled) return;
@@ -239,6 +252,7 @@ class EffectEditorController extends StateNotifier<EffectEditorState> {
           // Effect editing uses the same tight full-body contour as selection
           // and final export so the rendered shape does not change at handoff.
           tightMaskPreview: true,
+          mirrorHorizontally: currentProj.mirrorHorizontally,
         );
 
         if (!mounted) return;

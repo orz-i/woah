@@ -661,6 +661,7 @@ class PreviewRequestDto {
     required this.follow,
     this.faceOnlyPersonIds,
     this.tightMaskPreview,
+    this.mirrorHorizontally,
   });
 
   String analysisCacheId;
@@ -677,6 +678,8 @@ class PreviewRequestDto {
 
   bool? tightMaskPreview;
 
+  bool? mirrorHorizontally;
+
   List<Object?> _toList() {
     return <Object?>[
       analysisCacheId,
@@ -686,6 +689,7 @@ class PreviewRequestDto {
       follow,
       faceOnlyPersonIds,
       tightMaskPreview,
+      mirrorHorizontally,
     ];
   }
 
@@ -702,6 +706,7 @@ class PreviewRequestDto {
       follow: result[4]! as FollowConfigDto,
       faceOnlyPersonIds: (result[5] as List<Object?>?)?.cast<int>(),
       tightMaskPreview: result[6] as bool?,
+      mirrorHorizontally: result[7] as bool?,
     );
   }
 
@@ -714,7 +719,7 @@ class PreviewRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(timestampMs, other.timestampMs) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds) && _deepEquals(tightMaskPreview, other.tightMaskPreview);
+    return _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(timestampMs, other.timestampMs) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds) && _deepEquals(tightMaskPreview, other.tightMaskPreview) && _deepEquals(mirrorHorizontally, other.mirrorHorizontally);
   }
 
   @override
@@ -723,7 +728,7 @@ class PreviewRequestDto {
 
   @override
   String toString() {
-    return 'PreviewRequestDto(analysisCacheId: $analysisCacheId, timestampMs: $timestampMs, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, faceOnlyPersonIds: $faceOnlyPersonIds, tightMaskPreview: $tightMaskPreview)';
+    return 'PreviewRequestDto(analysisCacheId: $analysisCacheId, timestampMs: $timestampMs, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, faceOnlyPersonIds: $faceOnlyPersonIds, tightMaskPreview: $tightMaskPreview, mirrorHorizontally: $mirrorHorizontally)';
   }
 }
 
@@ -800,6 +805,7 @@ class ExportRequestDto {
     this.faceOnlyPersonIds,
     required this.trimStartMs,
     this.trimEndMs,
+    this.mirrorHorizontally,
   });
 
   String sourceUri;
@@ -834,6 +840,8 @@ class ExportRequestDto {
 
   int? trimEndMs;
 
+  bool? mirrorHorizontally;
+
   List<Object?> _toList() {
     return <Object?>[
       sourceUri,
@@ -852,6 +860,7 @@ class ExportRequestDto {
       faceOnlyPersonIds,
       trimStartMs,
       trimEndMs,
+      mirrorHorizontally,
     ];
   }
 
@@ -877,6 +886,7 @@ class ExportRequestDto {
       faceOnlyPersonIds: (result[13] as List<Object?>?)?.cast<int>(),
       trimStartMs: result[14]! as int,
       trimEndMs: result[15] as int?,
+      mirrorHorizontally: result[16] as bool?,
     );
   }
 
@@ -889,7 +899,7 @@ class ExportRequestDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile) && _deepEquals(cropClarityScale, other.cropClarityScale) && _deepEquals(enableLivePreview, other.enableLivePreview) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds) && _deepEquals(trimStartMs, other.trimStartMs) && _deepEquals(trimEndMs, other.trimEndMs);
+    return _deepEquals(sourceUri, other.sourceUri) && _deepEquals(analysisCacheId, other.analysisCacheId) && _deepEquals(outputFilePath, other.outputFilePath) && _deepEquals(selectedPersonIds, other.selectedPersonIds) && _deepEquals(effects, other.effects) && _deepEquals(follow, other.follow) && _deepEquals(targetWidth, other.targetWidth) && _deepEquals(targetHeight, other.targetHeight) && _deepEquals(targetFps, other.targetFps) && _deepEquals(videoBitrate, other.videoBitrate) && _deepEquals(processingProfile, other.processingProfile) && _deepEquals(cropClarityScale, other.cropClarityScale) && _deepEquals(enableLivePreview, other.enableLivePreview) && _deepEquals(faceOnlyPersonIds, other.faceOnlyPersonIds) && _deepEquals(trimStartMs, other.trimStartMs) && _deepEquals(trimEndMs, other.trimEndMs) && _deepEquals(mirrorHorizontally, other.mirrorHorizontally);
   }
 
   @override
@@ -898,7 +908,7 @@ class ExportRequestDto {
 
   @override
   String toString() {
-    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile, cropClarityScale: $cropClarityScale, enableLivePreview: $enableLivePreview, faceOnlyPersonIds: $faceOnlyPersonIds, trimStartMs: $trimStartMs, trimEndMs: $trimEndMs)';
+    return 'ExportRequestDto(sourceUri: $sourceUri, analysisCacheId: $analysisCacheId, outputFilePath: $outputFilePath, selectedPersonIds: $selectedPersonIds, effects: $effects, follow: $follow, targetWidth: $targetWidth, targetHeight: $targetHeight, targetFps: $targetFps, videoBitrate: $videoBitrate, processingProfile: $processingProfile, cropClarityScale: $cropClarityScale, enableLivePreview: $enableLivePreview, faceOnlyPersonIds: $faceOnlyPersonIds, trimStartMs: $trimStartMs, trimEndMs: $trimEndMs, mirrorHorizontally: $mirrorHorizontally)';
   }
 }
 

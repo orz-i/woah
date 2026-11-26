@@ -81,6 +81,7 @@ void main() {
           borderWidth: 4.0,
         ),
         outputResolutionPreset: OutputResolutionPreset.fhd,
+        mirrorHorizontally: true,
         trimStartMs: 1200,
         trimEndMs: 7600,
         createdAt: now,
@@ -105,6 +106,15 @@ void main() {
       expect(reconstructed.privacyTargetIds, equals({0, 1}));
       expect(reconstructed.effects.fillMode, equals(FillMode.blur));
       expect(reconstructed.outputResolutionPreset, OutputResolutionPreset.fhd);
+      expect(reconstructed.mirrorHorizontally, isTrue);
+      expect(
+        reconstructed.copyWith(trimStartMs: 1400).mirrorHorizontally,
+        isTrue,
+      );
+      expect(
+        reconstructed.copyWith(mirrorHorizontally: false).mirrorHorizontally,
+        isFalse,
+      );
       expect(reconstructed.trimStartMs, 1200);
       expect(reconstructed.trimEndMs, 7600);
       expect(reconstructed.trimmedDurationMs, 6400);
@@ -132,10 +142,12 @@ void main() {
               updatedAt: now,
             ).toJson()
             ..remove('faceOnlyPersonIds')
-            ..remove('outputResolutionPreset');
+            ..remove('outputResolutionPreset')
+            ..remove('mirrorHorizontally');
 
       final reconstructed = DanceProject.fromJson(json);
       expect(reconstructed.faceOnlyPersonIds, isEmpty);
+      expect(reconstructed.mirrorHorizontally, isFalse);
       expect(
         reconstructed.outputResolutionPreset,
         OutputResolutionPreset.source,

@@ -59,6 +59,7 @@ class GlRenderer : FrameRenderer {
     private var stickerOverlayProgram: ProgramLocations? = null
 
     private var vertexBuffer: FloatBuffer? = null
+    private var mirroredVertexBuffer: FloatBuffer? = null
     private var width = 0
     private var height = 0
     private var maskTextureId = 0
@@ -291,6 +292,19 @@ class GlRenderer : FrameRenderer {
                 position(0)
             }
 
+        // Reverse the screen U coordinate before all source/crop/mask mappings.
+        // Positions and triangle winding stay unchanged; every compositing pass
+        // (including face stickers) samples the same reflected source coordinate.
+        val mirroredVertices = vertices.copyOf()
+        for (index in 2 until mirroredVertices.size step 4) {
+            mirroredVertices[index] = 1f - mirroredVertices[index]
+        }
+        mirroredVertexBuffer = ByteBuffer.allocateDirect(mirroredVertices.size * 4)
+            .order(ByteOrder.nativeOrder()).asFloatBuffer().apply {
+                put(mirroredVertices)
+                position(0)
+            }
+
         // Initialize 2D auxiliary textures (privacy, occluder, sticker, protagonist beauty mask)
         val textures = IntArray(4)
         GLES20.glGenTextures(4, textures, 0)
@@ -445,7 +459,8 @@ class GlRenderer : FrameRenderer {
         texMatrix: FloatArray?,
         textureType: SourceTextureType = SourceTextureType.OES,
         protectedExportJobId: String? = null,
-        presentationTimeUs: Long = -1L
+        presentationTimeUs: Long = -1L,
+        mirrorHorizontally: Boolean = false
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -508,7 +523,7 @@ class GlRenderer : FrameRenderer {
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, legMaskTextureId)
         if (prog.uLegMaskTextureLoc >= 0) GLES20.glUniform1i(prog.uLegMaskTextureLoc, 4)
 
-        drawQuad(prog)
+        drawQuad(prog, mirrorHorizontally)
         // The encoder's portrait crop is a second GL draw after the privacy
         // compositor. Its failure must not silently encode a stale frame.
         val cropGlError = GLES20.glGetError()
@@ -595,7 +610,8 @@ class GlRenderer : FrameRenderer {
         initialFollowTarget: art.gaoge.dance.engine.inference.FloatRect? = null,
         legStretchTargetPersonId: Int? = null,
         cropClarityScale: Double = 1.0,
-        cropClarityJobId: String? = null
+        cropClarityJobId: String? = null,
+        mirrorHorizontally: Boolean = false
     ) {
         GLES20.glViewport(0, 0, width, height)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -983,14 +999,15 @@ class GlRenderer : FrameRenderer {
             if (prog.uHasStickerLoc >= 0) GLES20.glUniform1i(prog.uHasStickerLoc, 0)
         }
 
-        drawQuad(prog)
+        drawQuad(prog, mirrorHorizontally)
         if (renderFacePrivacyAsSticker) {
             renderFaceStickerOverlays(
                 placements = faceStickerPlacements,
                 textureMatrix = matrix,
                 cropRect = cropRect,
                 stickerPrivacy = requireNotNull(additionalResolvedPrivacy),
-                effects = effects
+                effects = effects,
+                mirrorHorizontally = mirrorHorizontally
             )
         }
         // A GL draw/upload error in a protected export could encode an
@@ -1032,7 +1049,8 @@ class GlRenderer : FrameRenderer {
         textureMatrix: FloatArray,
         cropRect: art.gaoge.dance.engine.inference.FloatRect,
         stickerPrivacy: art.gaoge.dance.engine.privacy.ResolvedCompositorMasks,
-        effects: art.gaoge.dance.engine.bridge.EffectConfigDto
+        effects: art.gaoge.dance.engine.bridge.EffectConfigDto,
+        mirrorHorizontally: Boolean
     ) {
         val prog = stickerOverlayProgram ?: return
         if (placements.isEmpty()) return
@@ -1125,7 +1143,7 @@ class GlRenderer : FrameRenderer {
                 if (prog.uStickerRectLoc >= 0) {
                     GLES20.glUniform4f(prog.uStickerRectLoc, left, top, right, bottom)
                 }
-                drawQuad(prog)
+                drawQuad(prog, mirrorHorizontally)
             }
         } finally {
             GLES20.glDisable(GLES20.GL_BLEND)
@@ -1143,17 +1161,18 @@ class GlRenderer : FrameRenderer {
         render(frameTexture, null, persons, selectedPersonIds, effects, follow, presentationTimeUs, SourceTextureType.OES)
     }
 
-    private fun drawQuad(prog: ProgramLocations) {
+    private fun drawQuad(prog: ProgramLocations, mirrorHorizontally: Boolean) {
+        val buffer = requireNotNull(if (mirrorHorizontally) mirroredVertexBuffer else vertexBuffer)
         val aPositionLoc = prog.aPositionLoc
         val aTexCoordLoc = prog.aTexCoordLoc
 
         if (aPositionLoc >= 0 && aTexCoordLoc >= 0) {
-            vertexBuffer?.position(0)
-            GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, vertexBuffer)
+            buffer.position(0)
+            GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, buffer)
             GLES20.glEnableVertexAttribArray(aPositionLoc)
 
-            vertexBuffer?.position(2)
-            GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, vertexBuffer)
+            buffer.position(2)
+            GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 4 * 4, buffer)
             GLES20.glEnableVertexAttribArray(aTexCoordLoc)
 
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
@@ -1229,6 +1248,8 @@ class GlRenderer : FrameRenderer {
             legMaskTextureId = 0
         }
 
+        vertexBuffer = null
+        mirroredVertexBuffer = null
         captureBuffer = null
         mergedMaskBuffer = null
     }

@@ -171,7 +171,8 @@ final class IOSPreviewPipeline {
       sourceCrop: sourceCrop,
       legStretchTargetId: request.follow.enabled
         ? request.follow.targetPersonId.map { Int($0) }
-        : nil
+        : nil,
+      mirrorHorizontally: request.mirrorHorizontally == true
     )
     let previewPath = try savePreview(
       rendered,

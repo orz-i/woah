@@ -564,7 +564,8 @@ final class IOSExportPipeline {
             outputHeight: target.height,
             sourceCrop: sourceCrop,
             legStretchTargetId: followTargetId,
-            cropClarityScale: request.cropClarityScale ?? 1.0
+            cropClarityScale: request.cropClarityScale ?? 1.0,
+            mirrorHorizontally: request.mirrorHorizontally == true
           )
           let outputPixelBuffer = try makePixelBuffer(
             adaptor: adaptor,

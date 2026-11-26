@@ -2275,7 +2275,8 @@ class ExportPipeline(
                                         glRenderer.renderBase(
                                             frameTexture = requireNotNull(clarityAbBaselineTarget).textureId,
                                             texMatrix = cropTextureMatrix,
-                                            textureType = art.gaoge.dance.engine.render.SourceTextureType.TEXTURE_2D
+                                            textureType = art.gaoge.dance.engine.render.SourceTextureType.TEXTURE_2D,
+                                            mirrorHorizontally = request.mirrorHorizontally == true
                                         )
                                         baselineBitmap = glRenderer.captureRenderedFrame()
                                     } catch (error: Throwable) {
@@ -2294,7 +2295,8 @@ class ExportPipeline(
                                     texMatrix = cropTextureMatrix,
                                     textureType = art.gaoge.dance.engine.render.SourceTextureType.TEXTURE_2D,
                                     protectedExportJobId = if (allPrivacyTargetIds.isNotEmpty()) jobId else null,
-                                    presentationTimeUs = ptsUs
+                                    presentationTimeUs = ptsUs,
+                                    mirrorHorizontally = request.mirrorHorizontally == true
                                 )
                                 if (baselineBitmap != null) {
                                     val baseline = requireNotNull(baselineBitmap)
@@ -2349,7 +2351,8 @@ class ExportPipeline(
                                         null
                                     },
                                     cropClarityScale = request.cropClarityScale ?: 1.0,
-                                    cropClarityJobId = jobId
+                                    cropClarityJobId = jobId,
+                                    mirrorHorizontally = request.mirrorHorizontally == true
                                 )
                             }
                             privacyAudit?.record(ptsUs, auditCrop, faceOnlyFrameResult?.qaFaceRegions.orEmpty(),

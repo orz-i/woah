@@ -167,6 +167,7 @@ class PreviewRequestDto {
   final FollowConfigDto follow;
   final List<int>? faceOnlyPersonIds;
   final bool? tightMaskPreview;
+  final bool? mirrorHorizontally;
 
   PreviewRequestDto({
     required this.analysisCacheId,
@@ -176,6 +177,7 @@ class PreviewRequestDto {
     required this.follow,
     this.faceOnlyPersonIds,
     this.tightMaskPreview,
+    this.mirrorHorizontally,
   });
 }
 
@@ -208,6 +210,7 @@ class ExportRequestDto {
   final List<int>? faceOnlyPersonIds;
   final int trimStartMs;
   final int? trimEndMs;
+  final bool? mirrorHorizontally;
 
   ExportRequestDto({
     required this.sourceUri,
@@ -226,6 +229,7 @@ class ExportRequestDto {
     this.faceOnlyPersonIds,
     this.trimStartMs = 0,
     this.trimEndMs,
+    this.mirrorHorizontally,
   });
 }
 

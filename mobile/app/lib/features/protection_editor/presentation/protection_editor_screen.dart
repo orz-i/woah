@@ -1545,6 +1545,7 @@ class _ProtectionEditorScreenState
     final displayPath =
         effectState.previewPath ?? effectState.previewThumbnailPath;
     final hasImage = displayPath != null && displayPath.isNotEmpty;
+    final mirrored = effectState.project?.mirrorHorizontally ?? false;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1568,7 +1569,11 @@ class _ProtectionEditorScreenState
                           : (stageHeight > 0
                                 ? stageWidth / stageHeight
                                 : 9 / 16),
-                      child: VideoPlayer(_videoController!),
+                      child: Transform.flip(
+                        key: const ValueKey('protection-trim-mirror'),
+                        flipX: mirrored,
+                        child: VideoPlayer(_videoController!),
+                      ),
                     ),
                   ),
                 ),
@@ -1576,6 +1581,7 @@ class _ProtectionEditorScreenState
             else if (hasImage)
               Image.file(
                 File(displayPath),
+                key: ValueKey('protection-rendered-frame-$mirrored'),
                 fit: BoxFit.fill,
                 gaplessPlayback: true,
                 filterQuality: FilterQuality.low,
@@ -1593,6 +1599,7 @@ class _ProtectionEditorScreenState
                   stageWidth,
                   stageHeight,
                   selectionState.isPersonSelected(person.id),
+                  mirrored,
                   () {
                     HapticFeedback.selectionClick();
                     if (_selectingFollowTarget) {
@@ -1728,10 +1735,12 @@ class _ProtectionEditorScreenState
     double stageWidth,
     double stageHeight,
     bool selected,
+    bool mirrored,
     VoidCallback onTap,
   ) {
     final box = person.normalizedInitialBox;
-    final left = (box.left * stageWidth).clamp(0.0, stageWidth).toDouble();
+    final visualLeft = mirrored ? 1.0 - box.right : box.left;
+    final left = (visualLeft * stageWidth).clamp(0.0, stageWidth).toDouble();
     final top = (box.top * stageHeight).clamp(0.0, stageHeight).toDouble();
     final width = (box.width * stageWidth)
         .clamp(0.0, stageWidth - left)
@@ -2289,6 +2298,24 @@ class _ProtectionEditorScreenState
           }
           _scheduleProfilePersist();
         }),
+        const SizedBox(height: 12),
+        _buildSectionLabel('画面方向'),
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilterChip(
+            key: const ValueKey('protection-mirror-toggle'),
+            avatar: const Icon(Icons.flip_rounded, size: 18),
+            label: const Text('镜像翻转'),
+            selected: project?.mirrorHorizontally ?? false,
+            onSelected: project == null
+                ? null
+                : (enabled) {
+                    HapticFeedback.selectionClick();
+                    controller.updateMirrorHorizontally(enabled);
+                  },
+          ),
+        ),
         if (_selectingFollowTarget) ...[
           const SizedBox(height: 14),
           Text(
@@ -2999,10 +3026,15 @@ class _ProtectionEditorScreenState
       await _initializeEditor(forceAnalyze: true);
       return;
     }
-    final project = ref.read(personSelectionControllerProvider).project;
+    final project =
+        ref.read(personSelectionControllerProvider).project ?? widget.project;
+    final mirror = ref
+        .read(effectEditorControllerProvider)
+        .project
+        ?.mirrorHorizontally;
     final privacyMode = ref.read(personSelectionControllerProvider).privacyMode;
     final accepted = await selectionController.analyzeProject(
-      project ?? widget.project,
+      project.copyWith(mirrorHorizontally: mirror),
       selectionPreviewEnabled: false,
       privacyMode: privacyMode,
       session: _analysisSession,
@@ -3189,6 +3221,8 @@ class _ProtectionEditorScreenState
     return base.copyWith(
       effects: effects,
       follow: effectState.project?.follow ?? base.follow,
+      mirrorHorizontally:
+          effectState.project?.mirrorHorizontally ?? base.mirrorHorizontally,
       outputResolutionPreset:
           effectState.project?.outputResolutionPreset ??
           base.outputResolutionPreset,

@@ -42,6 +42,42 @@ void main() {
       expect(configured.effects.borderColorArgb, equals(0xFF00E5FF));
     });
 
+    test(
+      'Mirror is project-wide and forwarded to preview, including source view',
+      () async {
+        final repo = _FakeNativeRepository();
+        final controller = EffectEditorController(repository: repo);
+        addTearDown(controller.dispose);
+        final project = testProject.copyWith(analysisCacheId: 'mirror-cache');
+        controller.init(project);
+        await Future<void>.delayed(Duration.zero);
+        expect(repo.lastMirrorHorizontally, isFalse);
+
+        controller.updateMirrorHorizontally(true);
+        expect(controller.state.previewPath, isNull);
+        await Future<void>.delayed(Duration.zero);
+        expect(repo.lastMirrorHorizontally, isTrue);
+        expect(controller.buildConfiguredProject()!.mirrorHorizontally, isTrue);
+
+        controller.updateEditingContext(
+          project: project.copyWith(selectedPersonIds: {7}),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(repo.lastMirrorHorizontally, isTrue);
+        controller.showSourceFrame(true);
+        await Future<void>.delayed(Duration.zero);
+        expect(repo.lastMirrorHorizontally, isTrue);
+
+        controller.updateMirrorHorizontally(false);
+        await Future<void>.delayed(Duration.zero);
+        expect(repo.lastMirrorHorizontally, isFalse);
+        expect(
+          controller.buildConfiguredProject()!.mirrorHorizontally,
+          isFalse,
+        );
+      },
+    );
+
     test('Leg stretch requires and follows the explicit protagonist', () {
       final controller = EffectEditorController();
       controller.init(testProject);
@@ -202,6 +238,7 @@ void main() {
 class _FakeNativeRepository implements NativeProcessingRepository {
   int? lastTimestampMs;
   bool? lastTightMaskPreview;
+  bool? lastMirrorHorizontally;
 
   @override
   Future<PreviewFrameDto> getPreviewFrame({
@@ -212,9 +249,11 @@ class _FakeNativeRepository implements NativeProcessingRepository {
     required EffectConfig effects,
     FollowConfig follow = const FollowConfig(),
     bool tightMaskPreview = false,
+    bool mirrorHorizontally = false,
   }) async {
     lastTimestampMs = timestampMs;
     lastTightMaskPreview = tightMaskPreview;
+    lastMirrorHorizontally = mirrorHorizontally;
     return PreviewFrameDto(
       thumbnailPath: '/path/to/rendered_preview.jpg',
       renderTimeMs: 12,
