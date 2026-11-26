@@ -26,9 +26,18 @@ class ComparisonController extends ChangeNotifier {
   bool calibrating = false, exporting = false;
   bool stepping = false;
   bool adjusting = false;
-  bool cutoutSelecting = false, cutoutPreparing = false;
+  bool cutoutSelecting = false,
+      cutoutPreparing = false,
+      cutoutInspecting = false;
   ComparisonCutoutResultDto? cutoutResult;
   bool get cutoutActive => cutoutResult != null;
+  (int, int)? get cutoutPracticeRange {
+    final a = project.loopStartUs, b = project.loopEndUs;
+    return project.loopEnabled && a != null && b != null && a >= 0 && b > a
+        ? (a, b)
+        : null;
+  }
+
   bool get cutoutMode => cutoutSelecting || cutoutPreparing || cutoutActive;
   bool get supportsCutout => kDebugMode && gateway is ComparisonCutoutGateway;
   (int, int, bool) get cutoutViewport => (_width, _height, _horizontal);
@@ -90,6 +99,7 @@ class ComparisonController extends ChangeNotifier {
     _cutoutRequest++;
     cutoutSelecting = false;
     cutoutPreparing = false;
+    cutoutInspecting = false;
     cutoutResult = null;
   }
 
@@ -792,8 +802,61 @@ class ComparisonController extends ChangeNotifier {
       _notify();
       return false;
     }
+    final range = cutoutPracticeRange;
+    if (range != null &&
+        (state!.positionUs < range.$1 || state.positionUs >= range.$2)) {
+      cutoutSelecting = false;
+      error = '请先将播放位置移到 A/B 选段内，再进入抠像画布。';
+      _notify();
+      return false;
+    }
     _notify();
     return true;
+  }
+
+  Future<ComparisonCutoutPreviewDto?> inspectCutout(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+  ) async {
+    if (_closed ||
+        !cutoutSelecting ||
+        cutoutPreparing ||
+        cutoutInspecting ||
+        (reference ? playback?.teacherFrameUs : playback?.learnerFrameUs) !=
+            seed.sourcePtsUs) {
+      return null;
+    }
+    final request = ++_cutoutRequest;
+    cutoutInspecting = true;
+    error = null;
+    _notify();
+    try {
+      final result = await (gateway as ComparisonCutoutGateway).inspectCutout(
+        reference,
+        seed,
+      );
+      if (_closed || request != _cutoutRequest || !cutoutSelecting) return null;
+      if (result.sourcePtsUs != seed.sourcePtsUs ||
+          result.width < 1 ||
+          result.height < 1 ||
+          result.width > 1024 ||
+          result.height > 1024 ||
+          result.png.isEmpty ||
+          result.png.length > 5 * 1024 * 1024) {
+        throw StateError('Invalid cutout still');
+      }
+      return result;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) {
+        error = '未能明确提取所选人物，请长按人物身体中央重试。';
+      }
+      return null;
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutInspecting = false;
+        _notify();
+      }
+    }
   }
 
   Future<void> prepareCutout(
@@ -803,6 +866,7 @@ class ComparisonController extends ChangeNotifier {
     if (_closed ||
         !cutoutSelecting ||
         cutoutPreparing ||
+        cutoutInspecting ||
         playback?.teacherFrameUs != reference.sourcePtsUs ||
         playback?.learnerFrameUs != target.sourcePtsUs) {
       return;
@@ -822,7 +886,7 @@ class ComparisonController extends ChangeNotifier {
       cutoutSelecting = false;
     } catch (_) {
       if (_closed || request != _cutoutRequest) return;
-      error = '人物分析未完成。请使用每路不超过300帧的较短片段，选中人物身体中央后重试。';
+      error = '人物分析未完成。较长视频请先设置并启用 A/B 选段（每路最多300帧），或重新选择人物。';
     } finally {
       if (!_closed && request == _cutoutRequest) {
         cutoutPreparing = false;
@@ -834,7 +898,8 @@ class ComparisonController extends ChangeNotifier {
   Future<void> exitCutout() async {
     if (_closed || !cutoutMode) return;
     final request = ++_cutoutRequest;
-    final needsNative = cutoutPreparing || cutoutActive;
+    final needsNative =
+        cutoutSelecting || cutoutPreparing || cutoutInspecting || cutoutActive;
     if (!needsNative) {
       cutoutSelecting = false;
       error = null;
@@ -849,6 +914,7 @@ class ComparisonController extends ChangeNotifier {
       playback = state;
       cutoutResult = null;
       cutoutSelecting = false;
+      cutoutInspecting = false;
       error = state.error;
     } catch (_) {
       if (!_closed && request == _cutoutRequest) {
@@ -857,6 +923,7 @@ class ComparisonController extends ChangeNotifier {
     } finally {
       if (!_closed && request == _cutoutRequest) {
         cutoutPreparing = false;
+        cutoutInspecting = false;
         _notify();
       }
     }
@@ -876,6 +943,10 @@ class ComparisonController extends ChangeNotifier {
 
   Future<void> seek(int positionUs) async {
     if (stepping || cutoutSelecting || cutoutPreparing) return;
+    final selected = cutoutActive ? cutoutPracticeRange : null;
+    if (selected != null) {
+      positionUs = positionUs.clamp(selected.$1, selected.$2 - 1);
+    }
     await _control(ComparisonCommand.seek, positionUs);
   }
 
@@ -1115,6 +1186,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<bool> setLoopRange(int startUs, int endUs) async {
+    if (cutoutMode) return false;
     if (!canPlay || _closed) return false;
     final duration = playback!.durationUs;
     if (startUs < 0 || endUs <= startUs || endUs > duration) {
@@ -1154,6 +1226,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> toggleLoop() async {
+    if (cutoutMode) return;
     if (busy || project.loopStartUs == null || project.loopEndUs == null) {
       return;
     }
@@ -1161,6 +1234,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> clearLoop() async {
+    if (cutoutMode) return;
     if (busy) return;
     await _setPractice(project.copyWith(clearLoop: true));
   }

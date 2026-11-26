@@ -123,6 +123,15 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
       durationUs: 0, teacherStartUs: 0, offsetUs: 0, speed: 1)
   }
 
+  func inspectCutout(reference: Bool,seed: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutPreviewDto {
+    do {
+      #if DEBUG
+      return try await requirePlayer().inspectCutout(reference:reference,seed:seed)
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    } catch { throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison) }
+  }
   func prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutResultDto {
     do {
       #if DEBUG

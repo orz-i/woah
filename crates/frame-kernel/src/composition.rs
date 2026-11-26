@@ -410,3 +410,144 @@ mod cutout_tests {
         }
     }
 }
+
+/// Render an unmirrored, transparent still from the *same* letterboxed input
+/// that produced the selected instance. Pixels are RGBA straight-alpha;
+/// output is top-down in model coordinates. The returned crop excludes
+/// transparent padding/background. No predicted or unselected mask is used.
+pub fn cutout_thumbnail(
+    mask: &[u8],
+    t: Transform,
+    rgba: &[u8],
+    bottom_up: bool,
+    output: &mut [u8],
+) -> Viewport {
+    let size = t.input_size as usize;
+    if mask_area(t) != Some(mask.len())
+        || !(1..=1024).contains(&size)
+        || rgba.len() != size * size * 4
+        || output.len() != rgba.len()
+    {
+        return Viewport::default();
+    }
+    output.fill(0);
+    let (mut left, mut top, mut right, mut bottom) = (size, size, 0, 0);
+    for y in 0..size {
+        for x in 0..size {
+            let sx = (x as f32 + 0.5 - t.pad_left) / (t.scale * t.source_width as f32);
+            let sy = (y as f32 + 0.5 - t.pad_top) / (t.scale * t.source_height as f32);
+            let score = mask_sample(mask, t, sx, sy);
+            let a = ((score - 96.0) / 96.0).clamp(0.0, 1.0);
+            let alpha = (a * a * (3.0 - 2.0 * a) * 255.0).round() as u8;
+            if alpha == 0 {
+                continue;
+            }
+            let row = if bottom_up { size - y - 1 } else { y };
+            let from = (row * size + x) * 4;
+            let to = (y * size + x) * 4;
+            output[to..to + 3].copy_from_slice(&rgba[from..from + 3]);
+            output[to + 3] = alpha;
+            left = left.min(x);
+            top = top.min(y);
+            right = right.max(x + 1);
+            bottom = bottom.max(y + 1);
+        }
+    }
+    if right <= left || bottom <= top {
+        return Viewport::default();
+    }
+    Viewport {
+        x: left as i32,
+        top: top as i32,
+        width: (right - left) as i32,
+        height: (bottom - top) as i32,
+    }
+}
+
+/// # Safety
+/// Each buffer must be valid for its declared length; output must not overlap inputs.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_cutout_thumbnail(
+    mask: *const u8,
+    mask_len: usize,
+    t: Transform,
+    rgba: *const u8,
+    rgba_len: usize,
+    bottom_up: u32,
+    output: *mut u8,
+    output_len: usize,
+) -> Viewport {
+    let n = t.input_size as usize;
+    if !(1..=1024).contains(&n)
+        || mask_area(t) != Some(mask_len)
+        || rgba_len != n * n * 4
+        || output_len != rgba_len
+        || bottom_up > 1
+        || mask.is_null()
+        || rgba.is_null()
+        || output.is_null()
+    {
+        return Viewport::default();
+    }
+    // SAFETY: caller owns valid nonoverlapping buffers of the checked lengths.
+    let mask = unsafe { std::slice::from_raw_parts(mask, mask_len) };
+    // SAFETY: input is readable for the checked length.
+    let rgba = unsafe { std::slice::from_raw_parts(rgba, rgba_len) };
+    // SAFETY: output is writable and does not alias either input.
+    let output = unsafe { std::slice::from_raw_parts_mut(output, output_len) };
+    cutout_thumbnail(mask, t, rgba, bottom_up != 0, output)
+}
+
+#[cfg(test)]
+mod thumbnail_tests {
+    use super::*;
+    #[test]
+    fn thumbnail_keeps_selected_rgb_and_rejects_padding_and_background() {
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 1.,
+            source_width: 4,
+            source_height: 2,
+            input_size: 4,
+            proto_size: 4,
+        };
+        let m = [
+            255, 255, 255, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255,
+        ];
+        let mut rgba = [0u8; 64];
+        for i in 0..16 {
+            rgba[4 * i] = i as u8;
+            rgba[4 * i + 3] = 255;
+        }
+        let mut out = [99; 64];
+        assert_eq!(
+            cutout_thumbnail(&m, t, &rgba, false, &mut out),
+            Viewport {
+                x: 0,
+                top: 1,
+                width: 1,
+                height: 2
+            }
+        );
+        assert_eq!(&out[16..20], &[4, 0, 0, 255]);
+        assert_eq!(&out[32..36], &[8, 0, 0, 255]);
+        assert!(out[..16].iter().all(|&x| x == 0));
+        assert_eq!(&out[20..24], &[0; 4]);
+        assert_eq!(
+            cutout_thumbnail(&m, t, &rgba, true, &mut out),
+            Viewport {
+                x: 0,
+                top: 1,
+                width: 1,
+                height: 2
+            }
+        );
+        assert_eq!(&out[16..20], &[8, 0, 0, 255]);
+        assert_eq!(&out[32..36], &[4, 0, 0, 255]);
+        assert_eq!(
+            cutout_thumbnail(&[0; 16], t, &rgba, false, &mut out),
+            Viewport::default()
+        );
+    }
+}

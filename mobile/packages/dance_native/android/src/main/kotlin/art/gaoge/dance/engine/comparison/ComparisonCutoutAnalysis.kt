@@ -1,6 +1,11 @@
 package art.gaoge.dance.engine.comparison
 
 import android.content.Context
+import android.graphics.Bitmap
+import java.io.ByteArrayOutputStream
+import java.security.MessageDigest
+import java.nio.ByteBuffer
+import art.gaoge.dance.engine.bridge.comparison.ComparisonCutoutPreviewDto
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
@@ -78,7 +83,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         } finally { extractor.release() }
     }
 
-    private class Observation(val pts: Long, persons: List<PersonDetection>, mapper: ModelCoordinateMapper) {
+    internal class Observation(val pts: Long, persons: List<PersonDetection>, mapper: ModelCoordinateMapper) {
         val transform = floatArrayOf(mapper.scale,mapper.padLeft,mapper.padTop,mapper.srcWidth.toFloat(),
             mapper.srcHeight.toFloat(),mapper.modelInputSize.toFloat(),mapper.protoSize.toFloat())
         val area = mapper.protoSize * mapper.protoSize
@@ -100,13 +105,55 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             FrameKernel.cutoutSelectNative(masks,transform,seed.x,seed.y)
         fun track(session: FrameKernel.CutoutTrack, seed: Int = -1) =
             session.step(pts,seed,rows,masks,transform)
+        private fun mask(index: Int) = masks.copyOfRange(index*area,(index+1)*area)
         fun alpha(index: Int, width: Int,height: Int) =
-            FrameKernel.cutoutAlphaNative(masks.copyOfRange(index*area,(index+1)*area),transform,width,height)
+            FrameKernel.cutoutAlphaNative(mask(index),transform,width,height)
+        fun thumbnail(index: Int, rgba: ByteArray): ComparisonCutoutPreviewDto {
+            val packed=requireNotNull(FrameKernel.cutoutThumbnailNative(mask(index),transform,rgba,true))
+            val w=packed[0];val h=packed[1]
+            require(w>0 && h>0 && packed.size==w*h+2)
+            val bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
+            try {
+                bitmap.setPixels(packed,2,w,0,0,w,h)
+                val bytes=ByteArrayOutputStream()
+                check(bitmap.compress(Bitmap.CompressFormat.PNG,100,bytes))
+                return ComparisonCutoutPreviewDto(pts,bytes.toByteArray(),w.toLong(),h.toLong())
+            } finally { bitmap.recycle() }
+        }
+    }
+
+    internal data class Inspection(val seed: ComparisonCutoutSeed, val observation: Observation,
+        val index: Int, val preview: ComparisonCutoutPreviewDto, val sourceDigest: ByteArray)
+
+    private fun digest(frame: ByteBuffer): ByteArray = MessageDigest.getInstance("SHA-256").let {
+        it.update(frame.duplicate().apply{rewind()});it.digest()
+    }
+
+    fun inspect(uri: String,description: ComparisonVideoDescription,seed: ComparisonCutoutSeed,
+        segmenter: YoloLiteRtSegmenter,current: () -> Boolean): Inspection {
+        checkCurrent(current)
+        val rotated=description.rotation%180!=0
+        val mapper=ModelCoordinateMapper(if(rotated)description.height else description.width,
+            if(rotated)description.width else description.height)
+        return CanonicalYuvInferenceDecoder(context,uri,description.rotation,startUs=seed.ptsUs).use { decoder ->
+            decoder.prepare()
+            val rgba=decoder.decodeRgbaAtPts(seed.ptsUs,mapper)
+            checkCurrent(current)
+            val detected=segmenter.segmentGlReadbackRgbaSync(rgba,mapper,seed.ptsUs)
+            val observation=Observation(seed.ptsUs,detected.persons,mapper)
+            val index=observation.select(seed)
+            require(index>=0) { "未能明确选中人物，请长按人物身体中央重试" }
+            val raw=ByteArray(mapper.modelInputSize*mapper.modelInputSize*4)
+            rgba.duplicate().apply{rewind();get(raw)}
+            val preview=observation.thumbnail(index,raw)
+            checkCurrent(current)
+            Inspection(seed,observation,index,preview,digest(rgba))
+        }
     }
 
     fun analyze(uri: String, description: ComparisonVideoDescription, start: Long,endInclusive: Long,
         seed: ComparisonCutoutSeed, reference: Boolean, mirror: Boolean, segmenter: YoloLiteRtSegmenter,
-        current: () -> Boolean): ComparisonCutoutTrackCache {
+        current: () -> Boolean, inspection: Inspection? = null): ComparisonCutoutTrackCache {
         val times=window(timestamps(uri,current),start,endInclusive,seed.ptsUs)
         val swapped=description.rotation%180!=0
         val sw=if(swapped)description.height else description.width
@@ -133,9 +180,15 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                     for (pts in times) {
                         checkCurrent(current)
                         val frame=decoder.decodeRgbaAtPts(pts,mapper)
-                        val detected=segmenter.segmentGlReadbackRgbaSync(frame,mapper,pts,
-                            confidenceThreshold=if(pts==seed.ptsUs) .25f else .20f)
-                        val observation=Observation(pts,detected.persons,mapper)
+                        val inspected=inspection?.takeIf { it.seed==seed && pts==seed.ptsUs }
+                        require(inspected==null || inspected.sourceDigest.contentEquals(digest(frame))) {
+                            "选人画面已变化，请重新选择"
+                        }
+                        val observation=inspected?.observation ?: run {
+                            val detected=segmenter.segmentGlReadbackRgbaSync(frame,mapper,pts,
+                                confidenceThreshold=if(pts==seed.ptsUs) .25f else .20f)
+                            Observation(pts,detected.persons,mapper)
+                        }
                         if(pts<seed.ptsUs) {
                             prefixBytes+=observation.masks.size
                             require(prefixBytes<=MAX_PREFIX_BYTES) { "多人画面超出本次预览分析内存范围" }
@@ -144,6 +197,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                         }
                         if(pts==seed.ptsUs) {
                             val index=observation.select(seed)
+                            require(inspected==null || inspected.index==index)
                             require(index>=0) { "未能明确选中人物，请长按人物身体中央重试" }
                             val b=observation.bounds[index]
                             placement=ComparisonCutoutPlacement(FloatRect(b.left/sw,b.top/sh,b.right/sw,b.bottom/sh),

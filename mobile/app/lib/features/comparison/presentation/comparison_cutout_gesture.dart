@@ -68,3 +68,89 @@ bool comparisonCutoutDrop(
       (b - length / 2).abs() <= length * .16 &&
       (cross - crossLength / 2).abs() <= crossLength * .42;
 }
+
+/// Visual selection slots are separate from the frozen native texture geometry.
+/// After the first drop, reserve the middle third as a real black canvas and
+/// fit each source pane into its own slot, preserving source aspect and hit map.
+class ComparisonCutoutStage {
+  final Size size;
+  final int width, height;
+  final bool horizontal, expanded;
+  const ComparisonCutoutStage(
+    this.size,
+    this.width,
+    this.height,
+    this.horizontal,
+    this.expanded,
+  );
+
+  Rect nativePane(bool reference) {
+    const gap = 8;
+    final first = ((horizontal ? width : height) - gap) ~/ 2;
+    final start = reference ? 0 : first + gap;
+    return horizontal
+        ? Rect.fromLTWH(
+            start.toDouble(),
+            0,
+            (reference ? first : width - start).toDouble(),
+            height.toDouble(),
+          )
+        : Rect.fromLTWH(
+            0,
+            start.toDouble(),
+            width.toDouble(),
+            (reference ? first : height - start).toDouble(),
+          );
+  }
+
+  Rect get canvas {
+    return horizontal
+        ? Rect.fromLTWH(size.width * .32, 0, size.width * .36, size.height)
+        : Rect.fromLTWH(0, size.height * .32, size.width, size.height * .36);
+  }
+
+  Rect slot(bool reference) {
+    if (!expanded) {
+      final p = nativePane(reference);
+      return Rect.fromLTWH(
+        p.left * size.width / width,
+        p.top * size.height / height,
+        p.width * size.width / width,
+        p.height * size.height / height,
+      );
+    }
+    return horizontal
+        ? Rect.fromLTWH(
+            reference ? 0 : canvas.right,
+            0,
+            size.width * .32,
+            size.height,
+          )
+        : Rect.fromLTWH(
+            0,
+            reference ? 0 : canvas.bottom,
+            size.width,
+            size.height * .32,
+          );
+  }
+
+  Rect fitted(bool reference) {
+    final p = nativePane(reference), s = slot(reference);
+    if (!expanded) return s;
+    final scale = math.min(s.width / p.width, s.height / p.height);
+    return Rect.fromCenter(
+      center: s.center,
+      width: p.width * scale,
+      height: p.height * scale,
+    );
+  }
+
+  Offset? nativePoint(Offset point, bool reference) {
+    final f = fitted(reference), p = nativePane(reference);
+    if (!f.contains(point) || f.isEmpty) return null;
+    return Offset(
+      p.left + (point.dx - f.left) * p.width / f.width,
+      p.top + (point.dy - f.top) * p.height / f.height,
+    );
+  }
+}

@@ -1,0 +1,268 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+import 'package:app/app/theme.dart';
+import 'package:app/features/comparison/data/comparison_gateway.dart';
+import 'package:app/features/comparison/presentation/comparison_cutout_gesture.dart';
+import 'package:app/features/comparison/presentation/comparison_screen.dart';
+import 'package:dance_domain/dance_domain.dart';
+import 'package:dance_native/dance_native.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+
+/// Debug-only QA entry. Uses the real screen and native gateway, with only
+/// fixture project loading/saving isolated from the user's project store.
+class FixtureGateway extends NativeComparisonGateway {
+  FixtureGateway(this.project);
+  final ComparisonProject project;
+  @override
+  Future<ComparisonLibrary> load() async => ComparisonLibrary([project], 0);
+  @override
+  Future<void> save(ComparisonProject value) async {}
+  @override
+  Future<ComparisonExportDto?> getExport() async => null;
+}
+
+final rootKey = GlobalKey();
+final api = DanceComparisonApi();
+int pointer = 15000;
+
+Element? findElement(bool Function(Widget) predicate) {
+  Element? result;
+  void visit(Element element) {
+    if (result != null) return;
+    if (predicate(element.widget)) {
+      result = element;
+      return;
+    }
+    element.visitChildren(visit);
+  }
+
+  final root = WidgetsBinding.instance.rootElement;
+  if (root != null) visit(root);
+  return result;
+}
+
+Element? byKey(String key) => findElement((w) => w.key == ValueKey(key));
+Element? byText(String value) =>
+    findElement((w) => w is Text && w.data == value);
+Future<void> until(
+  bool Function() check,
+  String description, {
+  int seconds = 25,
+}) async {
+  final deadline = DateTime.now().add(Duration(seconds: seconds));
+  while (!check()) {
+    if (DateTime.now().isAfter(deadline)) throw StateError(description);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  }
+}
+
+void require(bool valid, String reason) {
+  if (!valid) throw StateError(reason);
+}
+
+RenderBox box(Element e) => e.findRenderObject() as RenderBox;
+Offset center(Element e) =>
+    box(e).localToGlobal(box(e).size.center(Offset.zero));
+void send(PointerEvent event) =>
+    GestureBinding.instance.handlePointerEvent(event);
+Future<void> tap(Element e) async {
+  final p = center(e), id = ++pointer;
+  send(PointerDownEvent(pointer: id, position: p));
+  await Future<void>.delayed(const Duration(milliseconds: 80));
+  send(PointerUpEvent(pointer: id, position: p));
+}
+
+Future<void> drag(
+  bool reference,
+  int nativeW,
+  int nativeH,
+  double aspect,
+  double x,
+  double y,
+  bool expanded,
+) async {
+  final e = byKey('comparison-cutout-gesture')!;
+  final b = box(e);
+  final stage = ComparisonCutoutStage(
+    b.size,
+    nativeW,
+    nativeH,
+    false,
+    expanded,
+  );
+  final pane = stage.nativePane(reference), fit = stage.fitted(reference);
+  final fw = math.max(1, math.min(pane.width, pane.height * aspect).toInt());
+  final fh = math.max(1, math.min(pane.height, pane.width / aspect).toInt());
+  final nx = (pane.width - fw) ~/ 2 + x * fw;
+  final ny = (pane.height - fh) ~/ 2 + y * fh;
+  final start = b.localToGlobal(
+    Offset(
+      fit.left + nx / pane.width * fit.width,
+      fit.top + ny / pane.height * fit.height,
+    ),
+  );
+  final end = b.localToGlobal(stage.canvas.center);
+  final id = ++pointer;
+  send(PointerDownEvent(pointer: id, position: start));
+  try {
+    await until(
+      () => byKey('comparison-cutout-drag-still') != null,
+      'Real drag still did not appear',
+    );
+    send(PointerMoveEvent(pointer: id, position: end, delta: end - start));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+  } finally {
+    send(PointerUpEvent(pointer: id, position: end));
+  }
+}
+
+Future<Map<String, int>> capture(Directory folder, String name) async {
+  await Future<void>.delayed(const Duration(milliseconds: 200));
+  await WidgetsBinding.instance.endOfFrame;
+  final boundary =
+      rootKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+  final b = box(byKey('comparison-stage')!);
+  final origin = boundary.globalToLocal(b.localToGlobal(Offset.zero));
+  final image = await boundary.toImage(pixelRatio: 1);
+  try {
+    final png = (await image.toByteData(format: ui.ImageByteFormat.png))!;
+    File('${folder.path}/$name.png').writeAsBytesSync(png.buffer.asUint8List());
+    final rgba = (await image.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    ))!.buffer.asUint8List();
+    final counts = [0, 0, 0];
+    for (var row = 0; row < b.size.height.toInt(); row++) {
+      final y = (origin.dy + row).round();
+      if (y < 0 || y >= image.height) continue;
+      final region = (row / b.size.height < .32)
+          ? 0
+          : (row / b.size.height >= .68 ? 2 : 1);
+      for (var col = 0; col < b.size.width.toInt(); col++) {
+        final x = (origin.dx + col).round();
+        if (x < 0 || x >= image.width) continue;
+        final i = (y * image.width + x) * 4;
+        if (rgba[i] > 32 || rgba[i + 1] > 32 || rgba[i + 2] > 32) {
+          counts[region]++;
+        }
+      }
+    }
+    return {'reference': counts[0], 'canvas': counts[1], 'target': counts[2]};
+  } finally {
+    image.dispose();
+  }
+}
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final folder = Directory(
+    '${Directory.systemTemp.parent.path}/Documents/comparison-cutout-fixtures',
+  );
+  final file = File('${folder.path}/gesture-report.json');
+  final report = <String, Object?>{};
+  try {
+    require(File('${folder.path}/source.mp4').existsSync(), 'Fixture missing');
+    final project = ComparisonProject(
+      id: 'qa_cutout_gesture',
+      title: 'Cutout gesture QA',
+      teacher: ComparisonSource(
+        uri: '${folder.path}/source.mp4',
+        name: 'Reference',
+        durationUs: 1000000,
+        hasAudio: false,
+      ),
+      learner: ComparisonSource(
+        uri: '${folder.path}/source.mp4',
+        name: 'Target',
+        durationUs: 1000000,
+        hasAudio: false,
+      ),
+      offsetUs: 0,
+      alignment: 'manual',
+      positionUs: 0,
+      sideBySide: false,
+      updatedAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    runApp(
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: RepaintBoundary(
+          key: rootKey,
+          child: ComparisonScreen(gateway: FixtureGateway(project)),
+        ),
+      ),
+    );
+    await until(
+      () => byKey('comparison-stage') != null,
+      'Comparison stage missing',
+    );
+    ComparisonPlaybackDto state = await api.getState();
+    final deadline = DateTime.now().add(const Duration(seconds: 30));
+    while (state.phase != 'paused' ||
+        state.teacherFrameUs == null ||
+        state.learnerFrameUs == null) {
+      require(
+        state.error == null && DateTime.now().isBefore(deadline),
+        'Native pair did not open',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      state = await api.getState();
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    final initial = box(byKey('comparison-stage')!);
+    final dpr = View.of(byKey('comparison-stage')!).devicePixelRatio;
+    final ratio = math.min(
+      dpr,
+      1920 / math.max(initial.size.width, initial.size.height),
+    );
+    final w = (initial.size.width * ratio).round(),
+        h = (initial.size.height * ratio).round();
+    await tap(byKey('comparison-view')!);
+    await until(() => byText('抠像画布（实验）') != null, 'Cutout menu missing');
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await tap(byText('抠像画布（实验）')!);
+    await until(
+      () => byKey('comparison-cutout-gesture') != null,
+      'Selection overlay missing',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    state = await api.getState();
+    await drag(true, w, h, state.teacherAspect!, .355, .855, false);
+    await until(
+      () => byKey('comparison-cutout-reference-still') != null,
+      'First subject did not enter canvas',
+    );
+    final counts = await capture(folder, 'gesture-first-drop');
+    report['firstDropPixels'] = counts;
+    require(
+      counts.values.every((v) => v > 200),
+      'Expanded canvas or a clipped source was blank: $counts',
+    );
+    await drag(false, w, h, state.learnerAspect!, .676, .86, true);
+    await until(
+      () => byKey('comparison-cutout-timeline') != null,
+      'Dynamic canvas not published',
+      seconds: 60,
+    );
+    await until(
+      () => byKey('comparison-cutout-gesture') == null,
+      'Selection overlay not removed',
+    );
+    report['dynamicPixels'] = await capture(folder, 'gesture-dynamic');
+    await tap(byText('退出画布')!);
+    await until(
+      () => byKey('comparison-picture-pane-teacher') != null,
+      'Ordinary view not restored',
+    );
+    report['passed'] = true;
+  } catch (error) {
+    report['passed'] = false;
+    report['error'] = '$error';
+  } finally {
+    file.writeAsStringSync(jsonEncode(report), flush: true);
+  }
+}

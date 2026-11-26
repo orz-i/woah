@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:app/app/theme.dart';
 import 'package:app/features/comparison/data/comparison_gateway.dart';
 import 'package:app/features/comparison/presentation/comparison_controller.dart';
@@ -18,6 +19,29 @@ class CutoutGateway extends FakeComparisonGateway
     current.teacherAspect = 1;
     current.learnerAspect = 1;
   }
+  final inspections = <bool>[];
+  Completer<ComparisonCutoutPreviewDto>? pendingInspection;
+  bool failInspection = false;
+  ComparisonCutoutPreviewDto still(
+    ComparisonCutoutSeedDto seed,
+  ) => ComparisonCutoutPreviewDto(
+    sourcePtsUs: seed.sourcePtsUs,
+    png: base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/a9sAAAAASUVORK5CYII=',
+    ),
+    width: 1,
+    height: 1,
+  );
+  @override
+  Future<ComparisonCutoutPreviewDto> inspectCutout(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+  ) async {
+    inspections.add(reference);
+    if (failInspection) throw StateError('ambiguous');
+    return pendingInspection == null ? still(seed) : pendingInspection!.future;
+  }
+
   final seeds = <ComparisonCutoutSeedDto>[];
   Completer<ComparisonCutoutResultDto>? pending;
   int clears = 0;
@@ -157,18 +181,31 @@ void main() {
     await tester.pumpAndSettle();
     final finder = find.byKey(const ValueKey('comparison-cutout-gesture'));
     expect(finder, findsOneWidget);
-    final rect = tester.getRect(finder);
     // Default widget viewport is landscape: reference left, target right.
-    for (final x in [.25, .75]) {
+    for (final x in [.25, .84]) {
+      final rect = tester.getRect(finder);
       final g = await tester.startGesture(
         Offset(rect.left + rect.width * x, rect.center.dy),
       );
       await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('comparison-cutout-drag-still')),
+        findsOneWidget,
+      );
       await g.moveTo(rect.center);
       await tester.pump();
       await g.up();
       await tester.pumpAndSettle();
+      if (x == .25) {
+        expect(
+          find.byKey(const ValueKey('comparison-cutout-reference-still')),
+          findsOneWidget,
+        );
+        expect(gateway.seeds, isEmpty);
+      }
     }
+    expect(gateway.inspections, [true, false]);
     expect(gateway.seeds.map((s) => s.sourcePtsUs), [1000000, 3000000]);
     expect(find.textContaining('缺失帧已隐藏'), findsOneWidget);
     expect(
@@ -188,6 +225,73 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  test(
+    'expanded stage keeps sources out of canvas and maps each fitted pane',
+    () {
+      const stage = ComparisonCutoutStage(
+        Size(400, 600),
+        400,
+        600,
+        false,
+        true,
+      );
+      final r = stage.fitted(true), t = stage.fitted(false);
+      expect(r.overlaps(stage.canvas), isFalse);
+      expect(t.overlaps(stage.canvas), isFalse);
+      expect(stage.nativePoint(stage.canvas.center, true), isNull);
+      expect(stage.nativePoint(r.center, true), const Offset(200, 148));
+      expect(stage.nativePoint(t.center, false), const Offset(200, 452));
+    },
+  );
+
+  test('cancelling still inspection rejects late pixels', () async {
+    final gateway = CutoutGateway()
+      ..pendingInspection = Completer<ComparisonCutoutPreviewDto>();
+    final controller = ComparisonController(gateway);
+    controller.setViewport(400, 600, false);
+    await controller.initialize();
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    expect(await controller.beginCutout(), isTrue);
+    final seed = ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5);
+    final work = controller.inspectCutout(true, seed);
+    await controller.exitCutout();
+    gateway.pendingInspection!.complete(gateway.still(seed));
+    expect(await work, isNull);
+    expect(controller.cutoutMode, isFalse);
+    expect(controller.cutoutInspecting, isFalse);
+    controller.dispose();
+  });
+
+  test('long source practice selection clamps seek and locks range', () async {
+    final gateway = CutoutGateway();
+    gateway.projects = [
+      savedProject().copyWith(
+        loopStartUs: 500000,
+        loopEndUs: 2000000,
+        loopEnabled: true,
+      ),
+    ];
+    final controller = ComparisonController(gateway);
+    controller.setViewport(400, 600, false);
+    await controller.initialize();
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    expect(await controller.beginCutout(), isTrue);
+    await controller.prepareCutout(
+      ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5),
+      ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5),
+    );
+    expect(controller.cutoutPracticeRange, (500000, 2000000));
+    await controller.seek(0);
+    expect(gateway.current.positionUs, 500000);
+    await controller.seek(4000000);
+    expect(gateway.current.positionUs, 1999999);
+    expect(await controller.setLoopRange(0, 1000000), isFalse);
+    await controller.exitCutout();
+    await controller.seek(0);
+    expect(gateway.current.positionUs, 0);
+    controller.dispose();
   });
 
   test('cancelling analysis discards a late result', () async {

@@ -191,3 +191,83 @@ counts are visibility, not measured identity accuracy or quality. Real
 device performance, complex motion/occlusion, rotated or edited source
 timelines and broader VFR behavior still need testing. Do not enable
 release or canvas export until these risks are addressed.
+
+## Real subject drag and A/B cutout range (2026-11-26)
+
+The debug selection interaction now uses a true instance-masked transparent
+still instead of a person marker. Long press decodes the actual selected
+source PTS and runs the existing pinned model. FrameKernel generates
+straight RGBA from the same model-space RGB input and selected mask, rejects
+letterbox padding, and returns the nonzero-alpha crop. Android encodes that
+crop with Bitmap and iOS with ImageIO; the Pigeon reply contains only the
+bounded PNG, dimensions and PTS. No drag images are stored in production
+files or project JSON.
+
+During a slow inspection the drag displays a progress cue. A valid drop
+can wait for inspection to finish, but a canceled/invalid/ambiguous gesture
+never admits a subject. The first accepted subject appears as a still
+in a separate central canvas, and both source panes fit into the remaining
+slots. Their hit coordinates map back into the frozen native texture
+geometry. Mirror is applied to the drag image and final layer consistently.
+Once both subjects are accepted, the native analysis reuses their selected
+observations when the seed and source frame match. Android checks a digest
+of the canonical decoder input, and iOS checks the source sample stamp.
+The selected still is not used as a substitute for the dynamic layer.
+
+If a valid A/B practice loop is enabled before entering cutout, the analysis
+window is the existing overlap-relative [A,B) interval, including the actual
+source sample that covers A. The two sources still use the music mapping.
+Analysis, seeks and adjacent-frame stepping stay within the immutable
+window; changing the practice range while active is rejected. The regular
+comparison view restores on exit. The debug cutout timeline uses a simple
+scrubber rather than editable A/B handles.
+
+The per-source **300 analyzed-frame limit remains**. This is a practical
+long-source/short-practice-range improvement, not full-length chunked
+inference, persistent cache, or export. The first-person preview is the
+paused selected frame; synchronized dynamic playback starts after both
+subjects are selected. The crop uses model-input resolution (640 square
+before cropping), so small subjects may have limited drag detail.
+
+### Verification
+
+The iPhone 15 Pro simulator (iOS 17) native smoke
+`mobile/app/test_driver/comparison_cutout_smoke.dart` verified the
+new inspectCutout bridge, transparent/opaque/soft alpha pixels, invalid
+background selection rejection, exact PTS, analysis, actual texture output,
+seek/play and restoration in three cases:
+
+| Case | Reference still | Target still | Analysis | Reference / target visible |
+| --- | ---: | ---: | ---: | --- |
+| Original + mirrored variant | 486 ms | 339 ms | 5437 ms | 30/30, 30/30 |
+| Original pair at 400 ms anchor | 674 ms | 669 ms | 5715 ms | 30/30, 30/30 |
+| 12-second/360-frame sources, A/B 6–7 s | 590 ms | 345 ms | 5633 ms | 30/30, 30/30 |
+
+The long fixture repeats the original one-second fixture and the mirrored
+variant using FFmpeg, so it tests interval/resource handling, not long
+choreography or independent identity ground truth. Reproduce by placing
+`source.mp4` and `variant.mp4` into the simulator app's
+Documents/comparison-cutout-fixtures directory, then:
+
+```sh
+ffmpeg -stream_loop 11 -i source.mp4 -map 0:v:0 -c copy -an long-source.mp4
+ffmpeg -stream_loop 11 -i variant.mp4 -map 0:v:0 -c copy -an long-variant.mp4
+```
+
+Build the debug smoke entry as in the previous section. It writes a local
+report and PNG captures. No source video, model input, still or screenshot is
+committed. Simulator timing is not physical iPhone performance.
+
+Flutter comparison regression: 127 tests passed (including 7 cutout tests).
+Android focused JVM/JNI regression: 12 tests passed. Device GPU and actual
+Android touch behavior remain unverified; no ADB device connected. Release
+remains disabled, and draft PR remains unmerged.
+
+The additional real-screen smoke
+`mobile/app/test_driver/comparison_cutout_gesture_smoke.dart` also passed
+on the iPhone 15 Pro simulator. It dispatches long-press/drag pointer
+events through Flutter into the actual ComparisonScreen and native
+gateway, not a mocked inference engine. First-drop texture captures had
+visible reference, canvas and target regions (12,688 / 9,911 / 12,263
+nonblack pixels respectively). The second drag entered the dynamic canvas,
+and the exit button restored the original source panes.

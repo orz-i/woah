@@ -43,6 +43,10 @@ abstract interface class ComparisonGateway {
 }
 
 abstract interface class ComparisonCutoutGateway {
+  Future<ComparisonCutoutPreviewDto> inspectCutout(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+  );
   Future<ComparisonCutoutResultDto> prepareCutout(
     ComparisonCutoutSeedDto reference,
     ComparisonCutoutSeedDto target,
@@ -147,6 +151,11 @@ class NativeComparisonGateway
     int height,
     bool horizontal,
   ) => _api.resize(width, height, horizontal);
+  @override
+  Future<ComparisonCutoutPreviewDto> inspectCutout(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+  ) => _api.inspectCutout(reference, seed);
   @override
   Future<ComparisonCutoutResultDto> prepareCutout(
     ComparisonCutoutSeedDto reference,

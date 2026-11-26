@@ -119,7 +119,66 @@ class _CutoutSmoke extends ChangeNotifier {
     }
   }
 
-  Future<void> probe(String id, String target, double x, int position) async {
+  Future<Map<String, Object?>> inspect(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+    String name,
+  ) async {
+    final watch = Stopwatch()..start();
+    final result = await host(api.inspectCutout(reference, seed));
+    final elapsed = watch.elapsedMilliseconds;
+    require(result.sourcePtsUs == seed.sourcePtsUs, 'Still PTS mismatch');
+    final codec = await ui.instantiateImageCodec(result.png);
+    try {
+      final image = (await codec.getNextFrame()).image;
+      try {
+        require(
+          image.width == result.width && image.height == result.height,
+          'Still dimensions mismatch',
+        );
+        final bytes = (await image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))!.buffer.asUint8List();
+        int transparent = 0, opaque = 0, soft = 0;
+        for (var i = 3; i < bytes.length; i += 4) {
+          if (bytes[i] == 0) {
+            transparent++;
+          } else if (bytes[i] == 255) {
+            opaque++;
+          } else {
+            soft++;
+          }
+        }
+        require(
+          transparent > 0 && opaque > 0 && soft > 0,
+          'Still is not a real alpha cutout',
+        );
+        File('${folder.path}/$name.png').writeAsBytesSync(result.png);
+        return {
+          'pts': result.sourcePtsUs,
+          'size': [result.width, result.height],
+          'bytes': result.png.length,
+          'transparent': transparent,
+          'opaque': opaque,
+          'soft': soft,
+          'inspectionMs': elapsed,
+        };
+      } finally {
+        image.dispose();
+      }
+    } finally {
+      codec.dispose();
+    }
+  }
+
+  Future<void> probe(
+    String id,
+    String target,
+    double x,
+    int position, {
+    String source = 'source.mp4',
+    (int, int)? window,
+  }) async {
     final row = <String, Object?>{'id': id};
     results.add(row);
     status = id;
@@ -127,15 +186,17 @@ class _CutoutSmoke extends ChangeNotifier {
     try {
       final practice = ComparisonPracticeDto(
         mirrorTeacher: false,
-        mirrorLearner: target == 'variant.mp4',
-        loopEnabled: false,
+        mirrorLearner: target.contains('variant'),
+        loopEnabled: window != null,
+        loopStartUs: window?.$1,
+        loopEndUs: window?.$2,
         teacherPicture: ComparisonPictureDto(zoom: 1, panX: 0, panY: 0),
         learnerPicture: ComparisonPictureDto(zoom: 1, panX: 0, panY: 0),
       );
       var state = await ready(
         await host(
           api.open(
-            '${folder.path}/source.mp4',
+            '${folder.path}/$source',
             '${folder.path}/$target',
             0,
             position,
@@ -152,22 +213,40 @@ class _CutoutSmoke extends ChangeNotifier {
         await host(api.control(ComparisonCommand.pause, 0, 1)),
       );
       row['anchor'] = [state.teacherFrameUs, state.learnerFrameUs];
+      row['commonDurationUs'] = state.durationUs;
+      row['window'] = window == null ? null : [window.$1, window.$2];
       row['ordinary'] = await capture('$id-ordinary');
-      final watch = Stopwatch()..start();
-      final result = await host(
-        api.prepareCutout(
-          ComparisonCutoutSeedDto(
-            sourcePtsUs: state.teacherFrameUs!,
-            x: .355,
-            y: .855,
-          ),
-          ComparisonCutoutSeedDto(
-            sourcePtsUs: state.learnerFrameUs!,
-            x: x,
-            y: .86,
-          ),
-        ),
+      final ra = ComparisonCutoutSeedDto(
+        sourcePtsUs: state.teacherFrameUs!,
+        x: .355,
+        y: .855,
       );
+      final ta = ComparisonCutoutSeedDto(
+        sourcePtsUs: state.learnerFrameUs!,
+        x: x,
+        y: .86,
+      );
+      var rejected = false;
+      try {
+        await host(
+          api.inspectCutout(
+            true,
+            ComparisonCutoutSeedDto(
+              sourcePtsUs: ra.sourcePtsUs,
+              x: .01,
+              y: .01,
+            ),
+          ),
+        );
+      } catch (_) {
+        rejected = true;
+      }
+      require(rejected, 'Background incorrectly selected');
+      row['backgroundRejected'] = true;
+      row['referenceStill'] = await inspect(true, ra, '$id-reference-still');
+      row['targetStill'] = await inspect(false, ta, '$id-target-still');
+      final watch = Stopwatch()..start();
+      final result = await host(api.prepareCutout(ra, ta));
       row['analysisMs'] = watch.elapsedMilliseconds;
       row['visibility'] = [
         result.referenceVisible,
@@ -183,7 +262,34 @@ class _CutoutSmoke extends ChangeNotifier {
             result.targetFrames >= 29,
         'Some tracked frames were missing',
       );
-      for (final us in [0, 400000, 800000]) {
+      final start = window?.$1 ?? 0;
+      if (window != null) {
+        require(
+          state.durationUs > 10000000,
+          'Long-source fixture was not long',
+        );
+        final clamped = await ready(
+          await host(api.control(ComparisonCommand.seek, 0, 1)),
+        );
+        require(clamped.positionUs >= window.$1, 'Cutout seek escaped below A');
+        var rejected = false;
+        try {
+          await host(
+            api.setPractice(
+              ComparisonPracticeDto(
+                mirrorTeacher: false,
+                mirrorLearner: true,
+                loopEnabled: false,
+              ),
+            ),
+          );
+        } catch (_) {
+          rejected = true;
+        }
+        require(rejected, 'Cutout allowed changing the analyzed A/B window');
+        row['windowLocked'] = true;
+      }
+      for (final us in [start, start + 400000, start + 800000]) {
         state = await ready(
           await host(api.control(ComparisonCommand.seek, us, 1)),
         );
@@ -208,7 +314,10 @@ class _CutoutSmoke extends ChangeNotifier {
       await host(api.control(ComparisonCommand.play, 0, 1));
       await Future<void>.delayed(const Duration(milliseconds: 300));
       final playing = await host(api.getState());
-      require(playing.positionUs > 0, 'Cutout playback clock did not advance');
+      require(
+        playing.positionUs > start,
+        'Cutout playback clock did not advance',
+      );
       state = await ready(
         await host(api.control(ComparisonCommand.pause, 0, 1)),
       );
@@ -256,6 +365,17 @@ class _CutoutSmoke extends ChangeNotifier {
     }
     await probe('mirrored', 'variant.mp4', .324, 0);
     await probe('middle', 'source.mp4', .676, 400000);
+    if (File('${folder.path}/long-source.mp4').existsSync() &&
+        File('${folder.path}/long-variant.mp4').existsSync()) {
+      await probe(
+        'long-ab',
+        'long-variant.mp4',
+        .324,
+        6000000,
+        source: 'long-source.mp4',
+        window: (6000000, 7000000),
+      );
+    }
     status = 'finished';
     publish(true);
   }

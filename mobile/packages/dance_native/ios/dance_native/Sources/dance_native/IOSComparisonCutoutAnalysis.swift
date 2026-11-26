@@ -1,9 +1,11 @@
 import AVFoundation
 import CoreImage
+import ImageIO
+import UniformTypeIdentifiers
 import Foundation
 @_implementationOnly import FrameKernelC
 
-struct IOSComparisonCutoutSeed: Sendable {
+struct IOSComparisonCutoutSeed: Sendable, Equatable {
   let ptsUs: Int64
   let x: Float
   let y: Float
@@ -35,7 +37,7 @@ final class IOSComparisonCutoutAnalysis {
     }
   }
 
-  private struct Observation {
+  struct Observation: @unchecked Sendable {
     let pts: Int64
     let stamp: IOSComparisonSourceStamp
     let rows: [FrameKernelInstanceDetection]
@@ -61,6 +63,45 @@ final class IOSComparisonCutoutAnalysis {
     func select(_ seed: IOSComparisonCutoutSeed) -> Int {
       masks.withUnsafeBufferPointer { Int(frame_kernel_cutout_select($0.baseAddress,$0.count,transform,seed.x,seed.y)) }
     }
+    func thumbnail(index: Int,input: [Float32]) throws -> (Data,Int,Int) {
+      let n = Int(transform.input_size), count = n*n
+      guard rows.indices.contains(index), (1...1024).contains(n), input.count == count*3 else {
+        throw IOSComparisonCutoutAnalysisError.invalidFrame
+      }
+      // The normalized planar tensor is exactly the RGB data used by YOLO.
+      var rgba = [UInt8](repeating: 255,count: count*4)
+      for i in 0..<count {
+        for c in 0..<3 {
+          let v = input[c*count+i]
+          guard v.isFinite else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
+          rgba[i*4+c] = UInt8((max(0,min(1,v))*255).rounded())
+        }
+      }
+      var out = [UInt8](repeating: 0,count: rgba.count)
+      let crop = masks.withUnsafeBufferPointer { mask in rgba.withUnsafeBufferPointer { rgb in
+        out.withUnsafeMutableBufferPointer { result in
+          frame_kernel_cutout_thumbnail(mask.baseAddress?.advanced(by: index*area),area,transform,
+            rgb.baseAddress,rgb.count,0,result.baseAddress,result.count)
+        }
+      } }
+      let w=Int(crop.width),h=Int(crop.height)
+      guard w>0,h>0,let provider=CGDataProvider(data: Data(out) as CFData),
+            let full=CGImage(width:n,height:n,bitsPerComponent:8,bitsPerPixel:32,bytesPerRow:n*4,
+              space:CGColorSpaceCreateDeviceRGB(),
+              bitmapInfo:CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
+              provider:provider,decode:nil,shouldInterpolate:true,intent:.defaultIntent),
+            let image=full.cropping(to:CGRect(x:Int(crop.x),y:Int(crop.top),width:w,height:h)) else {
+        throw IOSComparisonCutoutAnalysisError.invalidFrame
+      }
+      let data=NSMutableData()
+      guard let destination=CGImageDestinationCreateWithData(data,UTType.png.identifier as CFString,1,nil) else {
+        throw IOSComparisonCutoutAnalysisError.invalidFrame
+      }
+      CGImageDestinationAddImage(destination,image,nil)
+      guard CGImageDestinationFinalize(destination) else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
+      return (data as Data,w,h)
+    }
+
     func alpha(index: Int,width: Int,height: Int) throws -> [UInt8] {
       guard rows.indices.contains(index) else { throw IOSComparisonCutoutAnalysisError.invalidTracking }
       var output = [UInt8](repeating: 0,count: width*height)
@@ -71,6 +112,64 @@ final class IOSComparisonCutoutAnalysis {
       guard result == 0 else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
       return output
     }
+  }
+
+  struct Inspection: Sendable {
+    let seed: IOSComparisonCutoutSeed
+    let observation: Observation
+    let index: Int
+    let png: Data
+    let width: Int
+    let height: Int
+  }
+
+  private func infer(pixel: CVPixelBuffer,orientation: CGAffineTransform,pts: Int64,
+      confidence: Float) throws -> (Observation,[Float32]) {
+    guard let stamp = IOSComparisonSourceStamp(pixel) else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
+    var image = IOSComparisonCompositor.oriented(pixel,transform: orientation)
+    let extent = image.extent
+    let scale = min(1,768 / max(extent.width,extent.height))
+    let w = max(2,Int((extent.width*scale).rounded())), h = max(2,Int((extent.height*scale).rounded()))
+    image = image.transformed(by: CGAffineTransform(scaleX: CGFloat(w)/extent.width,y: CGFloat(h)/extent.height))
+    guard let cg = context.createCGImage(image,from: CGRect(x: 0,y: 0,width: w,height: h)) else {
+      throw IOSComparisonCutoutAnalysisError.invalidFrame
+    }
+    let result = try runner.run(image: cg,preferredBackend: .xnnpack,confidenceThreshold: confidence)
+    return (try Observation(pts:pts,stamp:stamp,result:result),result.preprocess.input)
+  }
+
+  func inspect(url: URL,seed: IOSComparisonCutoutSeed,isCancelled: () -> Bool) throws -> Inspection {
+    guard seed.ptsUs >= 0,seed.x.isFinite,seed.y.isFinite,
+          (0..<1).contains(seed.x),(0..<1).contains(seed.y) else { throw IOSComparisonCutoutAnalysisError.invalidSelection }
+    let scoped=url.isFileURL && url.startAccessingSecurityScopedResource()
+    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+    let asset=AVURLAsset(url:url,options:[AVURLAssetPreferPreciseDurationAndTimingKey:true])
+    guard let video=asset.tracks(withMediaType:.video).first else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
+    let reader=try AVAssetReader(asset:asset)
+    defer { reader.cancelReading() }
+    let output=AVAssetReaderTrackOutput(track:video,outputSettings:[
+      kCVPixelBufferPixelFormatTypeKey as String:kCVPixelFormatType_32BGRA,
+      kCVPixelBufferIOSurfacePropertiesKey as String:[:]])
+    output.alwaysCopiesSampleData=false
+    let begin=CMTimeMaximum(video.timeRange.start,CMTime(value:max(0,seed.ptsUs-1),timescale:1_000_000))
+    reader.timeRange=CMTimeRange(start:begin,end:CMTimeRangeGetEnd(video.timeRange))
+    guard reader.canAdd(output) else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
+    reader.add(output)
+    guard reader.startReading() else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
+    while !isCancelled() {
+      guard let sample=output.copyNextSampleBuffer() else { break }
+      guard let pts=IOSComparisonTimeCore.map(CMSampleBufferGetOutputPresentationTimeStamp(sample)) else { continue }
+      if pts<seed.ptsUs { continue }
+      guard pts==seed.ptsUs,let pixel=CMSampleBufferGetImageBuffer(sample) else { break }
+      let (observation,input)=try infer(pixel:pixel,orientation:video.preferredTransform,pts:pts,confidence:0.25)
+      let index=observation.select(seed)
+      guard index>=0 else { throw IOSComparisonCutoutAnalysisError.invalidSelection }
+      let (png,w,h)=try observation.thumbnail(index:index,input:input)
+      if isCancelled() { throw CancellationError() }
+      return Inspection(seed:seed,observation:observation,index:index,png:png,width:w,height:h)
+    }
+    if isCancelled() { throw CancellationError() }
+    throw IOSComparisonCutoutAnalysisError.invalidFrame
   }
 
   static func window(_ sorted: [Int64],start: Int64,end: Int64,anchor: Int64) throws -> [Int64] {
@@ -84,7 +183,7 @@ final class IOSComparisonCutoutAnalysis {
   }
 
   func analyze(url: URL,index: IOSComparisonFrameIndex,start: Int64,end: Int64,
-    seed: IOSComparisonCutoutSeed,reference: Bool,mirror: Bool,isCancelled: () -> Bool) throws -> IOSComparisonCutoutTrackCache {
+    seed: IOSComparisonCutoutSeed,reference: Bool,mirror: Bool,inspection: Inspection? = nil,isCancelled: () -> Bool) throws -> IOSComparisonCutoutTrackCache {
     func check() throws { if isCancelled() { throw CancellationError() } }
     try check()
     guard seed.x.isFinite, seed.y.isFinite, (0..<1).contains(seed.x), (0..<1).contains(seed.y) else {
@@ -137,16 +236,14 @@ final class IOSComparisonCutoutAnalysis {
         if pts < times[cursor] { return true }
         guard pts == times[cursor], let pixel = CMSampleBufferGetImageBuffer(sample),
               let stamp = IOSComparisonSourceStamp(pixel) else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
-        var image = IOSComparisonCompositor.oriented(pixel,transform: orientation)
-        let extent = image.extent
-        let scale = min(1,768 / max(extent.width,extent.height))
-        let w = max(2,Int((extent.width*scale).rounded())), h = max(2,Int((extent.height*scale).rounded()))
-        image = image.transformed(by: CGAffineTransform(scaleX: CGFloat(w)/extent.width,y: CGFloat(h)/extent.height))
-        guard let cg = context.createCGImage(image,from: CGRect(x: 0,y: 0,width: w,height: h)) else {
-          throw IOSComparisonCutoutAnalysisError.invalidFrame
+        let inspected=inspection.flatMap { $0.seed==seed && pts==seed.ptsUs ? $0 : nil }
+        let observation: Observation
+        if let inspected {
+          guard inspected.observation.stamp.agrees(with: stamp) else { throw IOSComparisonCutoutAnalysisError.invalidFrame }
+          observation=inspected.observation
+        } else {
+          observation=try infer(pixel:pixel,orientation:orientation,pts:pts,confidence:pts==seed.ptsUs ? 0.25 : 0.20).0
         }
-        let result = try runner.run(image: cg,preferredBackend: .xnnpack,confidenceThreshold: pts == seed.ptsUs ? 0.25 : 0.20)
-        let observation = try Observation(pts: pts,stamp: stamp,result: result)
         cursor += 1
         if pts < seed.ptsUs {
           prefixBytes += observation.masks.count
@@ -154,7 +251,7 @@ final class IOSComparisonCutoutAnalysis {
           prefix.append(observation)
         } else if pts == seed.ptsUs {
           let selected = observation.select(seed)
-          guard selected >= 0 else { throw IOSComparisonCutoutAnalysisError.invalidSelection }
+          guard selected >= 0, inspected == nil || inspected?.index == selected else { throw IOSComparisonCutoutAnalysisError.invalidSelection }
           let box = observation.rows[selected].bounds
           let sw = Float(observation.transform.source_width), sh = Float(observation.transform.source_height)
           let anchor = SIMD4(box.left/sw,box.top/sh,box.right/sw,box.bottom/sh)

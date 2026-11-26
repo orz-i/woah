@@ -69,4 +69,24 @@ class ComparisonCutoutTest {
         assertEquals(2,cache.frameCount);assertEquals(1,cache.visibleCount)
         assertEquals(a,cache.layer(33_333));assertNull(cache.layer(33_334));assertNull(cache.layer(66_667))
     }
+    @Test fun thumbnailUsesRealRgbAndCropsTransparentPadding() {
+        val t=floatArrayOf(1f,0f,1f,4f,2f,4f,4f)
+        val m=byteArrayOf(-1,-1,-1,-1,-1,0,0,0,-1,0,0,0,-1,-1,-1,-1)
+        val rgba=ByteArray(64).apply { for(i in 0..15){this[i*4]=i.toByte();this[i*4+3]=-1} }
+        assertContentEquals(intArrayOf(1,2,0xff040000.toInt(),0xff080000.toInt()),
+            FrameKernel.cutoutThumbnailNative(m,t,rgba,false))
+        assertContentEquals(intArrayOf(1,2,0xff080000.toInt(),0xff040000.toInt()),
+            FrameKernel.cutoutThumbnailNative(m,t,rgba,true))
+        assertNull(FrameKernel.cutoutThumbnailNative(ByteArray(16),t,rgba,false))
+    }
+    @Test fun longSourceCanAnalyzeABPracticeWindow() {
+        val pts=(0L..1800L).map { it*33333 }
+        val first=pts[800]+1;val last=pts[980]+1
+        val chosen=pts[850]
+        val result=ComparisonCutoutAnalysis.window(pts,first,last,chosen)
+        assertEquals(181,result.size)
+        assertEquals(pts[800],result.first())
+        assertEquals(pts[980],result.last())
+        assertFailsWith<IllegalArgumentException> { ComparisonCutoutAnalysis.window(pts,first,last,pts[100]) }
+    }
 }

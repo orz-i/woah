@@ -103,8 +103,19 @@ struct IOSComparisonCutoutCache: Sendable {
   let referenceStartUs: Int64
   let offsetUs: Int64
   let timeScale: Double
+  let window: Range<Int64>?
+  init(reference: IOSComparisonCutoutTrackCache,target: IOSComparisonCutoutTrackCache,
+    referenceStartUs: Int64,offsetUs: Int64,timeScale: Double,window: Range<Int64>? = nil) {
+    self.reference=reference;self.target=target;self.referenceStartUs=referenceStartUs
+    self.offsetUs=offsetUs;self.timeScale=timeScale;self.window=window
+  }
   func frame(at compositionTime: CMTime, referenceBuffer: CVPixelBuffer,
              targetBuffer: CVPixelBuffer) -> IOSComparisonCutoutFrame {
+    if let window {
+      guard let time=IOSComparisonTimeCore.map(compositionTime),window.contains(time) else {
+        return IOSComparisonCutoutFrame(referencePtsUs:-1,targetPtsUs:-1,reference:nil,target:nil)
+      }
+    }
     let source = CMTimeAdd(compositionTime,CMTime(value: referenceStartUs,timescale: 1_000_000))
     let r = IOSComparisonTimeCore.map(source).flatMap { reference.entry(at: $0) }
     let t = IOSComparisonTimeCore.map(source,scale: timeScale,offset: offsetUs).flatMap { target.entry(at: $0) }

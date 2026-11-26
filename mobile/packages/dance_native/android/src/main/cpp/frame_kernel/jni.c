@@ -827,6 +827,33 @@ JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutSelect
     (*env)->ReleaseByteArrayElements(env,masks,bytes,JNI_ABORT);
     return result;
 }
+/* Thumbnail output is a compact ARGB bitmap transport: width,height,pixels. */
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutThumbnailNative(JNIEnv *env,jobject self,jbyteArray mask,jfloatArray transform,jbyteArray rgba,jboolean bottom_up) {
+    (void)self;FrameKernelTransform t;
+    if(!mask||!rgba||!read_transform(env,transform,&t)||t.input_size<1||t.input_size>1024)return NULL;
+    size_t n=t.input_size, length=n*n*4;
+    if((size_t)(*env)->GetArrayLength(env,rgba)!=length)return NULL;
+    jsize mask_len=(*env)->GetArrayLength(env,mask);
+    jbyte *m=(*env)->GetByteArrayElements(env,mask,NULL),*r=(*env)->GetByteArrayElements(env,rgba,NULL);
+    uint8_t *output=malloc(length);jint *pixels=NULL;jintArray result=NULL;
+    if(!m||!r||!output)goto done;
+    FrameKernelViewport crop=frame_kernel_cutout_thumbnail((const uint8_t*)m,(size_t)mask_len,t,
+        (const uint8_t*)r,length,bottom_up?1:0,output,length);
+    if(crop.width<=0||crop.height<=0)goto done;
+    size_t count=(size_t)crop.width*crop.height+2;
+    pixels=malloc(count*sizeof(jint));if(!pixels)goto done;
+    pixels[0]=crop.width;pixels[1]=crop.height;
+    for(int y=0;y<crop.height;y++)for(int x=0;x<crop.width;x++){
+        size_t i=((size_t)(crop.top+y)*n+crop.x+x)*4;
+        pixels[2+(size_t)y*crop.width+x]=(jint)(((uint32_t)output[i+3]<<24)|((uint32_t)output[i]<<16)|((uint32_t)output[i+1]<<8)|output[i+2]);
+    }
+    result=(*env)->NewIntArray(env,(jsize)count);
+    if(result)(*env)->SetIntArrayRegion(env,result,0,(jsize)count,pixels);
+ done:
+    if(m)(*env)->ReleaseByteArrayElements(env,mask,m,JNI_ABORT);
+    if(r)(*env)->ReleaseByteArrayElements(env,rgba,r,JNI_ABORT);
+    free(output);free(pixels);return result;
+}
 JNIEXPORT jbyteArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutAlphaNative(JNIEnv *env,jobject self,jbyteArray mask,jfloatArray transform,jint width,jint height) {
     (void)self; FrameKernelTransform t;
     if(!mask || width<1 || height<1 || width>4096 || height>4096 || !read_transform(env,transform,&t)) {invalid(env);return NULL;}

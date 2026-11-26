@@ -71,6 +71,19 @@ class ComparisonCutoutSeedDto {
   });
 }
 
+class ComparisonCutoutPreviewDto {
+  int sourcePtsUs;
+  Uint8List png;
+  int width;
+  int height;
+  ComparisonCutoutPreviewDto({
+    required this.sourcePtsUs,
+    required this.png,
+    required this.width,
+    required this.height,
+  });
+}
+
 class ComparisonCutoutResultDto {
   ComparisonPlaybackDto playback;
   int referenceVisible;
@@ -220,6 +233,11 @@ abstract class DanceComparisonApi {
   ComparisonPlaybackDto stepFrame(bool forward);
   @async
   ComparisonPlaybackDto getState();
+  @async
+  ComparisonCutoutPreviewDto inspectCutout(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+  );
   @async
   ComparisonCutoutResultDto prepareCutout(
     ComparisonCutoutSeedDto reference,

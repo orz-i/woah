@@ -16,6 +16,7 @@ import 'comparison_manual_view.dart';
 import 'comparison_picture_controls.dart';
 import 'comparison_markers_sheet.dart';
 import 'comparison_timeline.dart';
+import 'comparison_time.dart';
 import 'comparison_export_dialog.dart';
 
 enum _ComparisonProjectAction { create, save, swap, clearLoop, export }
@@ -54,6 +55,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   bool? _gestureReference;
   double? _referenceAspect, _targetAspect;
   ComparisonCutoutSeedDto? _cutoutReference, _cutoutTarget, _dragSeed;
+  ComparisonCutoutPreviewDto? _referenceStill, _targetStill, _dragStill;
+  bool _dropRequested = false;
+  int _dragRevision = 0;
   Offset? _cutoutDragStart, _cutoutDragPosition;
   bool? _cutoutDragReference;
   bool _cutoutStarting = false;
@@ -111,6 +115,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       if (_manualSession != null) unawaited(_manualSession!.pause());
+      if (controller.cutoutSelecting) setState(_resetCutoutSeeds);
       unawaited(controller.background());
     }
   }
@@ -150,6 +155,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     WidgetsBinding.instance.removeObserver(this);
     if (_orientationOverridden) unawaited(_restoreOrientation());
     if (_manualSession != null) unawaited(_manualSession!.close());
+    _resetCutoutSeeds();
     controller.dispose();
     super.dispose();
   }
@@ -937,13 +943,92 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     );
   }
 
-  void _resetCutoutSeeds() {
-    _cutoutReference = null;
-    _cutoutTarget = null;
+  void _evictStill(ComparisonCutoutPreviewDto? still) {
+    if (still != null) unawaited(MemoryImage(still.png).evict());
+  }
+
+  void _cancelCutoutDrag() {
+    _dragRevision++;
+    _evictStill(_dragStill);
     _dragSeed = null;
+    _dragStill = null;
+    _dropRequested = false;
     _cutoutDragStart = null;
     _cutoutDragPosition = null;
     _cutoutDragReference = null;
+  }
+
+  void _resetCutoutSeeds() {
+    _cancelCutoutDrag();
+    _evictStill(_referenceStill);
+    _evictStill(_targetStill);
+    _cutoutReference = null;
+    _cutoutTarget = null;
+    _referenceStill = null;
+    _targetStill = null;
+  }
+
+  Future<void> _inspectDrag(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+    int revision,
+  ) async {
+    final still = await controller.inspectCutout(reference, seed);
+    if (!mounted || revision != _dragRevision || !controller.cutoutSelecting) {
+      return;
+    }
+    if (still == null) {
+      setState(_cancelCutoutDrag);
+      return;
+    }
+    setState(() => _dragStill = still);
+    if (_dropRequested) _commitCutoutDrop();
+  }
+
+  void _commitCutoutDrop() {
+    final reference = _cutoutDragReference;
+    final seed = _dragSeed;
+    final still = _dragStill;
+    if (reference == null || seed == null || still == null || !_dropRequested) {
+      return;
+    }
+    setState(() {
+      // Transfer the still into the central canvas, without evicting it.
+      _dragStill = null;
+      if (reference) {
+        _evictStill(_referenceStill);
+        _cutoutReference = seed;
+        _referenceStill = still;
+      } else {
+        _evictStill(_targetStill);
+        _cutoutTarget = seed;
+        _targetStill = still;
+      }
+      _cancelCutoutDrag();
+    });
+    final a = _cutoutReference, b = _cutoutTarget;
+    if (a != null && b != null) unawaited(controller.prepareCutout(a, b));
+  }
+
+  Widget _subjectStill(
+    ComparisonCutoutPreviewDto still,
+    bool reference, {
+    Key? key,
+  }) {
+    final mirror = reference
+        ? controller.project.mirrorTeacher
+        : controller.project.mirrorLearner;
+    return Transform.flip(
+      flipX: mirror,
+      child: Image.memory(
+        still.png,
+        key: key,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
+        gaplessPlayback: false,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      ),
+    );
   }
 
   Future<void> _beginCutout() async {
@@ -978,13 +1063,27 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           Text(
             controller.cutoutPreparing
                 ? '正在分析参考与目标人物…'
-                : '长按人物身体中央，拖向两路视频之间的画布。',
+                : controller.cutoutInspecting
+                ? '正在提取所选人物…'
+                : '长按人物身体中央，拖入中间的画布。',
+            maxLines: 2,
           ),
           const SizedBox(height: 6),
           Text(
-            '参考：${reference ? '已标记' : '未选择'}   目标：${target ? '已标记' : '未选择'}',
+            controller.cutoutPracticeRange == null
+                ? '分析共同区间；较长视频请先启用 A/B 选段。'
+                : '仅分析当前 A/B 选段',
+            style: const TextStyle(fontSize: 12),
           ),
-          if (controller.cutoutPreparing) const LinearProgressIndicator(),
+          Text(
+            '参考：${reference ? '已加入' : '未选择'}   目标：${target ? '已加入' : '未选择'}',
+          ),
+          SizedBox(
+            height: 4,
+            child: controller.cutoutPreparing || controller.cutoutInspecting
+                ? const LinearProgressIndicator()
+                : null,
+          ),
           if (controller.error != null)
             Text(
               controller.error!,
@@ -1000,59 +1099,166 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     );
   }
 
-  Widget _cutoutOverlay(Size size, bool horizontal) {
+  Widget _cutoutSourceTile(
+    ComparisonCutoutStage stage,
+    bool reference,
+    int textureId,
+  ) {
+    final native = stage.nativePane(reference), fit = stage.fitted(reference);
+    final sx = fit.width / native.width, sy = fit.height / native.height;
+    return Positioned.fromRect(
+      rect: fit,
+      child: ClipRect(
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            Positioned(
+              left: -native.left * sx,
+              top: -native.top * sy,
+              width: stage.width * sx,
+              height: stage.height * sy,
+              child: Texture(
+                textureId: textureId,
+                filterQuality: FilterQuality.low,
+              ),
+            ),
+            Positioned(
+              left: 6,
+              top: 6,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 3,
+                  ),
+                  child: Text(
+                    reference ? '参考' : '目标',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _cutoutOverlay(Size size) {
     final state = controller.playback;
     final (w, h, nativeHorizontal) = controller.cutoutViewport;
+    final expanded = _referenceStill != null || _targetStill != null;
+    final stage = ComparisonCutoutStage(size, w, h, nativeHorizontal, expanded);
     final ready =
         !_cutoutStarting &&
         !controller.cutoutPreparing &&
         state?.phase == 'paused' &&
         w > 8 &&
         h > 8;
-    final visible =
-        _dragSeed != null || _cutoutReference != null || _cutoutTarget != null;
+    final visible = _dragSeed != null || expanded;
+    final target = stage.canvas;
     return Stack(
       fit: StackFit.expand,
       children: [
+        if (expanded &&
+            state != null &&
+            state.textureId >= 0 &&
+            w > 8 &&
+            h > 8) ...[
+          _cutoutSourceTile(stage, true, state.textureId),
+          _cutoutSourceTile(stage, false, state.textureId),
+        ],
         if (visible)
-          IgnorePointer(
-            child: Align(
-              alignment: Alignment.center,
+          Positioned.fromRect(
+            rect: target,
+            child: IgnorePointer(
               child: Container(
-                width: horizontal ? size.width * .32 : size.width * .84,
-                height: horizontal ? size.height * .84 : size.height * .32,
+                key: const ValueKey('comparison-cutout-drop-canvas'),
                 decoration: BoxDecoration(
-                  color: Colors.black54,
-                  border: Border.all(color: Colors.white70),
-                  borderRadius: BorderRadius.circular(12),
+                  color: expanded ? Colors.black : Colors.black87,
+                  border: Border.all(
+                    color: AppTheme.of(context).editorSelection,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  '抠像画布\n${_cutoutReference != null ? '参考已标记' : '参考待选'} · ${_cutoutTarget != null ? '目标已标记' : '目标待选'}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
+                padding: const EdgeInsets.all(8),
+                child: expanded
+                    ? Row(
+                        children: [
+                          Expanded(
+                            child: _referenceStill == null
+                                ? const Center(
+                                    child: Text(
+                                      '参考待选',
+                                      style: TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  )
+                                : _subjectStill(
+                                    _referenceStill!,
+                                    true,
+                                    key: const ValueKey(
+                                      'comparison-cutout-reference-still',
+                                    ),
+                                  ),
+                          ),
+                          Expanded(
+                            child: _targetStill == null
+                                ? const Center(
+                                    child: Text(
+                                      '目标待选',
+                                      style: TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  )
+                                : _subjectStill(
+                                    _targetStill!,
+                                    false,
+                                    key: const ValueKey(
+                                      'comparison-cutout-target-still',
+                                    ),
+                                  ),
+                          ),
+                        ],
+                      )
+                    : const Center(
+                        child: Text(
+                          '拖入人物',
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      ),
               ),
             ),
           ),
         if (_cutoutDragPosition case final point?)
           Positioned(
-            left: point.dx - 17,
-            top: point.dy - 17,
+            left: point.dx - 48,
+            top: point.dy - 66,
             child: IgnorePointer(
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.black54,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: const Icon(
-                  Icons.person_outline,
-                  color: Colors.white,
-                  size: 20,
-                ),
+              child: SizedBox(
+                width: 96,
+                height: 132,
+                child: _dragStill != null && _cutoutDragReference != null
+                    ? _subjectStill(
+                        _dragStill!,
+                        _cutoutDragReference!,
+                        key: const ValueKey('comparison-cutout-drag-still'),
+                      )
+                    : const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
               ),
             ),
           ),
@@ -1062,10 +1268,13 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           onLongPressStart: !ready
               ? null
               : (details) {
+                  if (controller.cutoutInspecting || _dragSeed != null) return;
                   final p = details.localPosition;
                   final reference = nativeHorizontal
                       ? p.dx < size.width / 2
                       : p.dy < size.height / 2;
+                  final native = stage.nativePoint(p, reference);
+                  if (native == null) return;
                   final aspect = reference
                       ? state!.teacherAspect!
                       : state!.learnerAspect!;
@@ -1073,8 +1282,8 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                       ? state.teacherFrameUs
                       : state.learnerFrameUs;
                   final point = comparisonCutoutPoint(
-                    viewport: size,
-                    point: p,
+                    viewport: Size(w.toDouble(), h.toDouble()),
+                    point: native,
                     width: w,
                     height: h,
                     horizontal: nativeHorizontal,
@@ -1088,31 +1297,32 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                         : controller.project.mirrorLearner,
                   );
                   if (pts == null || point == null) return;
+                  final seed = ComparisonCutoutSeedDto(
+                    sourcePtsUs: pts,
+                    x: point.dx,
+                    y: point.dy,
+                  );
+                  final revision = ++_dragRevision;
                   setState(() {
-                    _dragSeed = ComparisonCutoutSeedDto(
-                      sourcePtsUs: pts,
-                      x: point.dx,
-                      y: point.dy,
-                    );
+                    _dragSeed = seed;
                     _cutoutDragStart = p;
                     _cutoutDragPosition = p;
                     _cutoutDragReference = reference;
+                    _dropRequested = false;
+                    _dragStill = null;
                   });
+                  unawaited(_inspectDrag(reference, seed, revision));
                 },
           onLongPressMoveUpdate: (details) {
-            if (_dragSeed != null) {
+            if (_dragSeed != null && !_dropRequested) {
               setState(() => _cutoutDragPosition = details.localPosition);
             }
           },
-          onLongPressCancel: () => setState(() {
-            _dragSeed = null;
-            _cutoutDragStart = null;
-            _cutoutDragPosition = null;
-            _cutoutDragReference = null;
-          }),
+          onLongPressCancel: () => setState(_cancelCutoutDrag),
           onLongPressEnd: (details) {
-            final seed = _dragSeed, start = _cutoutDragStart;
-            final reference = _cutoutDragReference;
+            final seed = _dragSeed,
+                start = _cutoutDragStart,
+                reference = _cutoutDragReference;
             final accepted =
                 seed != null &&
                 start != null &&
@@ -1124,23 +1334,15 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                   horizontal: nativeHorizontal,
                   reference: reference,
                 );
-            setState(() {
-              if (accepted) {
-                if (reference) {
-                  _cutoutReference = seed;
-                } else {
-                  _cutoutTarget = seed;
-                }
-              }
-              _dragSeed = null;
-              _cutoutDragStart = null;
-              _cutoutDragPosition = null;
-              _cutoutDragReference = null;
-            });
-            final a = _cutoutReference, b = _cutoutTarget;
-            if (accepted && a != null && b != null) {
-              unawaited(controller.prepareCutout(a, b));
+            if (!accepted) {
+              setState(_cancelCutoutDrag);
+              return;
             }
+            setState(() {
+              _dropRequested = true;
+              _cutoutDragPosition = target.center;
+            });
+            _commitCutoutDrop();
           },
         ),
       ],
@@ -1181,6 +1383,8 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       });
       final state = controller.playback;
       final selecting = controller.cutoutSelecting;
+      final expandedSelection =
+          selecting && (_referenceStill != null || _targetStill != null);
       final sourceHorizontal = selecting
           ? controller.cutoutViewport.$3
           : horizontal;
@@ -1190,7 +1394,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (state != null && state.textureId >= 0)
+            if (state != null && state.textureId >= 0 && !expandedSelection)
               Texture(
                 textureId: state.textureId,
                 filterQuality: FilterQuality.low,
@@ -1203,7 +1407,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                   color: AppTheme.of(context).brandAction,
                 ),
               ),
-            if (!controller.cutoutActive)
+            if (!controller.cutoutActive && !expandedSelection)
               Flex(
                 direction: sourceHorizontal ? Axis.horizontal : Axis.vertical,
                 children: [
@@ -1223,7 +1427,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                   ),
                 ],
               ),
-            if (selecting) _cutoutOverlay(viewport.biggest, sourceHorizontal),
+            if (selecting) _cutoutOverlay(viewport.biggest),
           ],
         ),
       );
@@ -1403,13 +1607,17 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   Widget _controls() {
     final state = controller.playback;
     final duration = state?.durationUs ?? 0;
+    final selected = controller.cutoutActive
+        ? controller.cutoutPracticeRange
+        : null;
+    final start = selected?.$1 ?? 0, end = selected?.$2 ?? duration;
     final position =
         (_scrub ??
                 (state?.positionUs.toDouble() ??
                     controller.project.positionUs.toDouble()))
-            .clamp(0.0, math.max(1, duration).toDouble());
-    final stepUs = duration <= 30000000 ? 1000000 : 5000000;
-    final ended = duration > 0 && position >= duration - 100000;
+            .clamp(start.toDouble(), math.max(start + 1, end).toDouble());
+    final stepUs = end - start <= 30000000 ? 1000000 : 5000000;
+    final ended = end > start && position >= end - 100000;
     return ColoredBox(
       key: const ValueKey('comparison-console'),
       color: _canvasColor,
@@ -1446,18 +1654,55 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                   ),
                 ),
               ),
-            ComparisonTimeline(
-              durationUs: duration,
-              positionUs: position.round(),
-              startUs: controller.project.loopStartUs,
-              endUs: controller.project.loopEndUs,
-              loopEnabled: controller.project.loopEnabled,
-              enabled: controller.canPlay,
-              onScrub: (value) => setState(() => _scrub = value?.toDouble()),
-              onSeek: (value) => unawaited(controller.seek(value)),
-              onRangeStart: controller.pause,
-              onRange: controller.setLoopRange,
-            ),
+            if (controller.cutoutActive)
+              Column(
+                children: [
+                  Slider(
+                    key: const ValueKey('comparison-cutout-timeline'),
+                    min: start.toDouble(),
+                    max: math.max(start + 1, end - 1).toDouble(),
+                    value: position.clamp(
+                      start.toDouble(),
+                      math.max(start + 1, end - 1).toDouble(),
+                    ),
+                    onChanged: controller.canPlay
+                        ? (v) => setState(() => _scrub = v)
+                        : null,
+                    onChangeEnd: (v) {
+                      setState(() => _scrub = null);
+                      unawaited(controller.seek(v.round()));
+                    },
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        comparisonTime(position.round()),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      Text(
+                        selected != null
+                            ? 'A/B ${comparisonTime(start)}–${comparisonTime(end)}'
+                            : comparisonTime(end),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+              )
+            else
+              ComparisonTimeline(
+                durationUs: duration,
+                positionUs: position.round(),
+                startUs: controller.project.loopStartUs,
+                endUs: controller.project.loopEndUs,
+                loopEnabled: controller.project.loopEnabled,
+                enabled: controller.canPlay,
+                onScrub: (value) => setState(() => _scrub = value?.toDouble()),
+                onSeek: (value) => unawaited(controller.seek(value)),
+                onRangeStart: controller.pause,
+                onRange: controller.setLoopRange,
+              ),
             _transportControls(stepUs, position.round(), ended),
             if (!controller.cutoutActive) _practiceControls(),
           ],
