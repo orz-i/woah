@@ -42,6 +42,8 @@ struct IOSComparisonExportSpec: Codable, Equatable {
   let mirrorLearner: Bool
   let teacherPicture: Picture
   let learnerPicture: Picture
+  var cutout: Bool? = nil
+  var isCutout: Bool {cutout==true}
 
   var durationUs: Int64 { endUs - startUs }
 
@@ -134,11 +136,11 @@ struct IOSComparisonExportRecord: Codable {
       result.state = outputExists ? "completed" : "interrupted"
       result.stage = outputExists ? "导出完成" : "导出已中断"
       result.progress = outputExists ? 1 : progress
-      result.error = outputExists ? nil : "上次导出已中断，可以重试"
+      result.error = outputExists ? nil : (spec.isCutout ? "抠像缓存已释放，请重新选择人物后导出" : "上次导出已中断，可以重试")
     } else if state == "completed", !outputExists {
       result.state = "interrupted"
       result.stage = "导出文件不可用"
-      result.error = "导出文件已丢失，可以重试"
+      result.error = spec.isCutout ? "抠像缓存已释放，请重新选择人物后导出" : "导出文件已丢失，可以重试"
       result.savedAssetIdentifier = nil
     }
     if result.photoSaveInFlight, result.savedAssetIdentifier == nil {

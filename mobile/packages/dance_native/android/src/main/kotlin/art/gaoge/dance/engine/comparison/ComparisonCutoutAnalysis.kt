@@ -24,7 +24,8 @@ internal data class ComparisonCutoutSeed(val ptsUs: Long, val x: Float, val y: F
 }
 
 /** Immutable, source-scoped preview cache. A known missing observation has no layer. */
-internal class ComparisonCutoutTrackCache(layers: Map<Long, ComparisonCutoutLayer?>) {
+internal class ComparisonCutoutTrackCache(layers: Map<Long, ComparisonCutoutLayer?>,
+    val fingerprint:String?=null) {
     private val entries = layers.toMap()
     val frameCount: Int get() = entries.size
     val visibleCount: Int get() = entries.values.count { it != null }
@@ -37,6 +38,49 @@ internal data class ComparisonCutoutCache(val reference: ComparisonCutoutTrackCa
     fun setLayout(value:ComparisonCanvasLayout?): ComparisonCanvasLayout? = layout.getAndSet(value)
     fun frame(referencePts: Long, targetPts: Long) =
         ComparisonCutoutFrame(reference.layer(referencePts),target.layer(targetPts),layout.get())
+    fun frozen(): ComparisonCutoutCache = ComparisonCutoutCache(reference,target).also { it.setLayout(layout.get()) }
+    fun strictFrame(referencePts:Long,targetPts:Long):ComparisonCutoutFrame = frame(referencePts,targetPts).also {
+        if(it.layer(true,referencePts)==null || it.layer(false,targetPts)==null)throw ComparisonCutoutExportUnavailable()
+    }
+    fun requireComplete() {
+        if(reference.frameCount==0 || target.frameCount==0 ||
+            reference.visibleCount!=reference.frameCount || target.visibleCount!=target.frameCount ||
+            reference.fingerprint==null || target.fingerprint==null)throw ComparisonCutoutExportUnavailable()
+    }
+    fun verifySources(context:Context,spec:ComparisonExportSpec,current:()->Boolean) {
+        if(ComparisonCutoutFingerprint.read(context,spec.teacherUri,current)!=reference.fingerprint ||
+            ComparisonCutoutFingerprint.read(context,spec.learnerUri,current)!=target.fingerprint)
+            throw ComparisonCutoutExportUnavailable()
+    }
+}
+
+internal class ComparisonCutoutExportUnavailable:IllegalStateException("抠像画布分析不完整或源视频已变化，请重新选人")
+/** Content URIs can change under the same path. Hash the original bytes around
+ * analysis and again around encoding; never persist the source digest or masks. */
+internal object ComparisonCutoutFingerprint {
+    fun read(context:Context,uri:String,current:()->Boolean):String {
+        val source=Uri.parse(uri)
+        val md=MessageDigest.getInstance("SHA-256")
+        val stream=if(source.scheme=="content")requireNotNull(context.contentResolver.openInputStream(source))
+            else java.io.File(source.path ?: uri).inputStream()
+        stream.use {
+            val bytes=ByteArray(256*1024)
+            while(true) {
+                if(!current())throw CancellationException("Cutout fingerprint cancelled")
+                val count=it.read(bytes)
+                if(count<0)break
+                if(count>0)md.update(bytes,0,count)
+            }
+        }
+        return android.util.Base64.encodeToString(md.digest(),android.util.Base64.NO_WRAP)
+    }
+}
+internal data class ComparisonCutoutExportSnapshot(val cache:ComparisonCutoutCache,val originUs:Long) {
+    fun validate(spec:ComparisonExportSpec,range:SourceInterval) {
+        if(!spec.cutout || originUs+spec.startUs!=range.startUs || originUs+spec.endUs!=range.endUs)
+            throw ComparisonCutoutExportUnavailable()
+        cache.requireComplete()
+    }
 }
 
 /** Bounded M0 analysis for one common interval. No decoding/inference on the GL
@@ -156,6 +200,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     fun analyze(uri: String, description: ComparisonVideoDescription, start: Long,endInclusive: Long,
         seed: ComparisonCutoutSeed, reference: Boolean, mirror: Boolean, segmenter: YoloLiteRtSegmenter,
         current: () -> Boolean, inspection: Inspection? = null): ComparisonCutoutTrackCache {
+        val fingerprint=ComparisonCutoutFingerprint.read(context,uri,current)
         val times=window(timestamps(uri,current),start,endInclusive,seed.ptsUs)
         val swapped=description.rotation%180!=0
         val sw=if(swapped)description.height else description.width
@@ -216,7 +261,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             }
         }
         require(placement!=null && layers.size==times.size && layers[seed.ptsUs]!=null) { "人物分析未完成" }
-        return ComparisonCutoutTrackCache(layers)
+        require(fingerprint==ComparisonCutoutFingerprint.read(context,uri,current)) { "源视频已变化" }
+        return ComparisonCutoutTrackCache(layers,fingerprint)
     }
 
 }

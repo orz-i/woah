@@ -270,6 +270,150 @@ class _CutoutSmoke extends ChangeNotifier {
     return evidence;
   }
 
+  Future<ComparisonExportDto> exportTerminal(ComparisonExportDto job) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 90));
+    while (const [
+      'queued',
+      'encoding',
+      'publishing',
+      'cancelling',
+    ].contains(job.state)) {
+      require(DateTime.now().isBefore(deadline), 'Export timed out');
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      final next = await host(api.getExport());
+      require(next?.jobId == job.jobId, 'Export task replaced');
+      job = next!;
+    }
+    return job;
+  }
+
+  Future<Map<String, Object?>> exportCanvas(
+    String id,
+    String source,
+    String target,
+    int start,
+    int end, {
+    bool cancelFirst = false,
+  }) async {
+    final result = <String, Object?>{};
+    final reference = ComparisonCanvasLayerDto(
+      x: .43,
+      y: .88,
+      height: .66,
+      opacity: 1,
+      mirror: false,
+    );
+    final learner = ComparisonCanvasLayerDto(
+      x: .57,
+      y: .82,
+      height: .58,
+      opacity: .55,
+      mirror: true,
+    );
+    final layout = ComparisonCanvasLayoutDto(
+      reference: reference,
+      target: learner,
+      targetOnTop: false,
+      background: 1,
+    );
+    await ready(await host(api.setCutoutLayout(layout)));
+    final project = jsonEncode({
+      'schemaVersion': 1,
+      'id': 'cutout_qa_$id',
+      'teacher': {'uri': '${folder.path}/$source'},
+      'learner': {'uri': '${folder.path}/$target'},
+      'offsetUs': 0,
+      'timeScale': 1,
+      'mirrorTeacher': false,
+      'mirrorLearner': target.contains('variant'),
+    });
+    for (final us in [start, start + 400000, start + 800000]) {
+      await ready(await host(api.control(ComparisonCommand.seek, us, 1)));
+      await capture('$id-export-preview-${us - start}');
+    }
+    final before = await ready(
+      await host(api.control(ComparisonCommand.seek, start + 400000, 1)),
+    );
+    final old = await host(api.getExport());
+    var rejected = false;
+    try {
+      await host(api.startExport(project, start, end, 320, 240, 8, true, true));
+    } catch (_) {
+      rejected = true;
+    }
+    require(
+      rejected && (await host(api.getExport()))?.jobId == old?.jobId,
+      'Ordinary export admitted active cutout',
+    );
+    rejected = false;
+    try {
+      await host(
+        api.startCutoutExport(
+          project,
+          start,
+          end + 33333,
+          320,
+          240,
+          8,
+          true,
+          true,
+        ),
+      );
+    } catch (_) {
+      rejected = true;
+    }
+    require(
+      rejected && (await host(api.getExport()))?.jobId == old?.jobId,
+      'Unanalyzed export range admitted',
+    );
+    final watch = Stopwatch()..start();
+    var job = await host(
+      api.startCutoutExport(project, start, end, 320, 240, 8, true, true),
+    );
+    require(
+      job.cutout == true && job.startUs == start && job.endUs == end,
+      'Wrong task type or range',
+    );
+    if (cancelFirst) {
+      await host(api.cancelExport(job.jobId));
+      job = await exportTerminal(job);
+      require(
+        job.state == 'cancelled' &&
+            job.outputPath == null &&
+            job.retryAvailable == true,
+        'Cutout cancellation did not retain retry: ${job.state}',
+      );
+      result['cancelled'] = true;
+      job = await host(api.retryExport(job.jobId));
+      require(job.cutout == true, 'Retry lost canvas mode');
+    }
+    job = await exportTerminal(job);
+    require(
+      job.state == 'completed' && job.outputPath != null && job.cutout == true,
+      'Cutout export failed: ${job.state} ${job.error}',
+    );
+    final movie = File(job.outputPath!);
+    require(
+      movie.existsSync() && movie.lengthSync() > 0,
+      'Encoded movie absent',
+    );
+    await movie.copy('${folder.path}/$id-cutout.mp4');
+    result['bytes'] = movie.lengthSync();
+    result['elapsedMs'] = watch.elapsedMilliseconds;
+    result['jobState'] = job.state;
+    result['startUs'] = job.startUs;
+    result['endUs'] = job.endUs;
+    final restored = await ready(await host(api.resumeCutoutPreview()));
+    require(
+      restored.teacherFrameUs == before.teacherFrameUs &&
+          restored.learnerFrameUs == before.learnerFrameUs,
+      'Resumed canvas changed selected playback time',
+    );
+    await capture('$id-export-resumed');
+    result['resumed'] = true;
+    return result;
+  }
+
   Future<void> probe(
     String id,
     String target,
@@ -439,6 +583,14 @@ class _CutoutSmoke extends ChangeNotifier {
           target.contains('variant'),
         );
       }
+      row['export'] = await exportCanvas(
+        id,
+        source,
+        target,
+        start,
+        window?.$2 ?? state.durationUs,
+        cancelFirst: id == 'middle',
+      );
       state = await ready(await host(api.clearCutout()));
       row['restored'] = await capture('$id-restored');
       row['passed'] = true;
@@ -451,6 +603,84 @@ class _CutoutSmoke extends ChangeNotifier {
       } catch (_) {}
       texture = null;
       publish(false);
+    }
+  }
+
+  Future<Map<String, Object?>> mutationProbe() async {
+    // Only mutate a disposable fixture; the user's sources are never touched.
+    final copy = File('${folder.path}/mutation-target.mp4');
+    await File('${folder.path}/variant.mp4').copy(copy.path);
+    final reference = '${folder.path}/source.mp4';
+    try {
+      final state = await ready(
+        await host(
+          api.open(
+            reference,
+            copy.path,
+            0,
+            0,
+            1,
+            320,
+            240,
+            true,
+            ComparisonPracticeDto(
+              mirrorTeacher: false,
+              mirrorLearner: true,
+              loopEnabled: false,
+            ),
+            1,
+          ),
+        ),
+      );
+      final a = ComparisonCutoutSeedDto(
+        sourcePtsUs: state.teacherFrameUs!,
+        x: .355,
+        y: .855,
+      );
+      final b = ComparisonCutoutSeedDto(
+        sourcePtsUs: state.learnerFrameUs!,
+        x: .324,
+        y: .86,
+      );
+      await ready((await host(api.prepareCutout(a, b, null))).playback);
+      await copy.writeAsBytes([0x77], mode: FileMode.append, flush: true);
+      final project = jsonEncode({
+        'schemaVersion': 1,
+        'id': 'cutout_mutation_qa',
+        'teacher': {'uri': reference},
+        'learner': {'uri': copy.path},
+        'offsetUs': 0,
+        'timeScale': 1,
+      });
+      final job = await exportTerminal(
+        await host(
+          api.startCutoutExport(project, 0, 1000000, 320, 240, 8, true, true),
+        ),
+      );
+      require(
+        job.state == 'failed' &&
+            job.cutout == true &&
+            job.outputPath == null &&
+            job.retryAvailable == false,
+        'Changed source did not block publication: ${job.state} ${job.retryAvailable}',
+      );
+      var rejected = false;
+      try {
+        await host(api.retryExport(job.jobId));
+      } catch (_) {
+        rejected = true;
+      }
+      require(rejected, 'Changed source retry was admitted');
+      return {
+        'passed': true,
+        'state': job.state,
+        'retryAvailable': job.retryAvailable,
+        'outputPath': job.outputPath,
+      };
+    } finally {
+      await host(api.close());
+      await copy.delete();
+      texture = null;
     }
   }
 
@@ -480,6 +710,17 @@ class _CutoutSmoke extends ChangeNotifier {
         6000000,
         source: 'long-source.mp4',
         window: (6000000, 7000000),
+      );
+    }
+    try {
+      final result = await mutationProbe();
+      File(
+        '${folder.path}/mutation-report.json',
+      ).writeAsStringSync(jsonEncode(result), flush: true);
+    } catch (error) {
+      File('${folder.path}/mutation-report.json').writeAsStringSync(
+        jsonEncode({'passed': false, 'error': '$error'}),
+        flush: true,
       );
     }
     status = 'finished';

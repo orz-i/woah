@@ -95,6 +95,7 @@ enum IOSDiagnosticPrivacy {
 
   static func comparisonMessage(_ value: String?) -> String? {
     guard let value else { return nil }
+    if ["抠像缓存已释放，请重新选择人物后导出","抠像画布分析不完整或源视频已变化，请重新选人"].contains(value) {return value}
     // Existing actionable fixed messages are retained; legacy arbitrary errors are projected.
     let fixed: Set<String> = [
       "视频已导出，记录保存失败；请保留本地文件",

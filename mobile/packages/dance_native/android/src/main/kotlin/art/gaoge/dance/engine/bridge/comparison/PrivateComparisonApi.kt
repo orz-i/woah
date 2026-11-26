@@ -106,6 +106,15 @@ internal class PrivateComparisonApi(private val delegate: DanceComparisonApi) : 
         throw NativeDiagnosticPrivacy.comparison(error)
     }
 
+    override suspend fun startCutoutExport(projectJson:String,startUs:Long,endUs:Long,width:Long,height:Long,
+        gap:Long,sideBySide:Boolean,replacePreviousUnsaved:Boolean):ComparisonExportDto = try {
+        delegate.startCutoutExport(projectJson,startUs,endUs,width,height,gap,sideBySide,replacePreviousUnsaved)
+    } catch(error:Throwable){throw NativeDiagnosticPrivacy.comparison(error)}
+
+    override suspend fun resumeCutoutPreview():ComparisonPlaybackDto = try {
+        delegate.resumeCutoutPreview()
+    } catch(error:Throwable){throw NativeDiagnosticPrivacy.comparison(error)}
+
     override suspend fun getExport(): ComparisonExportDto? = try {
         delegate.getExport()
     } catch (error: Throwable) {

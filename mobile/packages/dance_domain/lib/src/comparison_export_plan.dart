@@ -6,6 +6,7 @@ class ComparisonExportPlan {
   final ComparisonProject project;
   final int startUs, endUs, width, height, gap;
   final bool sideBySide;
+  final bool cutout;
   const ComparisonExportPlan._(
     this.project,
     this.startUs,
@@ -14,6 +15,7 @@ class ComparisonExportPlan {
     this.height,
     this.gap,
     this.sideBySide,
+    this.cutout,
   );
   factory ComparisonExportPlan({
     required ComparisonProject project,
@@ -22,6 +24,7 @@ class ComparisonExportPlan {
     required int previewHeight,
     required bool sideBySide,
     bool selection = false,
+    bool cutout = false,
   }) {
     if (!project.hasPair ||
         !project.musicMapping.valid ||
@@ -30,8 +33,9 @@ class ComparisonExportPlan {
         previewHeight < 16) {
       throw const FormatException('请等待两路画面就绪后导出');
     }
-    final start = selection ? project.loopStartUs : 0;
-    final end = selection ? project.loopEndUs : durationUs;
+    final useSelection = selection || (cutout && project.loopEnabled);
+    final start = useSelection ? project.loopStartUs : 0;
+    final end = useSelection ? project.loopEndUs : durationUs;
     if (start == null ||
         end == null ||
         start < 0 ||
@@ -53,6 +57,7 @@ class ComparisonExportPlan {
       height,
       (8 * factor).round().clamp(1, 64),
       sideBySide,
+      cutout,
     );
   }
   int get durationUs => endUs - startUs;

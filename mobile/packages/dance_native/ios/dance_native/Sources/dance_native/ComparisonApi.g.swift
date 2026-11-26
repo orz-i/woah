@@ -823,6 +823,8 @@ struct ComparisonExportDto: Hashable, CustomStringConvertible {
   var outputPath: String? = nil
   var savedUri: String? = nil
   var error: String? = nil
+  var cutout: Bool? = nil
+  var retryAvailable: Bool? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -839,6 +841,8 @@ struct ComparisonExportDto: Hashable, CustomStringConvertible {
     let outputPath: String? = nilOrValue(pigeonVar_list[9])
     let savedUri: String? = nilOrValue(pigeonVar_list[10])
     let error: String? = nilOrValue(pigeonVar_list[11])
+    let cutout: Bool? = nilOrValue(pigeonVar_list[12])
+    let retryAvailable: Bool? = nilOrValue(pigeonVar_list[13])
 
     return ComparisonExportDto(
       jobId: jobId,
@@ -852,7 +856,9 @@ struct ComparisonExportDto: Hashable, CustomStringConvertible {
       height: height,
       outputPath: outputPath,
       savedUri: savedUri,
-      error: error
+      error: error,
+      cutout: cutout,
+      retryAvailable: retryAvailable
     )
   }
   func toList() -> [Any?] {
@@ -869,13 +875,15 @@ struct ComparisonExportDto: Hashable, CustomStringConvertible {
       outputPath,
       savedUri,
       error,
+      cutout,
+      retryAvailable,
     ]
   }
   static func == (lhs: ComparisonExportDto, rhs: ComparisonExportDto) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return ComparisonPigeonInternal.deepEquals(lhs.jobId, rhs.jobId) && ComparisonPigeonInternal.deepEquals(lhs.projectId, rhs.projectId) && ComparisonPigeonInternal.deepEquals(lhs.state, rhs.state) && ComparisonPigeonInternal.deepEquals(lhs.stage, rhs.stage) && ComparisonPigeonInternal.deepEquals(lhs.progress, rhs.progress) && ComparisonPigeonInternal.deepEquals(lhs.startUs, rhs.startUs) && ComparisonPigeonInternal.deepEquals(lhs.endUs, rhs.endUs) && ComparisonPigeonInternal.deepEquals(lhs.width, rhs.width) && ComparisonPigeonInternal.deepEquals(lhs.height, rhs.height) && ComparisonPigeonInternal.deepEquals(lhs.outputPath, rhs.outputPath) && ComparisonPigeonInternal.deepEquals(lhs.savedUri, rhs.savedUri) && ComparisonPigeonInternal.deepEquals(lhs.error, rhs.error)
+    return ComparisonPigeonInternal.deepEquals(lhs.jobId, rhs.jobId) && ComparisonPigeonInternal.deepEquals(lhs.projectId, rhs.projectId) && ComparisonPigeonInternal.deepEquals(lhs.state, rhs.state) && ComparisonPigeonInternal.deepEquals(lhs.stage, rhs.stage) && ComparisonPigeonInternal.deepEquals(lhs.progress, rhs.progress) && ComparisonPigeonInternal.deepEquals(lhs.startUs, rhs.startUs) && ComparisonPigeonInternal.deepEquals(lhs.endUs, rhs.endUs) && ComparisonPigeonInternal.deepEquals(lhs.width, rhs.width) && ComparisonPigeonInternal.deepEquals(lhs.height, rhs.height) && ComparisonPigeonInternal.deepEquals(lhs.outputPath, rhs.outputPath) && ComparisonPigeonInternal.deepEquals(lhs.savedUri, rhs.savedUri) && ComparisonPigeonInternal.deepEquals(lhs.error, rhs.error) && ComparisonPigeonInternal.deepEquals(lhs.cutout, rhs.cutout) && ComparisonPigeonInternal.deepEquals(lhs.retryAvailable, rhs.retryAvailable)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -892,10 +900,12 @@ struct ComparisonExportDto: Hashable, CustomStringConvertible {
     ComparisonPigeonInternal.deepHash(value: outputPath, hasher: &hasher)
     ComparisonPigeonInternal.deepHash(value: savedUri, hasher: &hasher)
     ComparisonPigeonInternal.deepHash(value: error, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: cutout, hasher: &hasher)
+    ComparisonPigeonInternal.deepHash(value: retryAvailable, hasher: &hasher)
   }
 
   public var description: String {
-    return "ComparisonExportDto(jobId: \(String(describing: jobId)), projectId: \(String(describing: projectId)), state: \(String(describing: state)), stage: \(String(describing: stage)), progress: \(String(describing: progress)), startUs: \(String(describing: startUs)), endUs: \(String(describing: endUs)), width: \(String(describing: width)), height: \(String(describing: height)), outputPath: \(String(describing: outputPath)), savedUri: \(String(describing: savedUri)), error: \(String(describing: error)))"
+    return "ComparisonExportDto(jobId: \(String(describing: jobId)), projectId: \(String(describing: projectId)), state: \(String(describing: state)), stage: \(String(describing: stage)), progress: \(String(describing: progress)), startUs: \(String(describing: startUs)), endUs: \(String(describing: endUs)), width: \(String(describing: width)), height: \(String(describing: height)), outputPath: \(String(describing: outputPath)), savedUri: \(String(describing: savedUri)), error: \(String(describing: error)), cutout: \(String(describing: cutout)), retryAvailable: \(String(describing: retryAvailable)))"
   }
 }
 
@@ -1019,6 +1029,8 @@ protocol DanceComparisonApi {
   func alignMusic(teacherUri: String, learnerUri: String) async throws -> MusicAlignmentDto
   func cancelAlignment() async throws
   func startExport(projectJson: String, startUs: Int64, endUs: Int64, width: Int64, height: Int64, gap: Int64, sideBySide: Bool, replacePreviousUnsaved: Bool) async throws -> ComparisonExportDto
+  func startCutoutExport(projectJson: String, startUs: Int64, endUs: Int64, width: Int64, height: Int64, gap: Int64, sideBySide: Bool, replacePreviousUnsaved: Bool) async throws -> ComparisonExportDto
+  func resumeCutoutPreview() async throws -> ComparisonPlaybackDto
   func getExport() async throws -> ComparisonExportDto?
   func cancelExport(jobId: String) async throws -> ComparisonExportDto
   func retryExport(jobId: String) async throws -> ComparisonExportDto
@@ -1338,6 +1350,45 @@ class DanceComparisonApiSetup {
       }
     } else {
       startExportChannel.setMessageHandler(nil)
+    }
+    let startCutoutExportChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.startCutoutExport\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      startCutoutExportChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let projectJsonArg = args[0] as! String
+        let startUsArg = args[1] as! Int64
+        let endUsArg = args[2] as! Int64
+        let widthArg = args[3] as! Int64
+        let heightArg = args[4] as! Int64
+        let gapArg = args[5] as! Int64
+        let sideBySideArg = args[6] as! Bool
+        let replacePreviousUnsavedArg = args[7] as! Bool
+        Task { @MainActor in
+          do {
+            let result = try await api.startCutoutExport(projectJson: projectJsonArg, startUs: startUsArg, endUs: endUsArg, width: widthArg, height: heightArg, gap: gapArg, sideBySide: sideBySideArg, replacePreviousUnsaved: replacePreviousUnsavedArg)
+            reply(wrapResult(result))
+          } catch {
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      startCutoutExportChannel.setMessageHandler(nil)
+    }
+    let resumeCutoutPreviewChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.resumeCutoutPreview\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      resumeCutoutPreviewChannel.setMessageHandler { _, reply in
+        Task { @MainActor in
+          do {
+            let result = try await api.resumeCutoutPreview()
+            reply(wrapResult(result))
+          } catch {
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      resumeCutoutPreviewChannel.setMessageHandler(nil)
     }
     let getExportChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.dance_native.DanceComparisonApi.getExport\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

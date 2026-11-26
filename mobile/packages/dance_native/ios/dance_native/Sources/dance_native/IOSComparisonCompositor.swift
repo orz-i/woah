@@ -4,6 +4,7 @@ import CoreImage
 import CoreMedia
 import CoreVideo
 import Foundation
+import CryptoKit
 
 struct IOSComparisonVideoLayer {
   let trackID: CMPersistentTrackID
@@ -121,6 +122,10 @@ struct IOSComparisonCachedCutout: Sendable {
 struct IOSComparisonCutoutTrackCache: Sendable {
   let entries: [Int64: IOSComparisonCachedCutout]
   let times: [Int64]
+  let fingerprint: Data?
+  init(entries:[Int64:IOSComparisonCachedCutout],times:[Int64],fingerprint:Data?=nil) {
+    self.entries=entries;self.times=times;self.fingerprint=fingerprint
+  }
   var visibleCount: Int { entries.values.filter { $0.layer != nil }.count }
   func entry(at time: Int64) -> (Int64,IOSComparisonCachedCutout)? {
     guard let i = IOSComparisonTimeCore.frameIndex(times,time: time),
@@ -128,6 +133,22 @@ struct IOSComparisonCutoutTrackCache: Sendable {
     return (times[i],entry)
   }
 }
+enum IOSComparisonCutoutFingerprint {
+  static func read(_ url:URL,current:()->Bool) throws -> Data {
+    let scope=url.startAccessingSecurityScopedResource()
+    defer {if scope {url.stopAccessingSecurityScopedResource()}}
+    let handle=try FileHandle(forReadingFrom:url)
+    defer {try? handle.close()}
+    var hash=SHA256()
+    while true {
+      guard current() else {throw CancellationError()}
+      guard let data=try handle.read(upToCount:256*1024),!data.isEmpty else {break}
+      hash.update(data:data)
+    }
+    return Data(hash.finalize())
+  }
+}
+struct IOSComparisonCutoutExportUnavailable:Error {}
 struct IOSComparisonCutoutCache: Sendable {
   let reference: IOSComparisonCutoutTrackCache
   let target: IOSComparisonCutoutTrackCache
@@ -145,6 +166,28 @@ struct IOSComparisonCutoutCache: Sendable {
   func withLayout(_ value: IOSComparisonCanvasLayout?) -> Self {
     Self(reference:reference,target:target,referenceStartUs:referenceStartUs,offsetUs:offsetUs,
       timeScale:timeScale,window:window,editedLayout:value)
+  }
+  var complete:Bool {
+    !reference.times.isEmpty && !target.times.isEmpty &&
+      reference.visibleCount==reference.times.count && target.visibleCount==target.times.count &&
+      reference.fingerprint != nil && target.fingerprint != nil
+  }
+  func verifySources(referenceURL:URL,targetURL:URL,current:()->Bool) throws {
+    guard try IOSComparisonCutoutFingerprint.read(referenceURL,current:current)==reference.fingerprint,
+          try IOSComparisonCutoutFingerprint.read(targetURL,current:current)==target.fingerprint else {
+      throw IOSComparisonCutoutExportUnavailable()
+    }
+  }
+  /// Export obtains original sample PTS directly from its independent decoder.
+  /// Unlike preview, it cannot silently hide a missing or mismatched observation.
+  func strictFrame(referencePts:Int64,targetPts:Int64,referenceBuffer:CVPixelBuffer,
+      targetBuffer:CVPixelBuffer) throws -> IOSComparisonCutoutFrame {
+    guard let r=reference.entries[referencePts],let t=target.entries[targetPts],
+      let a=r.layer,let b=t.layer,a.valid,b.valid,a.sourcePtsUs==referencePts,b.sourcePtsUs==targetPts,
+      let rs=IOSComparisonSourceStamp(referenceBuffer),let ts=IOSComparisonSourceStamp(targetBuffer),
+      r.stamp.agrees(with:rs),t.stamp.agrees(with:ts) else {throw IOSComparisonCutoutExportUnavailable()}
+    return IOSComparisonCutoutFrame(referencePtsUs:referencePts,targetPtsUs:targetPts,
+      reference:a,target:b,editedLayout:editedLayout)
   }
   func frame(at compositionTime: CMTime, referenceBuffer: CVPixelBuffer,
              targetBuffer: CVPixelBuffer) -> IOSComparisonCutoutFrame {
@@ -246,13 +289,15 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
   }
 
   /// The player and the export's independent source readers use one renderer.
+  @discardableResult
   func render(reference: CVPixelBuffer, target: CVPixelBuffer,
     instruction: IOSComparisonVideoInstruction, output: CVPixelBuffer,
     renderTransform: CGAffineTransform = .identity,
-    cutout: IOSComparisonCutoutFrame? = nil) {
+    cutout: IOSComparisonCutoutFrame? = nil) -> Bool {
     let layout = instruction.layout
     let canvas = CGRect(x: 0, y: 0, width: CGFloat(layout.width), height: CGFloat(layout.height))
     var image = CIImage(color: cutout?.editedLayout?.color ?? .black).cropped(to: canvas)
+    var renderedLayers=0
     if let cutout {
       // One immutable geometry snapshot per frame, including z order.
       let order = cutout.editedLayout?.targetOnTop == false ? [false,true] : [true,false]
@@ -262,6 +307,7 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
             layer:referenceRole ? instruction.reference : instruction.target,cutout:layer,layout:layout,
             edited:cutout.editedLayout?.layer(referenceRole)) else { continue }
         image = foreground.composited(over:image)
+        renderedLayers += 1
       }
     } else {
       image = pane(reference, layer: instruction.reference, reference: true, layout: layout).composited(over: image)
@@ -274,6 +320,7 @@ final class IOSComparisonCompositor: NSObject, AVVideoCompositing {
       .transformed(by: CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: bounds.height))
     image = image.composited(over: CIImage(color: .black).cropped(to: bounds)).cropped(to: bounds)
     context.render(image, to: output, bounds: bounds, colorSpace: colorSpace)
+    return cutout==nil || renderedLayers==2
   }
 
   func cancelAllPendingVideoCompositionRequests() {

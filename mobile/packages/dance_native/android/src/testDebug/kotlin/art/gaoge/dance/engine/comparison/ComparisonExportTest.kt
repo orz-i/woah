@@ -69,4 +69,11 @@ class ComparisonExportTest {
         assertFailsWith<IllegalArgumentException> { spec().copy(startUs=-1) }
         assertFailsWith<IllegalArgumentException> { spec().copy(gap=1080) }
     }
+    @Test fun cutoutKindIsDurableButOldRecordsRemainOrdinary() {
+        val frozen=spec().copy(cutout=true)
+        assertTrue(ComparisonExportSpec.fromJson(frozen.toJson()).cutout)
+        assertFalse(ComparisonExportSpec.fromJson(spec().toJson()).cutout)
+        val recovered=ComparisonExportRecord("cutout-job",frozen,state="encoding").recovered()
+        assertTrue(ComparisonExportRecord.parse(recovered.json()).spec.cutout)
+    }
 }

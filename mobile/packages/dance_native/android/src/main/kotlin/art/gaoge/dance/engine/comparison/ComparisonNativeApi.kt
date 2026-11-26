@@ -223,10 +223,31 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
         session?.close();session=null
         return exports.start(spec,replacePreviousUnsaved)
     }
+    override suspend fun startCutoutExport(projectJson:String,startUs:Long,endUs:Long,width:Long,height:Long,
+        gap:Long,sideBySide:Boolean,replacePreviousUnsaved:Boolean):ComparisonExportDto {
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        require(width in 16..1920 && height in 16..1920 && gap in 1..64)
+        val spec=ComparisonExportSpec.fromProject(projectJson,startUs,endUs,width.toInt(),height.toInt(),gap.toInt(),sideBySide).copy(cutout=true)
+        val owner=requireNotNull(session)
+        val snapshot=owner.freezeCutoutExport(spec)
+        owner.suspendCutoutForExport()
+        try {return exports.start(spec,replacePreviousUnsaved,snapshot)}
+        catch(error:Throwable){owner.resumeCutoutPreview();throw error}
+    }
+    override suspend fun resumeCutoutPreview():ComparisonPlaybackDto {
+        check(exports.latest()?.state !in setOf("queued","encoding","cancelling","publishing"))
+        return requireNotNull(session).resumeCutoutPreview()
+    }
     override suspend fun getExport(): ComparisonExportDto? = exports.latest()
     override suspend fun cancelExport(jobId: String): ComparisonExportDto = exports.cancel(jobId)
     override suspend fun retryExport(jobId: String): ComparisonExportDto {
-        session?.close();session=null
+        val job=requireNotNull(exports.latest())
+        check(job.jobId==jobId && job.state in setOf("failed","cancelled","interrupted"))
+        if(job.cutout==true) {
+            check(job.retryAvailable==true)
+            if(session?.hasCutout==true)session?.suspendCutoutForRetry()
+            else {session?.close();session=null}
+        } else {check(session?.hasCutout!=true);session?.close();session=null}
         return exports.retry(jobId)
     }
     override suspend fun saveExport(jobId: String): ComparisonExportDto {

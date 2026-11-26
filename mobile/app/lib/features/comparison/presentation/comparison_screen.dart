@@ -128,6 +128,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   Future<void> _exit() async {
     if (_finishingManual || _finishingPicture) return;
     if (controller.cutoutMode) {
+      if (controller.exporting) return;
       if (controller.cutoutApplying || _canvasEntering) return;
       if (controller.cutoutEditing) {
         _finishCanvasEditing();
@@ -1059,7 +1060,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
   }
 
   Future<void> _exitCutout() async {
-    if (controller.cutoutApplying || _canvasEntering) return;
+    if (controller.cutoutApplying || _canvasEntering || controller.exporting) {
+      return;
+    }
     if (mounted) {
       setState(() {
         _resetCutoutSeeds();
@@ -1702,7 +1705,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         Expanded(
           child: Text(
             '实验画布 · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}'
-            '${missing > 0 ? ' · 缺失帧已隐藏' : ''}',
+            '${missing > 0 ? ' · 缺失帧已隐藏，暂不能导出' : ''}',
             style: const TextStyle(fontSize: 12),
           ),
         ),
@@ -1712,7 +1715,18 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           onPressed: controller.canPlay ? _beginCanvasEditing : null,
           icon: const Icon(Icons.tune_rounded),
         ),
-        TextButton(onPressed: _exitCutout, child: const Text('退出画布')),
+        IconButton(
+          key: const ValueKey('comparison-cutout-export'),
+          tooltip: '导出画布视频',
+          onPressed: controller.canPlay && controller.cutoutExportReady
+              ? _export
+              : null,
+          icon: const Icon(Icons.ios_share_rounded),
+        ),
+        TextButton(
+          onPressed: controller.exporting ? null : _exitCutout,
+          child: const Text('退出画布'),
+        ),
       ],
     );
   }

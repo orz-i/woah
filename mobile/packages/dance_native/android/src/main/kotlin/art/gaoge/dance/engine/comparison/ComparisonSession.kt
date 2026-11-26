@@ -78,6 +78,7 @@ internal class ComparisonSession(
     private val cutoutRevision=AtomicLong(0)
     private var cutoutCache: ComparisonCutoutCache?=null
     private var cutoutWindow: ComparisonLoop?=null
+    private var cutoutExportSuspended=false
     private var cutoutPreparing=false
     private var cutoutDone: CompletableDeferred<Unit>?=null
     private var referenceInspection: ComparisonCutoutAnalysis.Inspection?=null
@@ -164,7 +165,7 @@ internal class ComparisonSession(
         pendingStep?.let { if (it.isActive) it.resumeWithException(cause) }; pendingStep=null
     }
     private fun buildEngine() {
-        if (closed || !surfaceAvailable) return
+        if (closed || !surfaceAvailable || cutoutExportSuspended) return
         releaseEngine(); error=null
         val current=++generation
         engine=ComparisonGlEngine(context,producer.surface,width,height,8,
@@ -437,13 +438,38 @@ internal class ComparisonSession(
         }
     }
 
+    fun freezeCutoutExport(spec:ComparisonExportSpec):ComparisonCutoutExportSnapshot {
+        check(!closed && ready && !wantsPlay && !cutoutPreparing && !cutoutExportSuspended)
+        val cache=requireNotNull(cutoutCache)
+        val bounds=requireNotNull(range)
+        val window=requireNotNull(cutoutWindow)
+        require(spec.cutout && spec.teacherUri==teacherUri && spec.learnerUri==learnerUri &&
+            spec.offsetUs==offsetUs && spec.timeScale==timeScale &&
+            spec.startUs==window.startUs && spec.endUs==window.endUs)
+        val frozen=cache.frozen()
+        frozen.requireComplete()
+        return ComparisonCutoutExportSnapshot(frozen,bounds.teacherStartUs)
+    }
+
+    fun suspendCutoutForExport() {
+        check(cutoutCache!=null && !cutoutExportSuspended)
+        pendingUs=positionUs();wantsPlay=false;pauseClock();cutoutExportSuspended=true
+        releaseEngine()
+    }
+    fun suspendCutoutForRetry() {if(!cutoutExportSuspended)suspendCutoutForExport()}
+    fun resumeCutoutPreview():ComparisonPlaybackDto {
+        check(!closed && cutoutCache!=null)
+        if(cutoutExportSuspended) {cutoutExportSuspended=false;buildEngine()}
+        return state()
+    }
+
     suspend fun clearCutout(): ComparisonPlaybackDto {
         val revision=cutoutRevision.incrementAndGet()
         cutoutDone?.await()
         if(closed || cutoutRevision.get()!=revision)return state()
         referenceInspection=null;targetInspection=null
         if(cutoutCache!=null) {
-            pendingUs=positionUs();wantsPlay=false;pauseClock();cutoutCache=null;cutoutWindow=null
+            pendingUs=positionUs();wantsPlay=false;pauseClock();cutoutCache=null;cutoutWindow=null;cutoutExportSuspended=false
             buildEngine()
         }
         return state()
@@ -451,6 +477,7 @@ internal class ComparisonSession(
 
     fun resize(newWidth: Int,newHeight: Int,sideBySide: Boolean): ComparisonPlaybackDto {
         require(newWidth in 2..4096 && newHeight in 2..4096)
+        if(cutoutExportSuspended) return state()
         if (width==newWidth && height==newHeight) {
             if (horizontal!=sideBySide) {
                 horizontal=sideBySide

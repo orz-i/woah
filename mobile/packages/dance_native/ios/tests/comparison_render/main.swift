@@ -174,7 +174,35 @@ func cutoutSmoke(reference: URL, target: URL) async throws {
   precondition(mismatch.layer(referenceRole: true) == nil && mismatch.layer(referenceRole: false) == nil)
   let missing = cache.frame(at: CMTime(value: 40_000,timescale: 1_000_000),referenceBuffer: r,targetBuffer: t)
   precondition(missing.layer(referenceRole: true) == nil)
-  print("Comparison Cutout Canvas: decoded pixels, top-down alpha, mirror, fixed anchor and stale PTS, sample-stamp mismatch passed (macOS)")
+  let strict=try cache.strictFrame(referencePts:0,targetPts:0,referenceBuffer:r,targetBuffer:t)
+  precondition(renderer.render(reference:r,target:t,instruction:instruction,output:canvas,cutout:strict))
+  precondition(!renderer.render(reference:r,target:t,instruction:instruction,output:canvas,cutout:missing))
+  do {
+    _=try cache.strictFrame(referencePts:40_000,targetPts:0,referenceBuffer:r,targetBuffer:t)
+    preconditionFailure("Missing alpha became an export frame")
+  } catch {precondition(error is IOSComparisonCutoutExportUnavailable)}
+  do {
+    _=try cache.strictFrame(referencePts:0,targetPts:0,referenceBuffer:t,targetBuffer:r)
+    preconditionFailure("Wrong source sample became an export frame")
+  } catch {precondition(error is IOSComparisonCutoutExportUnavailable)}
+  let referenceDigest=try IOSComparisonCutoutFingerprint.read(reference,current:{true})
+  let targetDigest=try IOSComparisonCutoutFingerprint.read(target,current:{true})
+  let complete=IOSComparisonCutoutCache(reference:IOSComparisonCutoutTrackCache(
+    entries:[0:IOSComparisonCachedCutout(stamp:rStamp,layer:mask(0,topLeft,a))],times:[0],fingerprint:referenceDigest),
+    target:IOSComparisonCutoutTrackCache(entries:tc.entries,times:tc.times,fingerprint:targetDigest),
+    referenceStartUs:0,offsetUs:0,timeScale:1)
+  precondition(complete.complete && !cache.complete)
+  try complete.verifySources(referenceURL:reference,targetURL:target,current:{true})
+  // Mutate a disposable copy, never the original fixture.
+  let changed=reference.deletingLastPathComponent().appendingPathComponent("changed.mov")
+  try FileManager.default.copyItem(at:reference,to:changed)
+  let handle=try FileHandle(forWritingTo:changed)
+  try handle.seekToEnd();try handle.write(contentsOf:Data([0x77]));try handle.close()
+  do {
+    try complete.verifySources(referenceURL:changed,targetURL:target,current:{true})
+    preconditionFailure("Changed source bytes became an export input")
+  } catch {precondition(error is IOSComparisonCutoutExportUnavailable)}
+  print("Comparison Cutout Canvas: decoded pixels, top-down alpha, mirror, fixed anchor and stale PTS, sample-stamp mismatch, strict export and source mutation passed (macOS)")
 }
 
 func run() async throws {

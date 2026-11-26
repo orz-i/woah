@@ -189,6 +189,7 @@ final class IOSComparisonCutoutAnalysis {
     guard seed.x.isFinite, seed.y.isFinite, (0..<1).contains(seed.x), (0..<1).contains(seed.y) else {
       throw IOSComparisonCutoutAnalysisError.invalidSelection
     }
+    let fingerprint=try IOSComparisonCutoutFingerprint.read(url,current:{!isCancelled()})
     let times = try Self.window(index.presentationTimesUs,start: start,end: end,anchor: seed.ptsUs)
     let scoped = url.isFileURL && url.startAccessingSecurityScopedResource()
     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
@@ -277,6 +278,9 @@ final class IOSComparisonCutoutAnalysis {
     guard cursor == times.count,entries.count == times.count,entries[seed.ptsUs]?.layer != nil else {
       throw IOSComparisonCutoutAnalysisError.invalidFrame
     }
-    return IOSComparisonCutoutTrackCache(entries: entries,times: times)
+    guard try IOSComparisonCutoutFingerprint.read(url,current:{!isCancelled()})==fingerprint else {
+      throw IOSComparisonCutoutAnalysisError.invalidFrame
+    }
+    return IOSComparisonCutoutTrackCache(entries: entries,times: times,fingerprint:fingerprint)
   }
 }

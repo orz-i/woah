@@ -334,3 +334,88 @@ commit on release), durable person selection with source evidence,
 progressive/full-length chunked analysis (300 frames per analyzed window
 remains), cutout export, independent recordings and difficult occlusions,
 and real Android/iPhone performance. Keep Debug-only and draft PR.
+
+## M4 — Frozen canvas MP4 export (2026-11-26)
+
+The active Debug cutout canvas has its own export button and explicit
+`startCutoutExport` bridge. Ordinary comparison exports are still separate
+and cannot be invoked with an active cutout session. The dialog exports
+only the already analyzed common interval (full common overlap or enabled
+A/B practice range); it does not offer unanalyzed ranges. Output uses the
+existing even-dimension, maximum-long-edge-1920, 1x H.264/AAC encoder
+and reference audio (silence when absent).
+
+Native preflight checks both source URIs, affine mapping, the exact
+analyzed window, and that both role caches contain every observed frame.
+The worker receives the immutable selected-mask cache and a frozen
+layout (including background, order, opacity, mirror and placement).
+The Android cache snapshot holds the same immutable alpha entries with
+a separate layout reference; the iOS cache is a value snapshot. The
+existing independent decoders and encoder are reused. Android requires
+each decoded source PTS to resolve to a current mask; iOS requires exact
+decoded source PTS, matching sample stamps, and both rendered layers.
+A missing or mismatched layer aborts encoding, rather than exporting
+ordinary source pictures, stale masks or silently blank subjects.
+Both sources are streamed through SHA-256 before/after analysis and
+before/after encoding; a changed source aborts publication. These scans
+do not run inference, but add I/O proportional to source size.
+
+The preview session releases its decoders during the export and retains
+the analyzed cache and position. Dismissing the dialog after completion
+or cancellation restores the paused canvas without selecting or inferring
+again. The persisted export spec has an explicit cutout-kind flag, while
+the selected masks and source digests remain in memory. Retrying within
+the same process uses the same frozen job snapshot. After process death,
+a cutout job without the snapshot cannot be retried as an ordinary job;
+the user must select the subjects again. A source-integrity failure also
+invalidates its retry snapshot. Completed local movies and the existing
+save/publish/cancel lifecycle are retained; ordinary records stay backward
+compatible. The existing 300-frame-per-source analysis limit remains.
+
+### M4 evidence
+
+- iPhone 15 Pro simulator, iOS 17: real native inference, preview layout,
+  encoding, completed MP4 and preview restoration on three cases
+  (original + mirror variant, mid-frame selection with cancel/retry,
+  and 12-second repeated fixture with A/B 6–7 seconds and a reference
+  440 Hz test tone). All 3 outputs: 320x240, H.264, 30 decoded frames,
+  duration exactly 1 second, 48 kHz stereo AAC. The first two are
+  silent; the third retains the reference tone. No full-length 12-second
+  cutout export was attempted.
+- `tools/comparison/verify_cutout_export.py` checks actual decoded RGB
+  frames and audio, exact fixture video PTS, and restored-preview equality.
+  Three sample times per movie, full-frame RGB mean absolute error
+  0.937–1.066 on 0–255 range; subject-region MAE 2.305–2.937. The 400 ms
+  resumed preview matched its pre-export counterpart byte for byte.
+- Flutter comparison suite 132 passed, including export range/cache
+  restoration and missing-mask admission tests; scoped analyzer clean.
+- Android 23 focused cutout/export/manager JVM/JNI tests passed; actual
+  MediaCodec/GLES encoding on Android hardware still unverified.
+- Full macOS comparison host regression passed, including ordinary
+  VFR H.264/AAC, A/B affine mapping, cancellation, export-kind recovery,
+  missing-mask and mismatched-sample refusal, and fingerprint mutation.
+- The simulator negative export probe changed a disposable source after
+  analysis. The actual worker returned failed, outputPath=null,
+  retryAvailable=false; retry was refused.
+- Native app build and simulator verification only; no physical iPhone,
+  Android device, or Photos/MediaStore publication verification in this
+  round. Fixture material and generated media remain local, not Git data.
+
+For the iOS smoke build the existing
+`mobile/app/test_driver/comparison_cutout_smoke.dart` entrypoint. Place
+the earlier source and mirror variant in its fixture directory. Generate
+the 12-second reference with a synthetic audio track (on disposable
+fixtures only):
+
+```sh
+ffmpeg -stream_loop 11 -i source.mp4 -f lavfi -i sine=frequency=440:sample_rate=48000 \
+  -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -t 12 long-source.mp4
+ffmpeg -stream_loop 11 -i variant.mp4 -map 0:v:0 -c copy -an long-variant.mp4
+python3 tools/comparison/verify_cutout_export.py /path/to/comparison-cutout-fixtures
+```
+
+The smoke explicitly consents to replacing prior QA export records;
+use a dedicated QA app container, never a production user's export
+history. The verifier also requires the disposable source-mutation
+negative report. The numeric measurements are not proof of general
+identity accuracy, matte quality or real-device throughput.

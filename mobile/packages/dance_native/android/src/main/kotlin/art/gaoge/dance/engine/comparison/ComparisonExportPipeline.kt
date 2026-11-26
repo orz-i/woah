@@ -23,7 +23,7 @@ import kotlin.math.roundToInt
 /** Hardware output, driven by real reference frame ends rather than a synthetic FPS loop. */
 internal class ComparisonExportPipeline(private val context: Context) {
     fun execute(spec: ComparisonExportSpec,partial: File,packets: File,cancelled: AtomicBoolean,
-        progress: (String,Double)->Unit) {
+        cutout:ComparisonCutoutExportSnapshot?=null, progress: (String,Double)->Unit) {
         fun current() { if (cancelled.get()) throw ComparisonExportCancelled() }
         fun <T> await(pump: ()->Unit,start: (((T)->Unit),(Throwable)->Unit)->Unit): T {
             val latch=CountDownLatch(1);val value=AtomicReference<Result<T>>()
@@ -35,6 +35,8 @@ internal class ComparisonExportPipeline(private val context: Context) {
             current();return value.get().getOrThrow()
         }
         current()
+        check(spec.cutout==(cutout!=null)) { "抠像导出缓存不可用" }
+        cutout?.cache?.verifySources(context,spec) { !cancelled.get() }
         partial.parentFile!!.mkdirs();packets.parentFile!!.mkdirs()
         val fps=nominalFps(spec.teacherUri)
         val bitrate=(spec.width.toDouble()*spec.height*fps*.13).toLong().coerceIn(4_000_000,80_000_000).toInt()
@@ -68,7 +70,8 @@ internal class ComparisonExportPipeline(private val context: Context) {
                 failed={ failure.set(it);ready.countDown() },stalled={},recovered={},
                 initialSideBySide=spec.sideBySide,initialMirrorTeacher=spec.mirrorTeacher,
                 initialMirrorLearner=spec.mirrorLearner,initialTeacherPicture=spec.teacherPicture,
-                initialLearnerPicture=spec.learnerPicture,recordable=true,exportCurrent={ !cancelled.get() })
+                initialLearnerPicture=spec.learnerPicture,recordable=true,exportCurrent={ !cancelled.get() },
+                cutoutProvider=cutout?.let { snapshot -> { r,t -> snapshot.cache.strictFrame(r,t) } })
             gl.open(Uri.parse(spec.teacherUri),Uri.parse(spec.learnerUri))
             val openDeadline=System.nanoTime()+15_000_000_000L
             while (!ready.await(40,TimeUnit.MILLISECONDS)) { current();check(System.nanoTime()<openDeadline) }
@@ -77,6 +80,7 @@ internal class ComparisonExportPipeline(private val context: Context) {
             val overlap=requireNotNull(ComparisonTimeMapping.overlap(SourceInterval(a.startUs,a.durationUs),
                 SourceInterval(b.startUs,b.durationUs),spec.offsetUs,spec.timeScale))
             val range=spec.sourceRange(overlap)
+            cutout?.validate(spec,range)
             progress("准备音轨",0.01)
             val audio=ComparisonExportAudio(context).encode(spec.teacherUri,range,packets,::current) {
                 progress("准备音轨",.01+it*.19)
@@ -127,6 +131,7 @@ internal class ComparisonExportPipeline(private val context: Context) {
             endTrack(muxer,audioTrack,duration+maxOf(0L,-requireNotNull(firstAudio)))
             muxer.stop();muxerStarted=false;muxer.release();muxer=null
             current();validate(partial,duration,maxOf(0L,-requireNotNull(firstAudio)))
+            cutout?.cache?.verifySources(context,spec) { !cancelled.get() };current()
             if (art.gaoge.dance.engine.BuildConfig.DEBUG) android.util.Log.i("WoahComparisonExport",
                 "encoded frames=${frames.encoded} duration_us=$duration width=${spec.width} height=${spec.height} time_scale=${spec.timeScale}")
             success=true

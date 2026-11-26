@@ -56,6 +56,7 @@ abstract interface class ComparisonCutoutGateway {
     ComparisonCanvasLayoutDto layout,
   );
   Future<ComparisonPlaybackDto> clearCutout();
+  Future<ComparisonPlaybackDto> resumeCutoutPreview();
 }
 
 class NativeComparisonGateway
@@ -171,6 +172,9 @@ class NativeComparisonGateway
     ComparisonCanvasLayoutDto layout,
   ) => _api.setCutoutLayout(layout);
   @override
+  Future<ComparisonPlaybackDto> resumeCutoutPreview() =>
+      _api.resumeCutoutPreview();
+  @override
   Future<ComparisonPlaybackDto> clearCutout() => _api.clearCutout();
   @override
   Future<ComparisonPlaybackDto> state() => _api.getState();
@@ -183,7 +187,7 @@ class NativeComparisonGateway
   Future<ComparisonExportDto> startExport(
     ComparisonExportPlan p, {
     bool replacePreviousUnsaved = false,
-  }) => _api.startExport(
+  }) => (p.cutout ? _api.startCutoutExport : _api.startExport)(
     jsonEncode(p.project.toJson()),
     p.startUs,
     p.endUs,

@@ -208,6 +208,8 @@ class ComparisonExportDto {
   String? outputPath;
   String? savedUri;
   String? error;
+  bool? cutout;
+  bool? retryAvailable;
   ComparisonExportDto({
     required this.jobId,
     required this.projectId,
@@ -221,6 +223,8 @@ class ComparisonExportDto {
     this.outputPath,
     this.savedUri,
     this.error,
+    this.cutout,
+    this.retryAvailable,
   });
 }
 
@@ -291,6 +295,19 @@ abstract class DanceComparisonApi {
     bool sideBySide,
     bool replacePreviousUnsaved,
   );
+  @async
+  ComparisonExportDto startCutoutExport(
+    String projectJson,
+    int startUs,
+    int endUs,
+    int width,
+    int height,
+    int gap,
+    bool sideBySide,
+    bool replacePreviousUnsaved,
+  );
+  @async
+  ComparisonPlaybackDto resumeCutoutPreview();
   @async
   ComparisonExportDto? getExport();
   @async

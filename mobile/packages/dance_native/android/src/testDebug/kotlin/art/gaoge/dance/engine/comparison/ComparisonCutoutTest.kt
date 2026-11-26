@@ -104,4 +104,20 @@ class ComparisonCutoutTest {
         assertFailsWith<IllegalArgumentException>{ComparisonCanvasLayer(Double.NaN,.5,.8,1f,false)}
         assertFailsWith<IllegalArgumentException>{ComparisonCanvasLayout(settings,settings,true,3)}
     }
+    @Test fun frozenExportLayoutRejectsAbsentMaskAndDoesNotFollowPreviewEdits() {
+        val base=ComparisonCutoutPlacement(FloatRect(.1f,.2f,.5f,.8f),.25,.85,.6,false)
+        val layer=ComparisonCutoutLayer(33_333,2,2,byteArrayOf(1,2,3,4),base)
+        val track=ComparisonCutoutTrackCache(mapOf(33_333L to layer),"fingerprint")
+        val preview=ComparisonCutoutCache(track,track)
+        val settings=ComparisonCanvasLayer(.5,.9,.8,.5f,true)
+        val layout=ComparisonCanvasLayout(settings,settings,false,2)
+        preview.setLayout(layout)
+        val frozen=preview.frozen();frozen.requireComplete()
+        preview.setLayout(layout.copy(background=0))
+        assertEquals(2,frozen.strictFrame(33_333,33_333).layout!!.background)
+        assertFailsWith<ComparisonCutoutExportUnavailable>{frozen.strictFrame(33_334,33_333)}
+        assertFailsWith<ComparisonCutoutExportUnavailable>{
+            ComparisonCutoutCache(track,ComparisonCutoutTrackCache(mapOf(33_333L to null),"fingerprint")).requireComplete()
+        }
+    }
 }

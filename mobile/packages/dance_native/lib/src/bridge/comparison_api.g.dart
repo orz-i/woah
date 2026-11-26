@@ -864,6 +864,8 @@ class ComparisonExportDto {
     this.outputPath,
     this.savedUri,
     this.error,
+    this.cutout,
+    this.retryAvailable,
   });
 
   String jobId;
@@ -890,6 +892,10 @@ class ComparisonExportDto {
 
   String? error;
 
+  bool? cutout;
+
+  bool? retryAvailable;
+
   List<Object?> _toList() {
     return <Object?>[
       jobId,
@@ -904,6 +910,8 @@ class ComparisonExportDto {
       outputPath,
       savedUri,
       error,
+      cutout,
+      retryAvailable,
     ];
   }
 
@@ -925,6 +933,8 @@ class ComparisonExportDto {
       outputPath: result[9] as String?,
       savedUri: result[10] as String?,
       error: result[11] as String?,
+      cutout: result[12] as bool?,
+      retryAvailable: result[13] as bool?,
     );
   }
 
@@ -937,7 +947,7 @@ class ComparisonExportDto {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(jobId, other.jobId) && _deepEquals(projectId, other.projectId) && _deepEquals(state, other.state) && _deepEquals(stage, other.stage) && _deepEquals(progress, other.progress) && _deepEquals(startUs, other.startUs) && _deepEquals(endUs, other.endUs) && _deepEquals(width, other.width) && _deepEquals(height, other.height) && _deepEquals(outputPath, other.outputPath) && _deepEquals(savedUri, other.savedUri) && _deepEquals(error, other.error);
+    return _deepEquals(jobId, other.jobId) && _deepEquals(projectId, other.projectId) && _deepEquals(state, other.state) && _deepEquals(stage, other.stage) && _deepEquals(progress, other.progress) && _deepEquals(startUs, other.startUs) && _deepEquals(endUs, other.endUs) && _deepEquals(width, other.width) && _deepEquals(height, other.height) && _deepEquals(outputPath, other.outputPath) && _deepEquals(savedUri, other.savedUri) && _deepEquals(error, other.error) && _deepEquals(cutout, other.cutout) && _deepEquals(retryAvailable, other.retryAvailable);
   }
 
   @override
@@ -946,7 +956,7 @@ class ComparisonExportDto {
 
   @override
   String toString() {
-    return 'ComparisonExportDto(jobId: $jobId, projectId: $projectId, state: $state, stage: $stage, progress: $progress, startUs: $startUs, endUs: $endUs, width: $width, height: $height, outputPath: $outputPath, savedUri: $savedUri, error: $error)';
+    return 'ComparisonExportDto(jobId: $jobId, projectId: $projectId, state: $state, stage: $stage, progress: $progress, startUs: $startUs, endUs: $endUs, width: $width, height: $height, outputPath: $outputPath, savedUri: $savedUri, error: $error, cutout: $cutout, retryAvailable: $retryAvailable)';
   }
 }
 
@@ -1374,6 +1384,44 @@ class DanceComparisonApi {
     )
     ;
     return pigeonVar_replyValue! as ComparisonExportDto;
+  }
+
+  Future<ComparisonExportDto> startCutoutExport(String projectJson, int startUs, int endUs, int width, int height, int gap, bool sideBySide, bool replacePreviousUnsaved) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.startCutoutExport$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[projectJson, startUs, endUs, width, height, gap, sideBySide, replacePreviousUnsaved]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as ComparisonExportDto;
+  }
+
+  Future<ComparisonPlaybackDto> resumeCutoutPreview() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.dance_native.DanceComparisonApi.resumeCutoutPreview$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as ComparisonPlaybackDto;
   }
 
   Future<ComparisonExportDto?> getExport() async {

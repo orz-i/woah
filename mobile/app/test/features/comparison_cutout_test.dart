@@ -44,12 +44,13 @@ class CutoutGateway extends FakeComparisonGateway
 
   final seeds = <ComparisonCutoutSeedDto>[];
   Completer<ComparisonCutoutResultDto>? pending;
-  int clears = 0;
+  int clears = 0, resumes = 0;
+  bool completeMasks = false;
   ComparisonCutoutResultDto result() => ComparisonCutoutResultDto(
     playback: current,
     referenceVisible: 30,
     referenceFrames: 30,
-    targetVisible: 29,
+    targetVisible: completeMasks ? 30 : 29,
     targetFrames: 30,
   );
   @override
@@ -70,6 +71,12 @@ class CutoutGateway extends FakeComparisonGateway
     ComparisonCanvasLayoutDto layout,
   ) async {
     edits.add(layout);
+    return current;
+  }
+
+  @override
+  Future<ComparisonPlaybackDto> resumeCutoutPreview() async {
+    resumes++;
     return current;
   }
 
@@ -400,6 +407,46 @@ void main() {
         ),
         throwsFormatException,
       );
+    },
+  );
+
+  test(
+    'canvas export freezes only analyzed range and restores cache after dialog',
+    () async {
+      final gateway = CutoutGateway()..completeMasks = true;
+      gateway.projects = [
+        savedProject().copyWith(
+          loopStartUs: 500000,
+          loopEndUs: 2000000,
+          loopEnabled: true,
+        ),
+      ];
+      final c = ComparisonController(gateway);
+      c.setViewport(400, 600, false);
+      await c.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      expect(await c.beginCutout(), isTrue);
+      final a = ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5);
+      final b = ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5);
+      await c.prepareCutout(a, b);
+      expect(c.cutoutExportReady, isTrue);
+      final plans = await c.prepareExport();
+      expect(plans!.$1.cutout, isTrue);
+      expect(plans.$1.startUs, 500000);
+      expect(plans.$1.endUs, 2000000);
+      expect(plans.$2, isNull);
+      expect(c.cutoutActive, isTrue);
+      await c.finishExport();
+      expect(gateway.resumes, 1);
+      expect(c.cutoutActive, isTrue);
+      expect(gateway.seeds.length, 2);
+      await c.exitCutout();
+      gateway.completeMasks = false;
+      expect(await c.beginCutout(), isTrue);
+      await c.prepareCutout(a, b);
+      expect(c.cutoutExportReady, isFalse);
+      expect(await c.prepareExport(), isNull);
+      c.dispose();
     },
   );
 

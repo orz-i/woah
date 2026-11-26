@@ -218,6 +218,39 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
       throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
     }
   }
+  func startCutoutExport(projectJson: String,startUs: Int64,endUs: Int64,width: Int64,height: Int64,
+    gap: Int64,sideBySide: Bool,replacePreviousUnsaved: Bool) async throws -> ComparisonExportDto {
+    do {
+      #if DEBUG
+      try canvas(width,height)
+      guard gap>0,gap<=64 else {throw invalid("画面间距无效")}
+      var spec=try IOSComparisonExportSpec.fromProject(projectJson,startUs:startUs,endUs:endUs,
+        width:Int(width),height:Int(height),gap:Int(gap),sideBySide:sideBySide)
+      spec.cutout=true
+      let owner=try requirePlayer()
+      let snapshot=try owner.freezeCutoutExport(spec)
+      try owner.suspendCutoutForExport()
+      do {
+        return try await withCheckedThrowingContinuation { continuation in
+          exports.startCutout(spec:spec,snapshot:snapshot,replacePreviousUnsaved:replacePreviousUnsaved) {
+            continuation.resume(with:$0)
+          }
+        }
+      } catch {
+        _ = try? await owner.resumeCutoutPreview()
+        throw error
+      }
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    } catch {throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func resumeCutoutPreview() async throws -> ComparisonPlaybackDto {
+    do {
+      guard !activeExport else {throw invalid("导出尚未结束")}
+      return try await requirePlayer().resumeCutoutPreview()
+    } catch {throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
   func getExport() async throws -> ComparisonExportDto? { exports.latest() }
   func cancelExport(jobId: String) async throws -> ComparisonExportDto {
     do {
@@ -228,7 +261,15 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
   }
   func retryExport(jobId: String) async throws -> ComparisonExportDto {
     do {
-      closePlayer()
+      guard let job=exports.latest(),job.jobId==jobId,["failed","cancelled","interrupted"].contains(job.state) else {throw invalid("当前任务不能重试")}
+      if job.cutout==true {
+        guard job.retryAvailable==true else {throw IOSComparisonCutoutExportUnavailable()}
+        if player?.hasCutout==true {try player?.suspendCutoutForExport()}
+        else {closePlayer()}
+      } else {
+        guard player?.hasCutout != true else {throw invalid("请先退出抠像画布")}
+        closePlayer()
+      }
           return try await withCheckedThrowingContinuation { continuation in
             exports.retry(jobId: jobId) { continuation.resume(with: $0) }
           }

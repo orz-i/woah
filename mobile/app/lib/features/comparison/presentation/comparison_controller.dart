@@ -31,6 +31,15 @@ class ComparisonController extends ChangeNotifier {
       cutoutInspecting = false;
   ComparisonCutoutResultDto? cutoutResult;
   bool get cutoutActive => cutoutResult != null;
+  bool get cutoutExportReady {
+    final r = cutoutResult;
+    return r != null &&
+        r.referenceFrames > 0 &&
+        r.targetFrames > 0 &&
+        r.referenceVisible == r.referenceFrames &&
+        r.targetVisible == r.targetFrames;
+  }
+
   bool cutoutEditing = false, cutoutApplying = false;
   ComparisonCanvasLayout get canvasLayout =>
       project.canvasLayout ??
@@ -170,6 +179,7 @@ class ComparisonController extends ChangeNotifier {
         cutoutPreparing ||
         cutoutEditing ||
         cutoutApplying ||
+        (cutoutActive && exporting) ||
         width < 2 ||
         height < 2 ||
         (_width == width && _height == height && _horizontal == horizontal)) {
@@ -600,7 +610,43 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<(ComparisonExportPlan, ComparisonExportPlan?)?> prepareExport() async {
-    if (!canPlay || cutoutMode || _closed) return null;
+    if (!canPlay || _closed) return null;
+    if (cutoutActive) {
+      if (!cutoutExportReady) {
+        error = '存在人物缺失帧，不能导出完整画布，请重新选人或缩短 A/B 选段。';
+        _notify();
+        return null;
+      }
+      exporting = true;
+      _resize?.cancel();
+      _notify();
+      try {
+        if (!await _control(ComparisonCommand.pause, 0) || _closed) {
+          throw StateError('Cutout pause failed');
+        }
+        await save();
+        if (!_lastSaveSucceeded || _closed) {
+          throw StateError('Project save failed');
+        }
+        final plan = ComparisonExportPlan(
+          project: project,
+          durationUs: playback!.durationUs,
+          previewWidth: _width,
+          previewHeight: _height,
+          sideBySide: _horizontal,
+          cutout: true,
+        );
+        return (plan, null);
+      } catch (_) {
+        exporting = false;
+        if (!_closed) {
+          error = '画布导出准备未完成，请重试。';
+          _notify();
+        }
+        return null;
+      }
+    }
+    if (cutoutMode) return null;
     exporting = true;
     _invalidatePlayer();
     _resize?.cancel();
@@ -650,6 +696,24 @@ class ComparisonController extends ChangeNotifier {
   Future<void> finishExport() async {
     if (_closed || !exporting) return;
     pendingExport = null;
+    if (cutoutActive) {
+      try {
+        playback = await (gateway as ComparisonCutoutGateway)
+            .resumeCutoutPreview();
+        error = playback?.error;
+      } catch (_) {
+        // A failed restore must not show ordinary panes as an active cutout.
+        await gateway.close();
+        _invalidatePlayer();
+        exporting = false;
+        await _open();
+        error = '画布恢复失败，请重新选择人物。';
+      } finally {
+        exporting = false;
+        _notify();
+      }
+      return;
+    }
     exporting = false;
     await _open();
     _notify();
@@ -1548,7 +1612,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> background() async {
-    if (cutoutApplying) return;
+    if (cutoutApplying || exporting) return;
     if (cutoutSelecting || cutoutPreparing) await exitCutout();
     await pause();
     if (!adjusting) await save();

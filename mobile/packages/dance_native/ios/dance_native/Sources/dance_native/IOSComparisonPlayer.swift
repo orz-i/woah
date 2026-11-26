@@ -76,6 +76,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
   private var cutoutTask: Task<IOSComparisonCutoutCache, Error>?
   private var cutoutCache: IOSComparisonCutoutCache?
   private var cutoutWindow: Range<Int64>?
+  private var cutoutExportSuspended=false
   private var inspectionTask: Task<IOSComparisonCutoutAnalysis.Inspection, Error>?
   private var referenceInspection: IOSComparisonCutoutAnalysis.Inspection?
   private var targetInspection: IOSComparisonCutoutAnalysis.Inspection?
@@ -325,6 +326,29 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     }
   }
 
+  func freezeCutoutExport(_ spec:IOSComparisonExportSpec) throws -> IOSComparisonCutoutCache {
+    try requireReady()
+    guard foreground,!wantsPlay,cutoutTask==nil,inspectionTask==nil,!cutoutExportSuspended,
+      let cache=cutoutCache,let config,let window=cutoutWindow,spec.isCutout,cache.complete,
+      window==(spec.startUs..<spec.endUs),spec.offsetUs==config.offsetUs,spec.timeScale==config.timeScale,
+      try IOSComparisonFiles.resolve(spec.teacherURI)==config.referenceURL,
+      try IOSComparisonFiles.resolve(spec.learnerURI)==config.targetURL else {throw IOSComparisonCutoutExportUnavailable()}
+    return cache
+  }
+  func suspendCutoutForExport() throws {
+    guard cutoutCache != nil,!closed else {throw IOSComparisonCutoutExportUnavailable()}
+    if cutoutExportSuspended {return}
+    pendingUs=positionUs();wantsPlay=false;ready=false;cutoutExportSuspended=true
+    generation &+= 1;seekRevision &+= 1
+    releasePlayer();pixels.store(nil);presentedReferenceUs=nil;presentedTargetUs=nil
+  }
+  func resumeCutoutPreview() async throws -> ComparisonPlaybackDto {
+    guard !closed,cutoutCache != nil,let config else {throw IOSComparisonCutoutExportUnavailable()}
+    guard cutoutExportSuspended else {return state()}
+    cutoutExportSuspended=false
+    return try await rebuild(config,positionUs:pendingUs,sourcePositionUs:nil,resume:false)
+  }
+
   func clearCutout() async throws -> ComparisonPlaybackDto {
     cutoutRevision &+= 1
     let revision = cutoutRevision, oldTask = cutoutTask, oldInspection=inspectionTask
@@ -335,7 +359,7 @@ final class IOSComparisonPlayer: NSObject, FlutterTexture {
     inspectionTask=nil;referenceInspection=nil;targetInspection=nil
     cutoutTask = nil
     guard cutoutCache != nil else { return state() }
-    cutoutCache = nil;cutoutWindow=nil
+    cutoutCache = nil;cutoutWindow=nil;cutoutExportSuspended=false
     guard !closed, let config else { return state() }
     return try await rebuild(config,positionUs: positionUs(),sourcePositionUs: nil,resume: false)
   }
