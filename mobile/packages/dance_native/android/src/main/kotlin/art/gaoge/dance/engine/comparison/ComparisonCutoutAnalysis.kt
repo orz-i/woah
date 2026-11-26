@@ -307,7 +307,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     fun begin(uri: String, description: ComparisonVideoDescription, start: Long,endInclusive: Long,
         firstPreview:Long,lastPreview:Long,seed: ComparisonCutoutSeed, reference: Boolean, mirror: Boolean,
         segmenter: YoloLiteRtSegmenter,current: () -> Boolean, inspection: Inspection? = null,
-        fixedGrid:Pair<Int,Int>?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true,detailScheduled:Boolean=true): Work {
+        fixedGrid:Pair<Int,Int>?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true,detailScheduled:Boolean=true, observationEvidence:((Observation)->Unit)?=null): Work {
+        require(observationEvidence==null || context.packageName=="art.gaoge.dance.engine.cutoutqa.test")
         val measure=art.gaoge.dance.engine.BuildConfig.DEBUG
         val wallStart=System.nanoTime()
         val timing=linkedMapOf<String,Long>()
@@ -356,6 +357,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 if(measure)detected.stageTimingsMs.forEach{(name,ms)->addTime(name,ms*1_000_000)}
                 timed("observation"){Observation(pts,detected.persons,mapper,frame)}
             }
+            observationEvidence?.invoke(observation)
             consume(observation,crop)
         }
         fun add(o:Observation,index:Int,initial:Boolean) {

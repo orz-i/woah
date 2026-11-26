@@ -1,6 +1,7 @@
 package art.gaoge.dance.engine.comparison
 
 import android.content.Context
+import art.gaoge.dance.engine.core.FrameKernel
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.SystemClock
@@ -71,7 +72,7 @@ class ComparisonCutoutBackendInstrumentedTest {
     private fun ms(start:Long)= (System.nanoTime()-start)/1_000_000.0
 
     private suspend fun runBackend(context:Context,sources:List<Source>,backend:LiteRtAccelerator,threads:Int,
-        evidenceRoot:File?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true,detailScheduled:Boolean=true):Run {
+        evidenceRoot:File?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true,detailScheduled:Boolean=true,captureObservations:Boolean=false):Run {
         val start=System.nanoTime()
         YoloLiteRtSegmenter(context,requestedAccelerator=backend,cpuNumThreads=threads).use { segmenter ->
             segmenter.initialize()
@@ -90,11 +91,34 @@ class ComparisonCutoutBackendInstrumentedTest {
             val inspectionMs=ms(start)-initialized
             val first=System.nanoTime()
             val works=ArrayList<ComparisonCutoutAnalysis.Work>()
+            val observationWriters=ArrayList<DataOutputStream>()
+            val observationFiles=ArrayList<Pair<File,File>>()
+            val observationCounts=ArrayList<Set<Long>>()
             try {
                 sources.forEachIndexed { i,src ->
+                    val sink:((ComparisonCutoutAnalysis.Observation)->Unit)?=if(captureObservations){
+                        check(context.packageName=="art.gaoge.dance.engine.cutoutqa.test")
+                        val root=requireNotNull(evidenceRoot)
+                        val role=if(src.reference)"reference" else "target"
+                        val dest=File(root,"${backend.name.lowercase()}-$role.observations.gz")
+                        val tmp=File(root,"${dest.name}.tmp")
+                        val writer=DataOutputStream(java.util.zip.GZIPOutputStream(BufferedOutputStream(tmp.outputStream())))
+                        observationWriters.add(writer);observationFiles.add(tmp to dest)
+                        writer.writeInt(0x574F4431);writer.writeInt(src.times.size);writer.writeInt(FrameKernel.DANCE_APPEARANCE_BINS)
+                        val times=HashSet<Long>();observationCounts.add(times)
+                        var total=0L
+                        val callback:(ComparisonCutoutAnalysis.Observation)->Unit={o->
+                            val bytes=o.encode()
+                            require(times.add(o.pts) && times.size<=src.times.size && bytes.size<=8*1024*1024)
+                            total+=bytes.size
+                            require(total<=512L*1024*1024)
+                            writer.writeInt(bytes.size);writer.write(bytes)
+                        }
+                        callback
+                    }else null
                     works.add(analysis.begin(src.file.absolutePath,src.description,0,src.times.last(),
                         max(0,src.seed.ptsUs-500_000),min(src.times.last(),src.seed.ptsUs+499_999),
-                        src.seed,src.reference,!src.reference,segmenter,{true},inspected[i],detailEnabled=detailEnabled,detailReuse=detailReuse,detailScheduled=detailScheduled))
+                        src.seed,src.reference,!src.reference,segmenter,{true},inspected[i],detailEnabled=detailEnabled,detailReuse=detailReuse,detailScheduled=detailScheduled,observationEvidence=sink))
                 }
                 val firstMs=ms(first)
                 val lanes=ArrayList<Lane>()
@@ -142,6 +166,10 @@ class ComparisonCutoutBackendInstrumentedTest {
                     }
                 }
                 check(segmenter.effectiveAccelerator==backend)
+                if(captureObservations)require(observationCounts.zip(sources).all{(times,src)->times==src.times.toSet()})
+                observationWriters.forEach{it.close()}
+                observationWriters.clear()
+                observationFiles.forEach{(tmp,dest)->check(tmp.renameTo(dest))}
                 return Run(lanes,JSONObject().put("requested",backend.name).put("effective",backend.name)
                     .put("status","complete").put("cpuThreads",threads).put("initializationMs",initialized)
                     .put("compileMs",info.compileMs).put("warmupMs",info.warmupMs)
@@ -149,7 +177,11 @@ class ComparisonCutoutBackendInstrumentedTest {
                     .put("analysisMs",firstMs+lanes.sumOf{it.evidence.getDouble("finishMs")})
                     .put("analysisAndReadbackMs",ms(first)).put("wallMs",ms(start))
                     .put("lanes",JSONArray(lanes.map{it.evidence})))
-            } finally {works.asReversed().forEach{it.close()}}
+            } finally {
+                works.asReversed().forEach{it.close()}
+                observationWriters.forEach{runCatching{it.close()}}
+                observationFiles.forEach{(tmp,_)->tmp.delete()}
+            }
         }
     }
 
@@ -327,7 +359,7 @@ class ComparisonCutoutBackendInstrumentedTest {
         }
         for(backend in backends){
             val row=try {
-                runBackend(context,sources,backend,4,root,args.getString("detailEnabled")!="false",args.getString("detailReuse")!="false",args.getString("detailScheduled")!="false").evidence
+                runBackend(context,sources,backend,4,root,args.getString("detailEnabled")!="false",args.getString("detailReuse")!="false",args.getString("detailScheduled")!="false",args.getString("captureObservations")=="true").evidence
             }catch(e:Exception){
                 JSONObject().put("requested",backend.name).put("status","failed").put("errorClass",e.javaClass.simpleName)
             }

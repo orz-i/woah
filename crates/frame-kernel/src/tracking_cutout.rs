@@ -57,6 +57,7 @@ fn candidate(
     at: i64,
     chosen: bool,
     negatives: &[Appearance],
+    anchor_bounds: Rect,
 ) -> Evidence {
     let Some(memory) = &track.appearance else {
         return Evidence::default();
@@ -106,6 +107,21 @@ fn candidate(
         return Evidence::default();
     }
     let (bi, mi) = overlaps(track, d);
+    // A sharp collapse into a much smaller scene instance is negative
+    // identity evidence, especially with background people of similar color.
+    // Both the last observed extent and the immutable selected anchor must
+    // contradict it; strong mask continuity still permits posture changes.
+    // Using the longest dimension rather than height avoids penalizing
+    // horizontal floorwork merely because the vertical axis contracts.
+    if chosen {
+        let extent = max_dimension(d.bounds);
+        if extent < 0.55 * max_dimension(track.observed_bounds)
+            && extent < 0.55 * max_dimension(anchor_bounds)
+            && mi < 0.35
+        {
+            return Evidence::default();
+        }
+    }
     let geom = bi
         .max(mi)
         .max(overlap_iou(track.predicted_bounds, d.bounds));
@@ -202,6 +218,7 @@ impl Tracker {
                             } else {
                                 &[]
                             },
+                            clock.anchor_bounds,
                         )
                     })
                     .collect::<Vec<_>>()

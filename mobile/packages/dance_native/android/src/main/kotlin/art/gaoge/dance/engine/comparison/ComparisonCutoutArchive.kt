@@ -17,7 +17,7 @@ internal data class ComparisonCutoutArchiveKey(
     val mirrorR:Boolean,val mirrorT:Boolean,val backend:String,
     val referenceDigest:String,val targetDigest:String,val modelDigest:String
 ) {
-    fun encoded()=listOf("android-cutout-v1/shared-identity-v3/alpha-grid-v2/detail-overlay-v2/source-reuse-v1/detail-backoff-v1",BuildConfig.GIT_COMMIT_SHA,android.os.Build.VERSION.SDK_INT,
+    fun encoded()=listOf("android-cutout-v1/shared-identity-v3/alpha-grid-v2/detail-overlay-v2/source-reuse-v1/detail-backoff-v1/identity-scale-v1",BuildConfig.GIT_COMMIT_SHA,android.os.Build.VERSION.SDK_INT,
         android.os.Build.FINGERPRINT,origin,offset,scale.toBits(),start,end,mirrorR,mirrorT,backend,
         referenceDigest,targetDigest,modelDigest).joinToString("|")
 }

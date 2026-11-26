@@ -2331,3 +2331,181 @@ first preview 8.034 -> 8.026s. One trial each, different device thermal
 state; no general throughput claim. The confirmed wrong identities
 are present with or without this scheduling change. The new scheduler
 is not the source of these specific identity failures.
+
+## Stage C8.1: selected-person identity evidence — scale contradiction
+
+C7.3 revealed wrong-person outputs even when the detector had the
+correct person available. The first concrete fix targets the Swing
+background-person switch. This is a partial identity fix, not release
+acceptance or a solution to all close-person crossings.
+
+### Root cause and rejected experiment
+
+Raw full-frame host observations at the C7.3 checkpoints show that
+Swing's erroneously selected background viewer has very similar
+global color to the chosen striped-skirt dancer (e.g. anchor
+Bhattacharyya score ~0.98). However the viewer's normalized height
+is ~0.17–0.20, whereas the chosen dancer's is ~0.50–0.60. The former
+association allows geometry/color to reinforce an abrupt collapse
+into a much smaller instance. Subsequent identity memory/position
+then follows the viewer.
+
+We tested an expanded 87-float global/upper/lower color descriptor
+as a wholesale replacement in the association score. On the same
+C7.3 host full observations, Swing checks improved 5/12 -> 8/12, but
+Basque deteriorated 10/11 -> 3/11 with three wrong-person checks
+and availability 279 -> 190/300. **Rejected**; the production
+descriptor remains the original 29 floats, ABI/spool unchanged.
+The combined descriptor/scale variant was also not retained.
+No new ReID model, face representation, third tracker or privacy
+tracking policy is introduced.
+
+### Retained fix
+
+The cutout policy stores the immutable selected anchor's bounds
+alongside the original PTS and appearance. Within the common
+Tracker association, a selected-person candidate is rejected if
+all three conditions hold:
+
+- its longest bbox side is less than 55% of the last confirmed
+  observed bbox's longest side;
+- its longest side is also less than 55% of the original anchor;
+- current raw-mask IoU against the last confirmed mask is below 0.35.
+
+All conditions are required: a small anchor alone, a scale change
+alone, or a missing/partial mask alone is not sufficient.
+Longest extent rather than vertical height accommodates horizontal
+floorwork. This is a conservative geometric contradiction, not
+an absolute size lock or generic scale-invariant ReID. Slow
+scale changes, similarly sized competing people, and large
+perspective changes still need validation. Existing motion,
+appearance, ownership, recovery confirmation and detail budget
+remain unchanged. The same rule applies to canonical full
+observations and the temporary ROI overlay trial, with no
+stale predicted masks. Rejected candidates cannot update selected
+identity. Cache compatibility key adds identity-scale-v1.
+No changes to the privacy profile or frozen privacy snapshots.
+A new unit test in both timestamp directions checks that a
+same-color small viewer cannot take over even at a nearby center,
+then verifies normal continuation and a horizontal floor pose.
+
+### Host paired replay: six already-seen clips
+
+The same full detector observations/29-dimensional features and
+pinned YOLO model were fed to baseline and new builds, with the
+C7.2 scheduled ROI pipeline enabled (shared local observations
+when crop geometry agrees). These are now development fixtures,
+not new holdout evidence.
+
+| Scene | Baseline -> scale guard available | Selected checkpoints old -> new | Annotated distractors old -> new |
+| --- | ---: | ---: | ---: |
+| Basque | 280 -> 280/300 | 10/11 -> 10/11 | 0 -> 0 |
+| Swing | 246 -> 254/300 | 5/12 -> 11/12 | 0 -> 0 |
+| Baganda | 290 -> 290/300 | 11/12 -> 11/12 | 0 -> 0 |
+| Danzón | 300 -> 300/300 | 12/12 -> 12/12 | 0 -> 0 |
+| Breaking | 663 -> 660/750 | 9/10 -> 9/10 | 0 -> 0 |
+| Vogue | 584 -> 583/750 | 9/10 -> 9/10 | 0 -> 0 |
+
+Swing longest gap 1.00 -> 0.52s, and the full-only comparison
+244 -> 251/300, 5/12 -> 11/12. Basque full-only 279/300 and
+10/11 unchanged. Basque, Baganda, Danzón prior valid output
+alpha remains byte-exact. Breaking 658/663 prior visible alpha
+byte-exact (four formerly visible samples now missing, one
+changed; one new), Vogue 583/584 exact (one missing). Do not
+call this a lossless modification. Sparse checks do not certify
+the remaining frames or the lost samples. The correction changes
+subsequent Swing trajectory and should change its old wrong masks.
+
+### Native and exact observation diagnosis
+
+New optional `captureObservations=true` in the isolated Android
+instrumentation package only. Record compressed full observation
+PTS, transform, box/confidence, proto Mask and existing compact
+appearance descriptors, not source RGB. Each stream bounded to
+512 MiB uncompressed and 8 MiB per record, unique exact source
+PTS, validated sample count before publication. No capture in
+normal app sessions. Stream files local QA evidence, not
+committed or uploaded. Compressing observations adds overhead
+and invalidates end-to-end timing comparisons. The tool
+`replay_native_observations.py` reads the native records with
+bounded sizes and exact PTS validation, then runs baseline and
+new full-only association on identical device observations. The
+trace records selected and annotated-point candidate geometry,
+confidence and anchor/initial-competitor color similarity.
+Full-only replay is separate from the native full+detail output.
+
+Android effective GPU result on the exact C7.3 pair:
+Basque 273 -> 272/300, selected checks remain 6/11, 3/11
+wrong red-shawl dancer checks. Swing 249 -> 244/300, **6/12 ->
+10/12** selected checks, approximate contour IoU over the four
+source-only labeled contours 0.2973 -> 0.4357 and boundary F1
+0.2309 -> 0.3630. At 9s the formerly wrong background output
+is now the dancer (approximate IoU 0.554 instead of zero).
+0s/1s still miss the selected point. No claim that every
+unmarked frame is correct. The exact native GPU full-only
+replay independently shows Swing 228 -> 243/300 and 6/12 ->
+10/12 selected checks, longest missing 1.96 -> 0.72s. Thus
+the gain is in association, not merely more local inference.
+Basque 273 -> 272/300, 6/11 and wrong-person checks unchanged.
+
+iOS actual simulator player: Basque 270/300 unchanged,
+Swing 249 -> 255/300. The sampled 6s canvas recovers the striped
+skirt dancer instead of a background extraction. Basque still
+shows the red-shawl dancer after crossing. 24 exact PTS captures,
+incomplete archive/export refusal and ordinary playback restore
+passed. No iOS raw identity metric or physical iPhone evidence.
+
+### Remaining confirmed crossing issue
+
+The exact GPU observation replay locates the handoff at a
+visually meaningful event: the selected blue-shawl dancer passes
+in front of another similarly costumed dancer, with raised arms
+and overlapping silhouettes. The correct blue-shawl dancer
+remains visible to the right. After a brief unavailable run,
+the current tracker reacquires the behind/left red-shawl dancer
+and follows it. Around 8.16s/8.28s the reacquired candidate has
+a similar extent, and global anchor/initial-competitor similarity
+is not decisively contradictory. At 9s the selected raw candidate
+is bbox x=[.49,.69], with anchor/negative 0.912/0.919,
+whereas the correct candidate at x=[.69,.90] is 0.954/0.892.
+The selected raw candidate remains incorrect through the end
+of the observed clip. This is not a decoder mismatch or missing
+detector observation, and cannot be corrected by the scale rule.
+Use the captured native observation streams and selected-track
+evidence to investigate ownership through crossing and recovery;
+avoid repeated full mobile inference for each association experiment.
+Preserve the shared Tracker, and prioritize disambiguation or
+user-confirmed re-anchor rather than accepting an ambiguous
+person or increasing mask counts.
+
+Reproduce Android observation capture with the C7.3 fixture,
+`-e captureObservations true`. Pull the four
+`{cpu,gpu}-{reference,target}.observations.gz` QA files:
+```sh
+python tools/comparison/replay_native_observations.py \
+  --evidence /path/to/c81-device \
+  --manifest testdata/comparison/real-dance-c73-holdout.json \
+  --baseline-library /path/to/c73/libframe_kernel.dylib \
+  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
+  --output /tmp/c81-native-replay.json
+```
+Core full suite 155 passed/1 ignored, Clippy all targets passed.
+Android 28 comparison/export and 3 frozen privacy reference
+tests passed. Keep Draft/Debug and CPU4 default, GPU QA only.
+Release remains blocked by unresolved crossing identity and
+edge fidelity, lack of fresh independent acceptance and physical
+iPhone. The new scale evidence has real measured benefit but
+can also hide some correct observations; must not claim release
+identity truthfulness.
+
+Final Android CPU4 run also completed: Basque 288 -> 287/300,
+6/11 selected checkpoints and 3/11 annotated red-shawl distractor
+hits unchanged. Swing 248 -> 243/300, 6/12 -> 10/12 selected
+checks, approximate contour IoU 0.2974 -> 0.4369 and boundary F1
+0.2309 -> 0.3630; longest missing run 0.72s. CPU exact-observation
+full-only replay: Swing 229 -> 240/300, 6/12 -> 10/12 and longest
+gap 1.92 -> 0.72s. All four native full observation streams contain
+300 unique PTS and replay successfully. Actual Android CPU/GPU
+instrumentation completed and reported effective requested backends.
+The observation-capture run timing is deliberately not a performance
+benchmark; compression and device thermal state differ from C7.3.

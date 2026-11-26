@@ -19,6 +19,7 @@ pub(crate) struct CutoutClock {
     pub last: i64,
     pub direction: i64,
     pub transform: Transform,
+    pub anchor_bounds: crate::geometry::Rect,
     pub initial_competitors: Vec<Appearance>,
 }
 #[derive(Default, Clone)]
@@ -139,6 +140,7 @@ pub(crate) fn step(
             last: at,
             direction: 0,
             transform,
+            anchor_bounds: d.bounds,
             initial_competitors: values
                 .iter()
                 .enumerate()
@@ -336,6 +338,109 @@ mod tests {
                 .left,
             22.
         );
+    }
+
+    #[test]
+    fn sudden_background_scale_collapse_cannot_take_selected_identity() {
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 0.,
+            source_width: 160,
+            source_height: 160,
+            input_size: 160,
+            proto_size: 16,
+        };
+        let large = InstanceDetection {
+            bounds: Rect {
+                left: 50.,
+                top: 20.,
+                right: 100.,
+                bottom: 140.,
+            },
+            confidence: 0.9,
+        };
+        let small = InstanceDetection {
+            bounds: Rect {
+                left: 60.,
+                top: 60.,
+                right: 90.,
+                bottom: 90.,
+            },
+            confidence: 0.9,
+        };
+        let floor = InstanceDetection {
+            bounds: Rect {
+                left: 20.,
+                top: 60.,
+                right: 140.,
+                bottom: 110.,
+            },
+            confidence: 0.9,
+        };
+        let feature = f(0);
+        let mask = |d: InstanceDetection| {
+            (0..256)
+                .map(|i| {
+                    let x = (i % 16) as f32 * 10. + 5.;
+                    let y = (i / 16) as f32 * 10. + 5.;
+                    if x >= d.bounds.left
+                        && x < d.bounds.right
+                        && y >= d.bounds.top
+                        && y < d.bounds.bottom
+                    {
+                        255
+                    } else {
+                        0
+                    }
+                })
+                .collect::<Vec<u8>>()
+        };
+        for direction in [1, -1] {
+            let mut lane = DanceCutout::default();
+            let seed = 1_000_000;
+            assert_eq!(
+                lane.step(seed, 0, &[large], &mask(large), t, &feature),
+                Some(0)
+            );
+            assert_eq!(
+                lane.step(
+                    seed + direction * 40_000,
+                    -1,
+                    &[small],
+                    &mask(small),
+                    t,
+                    &feature
+                ),
+                Some(-1)
+            );
+            // Same global color and nearby center, but only 1/4 of the
+            // anchored size. Never commit the competing small instance.
+            assert_eq!(lane.tracker.tracks[0].observed_bounds, large.bounds);
+            assert_eq!(
+                lane.step(
+                    seed + direction * 80_000,
+                    -1,
+                    &[large],
+                    &mask(large),
+                    t,
+                    &feature
+                ),
+                Some(0)
+            );
+            // A horizontal floor pose retains the long dimension.
+            assert_eq!(
+                lane.step(
+                    seed + direction * 120_000,
+                    -1,
+                    &[floor],
+                    &mask(floor),
+                    t,
+                    &feature
+                ),
+                Some(0)
+            );
+        }
     }
 
     #[test]
