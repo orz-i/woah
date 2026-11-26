@@ -56,3 +56,70 @@ Black canvas, fixed reference-before-target draw order, no user controls or
 project persistence. Neither renderer has a production subject-mask provider
 yet. Android GPU output and full iOS app are not established by host tests.
 No new user-visible capability is claimed by this draft.
+
+## Local real-video M0 experiment (2026-11-26)
+
+`tools/comparison/cutout_m0.py` connects FFmpeg-decoded frames, the repository's
+SHA-256-pinned YOLO11n-seg model, FrameKernel instance decoding, independent
+tracking sessions and exact source PTS to an OpenCV CPU reference compositor.
+It reserves the chosen identity but renders only an unambiguous, currently
+observed raw detector mask. A lost identity is hidden, not substituted.
+This is a host experiment, not the Android/iOS inference or export pipeline.
+It uses a bounded first-frame selection, assumes identity time alignment and
+already display-oriented sources, and writes PNGs plus a per-frame manifest to
+an explicitly supplied local directory. The PTS overlap is conservatively
+bounded by the available source observations. It does not evaluate audio,
+full-resolution matting, or two independent real recordings.
+
+On Mac mini, using LiteRT CPU/XNNPACK 2.4.0, NumPy 2.5.5 and
+opencv-python-headless 5.1.0.95, the existing 1-second, 30-frame
+`testdata/videos/01_sample.mp4` yielded:
+
+| Case | Paired frames | Reference visible | Target visible | Strict result |
+| --- | ---: | ---: | ---: | --- |
+| Two distinct selections in the original source | 30 | 30 | 30 | PASS |
+| Original + 352x768 mirrored H.264 variant | 30 | 30 | 6 | FAIL |
+
+In the second case the chosen target track transitions to Lost at frame 7 and
+remains Lost for all 24 remaining frames, even with identity reservation.
+The compositor correctly withholds the target rather than drawing a stale or
+substitute mask. The result does not establish a ground-truth identity accuracy
+rate. Robust re-association and actual two-recording testing remain required.
+
+Reproduce from the repository root on macOS (output directories must not exist):
+
+```sh
+cargo build --release --locked --manifest-path crates/frame-kernel/Cargo.toml
+python3 -m venv /tmp/woah-cutout-env
+/tmp/woah-cutout-env/bin/pip install ai-edge-litert==2.4.0 numpy==2.5.5 opencv-python-headless==5.1.0.95
+P=/tmp/woah-cutout-env/bin/python
+L=crates/frame-kernel/target/release/libframe_kernel.dylib
+S=testdata/videos/01_sample.mp4
+$P tools/comparison/cutout_m0.py --library "$L" --reference "$S" --target "$S" \
+  --reference-point .355,.855 --target-point .676,.86 --frames 30 --require-all \
+  --output /tmp/woah-cutout-original
+ffmpeg -i "$S" -vf 'scale=352:768,hflip' -c:v libx264 -pix_fmt yuv420p \
+  -an /tmp/woah-cutout-variant.mp4
+$P tools/comparison/cutout_m0.py --library "$L" --reference "$S" \
+  --target /tmp/woah-cutout-variant.mp4 --reference-point .355,.855 \
+  --target-point .324,.86 --frames 30 --require-all --mirror-target \
+  --output /tmp/woah-cutout-variant
+```
+
+The second command is an explicit failing regression case. The manifest is
+written before the nonzero exit. No derived video, mask, or image is committed.
+
+## Local verification
+
+* Rust full test suite: 134 passed, 1 ignored; strict Clippy passed.
+* Android JNI/geometry focused JVM tests: 8 passed; no device GPU validation.
+* macOS native cutout smoke: PASS with decoded source pixels, asymmetric alpha,
+  mirror, fixed anchors, exact PTS and stale mask rejection; includes Swift
+  transport checks. Not a full iOS application run.
+* The separate legacy standalone `comparison_render` full run fails the
+  last-frame navigation assertion. The same assertion (`main.swift:126`)
+  reproduces with source files from master `7e82ec33` on this host, so it is
+  recorded separately; this change does not alter that behavior.
+
+M0 remains incomplete on actual mobile inference/rendering. Production gesture,
+tracking cache, playback and export wiring remain disabled.
