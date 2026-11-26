@@ -135,9 +135,7 @@ def infer(lib, interpreter, rgba, threshold=.25):
     head, proto = (interpreter.get_tensor(item["index"]) for item in interpreter.get_output_details())
     if head.shape != (1, 116, 8400) or proto.shape != (1, 32, 160, 160):
         raise ValueError("Unexpected canonical model tensor contract")
-    # Host model probes may explicitly declare pixel-coordinate output.
-    # The pinned LiteRT interpreter retains the existing automatic contract.
-    model = Spec(8400, 116, 4, 84, 32, 0, 0, getattr(interpreter, "coordinate_units", 2))
+    model = Spec(8400, 116, 4, 84, 32, 0, 0, 2)
     detections = (Detection * 256)()
     masks = np.empty((256, 160, 160), np.uint8)
     n = lib.frame_kernel_decode_instances(ptr(head, PF), head.size, ptr(proto, PF), proto.size,

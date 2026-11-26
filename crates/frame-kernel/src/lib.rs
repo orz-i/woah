@@ -15,8 +15,6 @@ pub mod camera;
 pub mod composition;
 pub mod dance_cutout;
 mod dance_detail;
-#[cfg(feature = "host-model-probe")]
-mod dance_gap;
 mod dance_touch;
 pub mod face_geometry;
 pub mod face_localization;

@@ -1205,6 +1205,14 @@ class _CutoutSmoke extends ChangeNotifier {
       final anchor = (config['anchorUs'] as int?) ?? 3000000;
       final ref = (config['referenceSeed'] as List?) ?? [.42, .29];
       final tar = (config['targetSeed'] as List?) ?? [.46, .56];
+      // Optional explicit A/B export acceptance; the default whole-source
+      // diagnostic still tests incomplete-export refusal.
+      final requestedWindow = (config['exportWindowUs'] as List?)?.cast<int>();
+      if (requestedWindow != null) {
+        require(requestedWindow.length == 2, 'Invalid real A/B window');
+      }
+      final start = requestedWindow?.first ?? 0;
+      final end = requestedWindow?.last ?? duration;
       final times =
           (config['samplesUs'] as List?)?.cast<int>() ??
           [
@@ -1229,9 +1237,16 @@ class _CutoutSmoke extends ChangeNotifier {
             duration <= 60000000 &&
             cadence > 0 &&
             cadence <= 60 &&
-            anchor >= 0 &&
-            anchor < duration &&
-            times.every((v) => v >= 0 && v < duration),
+            start >= 0 &&
+            end <= duration &&
+            end > start &&
+            anchor >= start &&
+            anchor < end &&
+            times.every((v) => v >= start && v < end) &&
+            (requestedWindow == null ||
+                (end - start >= 1000000 &&
+                    start * cadence % 1000000 == 0 &&
+                    end * cadence % 1000000 == 0)),
         'Invalid real-dance QA config',
       );
       row['config'] = {
@@ -1241,6 +1256,7 @@ class _CutoutSmoke extends ChangeNotifier {
         'referenceSeed': ref,
         'targetSeed': tar,
         'samplesUs': times,
+        'exportWindowUs': ?requestedWindow,
       };
       await host(api.forgetCutout(projectId));
       final before = await ready(
@@ -1257,7 +1273,9 @@ class _CutoutSmoke extends ChangeNotifier {
             ComparisonPracticeDto(
               mirrorTeacher: false,
               mirrorLearner: false,
-              loopEnabled: false,
+              loopEnabled: requestedWindow != null,
+              loopStartUs: requestedWindow == null ? null : start,
+              loopEndUs: requestedWindow == null ? null : end,
             ),
             1,
           ),
@@ -1283,12 +1301,14 @@ class _CutoutSmoke extends ChangeNotifier {
       unawaited(
         pending.then<void>((_) {}, onError: (Object _, StackTrace _) {}),
       );
-      final partial = await waitForPartial();
-      row['firstPlayableMs'] = watch.elapsedMilliseconds;
-      row['partialRange'] = [partial.previewStartUs, partial.previewEndUs];
-      await ready(partial.playback);
-      await capture('real-partial-anchor');
-      save();
+      if (requestedWindow == null) {
+        final partial = await waitForPartial();
+        row['firstPlayableMs'] = watch.elapsedMilliseconds;
+        row['partialRange'] = [partial.previewStartUs, partial.previewEndUs];
+        await ready(partial.playback);
+        await capture('real-partial-anchor');
+        save();
+      }
       final result = await pending;
       row['analysisMs'] = watch.elapsedMilliseconds;
       row['visibility'] = [
@@ -1299,8 +1319,8 @@ class _CutoutSmoke extends ChangeNotifier {
       ];
       await ready(result.playback);
       require(
-        result.referenceFrames == duration * cadence ~/ 1000000 &&
-            result.targetFrames == duration * cadence ~/ 1000000,
+        result.referenceFrames == (end - start) * cadence ~/ 1000000 &&
+            result.targetFrames == (end - start) * cadence ~/ 1000000,
         'Incomplete frame indexing',
       );
       final samples = <Map<String, Object?>>[];
@@ -1370,6 +1390,20 @@ class _CutoutSmoke extends ChangeNotifier {
           result.referenceVisible == result.referenceFrames &&
           result.targetVisible == result.targetFrames;
       row['allVisible'] = full;
+      if (requestedWindow != null && full) {
+        require(
+          await host(api.saveCutout(projectId)),
+          'Complete real A/B archive failed',
+        );
+        row['completeArchiveSaved'] = true;
+        row['export'] = await exportCanvas(
+          'real-ab',
+          'real-reference.mp4',
+          'real-target.mp4',
+          start,
+          end,
+        );
+      }
       if (!full) {
         require(
           !await host(api.saveCutout(projectId)),
@@ -1389,7 +1423,7 @@ class _CutoutSmoke extends ChangeNotifier {
         bool rejected = false;
         try {
           await host(
-            api.startCutoutExport(spec, 0, duration, 1440, 1080, 8, true, true),
+            api.startCutoutExport(spec, start, end, 1440, 1080, 8, true, true),
           );
         } catch (_) {
           rejected = true;
@@ -1400,6 +1434,11 @@ class _CutoutSmoke extends ChangeNotifier {
         );
         row['incompleteArchiveRejected'] = true;
         row['incompleteExportRejected'] = true;
+        save();
+        require(
+          requestedWindow == null,
+          'Explicit real A/B export window has missing masks',
+        );
       }
       await ready(await host(api.clearCutout()));
       row['ordinaryRestored'] = true;

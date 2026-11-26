@@ -3086,334 +3086,29 @@ refinement with actual independent edge/recall evidence), rather
 than repeated incremental tracker-threshold or morphology tuning.
 Physical iPhone and independent release validation remain open.
 
-## Stage C9.2: instance observation and selected-mask refinement A/B
+## Deferred algorithm experiments (C9.2, C9.3, C9.5)
 
-Host development experiments on the existing C5, C7.3 and C8.3
-manually marked dance pairs. C9.1 production policy, model,
-privacy behavior, archive and release state are unchanged.
-These six clips were previously reviewed; they are not a fresh
-holdout. Sparse points/approximate silhouettes are not dense identity
-or boundary truth. No candidate model weights, environment, media,
-raw alpha or per-frame observation records are committed.
+Full experiment code and records are preserved at commit
+`43c2d14c89e14624933e64306f328a3a517af238` on the dedicated
+[research branch](https://github.com/orz-i/woah/tree/research/comparison-cutout-algorithms-c9-20261126).
+They are deliberately not part of the feature's merge candidate.
 
-### Expanded selected-subject crop: reject replacement
+- C9.2: local refinement and full/later YOLO11s replacement had identity
+  or coverage regressions despite better single-frame contour metrics.
+- C9.3: additive second-model rescue recovered 8/108 missing host
+  frames but did not reduce the longest gaps; no second mobile model.
+- C9.5: reciprocal current-mask interval confirmation improved the
+  stage-solo host result from 237 to 280/300 at an alternate touch, and
+  prior same-run Android CPU/GPU alpha replay by 10 frames each.
+  It remains research, not a shipped result: potential gradual identity
+  drift, delayed publication and mobile resource/ordering contracts
+  need independent evaluation. No new tracker or alternate model is
+  enabled in this PR.
 
-`probe_selected_refinement.py` uses the existing native selected
-alpha at a frozen source PTS, expands its bounding box by 35% per
-side, aligns crop edges to source and alpha grids, and runs the
-pinned Nano model on exact source pixels. Only crops with at least
-1.25x linear input magnification are considered. The geometry-only
-provisional choice must have IoU >= .65, both agreement directions
->= .80, no other candidate with IoU >= .25, no foreground on an
-artificial crop edge, and no competitor covering >10% of the added
-foreground. A rejected candidate preserves the original alpha;
-a missing baseline stays missing. These are experimental parameters,
-not production or privacy acceptance rules.
-
-Use C5 and C8.2 native evidence for their corresponding C5 and C7.3
-pairs, and C9.1 native evidence for the C8.3 pair. Across CPU/GPU
-evidence, 142 marked source positions (71 unique), 46 contour
-samples (23 unique): 85 candidate masks accepted, 25 insufficient
-agreement, 16 competing addition, 14 missing baseline, 2 no
-candidate. On all marked contours including missing:
-
-| Metric | Original | Crop replacement |
-| --- | ---: | ---: |
-| Mean approximate IoU | .6323 | .6425 |
-| Mean boundary F1 | .4945 | .5000 |
-| Selected landmark hits | 128/142 | 126/142 |
-| Marked distractor hits | 0 | 0 |
-
-The two lost checks are the same Basque source sample on the two
-native backends. Stage solo boundary F1 decreases on both backends.
-Median additional host inference/project/select time 24.79ms,
-p95 26.33ms, median magnification 1.78x. These are not mobile
-timings. Reject; geometry overlap alone does not establish improved
-identity or edges, even on a current-frame crop.
-
-### Controlled raw model-observation A/B
-
-`probe_instance_models.py` uses the same bounded source basis,
-FrameKernel letterbox, normalization, instance decode and alpha
-projection for the pinned LiteRT YOLO11n and two local PyTorch FP32
-models. It uses the existing .20/.25 person-confidence boundaries,
-.5 box/mask NMS thresholds and 640 input. The PyTorch head explicitly
-reports pixel coordinates; the canonical LiteRT decoder keeps its
-existing automatic coordinate contract. A mask is eligible for
-measurement if it hits the annotated selected point and none of the
-marked distractors. The best-contour score uses the eligible mask
-with greatest approximate IoU; missing eligible observations score
-zero. This oracle is only an observation-level upper bound, never a
-tracker selection rule.
-
-Host environment: Python 3.12, Torch 2.9.1, torchvision 0.24.1,
-Ultralytics 8.3.250, ai-edge-litert 2.4.0, 4 CPU threads.
-Explicit trusted local weights were fetched from the official
-Ultralytics assets v8.3.0 release for the experiment:
-
-- `yolo11n-seg.pt`: SHA-256
-  `55ed65c56c91713d23e8402371c6c49a6fd84f257f7dce452e8d70e41dcbe152`
-  (6,182,636 bytes).
-- `yolo11s-seg.pt`: SHA-256
-  `1caa81c0195412efa411b632bcfb8c184939dddb6ae41f6a80c41b211ff257c3`
-  (20,669,228 bytes).
-
-| Observation metric (71 unique points, 23 contours) | Canonical LiteRT n | PyTorch n | PyTorch s |
-| --- | ---: | ---: | ---: |
-| Eligible at >= .20 | 63 | 63 | 69 |
-| Eligible at >= .25 | 62 | 62 | 68 |
-| Strong oracle mean IoU | .5658 | .5658 | .7285 |
-| Strong oracle mean boundary F1 | .4353 | .4353 | .6050 |
-| Host inference/decode/project median ms | 24.30 | 38.63 | 75.39 |
-| Host inference/decode/project p95 ms | 25.39 | 43.62 | 81.37 |
-
-The Nano Torch and canonical LiteRT arms agree on all reported
-aggregate quality measures. Small adds four strong observations in
-the stage solo and three in the Baganda clip but loses one strong
-observation in Baganda. This shows a real model-capacity opportunity,
-not universal dominance. Host FP32 performance and weight-file size
-cannot be interpreted as mobile LiteRT speed or package size.
-
-### Complete host tracking replay: replacement and detail-only
-
-`replay_instance_models.py` uses the current shared tracker,
-existing scheduled detail recovery, frozen user touch seed, exact
-source PTS, and the same core instance decoder. It runs complete
-300-frame clips, not just annotated frames. In detail-only mode the
-same canonical full-frame observations are reused byte-for-byte
-and only an existing local detail request runs the Small model.
-There is no extra request, tracking threshold change, manual
-correction or annotation-derived selection. All numbers below are
-host results, not device results.
-
-| Fixture | Model | Visible | Selected checks | Longest missing | Mean IoU/F1 | ROI requested/adopted |
-| --- | --- | ---: | ---: | ---: | --- | --- |
-| C8.3 outdoor | canonical | 300/300 | 12/12 | 0ms | .6916/.4644 | 0/0 |
-| C8.3 outdoor | full Small | 292/300 | 12/12 | 240ms | .7556/.5351 | 0/0 |
-| C8.3 stage | canonical | 268/300 | 12/12 | 320ms | .7398/.6044 | 56/21 |
-| C8.3 stage | full Small | 268/300 | 12/12 | 840ms | .7983/.7001 | 29/2 |
-| C8.3 stage | detail Small | 277/300 | 11/12 | 320ms | .7732/.6534 | 56/30 |
-| C5 Baganda | canonical | 290/300 | 11/12 | 120ms | .7885/.7394 | 62/52 |
-| C5 Baganda | full Small | 287/300 | 10/12 | 160ms | .6137/.5628 | 49/36 |
-| C5 Baganda | detail Small | 289/300 | 11/12 | 120ms | .7870/.7262 | 62/51 |
-
-Zero marked distractor hits on these arms. Full replacement loses
-8 previously visible outdoor masks; stage loses 17 and gains 17,
-with a much longer missing interval; Baganda loses 13 and gains 10
-and two previously correct landmark checks are lost (one new hit).
-Detail-only stage adds 10 previously missing masks but loses one
-previously valid mask and the 2s selected-point check. Baganda
-detail-only adds two and loses three. The candidate does not meet
-the no-regression objective. Retain neither in production.
-
-Full model replacement totals (host, each clip 300 frames):
-outdoor 8.82s -> 24.33s, stage 12.45s -> 27.74s,
-Baganda 13.98s -> 31.06s. Detail-only stage 12.64s -> 15.55s,
-Baganda 14.06s -> 17.27s. These are development-run observations,
-not release latency benchmarks. No native model conversion,
-installation, or effective mobile delegate testing was performed.
-
-Reproduce with the same local media/evidence and trusted weights:
-
-```sh
-python tools/comparison/probe_selected_refinement.py \
-  --manifest testdata/comparison/real-dance-c83-holdout.json \
-  --media /path/to/c83-media --evidence /path/to/c91-native \
-  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
-  --output /tmp/c92-refinement.json
-
-python tools/comparison/probe_instance_models.py \
-  --manifest testdata/comparison/real-dance-c83-holdout.json \
-  --media /path/to/c83-media \
-  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
-  --nano-weights /path/to/yolo11n-seg.pt \
-  --small-weights /path/to/yolo11s-seg.pt \
-  --output /tmp/c92-models.json
-
-python tools/comparison/replay_instance_models.py \
-  --manifest testdata/comparison/real-dance-c83-holdout.json \
-  --media /path/to/c83-media \
-  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
-  --small-weights /path/to/yolo11s-seg.pt --role target --mode both \
-  --output /tmp/c92-tracking.json
-
-python -m unittest discover -s tools/comparison \
-  -p 'test_segmentation_probes.py' -v
-```
-
-Six focused host-probe tests pass. The optional Python/Torch tools
-are deliberately separate from the app dependencies and build.
-
-**C9.2 disposition:** the larger model provides better raw instance
-observations, but neither replacing canonical inference nor replacing
-existing local recovery preserves all incumbent valid outputs.
-A bounded additional-model fallback only after the existing full
-and local candidates are rejected is the next candidate experiment.
-It must use the same immutable canonical state, never overwrite an
-accepted incumbent mask, keep per-frame identity/competition checks
-and have a strict additional inference budget. Validate independently
-before considering a native candidate model or modifying the app.
-Do not promote release status, tune incumbent tracker thresholds
-against these same clips, or claim device improvement from host
-metrics. The C9.1 production configuration remains unchanged.
-
-## Stage C9.3: output-only alternate-model rescue
-
-### Transaction and isolation
-
-Keep the primary Nano full-frame and scheduled local-detail pipeline.
-Extract its existing detail decision from the one canonical commit.
-The opt-in `host-model-probe` Cargo feature exposes a checked, read-only
-same-PTS probe; the default library exports no experimental symbol.
-No Kotlin, Swift, Flutter, mobile model, archive, privacy profile,
-tracker threshold or production backend changes are introduced.
-
-For an already requested canonical local transaction:
-
-1. Evaluate the complete original full and primary local rows
-   against the prior shared Tracker and policy, without committing.
-2. Do not request the alternate if the primary can render (including
-   C9.1 weak output), has a provisional local match, or the canonical
-   full policy has a pending match. A backoff-skipped or unavailable
-   ROI does not create an extra request.
-3. In an eligible missing transaction, run the local Small model on
-   the same source sample and ROI. Keep all primary rows as competitors.
-   Use the existing remap checks, including crop completeness and
-   duplicate suppression. Accept only a newly appended strong
-   observation selected by the unchanged shared association in a
-   throwaway trial; no new provisional confirmation may be learned.
-4. Finish the transaction using **only the original rows**, regardless
-   of the alternate result. The alternate output may fill an otherwise
-   missing alpha but cannot mutate Kalman, appearance, identity IDs,
-   pending confirmation, canonical local backoff, or accepted output.
-5. Fixed host-experiment budget per role: ceil(6% of source frames),
-   capped at 24. Only a single extra inference per eligible existing
-   transaction. This is an experiment parameter, not a mobile default.
-
-The comparison tool reuses the exact full observations and primary
-local cache for both arms, optionally with the C9.1 core as the
-baseline. It requires every original valid alpha to be byte-exact,
-zero prior missing regressions, identical primary requested/adopted/
-skipped timestamps, and exact correspondence between newly selected
-alternate timestamps and newly visible source samples.
-
-### Complete development replay
-
-Same six 300-frame clips from C9.2, no retuning the model or tracker.
-Canonical baseline core SHA-256
-`a1af6e8759542abc383dbc4b89cbc4eff0165dd34394ed20753e792b8bf1b5bf`;
-experimental host core used for this replay
-`825a34d8f77d50a0638cfb0dad2864d7a2d115276d205197a64b326d98bc427e`.
-Model weight provenance is unchanged from C9.2.
-
-| Fixture | Canonical | Incremental | Eligible/attempted/adopted extra ROI | Selected landmarks |
-| --- | ---: | ---: | --- | --- |
-| C8.3 outdoor | 300/300 | 300/300 | 0/0/0 | 12/12 -> 12/12 |
-| C8.3 stage | 268/300 | 273/300 | 27/18/5 | 12/12 -> 12/12 |
-| C7.3 Basque | 280/300 | 281/300 | 15/15/1 | 10/11 -> 11/11 |
-| C7.3 Swing | 254/300 | 254/300 | 38/18/0 | 11/12 -> 11/12 |
-| C5 Baganda | 290/300 | 292/300 | 7/7/2 | 11/12 -> 11/12 |
-| C5 Danzón | 300/300 | 300/300 | 0/0/0 | 12/12 -> 12/12 |
-| Total | 1692/1800 | 1700/1800 | 87/58/8 | 68/71 -> 69/71 |
-
-All 1692 incumbent valid alphas byte-exact, no lost or modified masks,
-zero marked distractor hits, identical canonical primary detail
-requests, acceptances and skips. The eight added samples were
-visually checked against original source and cutout contact sheets:
-selected-performer agreement, but some raised-arm/limb coverage
-remains partial. None of the six longest missing spans improves.
-The total missing-frame count decreases from 108 to 100.
-There are 58 additional attempts for eight accepted masks; two
-clips reach the 18-attempt budget. Measured host incremental
-local-read/inference/remap/probe time: 7.443s across all attempts,
-median 127.53ms, p95 154.02ms. This is not mobile delegate latency
-or an end-to-end comparison; primary observations/local inference
-are shared for exactness.
-
-### Independent source-only stress samples
-
-Two public videos previously source-previewed but not used in the
-C9.2 or initial C9.3 replay were selected without looking at model
-outputs. Source-only points, selection touch, media hashes and
-attributions were fixed before running inference in
-`testdata/comparison/real-dance-c93-overhead.json`
-(SHA-256 `4a1749077fd94f86124fe7e6e3439f5f44f3341abb6e9da18e8f6ff9edb4cb71`)
-and `testdata/comparison/real-dance-c93-partner.json`
-(SHA-256 `757f8f20ae3e31b26a72ee8fdb79a7b1facb2db6fe20891b56df0c1990cf273d`).
-No new thresholds or policy changes were made after seeing them.
-Only sparse visual point checks, not dense identity/edge truth.
-
-| Stress scene | Canonical | Incremental | Added-model attempts/adopted | Selected points |
-| --- | ---: | ---: | --- | --- |
-| Overhead crowd (12s/300 frames) | selection unavailable | selection unavailable | 0/0 | 0/5 -> 0/5 |
-| Low-light partner overlap (3.2s/80 frames) | 78/80 | 78/80 | 2/0 | 4/4 -> 4/4 |
-
-In the overhead scene the canonical touch selection returns -1
-because no valid mask contains the chosen small performer; no
-session can be seeded and the alternate detail probe cannot run.
-The separate observation oracle finds zero eligible weak/strong
-target masks at all five labeled positions in both Nano and Small.
-This is a small-instance/initial-selection problem, not evidence
-that tracking thresholds should be relaxed. The low-light scene
-retains all 78 previously valid alphas byte-exact, neither of the
-two remaining gaps is recovered, and no marked distractor is hit.
-Its longest missing interval remains 80ms.
-
-Source credits and license URLs are in the manifests. The local
-overhead source is trimmed from 30s for 12s; partner from 10.4s
-for 3.2s to avoid montage cuts. Both are silent 960x540/25fps
-transcodes: `fps=25,scale=960:540:flags=lanczos,setpts=N/(25*TB)`,
-libx264 fast CRF18, yuv420p. No media or screenshots are committed.
-
-### Reproduce
-
-Build and keep a C9.1-compatible baseline host dylib separately.
-Build the experimental host-only library with:
-
-```sh
-cd crates/frame-kernel
-cargo build --locked --release --features host-model-probe
-cd ../..
-python tools/comparison/replay_instance_models.py \
-  --manifest testdata/comparison/real-dance-c83-holdout.json \
-  --media /path/to/c83-media \
-  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
-  --baseline-library /path/to/c91/libframe_kernel.dylib \
-  --small-weights /path/to/yolo11s-seg.pt \
-  --mode incremental --save-added /tmp/c93-review \
-  --output /tmp/c93-report.json
-```
-
-The same command accepts the two new stress manifests and their
-verified local transcodes. Use the existing `probe_instance_models.py`
-to reproduce the small-instance observation diagnosis. Restore the
-ordinary build without the feature when finished.
-
-Default Rust regression: 159 passed / 1 ignored; experimental
-feature: 160 passed / 1 ignored, including a new bidirectional
-transaction test for missing primary, primary success/pending,
-ambiguity, invalid timestamps/count, no learned alternate
-confirmation, canonical backoff and identity state preservation.
-Both Clippy configurations and formatting pass. Default host
-release library rebuilt and checked for absence of the experimental
-symbol. Comparison Python regression: 38 passed.
-
-**C9.3 disposition:** retain the isolated incremental experiment
-and its exact replay tooling. It establishes additive recovery
-without modifying accepted primary masks, but the marginal gain
-(8/108 prior missing frames), low attempt yield, persistent
-longest gaps, and no improvement on independent stress clips do
-not justify a second production model dependency yet.
-No native model conversion, Android/iOS build or new device
-performance run was performed. The existing C9.1 production
-configuration, Debug/draft and incomplete export refusal stay in
-place; the normal core's refactored commit is covered by host
-regression, not a new mobile run. Next engineering priority:
-investigate touch-centered high-resolution initial selection for
-small targets, and better current-frame segmentation observations
-for genuine residual long gaps. Do not broaden alternate identity
-admission, use an alternate model for independent identity tracking,
-or promote release status based on these data.
+The retained C9.4 touch fallback is a user-facing correction. All
+automatic identity and strict incomplete-export rules remain unchanged.
+The C9.3 stress source manifests are retained for reproducible C9.4
+selection QA.
 
 ## Stage C9.4: shared touch-centered initial selection
 
@@ -3563,8 +3258,8 @@ No physical iPhone claim; these are single-run simulator timings.
 Default Rust regression 161 passed / 1 ignored; Clippy for
 default and host-model-probe features and formatting passed.
 Python comparison regression 38 passed. The shared touch ABI
-is an additive interface; previous alternate-model experiment
-stays host-only. Android CPU4 default/GPU QA only, Debug/draft,
+is an additive interface; previous alternate-model experiments
+are preserved on the separate research branch, not the merge candidate. Android CPU4 default/GPU QA only, Debug/draft,
 and strict incomplete export refusal remain unchanged.
 
 **C9.4 disposition:** retain the shared initial touch fallback in
@@ -3577,166 +3272,103 @@ open. Next: verify Android same-touch A/B, then target residual
 long gaps and small/occluded instance observations without
 relaxing identity or export policy. Do not promote release.
 
-## Stage C9.5: bounded two-sided current-observation gap recovery
+## PR #41 scope freeze and feature acceptance
 
-### Diagnosis and design
+The merge candidate is the existing **Debug-only experimental canvas**,
+not a universal video matting/identity product. Retain M0–M4, bounded
+storage, anchor-first preview, archive recovery, shared association,
+bounded explicit local repair, C9.1 observation recovery and C9.4 initial
+touch recovery. Do not add another model/runtime, automatically fill
+unconfirmed missing frames, or integrate C9.5 in this PR. The research
+branch above preserves the rejected and provisional experiments; the
+canonical C9.1 detail commit implementation is restored and the unused
+host-model-probe feature/ABIs and experiment-only scripts are removed.
+No change to the strict incomplete archive/export refusal or Release
+availability. Physical iPhone and any Release feature promotion are
+separate acceptance decisions; do not claim either here.
 
-The C9.4 host stage-solo alternate touch at 6s leaves 63 missing
-samples, including a 1.12s consecutive gap. The missing-span
-diagnostic examines the canonical full/local rows without changing
-the selected output, track state or original detector policy.
-In the long stage gap, there is a geometrically consistent strong
-current instance on each sample (representative confidence .56–.89,
-expected box IoU .58–.98), but its color descriptor can have
-similarity as low as approximately .19 to the immutable selected
-anchor as lighting changes. This is an association-evidence problem
-rather than an absence of detector output on every sample.
-It is not true of every other scene: the crowded Basque/Swing
-gaps have competing or geometrically discontinuous observations.
+### Independent real A/B export, final iOS simulator candidate
 
-A first diagnostic requiring simultaneous similarity to both
-incumbent endpoints, to the original anchor, and contrast against
-the original competing appearances adds only three samples across
-the initial C7.3/C8.3 replays including the alternate 6s anchor,
-without reducing their longest gap. Do not adopt that rule.
+Run the existing real-scene driver with its optional explicit
+`exportWindowUs` configuration, not by weakening export admission.
+The two source files are the original independent C8.3 licensed
+12-second 960x540/25 fps transcodes (SHA-256 checked against
+`testdata/comparison/real-dance-c83-holdout.json`), not repeated short
+fixtures. Use `ensemble12.mp4` and `folk12.mp4` as
+`real-reference.mp4` and `real-target.mp4` in the existing isolated QA
+fixture folder. Choose the known candidate usable A/B range before
+running the native test (this is a functional demonstration, not an
+unseen quality holdout):
 
-The second hypothesis confirms an entire missing span using a
-unique chain of *current* raw instance masks between two original
-strong selected endpoints. It does not produce a synthetic mask,
-interpolate a rendered silhouette, re-seed a tracker, carry an
-alternate output forward, or modify canonical track/appearance/
-ROI scheduling state. It never replaces an existing visible
-sample. Every adjacent link must uniquely match in both
-directions, with strong confidence >=.25, box IoU >=.55,
-threshold-128 raw mask IoU >=.55, and current appearance
-similarity >=.88. An overlapping competing mask with confidence
->=.20, box IoU >=.35 and >=.25 containment of the smaller
-thresholded mask vetoes the interval. The last reached row must
-be the original accepted right endpoint; no partial chain.
-Maximum endpoint span 1.2s, adjacent source PTS delta 80ms,
-73 source samples and 64 MiB of raw mask evidence; malformed
-observations, mixed transforms, weak/missing endpoints, ambiguity,
-and over-budget windows fail closed. Only original accepted
-endpoints are used, not earlier recovered output.
-
-This is a new, explicitly bounded temporal evidence hypothesis,
-not a relaxation of any canonical identity threshold. In
-particular it does not require each intermediate mask to match
-the immutable anchor color, which may allow gradual identity drift
-in difficult occlusions even with reciprocal continuity. Sparse
-labels and visual review do not prove absence of such drift.
-
-The shared FrameKernel implementation lives in dance_gap.rs and
-its checked frame_kernel_dance_probe_gap ABI, compiled only with
-host-model-probe. The default core has no experimental export.
-No Kotlin/Swift application, archive, preview or export admission
-change in this stage. The replay tool checks the Rust-selected
-indices against an independent Python reference and verifies
-every previously visible alpha byte-for-byte. The core only
-returns indices to existing raw observations; the existing alpha
-projection remains the renderer. All recovery cases here use
-full-frame current observations, without an extra model inference.
-
-### Full source host replay
-
-Same previously reviewed C5/C7.3/C8.3 six 300-frame clips and
-C9.3 80-frame low-light partner stress case; no new holdout or
-dense identity truth. The alternate stage anchors are separate
-replays of the same source, not independent new media.
-
-| Scene | Baseline | Confirmed gap replay | Longest missing |
-| --- | ---: | ---: | ---: |
-| Baganda | 290/300 | 292/300 | 120 -> 120ms |
-| Danzon | 300/300 | 300/300 | 0 -> 0ms |
-| Basque | 280/300 | 281/300 | 720 -> 720ms |
-| Swing | 254/300 | 259/300 | 520 -> 520ms |
-| Outdoor ensemble | 300/300 | 300/300 | 0 -> 0ms |
-| Stage solo | 268/300 | 281/300 | 320 -> 280ms |
-| Total original six roles | 1692/1800 | 1713/1800 | |
-| Stage solo, alternate 0s touch | 249/300 | 280/300 | 840 -> 280ms |
-| Stage solo, alternate 6s touch | 237/300 | 280/300 | 1120 -> 240ms |
-| Low-light partner | 78/80 | 78/80 | 80 -> 80ms |
-
-All original 1692 visible masks on the six normal anchors
-byte-exact, 21 added. The original six selected landmark checks
-improve 68/71 -> 69/71. On the two alternate anchors, 31 and 43
-additional masks respectively, all old masks unchanged; the
-6s touch selected checks improve 7/12 -> 10/12, the 0s touch
-remains 12/12. Zero marked distractor hits in the host replays.
-Visual review of the difficult stage gap and sampled crowded
-recovery masks shows the intended person, with some existing
-partial coverage and edge artifacts. Crowded and low-light long
-gaps are not resolved by this rule.
-
-### Offline replay of prior real Android observations
-
-Use the existing C8.3 same-run CPU/GPU raw instance/appearance
-streams and actual selected-alpha captures on the OnePlus KB2000.
-Check the observation stream hashes against the previous native
-replay, manifest/media hashes, device/backend metadata, exact PTS
-and alpha grid. An incumbent endpoint is eligible only if exactly
-one strong raw row projects byte-for-byte to that selected alpha.
-No local source re-inference, reconstructed identity, or matching
-by approximate alpha. The later C9.1 alpha capture is also compared
-against the C8.3 raw streams, explicitly marked cross-run and
-exploratory; the exact-endpoint check does not establish that the
-raw data of missing frames would be byte-identical across runs.
-
-| Evidence | Backend | Original stage solo | Gap replay | Longest missing |
-| --- | --- | ---: | ---: | ---: |
-| C8.3 same run | CPU | 276/300 | 286/300 | 400 -> 120ms |
-| C8.3 same run | GPU | 275/300 | 285/300 | 400 -> 200ms |
-| C9.1 cross run | CPU | 279/300 | 289/300 | 400 -> 120ms |
-| C9.1 cross run | GPU | 278/300 | 288/300 | 400 -> 160ms |
-
-Reference lane stays 300/300 for both backends in both arms.
-All original native alphas byte-exact, +10 stage samples per
-backend/arm, zero added marked distractor hits. All 20 new
-same-run stage samples were visually reviewed: target dancer
-remains the subject. These are offline evaluations of previously
-collected native observations, not a new Android on-device run
-or new mobile performance data.
-
-### Reproduction and disposition
-
-Build the host-only experimental core (keep it separately from
-the default library):
-
-```sh
-cd crates/frame-kernel
-cargo build --locked --release --features host-model-probe
-cd ../..
-python tools/comparison/probe_gap_observations.py \
-  --manifest testdata/comparison/real-dance-c83-holdout.json \
-  --media /path/to/c83-media \
-  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
-  --role target --touch-pts 6000000 --output /tmp/c95-gap
-python tools/comparison/replay_native_gap_observations.py \
-  --manifest testdata/comparison/real-dance-c83-holdout.json \
-  --media /path/to/c83-media --evidence /path/to/c83-device \
-  --provenance /path/to/c91-native-c83.json \
-  --library crates/frame-kernel/target/release/libframe_kernel.dylib \
-  --output /tmp/c95-native
+```json
+{
+  "durationUs": 12000000,
+  "cadence": 25,
+  "anchorUs": 3000000,
+  "referenceSeed": [0.416, 0.59],
+  "targetSeed": [0.45, 0.52],
+  "exportWindowUs": [2800000, 4000000],
+  "samplesUs": [2800000, 3000000, 3200000, 3600000, 3960000]
+}
 ```
 
-An optional --alpha-evidence directory explicitly selects the
-cross-run arm. The experimental dylib used in these runs has
-SHA-256 af5260696350bba3d50b478364a384dee11a5d668bb858470f177477d9a22539.
-No source footage, alpha buffers or observation captures committed.
-Rust experimental full suite 166 passed / 1 ignored, including
-4 new gap tests; default and experimental Clippy, formatting,
-and 38 Python comparison tests pass. Default release dylib
-rebuilt and verified absent of both experimental entry points.
+On iPhone 15 Pro simulator/iOS 17, both actual selected stills
+succeeded, both lanes analyzed and rendered 30/30 source frames,
+five sampled positions matched exact PTS, complete archive save
+succeeded, the independent canvas layout edited, and strict export
+produced a local 320x240 H.264/AAC MP4. Ordinary export while cutout
+is active and an unanalyzed range were refused. Analysis 4.830s,
+export 0.934s (single simulator trial); ordinary playback restored.
 
-**C9.5 disposition:** retain the shared bounded recovery experiment
-and native-evidence replay; this is a meaningful reduction in
-observed continuous missing-mask gaps, particularly illumination
-changes, without another model or a new tracker. Native production
-integration is not yet proven. Before enabling in the app, verify
-a bounded per-direction missing-observation buffer, exact PTS
-write-once output, forward/reverse ordering, cancellation, memory
-budget, and flush at immutable preview/archive boundaries. Do not
-rewrite already published preview or existing alpha. Evaluate
-independent crossing/occlusion sequences for gradual identity drift
-and the C9.4 same-touch Android A/B when a physical device is
-connected; physical iPhone and release acceptance remain open.
+Independent FFmpeg decode verified 30 frames, PTS i/25,
+1.200000s, stereo 48kHz AAC, and preview RGB MAE 1.595/1.240/1.230,
+foreground MAE 7.184/4.695/4.623 at 0/400/800ms. Resumed preview
+RGB exactly matched its pre-export image at 400ms. This is not a
+Photos-publication or physical iPhone claim, and it is not complete
+12-second pair export or dense identity/edge accuracy evidence.
+
+Reproduce with the existing Debug simulator or isolated Android QA
+driver built using `--dart-define=WOAH_CUTOUT_REAL_QA=true`, stage
+the config as `real-dance-config.json`, then verify local artifacts:
+
+```sh
+python tools/comparison/verify_cutout_export.py /path/to/qa/fixtures --platform ios --real-ab
+```
+
+The verifier also supports the same Android opt-in case; it requires
+MediaStore publication for Android and compares published bytes when
+a pulled file is available. No source media or output media committed.
+
+Final iOS regression with the original C9.4 alternate 6s touch
+([.46,.60] / [.422,.54]) on the whole source: selection succeeds,
+both still alpha sizes and category counts match C9.4; initial
+playable 4.639s, full analysis 54.603s, reference 300/300 and target
+257/300 (unchanged). All six sampled PTS agree; incomplete archive
+and export rejected; ordinary playback restored. Missing masks
+continue to be explicitly unavailable rather than substituted.
+
+### Engineering and merge blockers
+
+- Retained candidate: Rust 161 passed / 1 ignored, formatting and
+  Clippy pass; default release dylib excludes removed research symbols.
+  Python comparison tests 32 passed (six deferred research-specific
+  tests live in research branch). C8.3 host touch replay still
+  recovers both prior failed target touches. Flutter comparison
+  139 passed, scoped analyzer clean; Android focused 14/14 JNI/JVM
+  tests and Debug Kotlin compile pass. iOS simulator build passed.
+- Correct the CocoaPods lock checksum from
+  `c92cce8274e07790d5bf7cdbff5c3ff9030b2daf` to the regenerated
+  `7d405dd48eb9e662c0d2d72fc644cf7558b5aa61`.
+  CocoaPods 1.17.0 deployment install passes locally. Do not relax
+  dependency locks or required CI jobs. Prior Android CI failed
+  on external Maven HTTP 429; local offline all-ABI lock resolution
+  also lacks two Flutter engine artifacts, not a lock change.
+- Do not merge while the required checks on the final commit fail
+  or are incomplete. Android hardware is disconnected at this stage;
+  run the final isolated QA APK against the real A/B config and
+  C9.4 alternate touch, plus gesture/ordinary flow regression, when
+  connected. Prior Android hardware export/MediaStore/gesture
+  evidence exists, not final-candidate hardware evidence.
+- No physical iPhone; preserve Debug-only feature gating. All
+  unverified general-purpose quality/performance improvements
+  remain follow-up work, not an invitation to expand this PR.

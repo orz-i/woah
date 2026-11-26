@@ -295,6 +295,53 @@ def verify_repair(folder, platform):
             "realIdentityPatch":True,"cancelAndOutsideUnchanged":True}
 
 
+def verify_real_ab(folder, platform):
+    """Verify the explicit, fully analyzed A/B window on independent footage."""
+    report = json.loads((folder / "real-dance-report.json").read_text())
+    assert report["finished"] and report["passed"] and report["allVisible"], report
+    assert report["completeArchiveSaved"] and report["ordinaryRestored"]
+    config = report["config"]
+    start, end = config["exportWindowUs"]
+    cadence = config["cadence"]
+    count = (end - start) * cadence // 1000000
+    assert report["visibility"] == [count] * 4
+    assert report["anchor"] == [config["anchorUs"]] * 2
+    assert all(row["pts"] == [row["positionUs"]] * 2 for row in report["samples"])
+    export = report["export"]
+    assert export["jobState"] == "completed" and export["resumed"]
+    assert [export["startUs"], export["endUs"]] == [start, end]
+    if platform == "android":
+        assert export["savedToGallery"]
+    path = folder / "real-ab-cutout.mp4"
+    metadata = media(path)
+    video = next(s for s in metadata["streams"] if s["codec_type"] == "video")
+    audio = next(s for s in metadata["streams"] if s["codec_type"] == "audio")
+    assert video["codec_name"] == "h264" and audio["codec_name"] == "aac"
+    assert (video["width"], video["height"]) == (W, H)
+    assert int(audio["sample_rate"]) == 48000
+    duration = (end - start) / 1e6
+    assert abs(float(metadata["format"]["duration"]) - duration) <= .002
+    pts = [float(f["best_effort_timestamp_time"]) for f in metadata["frames"]
+           if f.get("media_type") == "video"]
+    assert len(pts) == count and all(abs(t-i/cadence) < 2e-6 for i,t in enumerate(pts))
+    data = rgb(path)
+    assert len(data) == count * FRAME_BYTES
+    comparisons = []
+    for us in (0, 400000, 800000):
+        i = min(range(len(pts)), key=lambda n: abs(pts[n] - us / 1e6))
+        comparisons.append({"ptsUs": us, **compare(
+            rgb(folder / f"real-ab-export-preview-{us}.png"),
+            data[i*FRAME_BYTES:(i+1)*FRAME_BYTES])})
+    assert rgb(folder / "real-ab-export-resumed.png") == rgb(folder / "real-ab-export-preview-400000.png")
+    published = folder / "real-ab-published.mp4"
+    if published.exists():
+        assert published.read_bytes() == path.read_bytes()
+    return {"frames": count, "duration": duration, "audioChannels": audio["channels"],
+            "pixelComparisons": comparisons, "resumeByteExactRGB": True,
+            "analysisMs": report["analysisMs"], "exportMs": export["elapsedMs"],
+            "publicationBytesCompared": published.exists()}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", type=Path)
@@ -303,16 +350,18 @@ if __name__ == "__main__":
     parser.add_argument("--full", action="store_true", help="verify full 12-second segmented-cache fixture")
     parser.add_argument("--repair", action="store_true", help="verify local repair and restored export")
     parser.add_argument("--archive", action="store_true", help="verify new-process canvas archive restoration")
+    parser.add_argument("--real-ab", action="store_true", help="verify explicit complete A/B export on independent footage")
     parser.add_argument("--progressive", action="store_true", help="also verify first playable window and final anchor equality")
     args = parser.parse_args()
     if args.progressive and not args.full:
         parser.error("--progressive requires --full")
-    if sum((args.extended,args.full,args.archive,args.repair))>1:
-        parser.error("choose --extended, --full, --archive or --repair")
+    if sum((args.extended,args.full,args.archive,args.repair,args.real_ab))>1:
+        parser.error("choose --extended, --full, --archive, --repair or --real-ab")
     if args.extended and args.platform != "android":
         parser.error("--extended requires --platform android")
-    result = verify_repair(args.folder,args.platform) if args.repair else (
+    result = verify_real_ab(args.folder,args.platform) if args.real_ab else (
+        verify_repair(args.folder,args.platform) if args.repair else (
         verify_archive(args.folder,args.platform) if args.archive else (
         verify_full(args.folder,args.platform,args.progressive) if args.full else (
-        verify_extended(args.folder) if args.extended else verify(args.folder,args.platform))))
+        verify_extended(args.folder) if args.extended else verify(args.folder,args.platform)))))
     print(json.dumps(result,indent=2))

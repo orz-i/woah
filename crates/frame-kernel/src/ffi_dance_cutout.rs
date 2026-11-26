@@ -263,55 +263,6 @@ pub unsafe extern "C" fn frame_kernel_dance_finish_detail(
         },
     )
 }
-/// Host-only alternate-model experiment. This does not finish the transaction.
-/// Return -5 for an eligible missing primary with no appended alternate rows,
-/// -1 for no eligible output, or the index of a newly appended strong mask.
-/// Always finish the original transaction with its original rows afterward.
-/// # Safety
-/// Arrays must be readable for their stated lengths.
-#[cfg(feature = "host-model-probe")]
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn frame_kernel_dance_probe_alternate_detail(
-    id: u64,
-    at: i64,
-    full_count: usize,
-    primary_count: usize,
-    d: *const InstanceDetection,
-    count: usize,
-    m: *const u8,
-    mask_len: usize,
-    t: Transform,
-    f: *const f32,
-    feature_len: usize,
-) -> i32 {
-    if full_count > primary_count
-        || primary_count > count
-        || !valid_lengths(t, count, mask_len, feature_len)
-    {
-        return -2;
-    }
-    // SAFETY: checked lengths and caller-owned readable regions.
-    let (Some(d), Some(m), Some(f)) = (
-        unsafe { borrowed(d, count) },
-        unsafe { borrowed(m, mask_len) },
-        unsafe { borrowed(f, feature_len) },
-    ) else {
-        return -2;
-    };
-    crate::ffi_tracking::probe_alternate_detail(
-        id,
-        at,
-        full_count,
-        primary_count,
-        crate::dance_cutout::CutoutObservation {
-            detections: d,
-            masks: m,
-            transform: t,
-            features: f,
-        },
-    )
-}
-
 /// Touch-centered crop mode: 0 first, 1 smaller on no hit, 2 expanded
 /// on artificial-edge truncation. A zero viewport is invalid.
 #[unsafe(no_mangle)]
@@ -334,83 +285,6 @@ pub struct TouchRows {
     pub features: *const f32,
     pub feature_len: usize,
     pub transform: Transform,
-}
-
-/// Experimental host-only gap evidence. Each supplied frame is a real
-/// current observation; only the two endpoints are already selected.
-#[cfg(feature = "host-model-probe")]
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct GapRows {
-    pub pts: i64,
-    pub observed: TouchRows,
-    pub selected: i32,
-}
-
-/// Confirm the entire missing interval without mutating any tracker or masks.
-/// On rejection the caller-owned output is not written.
-/// # Safety
-/// All frame descriptors and their input arrays must be valid for the declared
-/// lengths; the output must be disjoint from every input.
-#[cfg(feature = "host-model-probe")]
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn frame_kernel_dance_probe_gap(
-    frames: *const GapRows,
-    count: usize,
-    out: *mut i32,
-    out_len: usize,
-) -> i32 {
-    use crate::dance_gap::{self, GapFrame, Reject};
-    if !(3..=dance_gap::MAX_FRAMES).contains(&count) || out_len != count {
-        return Reject::Invalid as i32;
-    }
-    // SAFETY: caller owns the readable descriptor array of the bounded count.
-    let Some(rows) = (unsafe { borrowed(frames, count) }) else {
-        return Reject::Invalid as i32;
-    };
-    let mut bytes = 0usize;
-    let mut observations = Vec::with_capacity(count);
-    for frame in rows {
-        let o = frame.observed;
-        if !valid_lengths(o.transform, o.count, o.mask_len, o.feature_len) {
-            return Reject::Invalid as i32;
-        }
-        let Some(next) = bytes.checked_add(o.mask_len) else {
-            return Reject::Invalid as i32;
-        };
-        bytes = next;
-        if bytes > dance_gap::MAX_MASK_BYTES {
-            return Reject::Invalid as i32;
-        }
-        // SAFETY: checked bounded lengths, readable input owned by caller.
-        let (Some(d), Some(m), Some(f)) = (
-            unsafe { borrowed(o.rows, o.count) },
-            unsafe { borrowed(o.masks, o.mask_len) },
-            unsafe { borrowed(o.features, o.feature_len) },
-        ) else {
-            return Reject::Invalid as i32;
-        };
-        observations.push(GapFrame {
-            pts: frame.pts,
-            selected: frame.selected,
-            observed: crate::dance_cutout::CutoutObservation {
-                detections: d,
-                masks: m,
-                transform: o.transform,
-                features: f,
-            },
-        });
-    }
-    let indices = match dance_gap::confirm(&observations) {
-        Ok(indices) => indices,
-        Err(reason) => return reason as i32,
-    };
-    // SAFETY: checked size and caller promises a unique writable output.
-    let Some(output) = (unsafe { write(out, out_len) }) else {
-        return Reject::Invalid as i32;
-    };
-    output.copy_from_slice(&indices);
-    0
 }
 
 #[repr(C)]

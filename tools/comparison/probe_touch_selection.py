@@ -21,7 +21,7 @@ import numpy as np
 
 import cutout_m0 as m
 from compare_dance_identity import observe
-from probe_selected_refinement import sha, source_samples, score
+from source_sample_evidence import sha, source_samples, score
 from replay_adaptive_detail import bind_detail, View, features, replay
 from review_real_dance import assess
 
