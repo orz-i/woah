@@ -200,8 +200,19 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     fun analyze(uri: String, description: ComparisonVideoDescription, start: Long,endInclusive: Long,
         seed: ComparisonCutoutSeed, reference: Boolean, mirror: Boolean, segmenter: YoloLiteRtSegmenter,
         current: () -> Boolean, inspection: Inspection? = null): ComparisonCutoutTrackCache {
-        val fingerprint=ComparisonCutoutFingerprint.read(context,uri,current)
-        val times=window(timestamps(uri,current),start,endInclusive,seed.ptsUs)
+        val measure=art.gaoge.dance.engine.BuildConfig.DEBUG
+        val wallStart=System.nanoTime()
+        val timing=linkedMapOf<String,Long>()
+        fun addTime(name:String,nanos:Long) {
+            if(measure)timing[name]=(timing[name] ?: 0L)+nanos
+        }
+        fun <T> timed(name:String,body:()->T):T {
+            if(!measure)return body()
+            val before=System.nanoTime()
+            return try { body() } finally { addTime(name,System.nanoTime()-before) }
+        }
+        val fingerprint=timed("fingerprint"){ComparisonCutoutFingerprint.read(context,uri,current)}
+        val times=timed("frameIndex"){window(timestamps(uri,current),start,endInclusive,seed.ptsUs)}
         val swapped=description.rotation%180!=0
         val sw=if(swapped)description.height else description.width
         val sh=if(swapped)description.width else description.height
@@ -215,7 +226,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         var placement: ComparisonCutoutPlacement?=null
         fun add(o: Observation, index: Int) {
             checkCurrent(current)
-            val alpha=if(index<0)null else o.alpha(index,aw,ah)
+            val alpha=if(index<0)null else timed("alpha"){o.alpha(index,aw,ah)}
             layers[o.pts]=alpha?.takeIf { bytes -> bytes.any { it.toInt()!=0 } }?.let {
                 ComparisonCutoutLayer(o.pts,aw,ah,it,requireNotNull(placement))
             }
@@ -226,15 +237,18 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                     decoder.prepare()
                     for (pts in times) {
                         checkCurrent(current)
-                        val frame=decoder.decodeRgbaAtPts(pts,mapper)
+                        val frame=timed("decodeAndConvert"){decoder.decodeRgbaAtPts(pts,mapper)}
                         val inspected=inspection?.takeIf { it.seed==seed && pts==seed.ptsUs }
                         require(inspected==null || inspected.sourceDigest.contentEquals(digest(frame))) {
                             "选人画面已变化，请重新选择"
                         }
                         val observation=inspected?.observation ?: run {
-                            val detected=segmenter.segmentGlReadbackRgbaSync(frame,mapper,pts,
-                                confidenceThreshold=if(pts==seed.ptsUs) .25f else .20f)
-                            Observation(pts,detected.persons,mapper)
+                            val detected=timed("segmentTotal"){
+                                segmenter.segmentGlReadbackRgbaSync(frame,mapper,pts,
+                                    confidenceThreshold=if(pts==seed.ptsUs) .25f else .20f)
+                            }
+                            if(measure)detected.stageTimingsMs.forEach { (name,ms)->addTime(name,ms*1_000_000) }
+                            timed("observation"){Observation(pts,detected.persons,mapper)}
                         }
                         if(pts<seed.ptsUs) {
                             prefixBytes+=observation.masks.size
@@ -251,17 +265,33 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                                 if(reference) .27 else .73,.88,.70,mirror)
                             // Validate placement before any preview can publish.
                             placement!!.quad(960,540,sw.toDouble()/sh)
-                            require(observation.track(forward,index)==index && observation.track(reverse,index)==index)
+                            require(timed("track"){observation.track(forward,index)==index && observation.track(reverse,index)==index})
                             add(observation,index)
-                            for (prior in prefix.asReversed()) add(prior,prior.track(reverse))
+                            for (prior in prefix.asReversed()) add(prior,timed("track"){prior.track(reverse)})
                             prefix.clear()
-                        } else add(observation,observation.track(forward))
+                        } else add(observation,timed("track"){observation.track(forward)})
                     }
                 }
             }
         }
         require(placement!=null && layers.size==times.size && layers[seed.ptsUs]!=null) { "人物分析未完成" }
-        require(fingerprint==ComparisonCutoutFingerprint.read(context,uri,current)) { "源视频已变化" }
+        require(fingerprint==timed("fingerprint"){ComparisonCutoutFingerprint.read(context,uri,current)}) { "源视频已变化" }
+        if(measure) {
+            // Aggregated, URI-free stage timing. Nested YOLO stages are included
+            // in segmentTotal; consumers must not sum them twice.
+            val stages=org.json.JSONObject()
+            timing.forEach { (name,nanos)->stages.put(name,nanos/1_000_000) }
+            val summary=org.json.JSONObject()
+                .put("role",if(reference)"reference" else "target")
+                .put("frames",times.size)
+                .put("visible",layers.values.count{it!=null})
+                .put("accelerator",segmenter.effectiveAccelerator.toString())
+                .put("wallMs",(System.nanoTime()-wallStart)/1_000_000)
+                .put("prefixBytes",prefixBytes)
+                .put("alphaBytesPerFrame",aw*ah)
+                .put("stageMs",stages)
+            android.util.Log.i("WoahCutoutPerf",summary.toString())
+        }
         return ComparisonCutoutTrackCache(layers,fingerprint)
     }
 

@@ -419,3 +419,113 @@ use a dedicated QA app container, never a production user's export
 history. The verifier also requires the disposable source-mutation
 negative report. The numeric measurements are not proof of general
 identity accuracy, matte quality or real-device throughput.
+
+## Android physical-device baseline (2026-11-26)
+
+Device: OnePlus 8T / KB2000, Android 14, arm64-v8a. Hardware AVC decoder
+reported `OMX.qcom.video.decoder.avc`. The isolated, opt-in Debug package
+`art.gaoge.dance.cutoutqa` does not overwrite the normal application or its
+projects. All sources below are disposable derivatives of the same tracked
+one-second fixture. Reference and mirrored target were scaled to 352x768
+and re-encoded as H.264 for hardware decoder compatibility; the 12-second
+fixtures repeat those frames, with a 440 Hz mono reference tone.
+
+### Actual device results
+
+| Case | Role coverage | Analysis | Export including publication |
+| --- | --- | ---: | ---: |
+| Mirror, first-frame anchor | 30/30 each | 7.410 s | 2.305 s |
+| Same source, middle anchor, cancel/retry | 30/30 each | 7.488 s | 2.104 s |
+| 12 s source, A/B [6,7) | 30/30 each | 7.773 s | 1.380 s |
+| 12 s source, A/B [6,11), anchor 10 s, 1440x1080 | 150/150 each | 39.191 s | 5.136 s |
+
+The first three actual MP4s contain 30 frames each at 320x240 and exactly
+1 second of video/audio presentation; the extended one contains 150 frames
+at 1440x1080 and exactly 5 seconds. All are H.264/AAC; the absent reference
+audio produces stereo silence, and Android preserves the real mono
+48 kHz source. iOS normalizes to stereo, so the verifier has an explicit
+Android expectation, not a relaxed audio check. FFmpeg decoded the
+three short movies: nine corresponding samples gave RGB MAE 0.738–0.809
+(foreground MAE 1.060–1.395). The high-resolution output downsampled to
+preview size gave RGB MAE 1.673–1.680 (foreground MAE 2.017–2.052).
+All four resumed preview images match the pre-export image at 400 ms.
+The source-mutation task failed with no output and retry unavailable.
+
+All four files were published into MediaStore (IS_PENDING=0, QA owner);
+reading each published URI returned bytes exactly equal to its local MP4.
+The provider reports a 1043 ms duration on the 1-second outputs due to
+raw AAC priming; the MP4 edit-list presentation duration and decoded
+track durations are 1.000000 s. This is a metadata/UI discrepancy, not a
+verified playback overrun. Existing ordinary encoder policy is unchanged.
+
+The actual Flutter screen gesture smoke also passed on Android (real
+pointer dispatch, alpha selection, first-person expanded canvas, second
+selection, native preview, edit, save-flow and exit). Target position
+became (0.68,0.75), mirror=true, opacity=0.5; reference stayed (0.5,0.88).
+Native layout application in the separate 320x240 API smoke took 6–16 ms.
+
+### Measured bottleneck
+
+The Debug analyzer emits one URI-free `WoahCutoutPerf` summary per source
+role, including nested YOLO timings. For the five-second test (300 source
+frames total, two roles analyzed serially, CPU/XNNPACK 4 threads):
+
+| Stage | Time |
+| --- | ---: |
+| Total native analysis wall time | 39.028 s |
+| Segmentation total (includes model run) | 33.162 s |
+| LiteRT model execution alone | 28.424 s |
+| Canonical decode + YUV/RGBA conversion | 4.704 s |
+| Shared tracking | 0.120 s |
+| Alpha projection | 0.328 s |
+| Source fingerprint scans | 0.008 s |
+| PTS frame indexing | 0.125 s |
+
+The model execution is about 73% of the measured native wall time.
+Raw reverse-prefix mask bytes for 120 preceding frames were 17,100,800
+and 18,432,000 bytes per role, close enough to the existing 32 MiB per-role
+limit to be material. Cached selected alpha is 29,952 bytes/frame/role
+for these fixtures (8,985,600 bytes total for 300 source frames).
+These counts exclude object, row, runtime and codec overhead. A sampled
+PSS during analysis was about 469 MB, not a measured peak.
+No accelerator, threshold, tracking or output behavior was changed.
+
+The next implementation should prioritize continuous anchor-outward
+tracking, bounded reverse-observation spool, segmented selected-alpha
+cache, and staged publication of analyzed coverage. A faster backend
+needs a separate CPU/GPU equivalence and thermal/performance comparison.
+Do not simply lift the 300-frame / 32 MiB limits or infer identity from
+this repeated fixture.
+
+### Reproduction
+
+Build with an isolated debug package (normal application ID unchanged):
+
+```sh
+cd mobile/app
+export ORG_GRADLE_PROJECT_WOAH_CUTOUT_QA=true
+flutter build apk --debug --target-platform android-arm64 \
+  --target=test_driver/comparison_cutout_smoke.dart
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+```
+
+Prepare source.mp4 with `scale=352:768`, variant.mp4 with
+`scale=352:768,hflip` (both H.264/yuv420p), then use the long-fixture
+commands above. Stage the four files under the isolated app's
+`Documents/comparison-cutout-fixtures` via `adb shell run-as art.gaoge.dance.cutoutqa`.
+Launch `art.gaoge.dance.cutoutqa/art.gaoge.dance.MainActivity`.
+For the five-second high-resolution probe use the same target with
+`--dart-define=WOAH_CUTOUT_EXTENDED_QA=true`. The separate gesture
+entry is `test_driver/comparison_cutout_gesture_smoke.dart`.
+Pull local fixture results from the QA package, verify them using:
+
+```sh
+python3 tools/comparison/verify_cutout_export.py /path/to/results --platform android
+python3 tools/comparison/verify_cutout_export.py /path/to/results --platform android --extended
+```
+
+Device log and generated media are not committed. The four QA movies
+are intentionally left in the device gallery; no existing user media was
+removed. Physical iPhone, genuinely independent long choreography,
+occlusions, real-device full-length analysis, and production-quality
+edge/identity evaluation remain outstanding.

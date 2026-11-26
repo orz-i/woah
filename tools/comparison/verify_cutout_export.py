@@ -49,7 +49,7 @@ def compare(expected, actual):
     return {"rgbMae": round(error, 3), "foregroundMae": round(foreground_mae, 3)}
 
 
-def verify(folder):
+def verify(folder, platform="ios"):
     report = json.loads((folder / "report.json").read_text())
     assert report["finished"] and report["passed"], report
     assert {r["id"] for r in report["results"]} >= {"mirrored", "middle", "long-ab"}
@@ -64,7 +64,9 @@ def verify(folder):
         audio = next(s for s in metadata["streams"] if s["codec_type"] == "audio")
         assert video["codec_name"] == "h264" and audio["codec_name"] == "aac"
         assert (video["width"], video["height"]) == (W, H)
-        assert int(audio["sample_rate"]) == 48000 and audio["channels"] == 2
+        # Android preserves mono/stereo source PCM; iOS normalizes to stereo.
+        expected_channels = 1 if platform == "android" and name == "long-ab" else 2
+        assert int(audio["sample_rate"]) == 48000 and audio["channels"] == expected_channels
         assert abs(float(metadata["format"]["duration"]) - 1) <= .001
         pts = [float(f["best_effort_timestamp_time"]) for f in metadata["frames"]
                if f.get("media_type") == "video"]
@@ -95,12 +97,60 @@ def verify(folder):
             assert rms < 2, "Unexpected audio in silent reference"
             hz = 0
         verified.append({"id": name, "frames": len(pts), "duration": float(metadata["format"]["duration"]),
-                         "audioRms": round(rms, 2), "audioHz": round(hz, 2), "pixelComparisons": comparisons})
+                         "audioChannels": audio["channels"], "audioRms": round(rms, 2),
+                         "audioHz": round(hz, 2), "pixelComparisons": comparisons})
     return verified
+
+
+def verify_extended(folder):
+    """The Android 5-second / 1440x1080 fixture is exported from the same
+    4:3 canvas, then reduced to the 320x240 preview for comparison."""
+    report = json.loads((folder / "extended-report.json").read_text())
+    assert report["finished"] and report["passed"], report
+    row, = report["results"]
+    assert row["id"] == "extended-ab" and row["visibility"] == [150] * 4
+    assert row["window"] == [6000000, 11000000]
+    assert row["export"]["savedToGallery"] and row["export"]["resumed"]
+    path = folder / "extended-ab-cutout.mp4"
+    metadata = media(path)
+    video = next(s for s in metadata["streams"] if s["codec_type"] == "video")
+    audio = next(s for s in metadata["streams"] if s["codec_type"] == "audio")
+    assert video["codec_name"] == "h264" and audio["codec_name"] == "aac"
+    assert (video["width"], video["height"]) == (1440, 1080)
+    assert int(audio["sample_rate"]) == 48000 and audio["channels"] == 1
+    assert abs(float(metadata["format"]["duration"]) - 5) <= .001
+    pts = [float(f["best_effort_timestamp_time"]) for f in metadata["frames"]
+           if f.get("media_type") == "video"]
+    assert len(pts) == 150 and all(abs(t-i/30) < 2e-6 for i, t in enumerate(pts))
+    frames = run("ffmpeg", "-v", "error", "-i", str(path), "-map", "0:v:0",
+                 "-vf", "select='eq(n,0)+eq(n,12)+eq(n,24)',scale=320:240",
+                 "-fps_mode", "passthrough", "-pix_fmt", "rgb24", "-f", "rawvideo", "-")
+    assert len(frames) == 3 * FRAME_BYTES
+    comparisons = [{"ptsUs": us, **compare(rgb(folder / f"extended-ab-export-preview-{us}.png"),
+                   frames[n*FRAME_BYTES:(n+1)*FRAME_BYTES])}
+                   for n, us in enumerate((0, 400000, 800000))]
+    assert rgb(folder / "extended-ab-export-resumed.png") == rgb(folder / "extended-ab-export-preview-400000.png")
+    pcm = run("ffmpeg", "-v", "error", "-i", str(path), "-map", "0:a:0",
+              "-ac", "1", "-ar", "48000", "-f", "s16le", "-")
+    samples = [v[0] for v in struct.iter_unpack("<h", pcm)]
+    interior = samples[4800:-4800]
+    hz = sum((a < 0) != (b < 0) for a, b in zip(interior, interior[1:])) * 24000 / len(interior)
+    assert abs(hz - 440) < 8
+    published = folder / "extended-ab-published.mp4"
+    if published.exists():
+        assert published.read_bytes() == path.read_bytes(), "MediaStore publication changed bytes"
+    return {"frames": len(pts), "duration": float(metadata["format"]["duration"]),
+            "audioChannels": audio["channels"], "audioHz": round(hz, 2),
+            "pixelComparisons": comparisons, "savedToGallery": True,
+            "publicationBytesCompared": published.exists()}
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("folder", type=Path)
+    parser.add_argument("--platform", choices=("ios", "android"), default="ios")
+    parser.add_argument("--extended", action="store_true", help="verify the separate Android 5-second high-resolution fixture")
     args = parser.parse_args()
-    print(json.dumps(verify(args.folder), indent=2))
+    if args.extended and args.platform != "android":
+        parser.error("--extended requires --platform android")
+    print(json.dumps(verify_extended(args.folder) if args.extended else verify(args.folder, args.platform), indent=2))

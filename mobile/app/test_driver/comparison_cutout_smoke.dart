@@ -43,6 +43,7 @@ Future<void> main() async {
 }
 
 class _CutoutSmoke extends ChangeNotifier {
+  static const extended = bool.fromEnvironment('WOAH_CUTOUT_EXTENDED_QA');
   final api = DanceComparisonApi();
   final previewKey = GlobalKey();
   String status = 'waiting';
@@ -74,7 +75,9 @@ class _CutoutSmoke extends ChangeNotifier {
   }
 
   void publish(bool finished) {
-    File('${folder.path}/report.json').writeAsStringSync(
+    File(
+      '${folder.path}/${extended ? 'extended-report' : 'report'}.json',
+    ).writeAsStringSync(
       jsonEncode({
         'finished': finished,
         'passed': finished && results.every((r) => r['passed'] == true),
@@ -294,6 +297,8 @@ class _CutoutSmoke extends ChangeNotifier {
     int start,
     int end, {
     bool cancelFirst = false,
+    int exportWidth = 320,
+    int exportHeight = 240,
   }) async {
     final result = <String, Object?>{};
     final reference = ComparisonCanvasLayerDto(
@@ -368,7 +373,16 @@ class _CutoutSmoke extends ChangeNotifier {
     );
     final watch = Stopwatch()..start();
     var job = await host(
-      api.startCutoutExport(project, start, end, 320, 240, 8, true, true),
+      api.startCutoutExport(
+        project,
+        start,
+        end,
+        exportWidth,
+        exportHeight,
+        8,
+        true,
+        true,
+      ),
     );
     require(
       job.cutout == true && job.startUs == start && job.endUs == end,
@@ -401,6 +415,10 @@ class _CutoutSmoke extends ChangeNotifier {
     result['bytes'] = movie.lengthSync();
     result['elapsedMs'] = watch.elapsedMilliseconds;
     result['jobState'] = job.state;
+    result['savedToGallery'] = job.savedUri != null;
+    if (Platform.isAndroid) {
+      require(job.savedUri != null, 'Android MediaStore publication failed');
+    }
     result['startUs'] = job.startUs;
     result['endUs'] = job.endUs;
     final restored = await ready(await host(api.resumeCutoutPreview()));
@@ -421,6 +439,8 @@ class _CutoutSmoke extends ChangeNotifier {
     int position, {
     String source = 'source.mp4',
     (int, int)? window,
+    int exportWidth = 320,
+    int exportHeight = 240,
   }) async {
     final row = <String, Object?>{'id': id};
     results.add(row);
@@ -532,7 +552,12 @@ class _CutoutSmoke extends ChangeNotifier {
         require(rejected, 'Cutout allowed changing the analyzed A/B window');
         row['windowLocked'] = true;
       }
-      for (final us in [start, start + 400000, start + 800000]) {
+      for (final us in [
+        start,
+        start + 400000,
+        start + 800000,
+        if (extended && window != null) window.$2 - 100000,
+      ]) {
         state = await ready(
           await host(api.control(ComparisonCommand.seek, us, 1)),
         );
@@ -590,6 +615,8 @@ class _CutoutSmoke extends ChangeNotifier {
         start,
         window?.$2 ?? state.durationUs,
         cancelFirst: id == 'middle',
+        exportWidth: exportWidth,
+        exportHeight: exportHeight,
       );
       state = await ready(await host(api.clearCutout()));
       row['restored'] = await capture('$id-restored');
@@ -698,6 +725,26 @@ class _CutoutSmoke extends ChangeNotifier {
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    if (extended) {
+      require(
+        File('${folder.path}/long-source.mp4').existsSync() &&
+            File('${folder.path}/long-variant.mp4').existsSync(),
+        'Extended fixtures missing',
+      );
+      await probe(
+        'extended-ab',
+        'long-variant.mp4',
+        .324,
+        10000000,
+        source: 'long-source.mp4',
+        window: (6000000, 11000000),
+        exportWidth: 1440,
+        exportHeight: 1080,
+      );
+      status = 'finished';
+      publish(true);
+      return;
     }
     await probe('mirrored', 'variant.mp4', .324, 0);
     await probe('middle', 'source.mp4', .676, 400000);
