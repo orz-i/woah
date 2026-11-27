@@ -7,6 +7,14 @@ import kotlinx.coroutines.CancellationException
 /** Model backend is part of the identity evidence, not a per-frame preference. */
 internal object ComparisonCutoutBackend {
     const val RESTART = "CUTOUT_BACKEND_RESTART"
+    fun configured(debug:Boolean,debugGpuQa:Boolean,releaseCanvas:Boolean,releaseGpu:Boolean):LiteRtAccelerator =
+        if ((debug && debugGpuQa) || (!debug && releaseCanvas && releaseGpu))
+            LiteRtAccelerator.GPU else LiteRtAccelerator.CPU
+
+    fun acceptsBothArchives(debug:Boolean,releaseCanvas:Boolean):Boolean = !debug && releaseCanvas
+
+    fun requiresFullReselection(locked:LiteRtAccelerator?,preferred:LiteRtAccelerator):Boolean =
+        locked==LiteRtAccelerator.GPU && preferred==LiteRtAccelerator.CPU
     fun restart() = DanceNativeException(RESTART, "Restart the complete canvas selection on CPU4")
     fun resolve(requested:LiteRtAccelerator,effective:LiteRtAccelerator,
                 allowUnboundFallback:Boolean):LiteRtAccelerator {

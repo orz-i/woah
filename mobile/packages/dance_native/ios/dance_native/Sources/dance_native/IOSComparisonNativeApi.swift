@@ -123,7 +123,7 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
       durationUs: 0, teacherStartUs: 0, offsetUs: 0, speed: 1)
   }
 
-  // Runner writes only this boolean marker from the same Dart build define.
+  // Runner writes the default-on boolean marker from the same Dart build define.
   // A missing or malformed marker leaves release builds closed.
   private var cutoutPreviewEnabled: Bool {
     #if DEBUG
@@ -135,7 +135,7 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
     #endif
   }
   private func requireCutoutPreview() throws {
-    guard cutoutPreviewEnabled else { throw invalid("抠像画布正在测试") }
+    guard cutoutPreviewEnabled else { throw invalid("抠像画布已在当前构建中关闭") }
   }
 
   func inspectCutout(reference: Bool,seed: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutPreviewDto {

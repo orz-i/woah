@@ -229,9 +229,9 @@ Future<void> main() async {
     final w = (initial.size.width * ratio).round(),
         h = (initial.size.height * ratio).round();
     await tap(byKey('comparison-view')!);
-    await until(() => byText('抠像画布（实验）') != null, 'Cutout menu missing');
+    await until(() => byText('抠像画布') != null, 'Cutout menu missing');
     await Future<void>.delayed(const Duration(milliseconds: 250));
-    await tap(byText('抠像画布（实验）')!);
+    await tap(byText('抠像画布')!);
     await until(
       () => byKey('comparison-cutout-gesture') != null,
       'Selection overlay missing',
@@ -361,9 +361,9 @@ Future<void> main() async {
     );
     await Future<void>.delayed(const Duration(milliseconds: 500));
     await tap(byKey('comparison-view')!);
-    await until(() => byText('抠像画布（实验）') != null, 'Restore menu missing');
+    await until(() => byText('抠像画布') != null, 'Restore menu missing');
     await Future<void>.delayed(const Duration(milliseconds: 250));
-    await tap(byText('抠像画布（实验）')!);
+    await tap(byText('抠像画布')!);
     await until(
       () =>
           findElement(
@@ -453,8 +453,14 @@ Future<void> main() async {
     );
     await Future<void>.delayed(const Duration(milliseconds: 300));
     await tap(byKey('comparison-repair-enter')!);
-    await until(() => byText('取消纠错') != null, 'Cancel repair selection absent');
-    await tap(byText('取消纠错')!);
+    await until(
+      () => byText('取消纠错') != null && byKey('comparison-repair-enter') == null,
+      'Cancel repair selection absent',
+    );
+    // The dialog's reverse route transition can still intercept a tap
+    // during the first selection frame. Wait for its removal and layout.
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    await tap(byKey('comparison-cutout-cancel')!);
     await until(
       () =>
           byKey('comparison-cutout-timeline') != null &&

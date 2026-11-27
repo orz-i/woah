@@ -161,7 +161,7 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
         requireNotNull(session).stepFrame(forward)
     private fun requireCutoutPreview() {
         check(art.gaoge.dance.engine.BuildConfig.DEBUG ||
-            art.gaoge.dance.engine.BuildConfig.CUTOUT_PREVIEW_ENABLED) { "抠像画布正在测试" }
+            art.gaoge.dance.engine.BuildConfig.CUTOUT_PREVIEW_ENABLED) { "抠像画布已在当前构建中关闭" }
     }
     override suspend fun inspectCutout(reference: Boolean,seed: ComparisonCutoutSeedDto): ComparisonCutoutPreviewDto {
         requireCutoutPreview()

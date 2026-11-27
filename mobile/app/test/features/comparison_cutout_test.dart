@@ -270,7 +270,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('comparison-view')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('抠像画布（实验）'));
+    await tester.tap(find.text('抠像画布'));
     await tester.pumpAndSettle();
     final finder = find.byKey(const ValueKey('comparison-cutout-gesture'));
     expect(finder, findsOneWidget);
@@ -367,6 +367,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(gateway.repairs, 1);
     expect(gateway.seeds.length, 2);
+    expect(
+      find.byKey(const ValueKey('comparison-cutout-timeline')),
+      findsOneWidget,
+    );
+    // Immediately reopen a repair while the previous success snackbar
+    // is still visible. It must not intercept the next cancel gesture.
+    expect(find.byType(SnackBar), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('comparison-cutout-repair')));
+    await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('comparison-repair-enter')));
+    await tester.pumpAndSettle();
+    expect(finder, findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('comparison-cutout-cancel')));
+    await tester.pumpAndSettle();
+    expect(gateway.repairCancels, 1);
+    expect(finder, findsNothing);
     expect(
       find.byKey(const ValueKey('comparison-cutout-timeline')),
       findsOneWidget,

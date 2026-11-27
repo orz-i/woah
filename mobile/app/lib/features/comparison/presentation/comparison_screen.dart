@@ -671,7 +671,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       if (controller.supportsCutout)
         _viewOption(
           _ComparisonViewAction.cutout,
-          '抠像画布（实验）',
+          '抠像画布',
           Icons.content_cut_rounded,
           enabled: controller.canPlay && _manualSession == null,
         ),
@@ -1083,6 +1083,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
 
   Future<void> _beginCutoutRepair() async {
     if (!controller.canEditCanvas) return;
+    // A previous repair confirmation must not cover the new selection's
+    // bottom cancel control while the dialog is dismissed.
+    ScaffoldMessenger.maybeOf(context)?.removeCurrentSnackBar();
     await controller.pause();
     if (!mounted || !controller.canEditCanvas) return;
     final position = controller.playback!.positionUs;
@@ -1234,7 +1237,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           ),
           if (!controller.cutoutRepairing)
             const Text(
-              '实验功能：建议先用单人清晰、少遮挡的短选段。多人交叉可能错选，请检查结果。',
+              '建议先用单人清晰、少遮挡的短选段。多人交叉可能错选，请检查结果。',
               style: TextStyle(fontSize: 12),
             ),
           Text(
@@ -1874,7 +1877,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                       ? '已恢复画布'
                       : controller.cutoutArchived
                       ? '已缓存画布'
-                      : '实验画布'} · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}',
+                      : '抠像画布'} · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}',
             style: const TextStyle(fontSize: 12),
           ),
         ),

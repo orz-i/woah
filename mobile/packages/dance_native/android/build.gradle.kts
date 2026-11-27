@@ -43,22 +43,24 @@ plugins {
     id("com.android.library")
 }
 
-// Native and Flutter use the same build-time opt-in. Do not enable QA fixtures.
+// Native and Flutter share a default-on feature switch with explicit rollback.
+// Production GPU policy is independent of Debug-only QA fixtures.
 val decodedDartDefines = providers.gradleProperty("dart-defines").orNull.orEmpty()
     .split(",").filter { it.isNotBlank() }
     .map { String(Base64.getDecoder().decode(it), Charsets.UTF_8) }
-fun explicitDartOptIn(name: String): Boolean {
+fun dartBoolean(name: String, defaultValue: Boolean): Boolean {
     val matches = decodedDartDefines.filter { it.substringBefore("=") == name }
     require(matches.size <= 1) { "Duplicate $name build define" }
-    return matches.singleOrNull() == "$name=true"
+    if (matches.isEmpty()) return defaultValue
+    return when (matches.single()) {
+        "$name=true" -> true
+        "$name=false" -> false
+        else -> error("Invalid $name boolean build define")
+    }
 }
-val cutoutPreviewEnabled = explicitDartOptIn("WOAH_ENABLE_CUTOUT_PREVIEW")
-// A4: real Release AOT measurements only, in the isolated local package.
-// This neither enables other QA hooks nor changes the production CPU policy.
-val cutoutReleaseGpuQa = explicitDartOptIn("WOAH_CUTOUT_RELEASE_GPU_QA")
-require(!cutoutReleaseGpuQa || cutoutPreviewEnabled) {
-    "Release GPU comparison QA requires the explicit canvas preview opt-in"
-}
+val cutoutPreviewEnabled = dartBoolean("WOAH_ENABLE_CUTOUT_PREVIEW", true)
+val cutoutGpuRequested = dartBoolean("WOAH_CUTOUT_GPU_ENABLED", true)
+val cutoutReleaseGpuEnabled = cutoutPreviewEnabled && cutoutGpuRequested
 
 val diagnosticGitCommitSha = System.getenv("GIT_COMMIT_SHA")?.takeIf { it.isNotBlank() }
     ?: runCatching {
@@ -156,7 +158,7 @@ android {
         buildConfigField("String", "BUILD_TIMESTAMP", "\"$diagnosticBuildTimestamp\"")
         buildConfigField("String", "CUTOUT_QA_BACKEND", "\"$cutoutQaBackend\"")
         buildConfigField("boolean", "CUTOUT_PREVIEW_ENABLED", cutoutPreviewEnabled.toString())
-        buildConfigField("boolean", "CUTOUT_RELEASE_GPU_QA", cutoutReleaseGpuQa.toString())
+        buildConfigField("boolean", "CUTOUT_RELEASE_GPU_ENABLED", cutoutReleaseGpuEnabled.toString())
     }
 
     buildFeatures {
