@@ -400,6 +400,25 @@ int32_t frame_kernel_face_reappearance_choose(FrameKernelRect root_body,FrameKer
     const FrameKernelFaceReappearanceCandidate *current,size_t count,FrameKernelFaceReappearanceDecision *output);
 int32_t frame_kernel_face_reappearance_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
     FrameKernelEllipse face,FrameKernelHeadSticker *output);
+/* Offline adjacent-frame partial-face re-detection. A later independently
+   qualified reappearance may plan two views but supplies no current pixels.
+   Both current owned faces/masks and garments must agree. Coarse boundary
+   only, no solid foreign foreground or current foreign face overlap.
+   Output is coverage-only, must never seed another probe or identity state. */
+typedef struct FrameKernelFacePartialView {
+    FrameKernelRect view; FrameKernelEllipse face; FrameKernelRect bounds;
+    FrameKernelFaceGarment garment; float body_confidence;
+} FrameKernelFacePartialView;
+typedef struct FrameKernelFacePartialCoverage {
+    FrameKernelEllipse measured; FrameKernelRect bounds; FrameKernelEllipse square;
+    float min_garment_similarity;
+} FrameKernelFacePartialCoverage;
+int32_t frame_kernel_face_partial_views(FrameKernelEllipse later,uint32_t width,uint32_t height,FrameKernelRect *output2);
+int32_t frame_kernel_face_partial_finish(FrameKernelEllipse later,int64_t gap_us,int64_t root_age_us,
+    const FrameKernelFacePartialView *views,size_t view_count,
+    const FrameKernelFaceGarment *roots,size_t root_count,const FrameKernelFaceGarment *rivals,size_t rival_count,
+    const FrameKernelFaceGarment *current,size_t current_count,const FrameKernelEllipse *foreign,size_t foreign_count,
+    const uint8_t *coarse,size_t coarse_len,size_t count,FrameKernelHeadMaskSpec spec,FrameKernelFacePartialCoverage *output);
 /* Experimental current-frame coverage-only recovery. Root must be the last
    canonically owned DIRECT face and body; predicted_body the retained
    selected track's current prediction. Hard age <=800ms; never renews

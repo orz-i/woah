@@ -1,0 +1,73 @@
+{
+  "scope": "Source-only approximate visible head at the foreground boundary. Mirror is transformed same-source evidence, not independent scene. No full visibility truth.",
+  "cases": {
+    "partial_original": {
+      "target_id": 3,
+      "manifest_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "labels": [
+        {
+          "index": 111,
+          "asset_sha256": "6e3f870dd471ca3467bedbba032ed15d79dc90e373053fd449bf124005554722",
+          "head_rect": [
+            365,
+            189,
+            400,
+            225
+          ],
+          "torso_probe": [
+            388,
+            270
+          ],
+          "neighbor_rects": [
+            [
+              540,
+              180,
+              590,
+              245
+            ],
+            [
+              630,
+              130,
+              710,
+              200
+            ]
+          ]
+        }
+      ]
+    },
+    "partial_mirror": {
+      "target_id": 4,
+      "manifest_sha256": "bb44f58ce9df3b6206a1e9d4af587ec6e6fc108db5f0c07f98746cfd368ce489",
+      "labels": [
+        {
+          "index": 111,
+          "asset_sha256": "edf32a193526c132177689b16fef7d8e6adcaefe2ec3cf12384fdb632cdb6935",
+          "head_rect": [
+            560,
+            189,
+            595,
+            225
+          ],
+          "torso_probe": [
+            572,
+            270
+          ],
+          "neighbor_rects": [
+            [
+              370,
+              180,
+              420,
+              245
+            ],
+            [
+              250,
+              130,
+              330,
+              200
+            ]
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -40,9 +40,20 @@ RecoveryPrevious = struct("RecoveryPrevious", [("body",Rect),("face",Ellipse),("
 Garment = struct("Garment", [("rgb",F*512),("chroma",F*512),("samples",U)])
 ReappearanceCandidate = struct("ReappearanceCandidate", [("garment",Garment),("body",Rect),("face",Ellipse),("eligible",U)])
 ReappearanceDecision = struct("ReappearanceDecision", [("index",U),("similarity",F),("rival_root",F),("rival_current",F)])
+PartialView = struct("PartialView", [("view",Rect),("face",Ellipse),("bounds",Rect),("garment",Garment),("body_confidence",F)])
+PartialCoverage = struct("PartialCoverage", [("measured",Ellipse),("bounds",Rect),("square",Ellipse),("min_garment_similarity",F)])
 
 
 def pixel_bind(lib):
+    if hasattr(lib,"frame_kernel_face_partial_views"):
+        fn=lib.frame_kernel_face_partial_views
+        fn.argtypes=[Ellipse,U,U,P]
+        fn.restype=C.c_int32
+        lib.partial_views=fn
+        fn=lib.frame_kernel_face_partial_finish
+        fn.argtypes=[Ellipse,I64,I64,P,S,P,S,P,S,P,S,P,S,P,S,S,MaskSpec,P]
+        fn.restype=C.c_int32
+        lib.partial_finish=fn
     if hasattr(lib,"frame_kernel_face_garment"):
         fn=lib.frame_kernel_face_garment
         fn.argtypes=[P,S,P,S,S,S,MaskSpec,Ellipse,P]
@@ -360,6 +371,107 @@ def reappear_current(lib,face,evidence,entry,report,snapshot,track,trusted,targe
     return measured,required,placement,None
 
 
+def retrospective_partial(lib,face,yolo,evidence,report,drops):
+    """Optional offline second pass: only the adjacent missing frame before
+    a qualified garment reappearance. Never uses a previous second-pass
+    output, never changes the first-pass temporal or tracking state."""
+    if not hasattr(lib,"partial_views") or yolo is None:
+        return
+    for i in range(1,len(report)-1):
+        row,later=report[i],report[i+1]
+        if (row["kind"] is not None or later["kind"]!=4 or i in drops or i+1 in drops
+                or row["track"] is None or row["track"]["observed"] or row["track"]["dormant"]
+                or row["track"]["state"] not in (2,3)):
+            continue
+        gap=later["time_us"]-row["time_us"]
+        root=next((q for q in reversed(report[:i]) if q["kind"]==0 and q["track"]["observed"]),None)
+        if root is None or not 0<gap<=150_000:
+            continue
+        trusted=(Rect(*root["track"]["bounds"]),Ellipse(*root["raw"]),root["time_us"])
+        age=row["time_us"]-trusted[2]
+        if not 950_000<age<=2_000_000 or age+gap>2_000_000:
+            continue
+        roots,rivals,indices=garment_roots(lib,face,evidence,report[:i+1],trusted)
+        attempt=dict(next_index=i+1,root_indices=indices,root_age_us=age,gap_us=gap,views=[])
+        row["partial_attempt"]=attempt
+        if len(roots)<2 or not rivals:
+            continue
+        frame,image,transform,detections,masks=evidence[i]
+        anchor=Ellipse(*later["raw"])
+        plans=(Rect*2)()
+        status=lib.partial_views(anchor,transform.width,transform.height,C.byref(plans))
+        if status!=0:
+            attempt["plan_status"]=status
+            continue
+        local=[]
+        for plan in plans:
+            left,top,right,bottom=map(int,vals(plan))
+            crop=image.crop((left,top,right,bottom))
+            tr,ds,ms=detect_instances(lib,yolo,crop)
+            rgb=np.ascontiguousarray(crop.convert("RGB"))
+            owned=[]
+            for j,d in enumerate(ds):
+                spec=MaskSpec(160,160,tr,d.box)
+                measured=detect_face(lib,face,crop,spec,ms[j])
+                if measured is not None:
+                    owned.append((j,spec,measured))
+            detail=dict(view=vals(plan),owned_faces=len(owned))
+            attempt["views"].append(detail)
+            # Every raw instance with a selected current face participates;
+            # no selection based on annotations or missing rival garment.
+            if len(owned)!=1:
+                break
+            j,spec,measured=owned[0]
+            g=Garment()
+            status=lib.garment(ptr(rgb),rgb.size,ptr(ms),ms.size,len(ds),j,spec,measured,C.byref(g))
+            detail["garment_status"]=status
+            if status!=0:
+                break
+            placement=HeadSticker()
+            check(lib.reappearance_sticker(ptr(ms[j]),ms[j].size,spec,measured,C.byref(placement)))
+            f=Ellipse(measured.x+left,measured.y+top,measured.rx,measured.ry)
+            b=placement.bounds
+            bounds=Rect(b.left+left,b.top+top,b.right+left,b.bottom+top)
+            detail.update(face=vals(f),bounds=vals(bounds),body_confidence=ds[j].confidence,samples=g.samples)
+            local.append(PartialView(plan,f,bounds,g,ds[j].confidence))
+        if len(local)!=2:
+            continue
+        # All per-instance selected full-frame faces veto overlap, including
+        # those lacking a usable garment descriptor. Valid garments compete.
+        full_faces=[]; current_rivals=[]
+        rgb=np.ascontiguousarray(image.convert("RGB"))
+        for j,d in enumerate(detections):
+            spec=MaskSpec(160,160,transform,d.box)
+            measured=detect_face(lib,face,image,spec,masks[j])
+            if measured is None:
+                continue
+            full_faces.append(measured)
+            g=Garment()
+            status=lib.garment(ptr(rgb),rgb.size,ptr(masks),masks.size,len(detections),j,spec,measured,C.byref(g))
+            if status==0:
+                current_rivals.append(g)
+        a=(PartialView*2)(*local);b=(Garment*len(roots))(*roots);c=(Garment*len(rivals))(*rivals)
+        d=(Garment*len(current_rivals))(*current_rivals);f=(Ellipse*len(full_faces))(*full_faces)
+        spec=MaskSpec(160,160,transform,Rect(0,0,transform.width,transform.height))
+        out=PartialCoverage()
+        status=lib.partial_finish(anchor,gap,age,a,len(a),b,len(b),c,len(c),d if len(d) else None,len(d),
+                                  f if len(f) else None,len(f),ptr(masks),masks.size,len(detections),spec,C.byref(out))
+        attempt.update(status=status,full_faces=len(f),current_rivals=len(d))
+        if status!=0:
+            continue
+        attempt["min_garment_similarity"]=out.min_garment_similarity
+        sticker=out.square
+        half=max(8,1.02*sticker.rx)
+        # This lane proves square geometry, not ellipse-mask raster coverage.
+        # Store the square as the geometry marker used by existing replay
+        # bookkeeping, and explicitly mark the ellipse result unvalidated.
+        row.update(kind=5,raw=vals(out.measured),required=vals(sticker),render=vals(sticker),sticker=vals(sticker),
+                   sticker_required_bounds=vals(out.bounds),ellipse_mask_validated=False,
+                   width=min(transform.width,sticker.x+half)-max(0,sticker.x-half),
+                   height=min(transform.height,sticker.y+half)-max(0,sticker.y-half),
+                   head_covered=None)
+
+
 def summarize(rows):
     usable = [r for r in rows if r["render"] is not None]
     sample = [r for r in usable if r["index"] % 3 == 0 or r["index"] == rows[-1]["index"]]
@@ -370,7 +482,8 @@ def summarize(rows):
                 body_observed=sum(r["track"] is not None and r["track"]["observed"] for r in rows),
                 direct_face=sum(r["kind"]==0 for r in rows), projected_face=sum(r["kind"]==1 for r in rows),
                 estimated_face=sum(r["kind"]==2 for r in rows),
-                coverage_only_recovered=sum(r["kind"] in (3,4) for r in rows),
+                coverage_only_recovered=sum(r["kind"] in (3,4,5) for r in rows),
+                retrospective_partial=sum(r["kind"]==5 for r in rows),
                 garment_reappearance=sum(r["kind"]==4 for r in rows),
                 terminal_current_continuations=sum(r["kind"]==3 and r.get("recovery_attempt",{}).get("continuation",False) for r in rows),
                 rendered=len(usable), missing=[r["index"] for r in rows if r["render"] is None],
@@ -390,7 +503,7 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None):
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, partial_yolo=None):
     tracking = Tracking(lib,target,protected_roots)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
@@ -544,6 +657,8 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                                                sticker.y-y0-(frame["head_y"]-hy0)]
     finally:
         tracking.close()
+    if partial_yolo is not None:
+        retrospective_partial(lib,face,partial_yolo,evidence,report,drops)
     return dict(summary=summarize(report),frames=report)
 
 
@@ -558,6 +673,8 @@ def main():
     parser.add_argument("--credible-roots",action="store_true",
                         help="Protect first-frame analysis IDs with confidence >= .60 as in Android FACE_ONLY; does not add privacy targets")
     parser.add_argument("--cover-fallback-experiment",action="store_true")
+    parser.add_argument("--retro-partial",action="store_true",
+                        help="Explicit offline one-frame current-evidence second-pass experiment")
     parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args()
     base, candidate=load(args.baseline),load(args.candidate)
@@ -585,6 +702,7 @@ def main():
             "fixture_sha256":hashlib.sha256(args.fixture.read_bytes()).hexdigest(),
             "target_id":args.target_id,"identity_protected_roots":roots,"injected_face_drops":sorted(drops),
             "experimental_cover_fallback":args.cover_fallback_experiment,
+            "experimental_retro_partial":args.retro_partial,
             "model_sha256": {name:hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
                              for name,path in [("person","models/litert/yolo11n-seg-fp16.tflite"),("face","testdata/models/face/blaze_face_full_range.tflite")]}}
     libs=[("baseline",base)]
@@ -592,7 +710,7 @@ def main():
         libs.append(("size_only",load(args.size_only)))
     libs.append(("candidate",candidate))
     for name,lib in libs:
-        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots)
+        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,partial_yolo=yolo if args.retro_partial else None)
         print(name,json.dumps(report[name]["summary"]),flush=True)
     for name in [n for n,_ in libs if n!="baseline"]:
         for a,b in zip(report["baseline"]["frames"],report[name]["frames"],strict=True):

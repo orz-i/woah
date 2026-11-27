@@ -382,6 +382,259 @@ pub fn cover_reappearance(
     Ok(out)
 }
 
+/// Offline-only, one adjacent frame before an independently qualified
+/// reappearance. The later face determines search windows, not output pixels
+/// or identity. Two differently sized current inference views must agree.
+pub fn partial_views(later: Ellipse, width: u32, height: u32) -> Option<[Rect; 2]> {
+    if !valid_seed(later) || width < 2 || height < 2 || width > 65535 || height > 65535 {
+        return None;
+    }
+    let view = |x: f32, up: f32, down: f32| Rect {
+        left: (later.center_x - x * later.radius_x)
+            .round()
+            .clamp(0.0, width as f32),
+        right: (later.center_x + x * later.radius_x)
+            .round()
+            .clamp(0.0, width as f32),
+        top: (later.center_y - up * later.radius_y)
+            .round()
+            .clamp(0.0, height as f32),
+        bottom: (later.center_y + down * later.radius_y)
+            .round()
+            .clamp(0.0, height as f32),
+    };
+    let a = view(5.0, 5.0, 13.0);
+    let b = view(3.5, 4.5, 10.0);
+    (a.valid() && b.valid() && a != b && b.right - b.left >= 32.0 && b.bottom - b.top >= 32.0)
+        .then_some([a, b])
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct PartialView {
+    pub view: Rect,
+    pub face: Ellipse,
+    pub bounds: Rect,
+    pub garment: Garment,
+    pub body_confidence: f32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PartialCoverage {
+    pub measured: Ellipse,
+    pub bounds: Rect,
+    pub square: Ellipse,
+    pub min_garment_similarity: f32,
+}
+
+/// A coarse mask at the newly detected face must actually have a boundary
+/// there, rather than be solid foreground. A mask whose central sample is
+/// positive and whose 4 immediate neighbors are all foreground cannot be
+/// contradicted by this experimental local recovery.
+fn coarse_boundary(
+    pixels: &[u8],
+    count: usize,
+    spec: HeadMaskSpec,
+    face: Ellipse,
+) -> Result<(), Error> {
+    let size = (spec.width as usize)
+        .checked_mul(spec.height as usize)
+        .ok_or(Error::Invalid)?;
+    if count == 0
+        || count > 256
+        || size == 0
+        || pixels.len() != size.checked_mul(count).ok_or(Error::Invalid)?
+        || !spec.valid(&pixels[..size])
+    {
+        return Err(Error::Invalid);
+    }
+    let tr = spec.transform;
+    let px = ((face.center_x * tr.scale + tr.pad_left) / tr.input_size as f32 * spec.width as f32)
+        .floor();
+    let py = ((face.center_y * tr.scale + tr.pad_top) / tr.input_size as f32 * spec.height as f32)
+        .floor();
+    if !px.is_finite()
+        || !py.is_finite()
+        || px < 1.0
+        || py < 1.0
+        || px >= spec.width as f32 - 1.0
+        || py >= spec.height as f32 - 1.0
+    {
+        return Err(Error::NoEvidence);
+    }
+    let w = spec.width as usize;
+    let at = py as usize * w + px as usize;
+    let mut boundary = false;
+    for m in pixels.chunks_exact(size) {
+        if m[at] < 96 {
+            continue;
+        }
+        if [at - 1, at + 1, at - w, at + w]
+            .into_iter()
+            .all(|i| m[i] >= 96)
+        {
+            return Err(Error::NoEvidence);
+        }
+        boundary = true;
+    }
+    if boundary {
+        Ok(())
+    } else {
+        Err(Error::NoEvidence)
+    }
+}
+
+fn encloses(b: Rect, f: Ellipse) -> bool {
+    b.valid()
+        && b.left <= f.center_x - f.radius_x
+        && b.right >= f.center_x + f.radius_x
+        && b.top <= f.center_y - f.radius_y
+        && b.bottom >= f.center_y + f.radius_y
+}
+fn face_agrees(a: Ellipse, b: Ellipse, limit: f32, min: f32, max: f32) -> bool {
+    valid_seed(a)
+        && valid_seed(b)
+        && ((b.center_x - a.center_x) / a.radius_x).hypot((b.center_y - a.center_y) / a.radius_y)
+            <= limit
+        && (min..=max).contains(&(b.radius_x / a.radius_x))
+        && (min..=max).contains(&(b.radius_y / a.radius_y))
+}
+
+/// Transport fresh detector/garment/mask support from BOTH planned views.
+/// The caller must have already required exactly one current owned face in
+/// each view and used describe/cover_reappearance on those current raw masks.
+/// All full-frame current face observations veto overlap. No output may seed
+/// another retrospective recovery or any tracking/direct observation clock.
+#[allow(clippy::too_many_arguments)]
+pub fn partial_finish(
+    later: Ellipse,
+    gap_us: i64,
+    root_age_us: i64,
+    views: &[PartialView],
+    roots: &[Garment],
+    rivals: &[Garment],
+    current_rivals: &[Garment],
+    foreign_faces: &[Ellipse],
+    coarse: &[u8],
+    count: usize,
+    spec: HeadMaskSpec,
+) -> Result<PartialCoverage, Error> {
+    if views.len() != 2
+        || roots.len() > 8
+        || rivals.len() > 256
+        || current_rivals.len() > 256
+        || foreign_faces.len() > 256
+        || roots
+            .iter()
+            .chain(rivals)
+            .chain(current_rivals)
+            .any(|g| !g.valid())
+        || foreign_faces.iter().any(|&f| !valid_seed(f))
+    {
+        return Err(Error::Invalid);
+    }
+    let plans = partial_views(
+        later,
+        spec.transform.source_width,
+        spec.transform.source_height,
+    )
+    .ok_or(Error::Invalid)?;
+    if !(1..=150_000).contains(&gap_us)
+        || !(950_001..=2_000_000).contains(&root_age_us)
+        || root_age_us.saturating_add(gap_us) > 2_000_000
+        || roots.len() < 2
+        || rivals.is_empty()
+    {
+        return Err(Error::NoEvidence);
+    }
+    let root_score = |g: &Garment| {
+        let mut s = roots.iter().map(|r| score(r, g)).collect::<Vec<_>>();
+        s.sort_by(|a, b| b.total_cmp(a));
+        (0.5 * (s[0] + s[1]), s[1])
+    };
+    let current_rival = current_rivals
+        .iter()
+        .map(|g| root_score(g).0)
+        .fold(0.0, f32::max);
+    let mut min_similarity = 1.0_f32;
+    for (v, plan) in views.iter().zip(plans) {
+        if v.view != plan
+            || !v.garment.valid()
+            || !valid_seed(v.face)
+            || !encloses(v.bounds, v.face)
+            || !v.body_confidence.is_finite()
+            || !(0.0..=1.0).contains(&v.body_confidence)
+        {
+            return Err(Error::Invalid);
+        }
+        // No clipped/undersized impostor or outlying second view.
+        if v.body_confidence < 0.40
+            || !face_agrees(later, v.face, 0.70, 0.75, 1.35)
+            || v.bounds.left < plan.left
+            || v.bounds.top < plan.top
+            || v.bounds.right > plan.right
+            || v.bounds.bottom > plan.bottom
+            || v.bounds.right - v.bounds.left > 4.5 * later.radius_x
+            || v.bounds.bottom - v.bounds.top > 4.5 * later.radius_y
+        {
+            return Err(Error::NoEvidence);
+        }
+        let (best, second) = root_score(&v.garment);
+        let rival = rivals
+            .iter()
+            .map(|r| score(r, &v.garment))
+            .fold(0.0, f32::max);
+        if best < 0.80 || second < 0.75 || best - rival < 0.06 || best - current_rival < 0.10 {
+            return Err(Error::NoEvidence);
+        }
+        min_similarity = min_similarity.min(best);
+        coarse_boundary(coarse, count, spec, v.face)?;
+    }
+    let (a, b) = (views[0], views[1]);
+    if a.body_confidence.max(b.body_confidence) < 0.50
+        || !face_agrees(a.face, b.face, 0.25, 0.85, 1.18)
+        || score(&a.garment, &b.garment) < 0.80
+    {
+        return Err(Error::NoEvidence);
+    }
+    let bounds = Rect {
+        left: a.bounds.left.min(b.bounds.left),
+        top: a.bounds.top.min(b.bounds.top),
+        right: a.bounds.right.max(b.bounds.right),
+        bottom: a.bounds.bottom.max(b.bounds.bottom),
+    };
+    let x = ((f64::from(bounds.left) + f64::from(bounds.right)) * 0.5) as f32;
+    let y = ((f64::from(bounds.top) + f64::from(bounds.bottom)) * 0.5) as f32;
+    let half = (x - bounds.left)
+        .max(bounds.right - x)
+        .max(y - bounds.top)
+        .max(bounds.bottom - y)
+        .next_up();
+    if !half.is_finite() || half > 2.5 * later.radius_x.max(later.radius_y) {
+        return Err(Error::NoEvidence);
+    }
+    let square = Ellipse {
+        center_x: x,
+        center_y: y,
+        radius_x: half,
+        radius_y: half,
+    };
+    let render_half = (half * 1.02).max(8.0);
+    if foreign_faces.iter().any(|f| {
+        (f.center_x - x).abs() < render_half + f.radius_x
+            && (f.center_y - y).abs() < render_half + f.radius_y
+    }) {
+        return Err(Error::NoEvidence);
+    }
+    Ok(PartialCoverage {
+        measured: a.face,
+        bounds,
+        square,
+        min_garment_similarity: min_similarity,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -509,6 +762,142 @@ mod tests {
         let isolated = cover_reappearance(&pixels, spec, face).unwrap();
         assert_eq!(isolated.bounds.top, covered.bounds.top);
         assert_eq!(isolated.square, covered.square);
+    }
+
+    #[test]
+    fn adjacent_partial_recovery_requires_two_current_views_and_coarse_boundary() {
+        use crate::geometry::Transform;
+        let later = Ellipse {
+            center_x: 180.0,
+            center_y: 180.0,
+            radius_x: 16.0,
+            radius_y: 18.0,
+        };
+        let f = Ellipse {
+            center_x: 179.0,
+            center_y: 177.0,
+            ..later
+        };
+        let plans = partial_views(later, 640, 480).unwrap();
+        let g = garment(1, 2);
+        let rival = garment(3, 4);
+        let bounds = Rect {
+            left: 159.0,
+            top: 154.0,
+            right: 200.0,
+            bottom: 198.0,
+        };
+        let a = PartialView {
+            view: plans[0],
+            face: f,
+            bounds,
+            garment: g,
+            body_confidence: 0.61,
+        };
+        let b = PartialView {
+            view: plans[1],
+            ..a
+        };
+        let spec = HeadMaskSpec {
+            width: 160,
+            height: 160,
+            transform: Transform {
+                scale: 1.0,
+                pad_left: 0.0,
+                pad_top: 80.0,
+                source_width: 640,
+                source_height: 480,
+                input_size: 640,
+                proto_size: 160,
+            },
+            person: Rect {
+                left: 0.0,
+                top: 0.0,
+                right: 640.0,
+                bottom: 480.0,
+            },
+        };
+        let mut edge = vec![0_u8; 160 * 160];
+        // x=179 -> cell 44, y=177 -> cell 64. Positive foreground
+        // ends at the current measured center; right neighbor is clear.
+        for y in 0..160 {
+            edge[y * 160..y * 160 + 45].fill(255);
+        }
+        let call = |vs: &[PartialView],
+                    masks: &[u8],
+                    gap: i64,
+                    age: i64,
+                    fr: &[Ellipse],
+                    rivals: &[Garment],
+                    current: &[Garment]| {
+            partial_finish(
+                later,
+                gap,
+                age,
+                vs,
+                &[g, g],
+                rivals,
+                current,
+                fr,
+                masks,
+                1,
+                spec,
+            )
+        };
+        let out = call(&[a, b], &edge, 66_667, 1_100_000, &[], &[rival], &[rival]).unwrap();
+        assert!(encloses(out.bounds, f));
+        assert!(out.square.radius_x >= 22.0);
+        assert!(
+            call(
+                &[a, b],
+                &vec![255; 160 * 160],
+                66_667,
+                1_100_000,
+                &[],
+                &[rival],
+                &[rival]
+            )
+            .is_err()
+        );
+        assert!(
+            call(
+                &[a, b],
+                &vec![0; 160 * 160],
+                66_667,
+                1_100_000,
+                &[],
+                &[rival],
+                &[rival]
+            )
+            .is_err()
+        );
+        assert!(call(&[a, b], &edge, 150_001, 1_100_000, &[], &[rival], &[rival]).is_err());
+        assert!(call(&[a, b], &edge, 66_667, 1_980_000, &[], &[rival], &[rival]).is_err());
+        assert!(call(&[a, b], &edge, 66_667, 1_100_000, &[f], &[rival], &[rival]).is_err());
+        assert!(call(&[a, b], &edge, 66_667, 1_100_000, &[], &[g], &[rival]).is_err());
+        assert!(call(&[a, b], &edge, 66_667, 1_100_000, &[], &[rival], &[g]).is_err());
+        assert!(call(&[a], &edge, 66_667, 1_100_000, &[], &[rival], &[rival]).is_err());
+        assert!(call(&[a, a], &edge, 66_667, 1_100_000, &[], &[rival], &[rival]).is_err());
+        let small = PartialView {
+            face: Ellipse {
+                radius_x: 5.0,
+                radius_y: 6.0,
+                ..f
+            },
+            ..b
+        };
+        assert!(
+            call(
+                &[a, small],
+                &edge,
+                66_667,
+                1_100_000,
+                &[],
+                &[rival],
+                &[rival]
+            )
+            .is_err()
+        );
     }
 
     #[test]

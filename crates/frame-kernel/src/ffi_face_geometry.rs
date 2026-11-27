@@ -9,6 +9,98 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// output is two aligned writable Rect values, disjoint from inputs.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_partial_views(
+    later: Ellipse,
+    width: u32,
+    height: u32,
+    output: *mut Rect,
+) -> i32 {
+    if output.is_null() {
+        return REGION_INVALID;
+    }
+    let Some(views) = crate::face_reappearance::partial_views(later, width, height) else {
+        return REGION_INVALID;
+    };
+    // SAFETY: two writable Rects by caller contract.
+    unsafe { std::ptr::copy_nonoverlapping(views.as_ptr(), output, 2) };
+    REGION_OK
+}
+
+/// # Safety
+/// Each nonempty input array is readable for its length, output is one
+/// disjoint writable aligned PartialCoverage. No pointer is retained.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_partial_finish(
+    later: Ellipse,
+    gap_us: i64,
+    root_age_us: i64,
+    views: *const crate::face_reappearance::PartialView,
+    view_count: usize,
+    roots: *const crate::face_reappearance::Garment,
+    root_count: usize,
+    rivals: *const crate::face_reappearance::Garment,
+    rival_count: usize,
+    current: *const crate::face_reappearance::Garment,
+    current_count: usize,
+    foreign: *const Ellipse,
+    foreign_count: usize,
+    coarse: *const u8,
+    coarse_len: usize,
+    count: usize,
+    spec: HeadMaskSpec,
+    output: *mut crate::face_reappearance::PartialCoverage,
+) -> i32 {
+    use crate::face_reappearance::{Error, partial_finish};
+    if view_count != 2
+        || root_count > 8
+        || rival_count > 256
+        || current_count > 256
+        || foreign_count > 256
+        || coarse_len > 256 * 1024 * 1024
+        || count > 256
+        || output.is_null()
+    {
+        return REGION_INVALID;
+    }
+    // SAFETY: input lengths checked; caller supplies live readable arrays.
+    let (Some(views), Some(roots), Some(rivals), Some(current), Some(foreign), Some(coarse)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(views, view_count),
+            crate::ffi_tracking::borrowed(roots, root_count),
+            crate::ffi_tracking::borrowed(rivals, rival_count),
+            crate::ffi_tracking::borrowed(current, current_count),
+            crate::ffi_tracking::borrowed(foreign, foreign_count),
+            crate::ffi_tracking::borrowed(coarse, coarse_len),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    match partial_finish(
+        later,
+        gap_us,
+        root_age_us,
+        views,
+        roots,
+        rivals,
+        current,
+        foreign,
+        coarse,
+        count,
+        spec,
+    ) {
+        Ok(result) => {
+            // SAFETY: output is one disjoint aligned writable value.
+            unsafe { output.write(result) };
+            REGION_OK
+        }
+        Err(Error::NoEvidence) => REGION_NONE,
+        Err(Error::Invalid) => REGION_INVALID,
+    }
+}
+
+/// # Safety
 /// Current mask readable; output is disjoint writable aligned HeadSticker.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_face_reappearance_sticker(
