@@ -247,7 +247,8 @@ class PreviewPipeline(
                     fullBodyTrackIds = fullBodyPersonIds,
                     bodySupplementTrackIds = fullBodyPersonIds,
                     ptsUs = request.timestampMs * 1000L,
-                    conservativeSceneCoverage = uniformSceneCoverage
+                    conservativeSceneCoverage = uniformSceneCoverage,
+                    stabilizeStickerSize = request.effects.faceStickerEnabled
                 ).also { result ->
                     if (!result.readyForRender) {
                         throw DanceNativeException(

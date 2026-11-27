@@ -162,6 +162,17 @@ internal object FrameKernel {
             continueRegionNative(values, clock, raw + anchor.values(), pts, kind)
     }
 
+    private external fun faceRenderSizeStepNative(radii: FloatArray, clock: LongArray,
+        required: FloatArray, pts: Long, kind: Int): FloatArray
+
+    /** Per-render-owner state; geometry and lease semantics are implemented in Rust. */
+    class FaceRenderSizeState {
+        private val radii = FloatArray(2)
+        private val clock = LongArray(3)
+        fun step(required: FloatArray, pts: Long, kind: Int): FloatArray =
+            faceRenderSizeStepNative(radii, clock, required, pts, kind)
+    }
+
     class RegionState {
         private val values = FloatArray(12)
         private val clock = LongArray(2)

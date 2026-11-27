@@ -1488,7 +1488,8 @@ class ExportPipeline(
                                     canonicalModelRgbaBottomUp = null,
                                     ptsUs = ptsUs,
                                     coveredHeadFallbackTrackIds = coveredHeadFallbackIds,
-                                    conservativeSceneCoverage = uniformSceneCoverage
+                                    conservativeSceneCoverage = uniformSceneCoverage,
+                                    stabilizeStickerSize = request.effects.faceStickerEnabled
                                 )
                             }
                         }

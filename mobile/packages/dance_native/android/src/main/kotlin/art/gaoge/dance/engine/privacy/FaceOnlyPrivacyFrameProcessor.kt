@@ -518,6 +518,7 @@ class FaceOnlyPrivacyFrameProcessor(
     }
 
     private val uniformRegionContinuation = FrameKernel.RegionContinuation()
+    private val stickerSizeStates = mutableMapOf<Int, FrameKernel.FaceRenderSizeState>()
 
     fun resolveFrame(
         frameTexture: Int,
@@ -532,8 +533,11 @@ class FaceOnlyPrivacyFrameProcessor(
         canonicalModelRgbaBottomUp: ByteBuffer? = null,
         ptsUs: Long,
         coveredHeadFallbackTrackIds: Set<Int> = emptySet(),
-        conservativeSceneCoverage: Boolean = false
+        conservativeSceneCoverage: Boolean = false,
+        stabilizeStickerSize: Boolean = false
     ): FaceOnlyPrivacyFrameResult {
+        val stickerSizeIds = if (stabilizeStickerSize) faceOnlyTrackIds - fullBodyTrackIds else emptySet()
+        stickerSizeStates.keys.retainAll(stickerSizeIds)
         if (!conservativeSceneCoverage) uniformRegionContinuation.reset()
         val faceTargetIds = FrameKernel.faceProtectionIds(bodySupplementTrackIds, faceOnlyTrackIds)
         val fallbackTargetIds = if (coveredHeadFallbackTrackIds.isEmpty()) faceTargetIds else
@@ -782,6 +786,7 @@ class FaceOnlyPrivacyFrameProcessor(
         cachedFaceByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
         lastDetectorAttemptPtsUsByTrackId.keys.retainAll(processingFaceOnlyTrackIds)
         temporalStabilizer.retainTracks(baseRenderableFaceOnlyTrackIds)
+        stickerSizeStates.keys.retainAll(baseRenderableFaceOnlyTrackIds)
         pixelMotionTracker.retainRoiTracks(activeFaceOnlyTrackIds)
         occlusionHoldByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
 
@@ -1430,6 +1435,19 @@ class FaceOnlyPrivacyFrameProcessor(
                 if (region.source == FacePrivacyRegionSource.DETECTED_FACE && person.observedThisFrame) {
                     region = FrameKernelFaceGeometry.coverCurrent(person.mask, person.bbox, region)
                 }
+                // The Android sticker shader is clipped by the resolved face
+                // mask. Stabilize that final required ellipse, never only the
+                // artwork rectangle, and do not feed the size back to identity.
+                if (trackId in stickerSizeIds) {
+                    val kind = when (region.source) {
+                        FacePrivacyRegionSource.DETECTED_FACE -> if (trackedPerson.observedThisFrame) 0 else 1
+                        FacePrivacyRegionSource.PREDICTED_FACE -> 1
+                        FacePrivacyRegionSource.YOLO_HEAD_FALLBACK -> 2
+                    }
+                    val sized = stickerSizeStates.getOrPut(trackId) { FrameKernel.FaceRenderSizeState() }
+                        .step(floatArrayOf(region.centerX, region.centerY, region.radiusX, region.radiusY), ptsUs, kind)
+                    region = region.copy(centerX = sized[0], centerY = sized[1], radiusX = sized[2], radiusY = sized[3])
+                }
                 val maskStartNs = System.nanoTime()
                 val builtMask = FacePrivacyMaskBuilder.build(listOf(region), mapper)
                 maskBuildMs += (System.nanoTime() - maskStartNs) / 1_000_000.0
@@ -1451,6 +1469,8 @@ class FaceOnlyPrivacyFrameProcessor(
             }
         }
 
+        // Missing masks or suppressed owners cannot carry a size lease forward.
+        stickerSizeStates.keys.retainAll(faceMasks.keys)
         val renderableFaceOnlyTrackIds = linkedSetOf<Int>().apply {
             addAll(baseRenderableFaceOnlyTrackIds)
             addAll(dormantReactivatedTrackIds)
@@ -1470,6 +1490,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 null -> "NO_PIXEL_STATE"
             }
         }
+        stickerSizeStates.keys.retainAll(renderableFaceOnlyTrackIds)
         dormantFaceOnlyTrackIds.retainAll(activeFaceOnlyTrackIds)
         dormantFaceOnlyTrackIds.removeAll(renderableFaceOnlyTrackIds)
         dormantFaceOnlyTrackIds.addAll(dormantSuppressedTrackIds)

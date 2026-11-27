@@ -683,6 +683,30 @@ static int read_ellipse(JNIEnv *env,jfloatArray input,FrameKernelEllipse *out){
  if((*env)->ExceptionCheck(env))return 0;
  *out=(FrameKernelEllipse){values[0],values[1],values[2],values[3]};return 1;
 }
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_faceRenderSizeStepNative(
+    JNIEnv *env,jobject self,jfloatArray radii,jlongArray clock,jfloatArray required,jlong pts,jint kind) {
+    (void)self;
+    FrameKernelEllipse input={0},output={0};
+    if(!radii||!clock||(*env)->GetArrayLength(env,radii)!=2||(*env)->GetArrayLength(env,clock)!=3
+       ||kind<0||kind>2||!read_ellipse(env,required,&input)){invalid(env);return NULL;}
+    jfloat r[2];jlong t[3];
+    (*env)->GetFloatArrayRegion(env,radii,0,2,r);
+    (*env)->GetLongArrayRegion(env,clock,0,3,t);
+    if((*env)->ExceptionCheck(env))return NULL;
+    if(t[2]<0||t[2]>1){invalid(env);return NULL;}
+    FrameKernelFaceRenderSizeState state={.timestamp_us=t[0],.observed_us=t[1],
+        .major_radius=r[0],.observed_major=r[1],.initialized=(uint32_t)t[2]};
+    if(frame_kernel_face_render_size_step(&state,input,pts,(uint32_t)kind,&output)){
+        invalid(env);return NULL;
+    }
+    jfloatArray result=ellipse_output(env,output);
+    if(!result)return NULL;
+    r[0]=state.major_radius;r[1]=state.observed_major;
+    t[0]=state.timestamp_us;t[1]=state.observed_us;t[2]=state.initialized;
+    (*env)->SetFloatArrayRegion(env,radii,0,2,r);
+    (*env)->SetLongArrayRegion(env,clock,0,3,t);
+    return result;
+}
 JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_faceRegionNative(JNIEnv *env,jobject self,jfloatArray row,jfloatArray view,jfloat size,jfloat yaw){
  (void)self;if(!row||(*env)->GetArrayLength(env,row)!=18){invalid(env);return NULL;}
  float values[18]={0};(*env)->GetFloatArrayRegion(env,row,0,18,values);

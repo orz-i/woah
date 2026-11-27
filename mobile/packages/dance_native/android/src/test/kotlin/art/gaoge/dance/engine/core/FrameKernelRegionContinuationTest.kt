@@ -6,6 +6,21 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertTrue
 
 class FrameKernelRegionContinuationTest {
+    @Test fun stickerSizeTransportRetainsCurrentCenterAndCoverage() {
+        val state = FrameKernel.FaceRenderSizeState()
+        val large = floatArrayOf(100f, 80f, 40f, 50f)
+        val small = floatArrayOf(123f, 90f, 20f, 25f)
+        assertContentEquals(large, state.step(large, 0, 0))
+        val weak = state.step(small, 33_333, 1)
+        assertContentEquals(floatArrayOf(123f, 90f, 40f, 50f), weak)
+        val observed = state.step(small, 66_666, 0)
+        assertTrue(observed[3] in 25f..50f)
+        assertContentEquals(small, state.step(small, 250_001, 2))
+        assertContentEquals(large, state.step(large, 283_334, 0))
+        assertContentEquals(small, state.step(small, 10_000, 1))
+        assertContentEquals(small, FrameKernel.FaceRenderSizeState().step(small, 33_333, 1))
+    }
+
     @Test fun sourceContextUsesTheSameBoundedTimestampPlan() {
         kotlin.test.assertNull(FrameKernel.regionContextProbeUs(0))
         kotlin.test.assertNull(FrameKernel.regionContextProbeUs(-1))

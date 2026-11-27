@@ -165,6 +165,20 @@ enum IOSFrameKernel {
     return SIMD2<Float>(output[0],output[1])
   }
 
+  final class FaceRenderSizeState {
+    private var state = FrameKernelFaceRenderSizeState()
+    func step(required: SIMD4<Float>, timestampUs: Int64, kind: UInt32) throws -> SIMD4<Float> {
+      _ = IOSFrameKernel.checkedABI
+      let input = FrameKernelEllipse(center_x: required.x, center_y: required.y,
+        radius_x: required.z, radius_y: required.w)
+      var output = FrameKernelEllipse()
+      guard frame_kernel_face_render_size_step(&state, input, timestampUs, kind, &output) == 0 else {
+        throw IOSFrameKernel.pixelError()
+      }
+      return SIMD4(output.center_x, output.center_y, output.radius_x, output.radius_y)
+    }
+  }
+
   final class RegionState {
     private var state=FrameKernelRegionState()
     var referenceRadii: SIMD2<Float>? {
