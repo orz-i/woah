@@ -434,3 +434,43 @@ mid-analysis replay without user confirmation. Default GPU
 enablement remains unapproved; only the existing opt-in Release
 candidate is validated here. A4 optimization and fallback candidate
 are ready for bounded final review, not unrestricted deployment.
+
+## A4.6: final scope and paired regression review
+
+Base , candidate . No new algorithm or optimization
+in this stage. Fifteen files changed versus the product base before
+this review, no Rust/model/lockfile/iOS-native or privacy strategy
+changes. Shared YUV conversion and model initialization cleanup were
+explicitly covered. No forward experiment or fault injection migrated.
+The no-define Android Release config generates both opt-ins false.
+
+- Entire Android native suite: 641 tests, 0 failures/errors/skips;
+  Release Kotlin compilation and diagnostic compatibility check pass.
+- Entire Flutter app suite: 311 tests pass.
+- Actual Android ordinary comparison: five output configurations
+  (A/B, scaled canvas, full 23s, inverse, silent source), cancellation,
+  all H.264/AAC outputs pulled and fully decoded; YOLO initialization
+  and buffer inference smoke passes.
+- Physical Android privacy: 20 frame processor tests pass, two of three
+  real FACE_ONLY/mixed privacy exports pass. Dynamic affine dance
+  sticker width regression fails: ratio 2.0251046025104604 > 1.35.
+  Rebuilt the pre-A4 base and ran the same test separately, then
+  separately reran the candidate. All three failures have identical
+  sampled widths [470,433,434,484,244,239,475] and assertion text.
+  This establishes reproduction on the base, not universal privacy
+  equivalence. Independent existing-defect issue: https://github.com/orz-i/woah/issues/43.
+  No privacy threshold relaxed, no repair folded into A4.
+- Current arm64 iOS Release AOT no-codesign build passes (46.2 MB);
+  preview marker true, canonical model SHA-256 matches. Existing
+  locked Pods reused. CocoaPods-generated Xcode phase edit reverted.
+  No physical iPhone runtime evidence.
+- Evidence: , including both paired APK hashes,
+  regression and assertion logs, ordinary media/probes, iOS build log.
+
+Disposition: close incremental A4 performance research at its present
+isolated GPU candidate. Product preview and performance reviewed as
+stacked PRs; no global GPU default, no claim of privacy or unrestricted
+Release acceptance. Known existing privacy issue remains separately
+open. No production signing, no merge, no store submission. Physical
+GPU-unsupported hardware, driver-hang recovery, dedicated GPU repair
+fault injection, and device diversity remain unverified.
