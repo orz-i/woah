@@ -382,74 +382,6 @@ typedef struct FrameKernelHeadSticker {
 } FrameKernelHeadSticker;
 int32_t frame_kernel_head_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
     FrameKernelEllipse measured,FrameKernelEllipse stabilized,uint32_t kind,FrameKernelHeadSticker *output);
-/* Experimental garment-only reappearance evidence, never a canonical
-   identity assignment or exemption. RGB top-down tightly packed; all raw
-   masks contiguous and same transform. Face region is only used to locate
-   a garment band below it; face pixels are not sampled. */
-typedef struct FrameKernelFaceGarment { float rgb[512],chroma[512];uint32_t samples; } FrameKernelFaceGarment;
-typedef struct FrameKernelFaceReappearanceCandidate {
-    FrameKernelFaceGarment garment; FrameKernelRect body; FrameKernelEllipse face; uint32_t eligible;
-} FrameKernelFaceReappearanceCandidate;
-typedef struct FrameKernelFaceReappearanceDecision {
-    uint32_t index;float similarity,rival_root,rival_current;
-} FrameKernelFaceReappearanceDecision;
-int32_t frame_kernel_face_garment(const uint8_t *rgb,size_t rgb_len,const uint8_t *masks,size_t mask_len,
-    size_t count,size_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,FrameKernelFaceGarment *output);
-int32_t frame_kernel_face_reappearance_choose(FrameKernelRect root_body,FrameKernelEllipse root_face,int64_t age_us,
-    const FrameKernelFaceGarment *roots,size_t root_count,const FrameKernelFaceGarment *rivals,size_t rival_count,
-    const FrameKernelFaceReappearanceCandidate *current,size_t count,FrameKernelFaceReappearanceDecision *output);
-int32_t frame_kernel_face_reappearance_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
-    FrameKernelEllipse face,FrameKernelHeadSticker *output);
-/* Offline adjacent-frame partial-face re-detection. A later independently
-   qualified reappearance may plan two views but supplies no current pixels.
-   Both current owned faces/masks and garments must agree. Coarse boundary
-   only, no solid foreign foreground or current foreign face overlap.
-   Output is coverage-only, must never seed another probe or identity state. */
-typedef struct FrameKernelFacePartialView {
-    FrameKernelRect view; FrameKernelEllipse face; FrameKernelRect bounds;
-    FrameKernelFaceGarment garment; float body_confidence;
-} FrameKernelFacePartialView;
-typedef struct FrameKernelFacePartialCoverage {
-    FrameKernelEllipse measured; FrameKernelRect bounds; FrameKernelEllipse square;
-    float min_garment_similarity;
-} FrameKernelFacePartialCoverage;
-int32_t frame_kernel_face_partial_views(FrameKernelEllipse later,uint32_t width,uint32_t height,FrameKernelRect *output2);
-int32_t frame_kernel_face_partial_finish(FrameKernelEllipse later,int64_t gap_us,int64_t root_age_us,
-    const FrameKernelFacePartialView *views,size_t view_count,
-    const FrameKernelFaceGarment *roots,size_t root_count,const FrameKernelFaceGarment *rivals,size_t rival_count,
-    const FrameKernelFaceGarment *current,size_t current_count,const FrameKernelEllipse *foreign,size_t foreign_count,
-    const uint8_t *coarse,size_t coarse_len,size_t count,FrameKernelHeadMaskSpec spec,FrameKernelFacePartialCoverage *output);
-/* Experimental current-frame coverage-only recovery. Root must be the last
-   canonically owned DIRECT face and body; predicted_body the retained
-   selected track's current prediction. Hard age <=800ms; never renews
-   the 150ms projection lease or grants identity/ownership/exemption.
-   Pass ALL current raw body boxes and competing retained track boxes.
-   Probe returns a unique candidate index; finish rechecks the same evidence
-   and requires a fresh detector face and its current raw instance mask.
-   0 success, 1 no qualified evidence, -1 invalid; nonzero leaves output intact. */
-typedef struct FrameKernelFaceRecoveryAnchor {
-    FrameKernelRect root_body;
-    FrameKernelEllipse root_face;
-    FrameKernelRect predicted_body;
-    int64_t age_us;
-} FrameKernelFaceRecoveryAnchor;
-int32_t frame_kernel_face_recovery_probe(FrameKernelFaceRecoveryAnchor anchor,
-    const FrameKernelRect *bodies,size_t count,const FrameKernelRect *foreign,size_t foreign_count,uint32_t *output);
-int32_t frame_kernel_face_recovery_finish(FrameKernelFaceRecoveryAnchor anchor,
-    const FrameKernelRect *bodies,size_t count,const FrameKernelRect *foreign,size_t foreign_count,uint32_t index,
-    const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse measured,FrameKernelHeadSticker *output);
-/* One terminal fresh-current continuation after 800ms: preceding frame must
-   have passed ROOT-ONLY recovery, gap <=150ms; never use a continuation as
-   the previous evidence. Absolute total age <=950ms; current detector and
-   current mask remain mandatory, plus pixel agreement. No lease is renewed. */
-typedef struct FrameKernelFaceRecoveryPrevious {
-    FrameKernelRect body;
-    FrameKernelEllipse face;
-    int64_t root_age_us;
-} FrameKernelFaceRecoveryPrevious;
-int32_t frame_kernel_face_recovery_continuation_probe(FrameKernelFaceRecoveryAnchor anchor,
-    FrameKernelFaceRecoveryPrevious previous,const FrameKernelRect *bodies,size_t count,
-    const FrameKernelRect *foreign,size_t foreign_count,uint32_t *output);
 /* Experimental bounded translation from a DIRECT face observation to current
    source pixels (top-down gray). The immutable seed's lease is <=150ms.
    Foreign current person boxes veto a peak, never grant ownership.
@@ -459,11 +391,6 @@ typedef struct FrameKernelGrayView {
     uint32_t width,height,stride;
     FrameKernelRect source;
 } FrameKernelGrayView;
-int32_t frame_kernel_face_recovery_continuation_finish(FrameKernelFaceRecoveryAnchor anchor,
-    FrameKernelFaceRecoveryPrevious previous,const uint8_t *previous_gray,size_t previous_len,FrameKernelGrayView previous_view,
-    const uint8_t *current_gray,size_t current_len,FrameKernelGrayView current_view,
-    const FrameKernelRect *bodies,size_t count,const FrameKernelRect *foreign,size_t foreign_count,
-    uint32_t index,const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse measured,FrameKernelHeadSticker *output);
 typedef struct FrameKernelPixelMotion {
     float dx,dy,correlation,uniqueness;
 } FrameKernelPixelMotion;
