@@ -44,12 +44,21 @@ plugins {
 }
 
 // Native and Flutter use the same build-time opt-in. Do not enable QA fixtures.
-val cutoutPreviewDefines = providers.gradleProperty("dart-defines").orNull.orEmpty()
+val decodedDartDefines = providers.gradleProperty("dart-defines").orNull.orEmpty()
     .split(",").filter { it.isNotBlank() }
     .map { String(Base64.getDecoder().decode(it), Charsets.UTF_8) }
-    .filter { it.substringBefore("=") == "WOAH_ENABLE_CUTOUT_PREVIEW" }
-require(cutoutPreviewDefines.size <= 1) { "Duplicate cutout preview build define" }
-val cutoutPreviewEnabled = cutoutPreviewDefines.singleOrNull() == "WOAH_ENABLE_CUTOUT_PREVIEW=true"
+fun explicitDartOptIn(name: String): Boolean {
+    val matches = decodedDartDefines.filter { it.substringBefore("=") == name }
+    require(matches.size <= 1) { "Duplicate $name build define" }
+    return matches.singleOrNull() == "$name=true"
+}
+val cutoutPreviewEnabled = explicitDartOptIn("WOAH_ENABLE_CUTOUT_PREVIEW")
+// A4: real Release AOT measurements only, in the isolated local package.
+// This neither enables other QA hooks nor changes the production CPU policy.
+val cutoutReleaseGpuQa = explicitDartOptIn("WOAH_CUTOUT_RELEASE_GPU_QA")
+require(!cutoutReleaseGpuQa || cutoutPreviewEnabled) {
+    "Release GPU comparison QA requires the explicit canvas preview opt-in"
+}
 
 val diagnosticGitCommitSha = System.getenv("GIT_COMMIT_SHA")?.takeIf { it.isNotBlank() }
     ?: runCatching {
@@ -147,6 +156,7 @@ android {
         buildConfigField("String", "BUILD_TIMESTAMP", "\"$diagnosticBuildTimestamp\"")
         buildConfigField("String", "CUTOUT_QA_BACKEND", "\"$cutoutQaBackend\"")
         buildConfigField("boolean", "CUTOUT_PREVIEW_ENABLED", cutoutPreviewEnabled.toString())
+        buildConfigField("boolean", "CUTOUT_RELEASE_GPU_QA", cutoutReleaseGpuQa.toString())
     }
 
     buildFeatures {

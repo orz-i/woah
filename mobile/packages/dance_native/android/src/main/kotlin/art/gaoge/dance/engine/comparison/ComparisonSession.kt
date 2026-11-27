@@ -105,9 +105,15 @@ internal class ComparisonSession(
     // GPU QA keeps the idle runtime between selections to avoid compiling
     // the graph per selected role. CPU keeps its existing short lifetime.
     private var idleCutoutRuntime:YoloLiteRtSegmenter?=null
-    private val cutoutAccelerator=if(art.gaoge.dance.engine.BuildConfig.DEBUG &&
-        art.gaoge.dance.engine.BuildConfig.CUTOUT_QA_BACKEND=="gpu" &&
-        context.packageName.endsWith(".cutoutqa")) LiteRtAccelerator.GPU else LiteRtAccelerator.CPU
+    private val cutoutAccelerator=if(
+        (art.gaoge.dance.engine.BuildConfig.DEBUG &&
+            art.gaoge.dance.engine.BuildConfig.CUTOUT_QA_BACKEND=="gpu" &&
+            context.packageName.endsWith(".cutoutqa")) ||
+        (!art.gaoge.dance.engine.BuildConfig.DEBUG &&
+            art.gaoge.dance.engine.BuildConfig.CUTOUT_PREVIEW_ENABLED &&
+            art.gaoge.dance.engine.BuildConfig.CUTOUT_RELEASE_GPU_QA &&
+            context.packageName.endsWith(".cutoutreleaseqa"))
+    ) LiteRtAccelerator.GPU else LiteRtAccelerator.CPU
     private fun newCutoutRuntime()=YoloLiteRtSegmenter(context,requestedAccelerator=cutoutAccelerator,cpuNumThreads=4)
     private fun takeCutoutRuntime()=idleCutoutRuntime.also{idleCutoutRuntime=null}
     private fun clearCutoutInspections(){
