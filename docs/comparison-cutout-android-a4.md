@@ -97,3 +97,75 @@ not default-ready. Need repeat cold/warm timing on different clips and
 devices, test unsupported GPU/CPU fallback and cancel/retry/cache
 lifecycle, preserve identity evidence and measure GPU scheduling.
 Do not claim universal 60s/8s or broad Release acceptance.
+
+## A4.2: GPU decode/source-reuse study
+
+Experiment commit `b4f79874`, branch
+`research/comparison-cutout-gpu-source-reuse-20261127`, based on
+`43d68584`. The product performance branch does not include its
+shared decoder refactor or experimental scheduling flags.
+
+All arms used actual GPU, same physical KB2000, pinned YOLO11n, same
+two 12s C8.3 sources (600 total source PTS), 6s anchor and touch points
+as A4.1. Each instrumented arm ran in a fresh process. Sequence:
+hybrid, baseline (same instrumentation build), then snapshot (new
+instrumentation build including the shared converter refactor). No
+replay or observation dump; same alpha output checks.
+
+| Metric | Previous GPU | Fresh prefetch | Serial forward hybrid | GPU snapshot |
+| --- | ---: | ---: | ---: | ---: |
+| First preview analysis s | 8.896 | 9.222 | 7.829 | 8.658 |
+| Full analysis s | 69.975 | 71.276 | 77.064 | 68.773 |
+| Total wall s | 73.954 | 75.228 | 80.850 | 72.788 |
+| Reference visible | 300 | 300 | 300 | 300 |
+| Target visible | 245 | 245 | 245 | 245 |
+| Detail attempts / accepted | 71/21 | 71/21 | 71/21 | 71/21 |
+| Direct source crops | 0 | 0 | 39 | 39 |
+| Auxiliary decoder opens | 4 | 4 | 2 | 2 |
+| Auxiliary seeks | 31 | 31 | 30 | 30 |
+| Detail decode s | 9.899 | 9.877 | 8.787 | 8.631 |
+| Full-frame decode/convert s | 24.633 | 25.169 | 23.346 | 25.581 |
+| Output read/sync s | 22.320 | 22.787 | 23.778 | 22.467 |
+
+Timing phases overlap; do not sum. Thermal status 0 throughout;
+battery temperature hybrid 27.7->28.1 C, fresh baseline 28.1->28.3 C,
+snapshot 28.3->28.6 C. Each arm's two alpha evidence files matched
+the previous GPU run byte for byte, including all 55 missing records
+and 545 valid masks. Sparse checks unchanged (20/24 selected-point hits,
+0/24 marked distractor hits across lanes; max gap 1.2s).
+No claim of dense identity correctness.
+
+Hybrid retains reverse prefetch but serializes forward decoding to
+borrow the source Image. Reject: complete analysis 8.12% slower
+than fresh baseline despite 39 inline crops and faster first preview.
+Snapshot retains parallel decode and uses two exclusive raw YUV
+copy slots per lane, capped at 8 MiB each; copies original plane
+bytes/strides, crop and color metadata, then uses the existing Rust
+converter on the consumer. Oversized slots fall back to the original
+auxiliary path. Observed capacity 1113918 bytes per slot, 149 source
+snapshots per lane, no fallback; only 39 crops on target and none
+on reference. Raw source is not persisted. Two lane work objects
+may retain allocations concurrently, so 16 MiB is a per-lane source
+slot cap, not a whole-pair peak memory claim. Sampled snapshot
+instrumentation PSS 156628 and 160334 KiB, not peak or matched A/B.
+
+The physical decoder parity test passed across 0/90/180/270 degrees
+(8 exact snapshot crops, after codec closure, plus existing fresh,
+inline, sequential and reverse-seek parity, expired crop callback
+rejection and budget fallback). Existing borrowed-image cancellation
+check passed; snapshot prefetch cancellation itself is not separately
+verified. The actual benchmark APK is instrumentation Debug using
+current production algorithms, not a Release Flutter UI run.
+
+Snapshot gains 2.502s / 3.51% vs fresh baseline and only 1.202s /
+1.72% vs previous GPU. Small single-run gains across builds do not
+justify promotion. Preserve experiment in its own research branch,
+no product code migration; do not iterate the same forward policy.
+Next higher-value performance study: reverse ROI seek amortization
+(30 seeks remain), followed by broader GPU candidate reliability,
+fallback and repeatable release measurements. No model/identity
+algorithm changes and no claim of native 60s completion.
+
+Evidence: `/tmp/woah-cutout-a4-source` (reports, alpha files, logs,
+comparison.json, parity.json and scripts). Local only; no media
+or signing artifacts committed.
