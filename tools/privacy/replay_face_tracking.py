@@ -129,14 +129,16 @@ class Snapshot:
 
 
 class Tracking:
-    def __init__(self, lib, target):
+    def __init__(self, lib, target, protected_roots=None):
         tracker_bind(lib)
         self.lib, self.target = lib, target
         self.handle = lib.tracking_create(lib.tracking_defaults())
         if not self.handle:
             raise RuntimeError("tracking_create")
         ids = (I64 * 1)(target)
-        check(lib.tracking_selection(self.handle, ids, 1, None, 0, ids, 1, 0))
+        roots = sorted(set(protected_roots or ()) | {target})
+        protected = (I64 * len(roots))(*roots)
+        check(lib.tracking_selection(self.handle, protected, len(roots), None, 0, ids, 1, 0))
 
     def step(self, transform, detections, masks, time, first):
         n = len(detections)
@@ -188,8 +190,8 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False):
-    tracking = Tracking(lib,target)
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None):
+    tracking = Tracking(lib,target,protected_roots)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
     sticker_seed = None
@@ -324,6 +326,8 @@ def main():
     parser.add_argument("--fixture",type=Path,default=ROOT/"testdata/face_dynamic_smoke/dynamic_manifest.json")
     parser.add_argument("--target-id",type=int,default=1)
     parser.add_argument("--drop-faces",default="")
+    parser.add_argument("--credible-roots",action="store_true",
+                        help="Protect first-frame analysis IDs with confidence >= .60 as in Android FACE_ONLY; does not add privacy targets")
     parser.add_argument("--cover-fallback-experiment",action="store_true")
     parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args()
@@ -345,9 +349,12 @@ def main():
         parser.error("drop indices outside fixture")
     if not evidence:
         parser.error("empty fixture")
+    roots=([i for i,d in enumerate(evidence[0][3]) if d.confidence >= .60]
+           if args.credible_roots else [])
+    roots=sorted(set(roots)|{args.target_id})
     report={"scope":"production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
             "fixture_sha256":hashlib.sha256(args.fixture.read_bytes()).hexdigest(),
-            "target_id":args.target_id,"injected_face_drops":sorted(drops),
+            "target_id":args.target_id,"identity_protected_roots":roots,"injected_face_drops":sorted(drops),
             "experimental_cover_fallback":args.cover_fallback_experiment,
             "model_sha256": {name:hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
                              for name,path in [("person","models/litert/yolo11n-seg-fp16.tflite"),("face","testdata/models/face/blaze_face_full_range.tflite")]}}
@@ -356,7 +363,7 @@ def main():
         libs.append(("size_only",load(args.size_only)))
     libs.append(("candidate",candidate))
     for name,lib in libs:
-        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate")
+        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots)
         print(name,json.dumps(report[name]["summary"]),flush=True)
     for name in [n for n,_ in libs if n!="baseline"]:
         for a,b in zip(report["baseline"]["frames"],report[name]["frames"],strict=True):

@@ -37,6 +37,7 @@ impl GrayView {
                 .is_some_and(|n| pixels.len() == n)
     }
 
+    #[cfg(test)]
     fn sample(self, pixels: &[u8], x: f32, y: f32) -> Option<f64> {
         let x = ((x - self.source.left) / (self.source.right - self.source.left)
             * self.width as f32)
@@ -112,12 +113,28 @@ pub enum MotionError {
 }
 
 fn patch(view: GrayView, pixels: &[u8], x: f32, y: f32, half: f32) -> Option<[f64; SAMPLES]> {
+    // The patch lattice is separable: compute the 15 X and 15 Y
+    // source-to-buffer indices once, not 225 pairs. Keep the Float32
+    // mapping operation order and row-major Float64 accumulation identical.
+    let axis = |center: f32, origin: f32, end: f32, dimension: u32| {
+        let mut indices = [0_usize; N];
+        for (i, index) in indices.iter_mut().enumerate() {
+            let offset = half * (2.0 * i as f32 / (N - 1) as f32 - 1.0);
+            let pos = (((center + offset) - origin) / (end - origin) * dimension as f32).floor();
+            if !pos.is_finite() || pos < 0.0 || pos >= dimension as f32 {
+                return None;
+            }
+            *index = pos as usize;
+        }
+        Some(indices)
+    };
+    let columns = axis(x, view.source.left, view.source.right, view.width)?;
+    let rows = axis(y, view.source.top, view.source.bottom, view.height)?;
     let mut values = [0.0; SAMPLES];
-    for j in 0..N {
-        for i in 0..N {
-            let ox = half * (2.0 * i as f32 / (N - 1) as f32 - 1.0);
-            let oy = half * (2.0 * j as f32 / (N - 1) as f32 - 1.0);
-            values[j * N + i] = view.sample(pixels, x + ox, y + oy)?;
+    for (row, chunk) in rows.iter().zip(values.chunks_exact_mut(N)) {
+        let base = row * view.stride as usize;
+        for (index, value) in columns.iter().zip(chunk) {
+            *value = f64::from(pixels[base + index]);
         }
     }
     let mean = values.iter().sum::<f64>() / SAMPLES as f64;
@@ -318,6 +335,60 @@ mod tests {
         }
         result
     }
+    #[test]
+    fn separable_patch_is_bit_exact_with_original_mapping_on_padded_cropped_views() {
+        fn scalar(
+            view: GrayView,
+            pixels: &[u8],
+            x: f32,
+            y: f32,
+            half: f32,
+        ) -> Option<[f64; SAMPLES]> {
+            let mut values = [0.0; SAMPLES];
+            for j in 0..N {
+                for i in 0..N {
+                    let ox = half * (2.0 * i as f32 / (N - 1) as f32 - 1.0);
+                    let oy = half * (2.0 * j as f32 / (N - 1) as f32 - 1.0);
+                    values[j * N + i] = view.sample(pixels, x + ox, y + oy)?;
+                }
+            }
+            let mean = values.iter().sum::<f64>() / SAMPLES as f64;
+            let mut norm = 0.0;
+            for value in &mut values {
+                *value -= mean;
+                norm += *value * *value;
+            }
+            if norm < 2000.0 {
+                return None;
+            }
+            for value in &mut values {
+                *value /= norm.sqrt();
+            }
+            Some(values)
+        }
+        let p = pattern();
+        let v = GrayView {
+            width: 100,
+            height: 128,
+            stride: 128,
+            source: Rect {
+                left: 27.3,
+                top: 17.1,
+                right: 227.9,
+                bottom: 148.2,
+            },
+        };
+        for &x in &[27.0, 34.0, 71.25, 115.875, 175.5, 227.99] {
+            for &y in &[17.0, 45.125, 89.0, 138.0, 148.2] {
+                for &half in &[4.3, 12.5, 33.0] {
+                    let expected = scalar(v, &p, x, y, half);
+                    let actual = patch(v, &p, x, y, half);
+                    assert_eq!(actual, expected, "{x} {y} {half}");
+                }
+            }
+        }
+    }
+
     #[test]
     fn recovers_current_pixel_motion_without_an_identity_or_size_update() {
         let p = pattern();

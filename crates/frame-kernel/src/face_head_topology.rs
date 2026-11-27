@@ -149,7 +149,13 @@ fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option
             && span >= 3
             && (run.width() as f32 > reference * 1.55 + 0.5
                 || center_jump > reference * 0.60 + 0.5);
-        if expanding {
+        // At low mask resolution the first connected branch may recede by
+        // a cell on the next row. Confirm sustained widening relative to
+        // the upper lobe, rather than requiring two identical strict peaks.
+        let confirms = widened > 0
+            && run.width() as f32 > reference * 1.30 + 0.5
+            && run.overlap(prev) * 2 >= prev.width();
+        if expanding || confirms {
             widened += 1;
             // The first broadened row is withheld; a second consecutive
             // widened row confirms a neck/shoulder or arm junction.
@@ -257,11 +263,28 @@ pub fn sticker(
     // required in both lanes. At the clipped top edge keep the complete
     // raw fallback as well, because it can contain a current edge envelope.
     let preserve_raw = kind == 0 || spec.person.top <= cell_y;
+    let mut local = stabilized;
+    if kind == 2 && !preserve_raw {
+        if let Some(c) = topology {
+            // A full current head cap supplies a localization anchor for a
+            // bbox-based estimate, but not a new identity or a smaller
+            // measured size. Only correct a weak center that lies below the
+            // cap and whose existing radius reaches its lower central band.
+            // A disconnected or far-away cap cannot pull the region away.
+            let cy = c.bounds.top + (c.bounds.bottom - c.bounds.top) * 0.75;
+            let cx = stabilized.center_x.clamp(c.bounds.left, c.bounds.right);
+            let dx = (cx - stabilized.center_x) / stabilized.radius_x;
+            let dy = (cy - stabilized.center_y) / stabilized.radius_y;
+            if stabilized.center_y > c.bounds.bottom && dx * dx + dy * dy <= 1.0 {
+                local.center_y = cy;
+            }
+        }
+    }
     let mut b = Rect {
-        left: stabilized.center_x - stabilized.radius_x,
-        top: stabilized.center_y - stabilized.radius_y,
-        right: stabilized.center_x + stabilized.radius_x,
-        bottom: stabilized.center_y + stabilized.radius_y,
+        left: local.center_x - local.radius_x,
+        top: local.center_y - local.radius_y,
+        right: local.center_x + local.radius_x,
+        bottom: local.center_y + local.radius_y,
     };
     if preserve_raw {
         b.left = b.left.min(measured.center_x - measured.radius_x);
@@ -292,12 +315,15 @@ pub fn sticker(
     let prefer = if kind == 0 {
         current_face_region(Some(pixels), spec, stabilized)?
     } else {
-        stabilized
+        local
     };
     let half = ((f64::from(b.right) - f64::from(b.left))
         .max(f64::from(b.bottom) - f64::from(b.top))
         * 0.5) as f32;
     let half = half.next_up();
+    if !half.is_finite() || half <= 0.0 {
+        return None;
+    }
     let choose = |low: f32, high: f32, anchor: f32| {
         let lower = f64::from(high) - f64::from(half);
         let upper = f64::from(low) + f64::from(half);
@@ -500,6 +526,94 @@ mod tests {
         clipped.person.top = 0.0;
         let edge = sticker(&m, clipped, weak, stable, 2).unwrap();
         contains(edge.square, bounds(weak));
+    }
+
+    #[test]
+    fn a_branch_that_recedes_one_cell_still_confirms_a_head_junction() {
+        let mut m = vec![0; 64 * 64];
+        paint(&mut m, 12..20, 28, 36); // reference width 8
+        paint(&mut m, 20..21, 24, 38); // width 14, initial expansion
+        paint(&mut m, 21..24, 25, 37); // width 12, sustained wider branch
+        let c = cap(&m, spec(), region(), true).unwrap();
+        assert_eq!(c.rows, 8);
+        assert_eq!(c.bounds.bottom, 80.0);
+        // A transient branch returning to normal width stays ambiguous.
+        paint(&mut m, 21..22, 24, 38);
+        m[21 * 64 + 24..21 * 64 + 38].fill(0);
+        paint(&mut m, 21..22, 28, 36);
+        assert!(cap(&m, spec(), region(), true).is_none());
+    }
+
+    #[test]
+    fn only_overlapping_full_cap_can_reanchor_a_weak_torso_center() {
+        let m = head_mask();
+        let measured = Ellipse {
+            center_y: 96.0,
+            radius_x: 60.0,
+            radius_y: 72.0,
+            ..region()
+        };
+        let stable = Ellipse {
+            center_y: 96.0,
+            radius_y: 30.0,
+            ..region()
+        };
+        let cap = cap(&m, spec(), measured, false).unwrap();
+        let candidate = sticker(&m, spec(), measured, stable, 2).unwrap();
+        contains(candidate.square, cap.bounds);
+        assert!(candidate.bounds.bottom < stable.center_y + stable.radius_y);
+        assert!(candidate.bounds.bottom >= cap.bounds.bottom);
+        // An observed face is not a bbox-based weak localization.
+        let direct = sticker(&m, spec(), measured, stable, 0).unwrap();
+        contains(direct.square, bounds(stable));
+        let distant = Ellipse {
+            center_y: 144.0,
+            ..stable
+        };
+        let rejected = sticker(&m, spec(), measured, distant, 2).unwrap();
+        contains(rejected.square, bounds(distant));
+    }
+
+    #[test]
+    fn genuine_current_head_growth_is_not_capped_by_sticker_history() {
+        use crate::face_render_size::FaceRenderSizeState;
+        let seed = region();
+        let small = sticker(&head_mask(), spec(), seed, seed, 0).unwrap();
+        // Independent scaled silhouette at twice the source size with the
+        // same source-per-prototype-cell. The observed region really doubles.
+        let mut pixels = vec![0; 128 * 128];
+        let original = head_mask();
+        for y in 0..128 {
+            for x in 0..128 {
+                pixels[y * 128 + x] = original[(y / 2) * 64 + x / 2];
+            }
+        }
+        let mut large_spec = spec();
+        large_spec.width = 128;
+        large_spec.height = 128;
+        large_spec.transform.input_size = 512;
+        large_spec.transform.proto_size = 128;
+        large_spec.transform.source_width = 512;
+        large_spec.transform.source_height = 512;
+        large_spec.person = Rect {
+            left: 40.0,
+            top: 80.0,
+            right: 472.0,
+            bottom: 480.0,
+        };
+        let large_seed = Ellipse {
+            center_x: 2.0 * seed.center_x,
+            center_y: 2.0 * seed.center_y,
+            radius_x: 2.0 * seed.radius_x,
+            radius_y: 2.0 * seed.radius_y,
+        };
+        let large = sticker(&pixels, large_spec, large_seed, large_seed, 0).unwrap();
+        contains(large.square, bounds(large_seed));
+        assert!(large.square.radius_x > small.square.radius_x * 1.6);
+        let mut state = FaceRenderSizeState::default();
+        state.step(small.square, 0, 0).unwrap();
+        let rendered = state.step(large.square, 33_333, 0).unwrap();
+        assert_eq!(rendered, large.square);
     }
 
     #[test]

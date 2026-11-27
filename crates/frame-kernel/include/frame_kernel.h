@@ -369,8 +369,10 @@ int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRe
   int32_t frame_kernel_current_face_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse region,FrameKernelEllipse *output);
 /* Experimental head-cap sticker placement. Only current owned body masks,
    kind=0 direct or 2 estimated. Direct measured and stabilized extents remain
-   required; a non-edge estimated raw seed is only a localization prior, and
-   the approved stabilized region plus current cap define coverage. square is center + half sizes for a square, NOT a mask ellipse.
+   required; a non-edge estimated raw seed is only a localization prior.
+   A qualified full cap may correct an overlapping weak center below the
+   cap, keeping its radii; direct and clipped-edge evidence remain required.
+   square is center + half sizes for a square, NOT a mask ellipse.
    topology 1 means a coherent upper cap with sustained widening, 2 a partial
    cap corroborated by direct detector; 0 uses legacy support/estimated seed. Invalid leaves output intact. */
 typedef struct FrameKernelHeadSticker {
