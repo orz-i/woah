@@ -8,6 +8,7 @@ import 'package:app/features/comparison/presentation/comparison_screen.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'comparison_test.dart' show FakeComparisonGateway, savedProject;
 
@@ -765,6 +766,73 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 220));
       expect(c.canEditCanvas, isTrue);
       expect(c.canExportCanvas, isTrue);
+      c.dispose();
+    },
+  );
+
+  test(
+    'backend failure discards partial preview and requires full reselection',
+    () async {
+      final gateway = ProgressiveCutoutGateway()
+        ..pending = Completer<ComparisonCutoutResultDto>();
+      final c = ComparisonController(gateway);
+      c.setViewport(400, 600, false);
+      await c.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      expect(await c.beginCutout(), isTrue);
+      final work = c.prepareCutout(
+        ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5),
+        ComparisonCutoutSeedDto(sourcePtsUs: 3000000, x: .5, y: .5),
+      );
+      gateway.progress = ComparisonCutoutResultDto(
+        playback: gateway.current,
+        referenceVisible: 10,
+        referenceFrames: 30,
+        targetVisible: 10,
+        targetFrames: 30,
+        analyzing: true,
+        previewStartUs: 500000,
+        previewEndUs: 1500000,
+        referenceAnalyzed: 10,
+        targetAnalyzed: 10,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 240));
+      expect(c.cutoutPartial, isTrue);
+      gateway.progress = null;
+      gateway.pending!.completeError(
+        PlatformException(code: 'CUTOUT_BACKEND_RESTART'),
+      );
+      await work;
+      expect(c.cutoutBackendRestartRequired, isTrue);
+      expect(c.cutoutMode, isFalse);
+      expect(c.cutoutExportReady, isFalse);
+      expect(c.cutoutAnalysisPending, isFalse);
+      expect(c.error, contains('重新选择两个人物'));
+      c.dispose();
+    },
+  );
+
+  test(
+    'backend failure during inspection requests both subjects again',
+    () async {
+      final gateway = CutoutGateway()
+        ..pendingInspection = Completer<ComparisonCutoutPreviewDto>();
+      final c = ComparisonController(gateway);
+      c.setViewport(400, 600, false);
+      await c.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      expect(await c.beginCutout(), isTrue);
+      final pending = c.inspectCutout(
+        true,
+        ComparisonCutoutSeedDto(sourcePtsUs: 1000000, x: .5, y: .5),
+      );
+      gateway.pendingInspection!.completeError(
+        PlatformException(code: 'CUTOUT_BACKEND_RESTART'),
+      );
+      expect(await pending, isNull);
+      expect(c.cutoutBackendRestartRequired, isTrue);
+      expect(c.cutoutSelecting, isTrue);
+      expect(c.error, contains('重新选择两个人物'));
       c.dispose();
     },
   );

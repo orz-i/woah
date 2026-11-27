@@ -72,7 +72,7 @@ class ComparisonCutoutBackendInstrumentedTest {
     private fun ms(start:Long)= (System.nanoTime()-start)/1_000_000.0
 
     private suspend fun runBackend(context:Context,sources:List<Source>,backend:LiteRtAccelerator,threads:Int,
-        evidenceRoot:File?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true,detailScheduled:Boolean=true,captureObservations:Boolean=false):Run {
+        evidenceRoot:File?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true,detailScheduled:Boolean=true,captureObservations:Boolean=false,gpuReverseBlock:Boolean=false,reverseSlotBudget:Int=6*1024*1024):Run {
         val start=System.nanoTime()
         YoloLiteRtSegmenter(context,requestedAccelerator=backend,cpuNumThreads=threads).use { segmenter ->
             segmenter.initialize()
@@ -118,7 +118,7 @@ class ComparisonCutoutBackendInstrumentedTest {
                     }else null
                     works.add(analysis.begin(src.file.absolutePath,src.description,0,src.times.last(),
                         max(0,src.seed.ptsUs-500_000),min(src.times.last(),src.seed.ptsUs+499_999),
-                        src.seed,src.reference,!src.reference,segmenter,{true},inspected[i],detailEnabled=detailEnabled,detailReuse=detailReuse,detailScheduled=detailScheduled,observationEvidence=sink))
+                        src.seed,src.reference,!src.reference,segmenter,{true},inspected[i],detailEnabled=detailEnabled,detailReuse=detailReuse,detailScheduled=detailScheduled,observationEvidence=sink,gpuReverseBlock=gpuReverseBlock,reverseSlotBudget=reverseSlotBudget))
                 }
                 val firstMs=ms(first)
                 val lanes=ArrayList<Lane>()
@@ -171,7 +171,7 @@ class ComparisonCutoutBackendInstrumentedTest {
                 observationWriters.clear()
                 observationFiles.forEach{(tmp,dest)->check(tmp.renameTo(dest))}
                 return Run(lanes,JSONObject().put("requested",backend.name).put("effective",backend.name)
-                    .put("status","complete").put("cpuThreads",threads).put("initializationMs",initialized)
+                    .put("status","complete").put("cpuThreads",threads).put("initializationMs",initialized).put("gpuReverseBlock",gpuReverseBlock).put("reverseSlotBudget",reverseSlotBudget)
                     .put("compileMs",info.compileMs).put("warmupMs",info.warmupMs)
                     .put("inspectionMs",inspectionMs).put("firstPreviewMs",firstMs)
                     .put("analysisMs",firstMs+lanes.sumOf{it.evidence.getDouble("finishMs")})
@@ -320,11 +320,126 @@ class ComparisonCutoutBackendInstrumentedTest {
                     check(bytes(d.decodeDetailAtPts(at,local,roi,sw,sh)).contentEquals(fresh.getValue(at))){"Reused detail crop changed"}
                 }
             }
-            rotationResults.put(JSONObject().put("rotation",rotation).put("inlineExact",3).put("readerExact",4)
+            // Copy two separate exact source planes, close the codec, then
+            // crop in reverse order from the owned slots. A small budget must
+            // fail closed and an escaped callback must not read reused bytes.
+            val slots=Array(2){art.gaoge.dance.engine.media.CanonicalYuvToRgba.OwnedSource()}
+            val out=ByteBuffer.allocateDirect(640*640*4)
+            decoder(pts.first()).use{d->
+                d.prepare()
+                for(i in 0..1)d.captureSourceAtPts(pts[i],scene,slots[i])
+                val limited=art.gaoge.dance.engine.media.CanonicalYuvToRgba.OwnedSource(1)
+                d.captureSourceAtPts(pts[2],scene,limited)
+                check(!limited.valid && limited.capacity==0)
+                limited.withCrop(scene,out){check(it==null)}
+            }
+            for(i in 1 downTo 0){
+                var escaped:((art.gaoge.dance.engine.geometry.ModelCoordinateMapper,IntArray)->ByteBuffer)?=null
+                slots[i].withCrop(scene,out){crop->
+                    check(crop!=null)
+                    check(bytes(crop(local,roi)).contentEquals(fresh.getValue(pts[i]))){"Owned source crop changed"}
+                    escaped=crop
+                }
+                check(!slots[i].valid && runCatching{escaped!!(local,roi)}.isFailure)
+                slots[i].release();check(slots[i].capacity==0)
+            }
+            rotationResults.put(JSONObject().put("rotation",rotation).put("snapshotExact",2).put("snapshotBudgetFallback",true).put("inlineExact",3).put("readerExact",4)
                 .put("reverseSeekExact",true).put("cancelBorrowReleased",true))
         }
         File(context.filesDir,"comparison-real-dance-qa/detail-source-report.json")
             .writeText(JSONObject().put("passed",true).put("rotations",rotationResults).toString(2))
+    }
+
+    /** Cancel after a real reverse source capture, then retry the same
+     * lane with an exhausted snapshot budget. No timings asserted here. */
+    @Test fun reverseBlockCancelAndFallback():Unit=runBlocking {
+        val args=InstrumentationRegistry.getArguments()
+        assumeTrue(args.getString("reverseLifecycleQa")=="true")
+        val context=ApplicationProvider.getApplicationContext<Context>()
+        check(context.packageName=="art.gaoge.dance.engine.cutoutqa.test")
+        val root=File(context.filesDir,"comparison-real-dance-qa")
+        val src=source(File(root,"reference.mp4"),true,11_000_000,12_000_000,.55f,.60f,1800)
+        fun scratchFds():Set<String> = File("/proc/self/fd").listFiles().orEmpty().mapNotNull {
+            runCatching{android.system.Os.readlink(it.absolutePath)}.getOrNull()
+        }.filter{it.contains("woah-cutout-") && it.contains(".scratch")}.toSet()
+        val before=scratchFds()
+        var captures=0
+        var current=true
+        val analysis=ComparisonCutoutAnalysis(context)
+        YoloLiteRtSegmenter(context,requestedAccelerator=LiteRtAccelerator.GPU,cpuNumThreads=4).use{segmenter->
+            segmenter.initialize()
+            check(segmenter.effectiveAccelerator==LiteRtAccelerator.GPU)
+            val inspected=analysis.inspect(src.file.absolutePath,src.description,src.seed,segmenter,{true})
+            val cancelled=runCatching{
+                analysis.begin(src.file.absolutePath,src.description,0,src.times.last(),
+                    src.seed.ptsUs-500_000,src.seed.ptsUs+499_999,src.seed,true,false,segmenter,{current},inspected,
+                    gpuReverseBlock=true,onReverseCapture={captures++;current=false}).use{it.finish().close()}
+            }
+            check(cancelled.exceptionOrNull() is kotlinx.coroutines.CancellationException)
+            check(captures==1)
+            check(scratchFds()==before){"Reverse cancel leaked scratch descriptors"}
+        }
+        // A new runner is the real product retry contract (cancel closes the old runner).
+        var fallbackVisible=0
+        YoloLiteRtSegmenter(context,requestedAccelerator=LiteRtAccelerator.GPU,cpuNumThreads=4).use{segmenter->
+            segmenter.initialize()
+            check(segmenter.effectiveAccelerator==LiteRtAccelerator.GPU)
+            val inspected=analysis.inspect(src.file.absolutePath,src.description,src.seed,segmenter,{true})
+            analysis.begin(src.file.absolutePath,src.description,0,src.times.last(),
+                src.seed.ptsUs-500_000,src.seed.ptsUs+499_999,src.seed,true,false,segmenter,{true},inspected,
+                gpuReverseBlock=true,reverseSlotBudget=1).use{work->
+                work.finish().use{cache->
+                    fallbackVisible=cache.visibleCount
+                    check(cache.frameCount==src.times.size)
+                    DataOutputStream(BufferedOutputStream(File(root,"reverse-fallback.alpha").outputStream())).use{out->
+                        out.writeInt(0x574F4131);out.writeInt(src.times.size)
+                        for(at in src.times){
+                            val layer=cache.layer(at)
+                            out.writeLong(at);out.writeInt(layer?.width ?: 0);out.writeInt(layer?.height ?: 0)
+                            if(layer!=null){
+                                val bytes=ByteBuffer.allocate(layer.width*layer.height)
+                                layer.uploadTo(bytes);out.write(bytes.array())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        check(scratchFds()==before){"Retry leaked scratch descriptors"}
+        File(root,"reverse-lifecycle.json").writeText(JSONObject().put("passed",true)
+            .put("cancelAfterCaptures",captures).put("scratchFdsBefore",before.size)
+            .put("scratchFdsAfter",scratchFds().size).put("fallbackVisible",fallbackVisible).toString(2))
+    }
+
+    @Test fun reverseSourceHighResolution(){
+        val args=InstrumentationRegistry.getArguments()
+        assumeTrue(args.getString("reverseHighResolutionQa")=="true")
+        val context=ApplicationProvider.getApplicationContext<Context>()
+        val root=File(context.filesDir,"comparison-real-dance-qa")
+        val src=source(File(root,"high-resolution.mp4"),true,600_000,1_200_000,.46f,.60f,1800)
+        val sw=src.description.width;val sh=src.description.height
+        check(sw==3840 && sh==2160 && src.description.rotation==0)
+        val scene=art.gaoge.dance.engine.geometry.ModelCoordinateMapper(sw,sh)
+        val roi=intArrayOf(sw/4,sh/4,sw/2,sh/2)
+        val local=art.gaoge.dance.engine.geometry.ModelCoordinateMapper(roi[2],roi[3])
+        fun decoder()=art.gaoge.dance.engine.media.CanonicalYuvInferenceDecoder(context,src.file.absolutePath,0,startUs=src.seed.ptsUs)
+        val slot=art.gaoge.dance.engine.media.CanonicalYuvToRgba.OwnedSource(6*1024*1024)
+        val output=ByteBuffer.allocateDirect(640*640*4)
+        fun bytes(b:ByteBuffer)=ByteArray(b.capacity()).also{b.duplicate().apply{rewind();get(it)}}
+        val expected=decoder().use{d->d.prepare();bytes(d.decodeDetailAtPts(src.seed.ptsUs,local,roi,sw,sh))}
+        val actual=decoder().use{d->
+            d.prepare()
+            d.captureSourceAtPts(src.seed.ptsUs,scene,slot)
+            check(!slot.valid && slot.capacity==0){"4K should exceed the six MiB per-slot budget"}
+            slot.withCrop(scene,output){check(it==null)}
+            d.seekDetailTo(src.seed.ptsUs)
+            bytes(d.decodeDetailAtPts(src.seed.ptsUs,local,roi,sw,sh))
+        }
+        check(expected.contentEquals(actual))
+        slot.release()
+        File(root,"reverse-high-resolution.json").writeText(JSONObject().put("passed",true)
+            .put("width",sw).put("height",sh).put("budgetBytes",6*1024*1024)
+            .put("allocatedBytes",slot.capacity).put("fallbackCropExact",true).toString(2))
     }
 
     /** Real independent clips, fixed PTS/seed, no automatic reseeding. The
@@ -359,7 +474,7 @@ class ComparisonCutoutBackendInstrumentedTest {
         }
         for(backend in backends){
             val row=try {
-                runBackend(context,sources,backend,4,root,args.getString("detailEnabled")!="false",args.getString("detailReuse")!="false",args.getString("detailScheduled")!="false",args.getString("captureObservations")=="true").evidence
+                runBackend(context,sources,backend,4,root,args.getString("detailEnabled")!="false",args.getString("detailReuse")!="false",args.getString("detailScheduled")!="false",args.getString("captureObservations")=="true",args.getString("gpuReverseBlock")=="true",args.getString("reverseSlotBudget")?.toInt() ?: 6*1024*1024).evidence
             }catch(e:Exception){
                 JSONObject().put("requested",backend.name).put("status","failed").put("errorClass",e.javaClass.simpleName)
             }

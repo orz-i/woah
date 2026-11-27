@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:dance_domain/dance_domain.dart';
 import 'package:dance_native/dance_native.dart';
 import '../data/comparison_gateway.dart';
@@ -31,6 +32,9 @@ class ComparisonController extends ChangeNotifier {
       cutoutInspecting = false;
   ComparisonCutoutResultDto? cutoutResult;
   bool cutoutAnalysisPending = false;
+  bool cutoutBackendRestartRequired = false;
+  static bool _requiresCutoutRestart(Object error) =>
+      error is PlatformException && error.code == 'CUTOUT_BACKEND_RESTART';
   bool cutoutRestored = false, cutoutArchived = false;
   bool cutoutRestoring = false, cutoutSaving = false;
   bool? cutoutRepairReference;
@@ -1213,9 +1217,12 @@ class ComparisonController extends ChangeNotifier {
       if (_closed || request != _cutoutRequest) return false;
       message = '已应用局部纠错；请检查修复后的区间及边界。';
       return true;
-    } catch (_) {
+    } catch (failure) {
       if (!_closed && request == _cutoutRequest) {
-        error = '局部纠错未完成，原画布保留。请重新确认或取消。';
+        cutoutBackendRestartRequired = _requiresCutoutRestart(failure);
+        error = cutoutBackendRestartRequired
+            ? '推理后端不可用，原画布保留。请取消纠错，重新选人并完整分析。'
+            : '局部纠错未完成，原画布保留。请重新确认或取消。';
       }
       return false;
     } finally {
@@ -1271,6 +1278,7 @@ class ComparisonController extends ChangeNotifier {
     }
     final request = ++_cutoutRequest;
     cutoutInspecting = true;
+    cutoutBackendRestartRequired = false;
     error = null;
     _notify();
     try {
@@ -1289,9 +1297,14 @@ class ComparisonController extends ChangeNotifier {
         throw StateError('Invalid cutout still');
       }
       return result;
-    } catch (_) {
+    } catch (failure) {
       if (!_closed && request == _cutoutRequest) {
-        error = '未能明确提取所选人物，请长按人物身体中央重试。';
+        cutoutBackendRestartRequired = _requiresCutoutRestart(failure);
+        error = cutoutBackendRestartRequired
+            ? (cutoutRepairing
+                  ? '推理后端不可用，原画布保留。请取消纠错，重新选人并完整分析。'
+                  : '推理状态已变化，请重新选择两个人物；GPU 不可用时使用 CPU4。')
+            : '未能明确提取所选人物，请长按人物身体中央重试。';
       }
       return null;
     } finally {
@@ -1318,6 +1331,7 @@ class ComparisonController extends ChangeNotifier {
     final request = ++_cutoutRequest;
     cutoutPreparing = true;
     cutoutAnalysisPending = true;
+    cutoutBackendRestartRequired = false;
     error = null;
     _notify();
     try {
@@ -1359,8 +1373,9 @@ class ComparisonController extends ChangeNotifier {
       playback = result.playback;
       cutoutResult = result;
       cutoutSelecting = false;
-    } catch (_) {
+    } catch (failure) {
       if (_closed || request != _cutoutRequest) return;
+      cutoutBackendRestartRequired = _requiresCutoutRestart(failure);
       final hadPartial = cutoutPartial;
       cutoutAnalysisPending = false;
       _awaitingCanvasViewport = false;
@@ -1373,7 +1388,9 @@ class ComparisonController extends ChangeNotifier {
         } catch (_) {}
       }
       if (_closed || request != _cutoutRequest) return;
-      error = '人物分析未完成。请缩短 A/B 选段（每路最多3600帧，受存储空间限制），或重新选择人物。';
+      error = cutoutBackendRestartRequired
+          ? '推理状态已变化，未完成的画布已丢弃。请重新选择两个人物，完整分析；GPU 不可用时使用 CPU4。'
+          : '人物分析未完成。请缩短 A/B 选段（每路最多3600帧，受存储空间限制），或重新选择人物。';
     } finally {
       if (!_closed && request == _cutoutRequest) {
         cutoutPreparing = false;

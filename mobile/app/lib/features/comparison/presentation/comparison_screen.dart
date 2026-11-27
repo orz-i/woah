@@ -1001,7 +1001,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       return;
     }
     if (still == null) {
-      setState(_cancelCutoutDrag);
+      setState(
+        controller.cutoutBackendRestartRequired
+            ? _resetCutoutSeeds
+            : _cancelCutoutDrag,
+      );
       return;
     }
     setState(() => _dragStill = still);
@@ -1031,7 +1035,13 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     });
     final a = _cutoutReference, b = _cutoutTarget;
     if (!controller.cutoutRepairing && a != null && b != null) {
-      unawaited(controller.prepareCutout(a, b));
+      unawaited(
+        controller.prepareCutout(a, b).then((_) {
+          if (mounted && controller.cutoutBackendRestartRequired) {
+            setState(_resetCutoutSeeds);
+          }
+        }),
+      );
     }
   }
 

@@ -273,7 +273,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     }
 
     internal data class Inspection(val seed: ComparisonCutoutSeed, val observation: Observation,
-        val index: Int, val preview: ComparisonCutoutPreviewDto, val sourceDigest: ByteArray)
+        val index: Int, val preview: ComparisonCutoutPreviewDto, val sourceDigest: ByteArray,
+        val backend:art.gaoge.dance.engine.litert.LiteRtAccelerator)
 
     private fun resolveTouch(o:Observation,seed:ComparisonCutoutSeed,current:()->Boolean,
                              local:(IntArray)->Observation):Pair<Observation,Int> {
@@ -324,7 +325,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 rgba.duplicate().apply{rewind();get(raw)}
                 val preview=observation.thumbnail(index,raw)
                 checkCurrent(current)
-                inspected=Inspection(seed,observation,index,preview,sourceDigest)
+                inspected=Inspection(seed,observation,index,preview,sourceDigest,segmenter.effectiveAccelerator)
             }
             requireNotNull(inspected)
         }
@@ -351,9 +352,18 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     fun begin(uri: String, description: ComparisonVideoDescription, start: Long,endInclusive: Long,
         firstPreview:Long,lastPreview:Long,seed: ComparisonCutoutSeed, reference: Boolean, mirror: Boolean,
         segmenter: YoloLiteRtSegmenter,current: () -> Boolean, inspection: Inspection? = null,
-        fixedGrid:Pair<Int,Int>?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true,detailScheduled:Boolean=true, observationEvidence:((Observation)->Unit)?=null): Work {
-        require(observationEvidence==null || context.packageName=="art.gaoge.dance.engine.cutoutqa.test")
-        val measure=art.gaoge.dance.engine.BuildConfig.DEBUG
+        fixedGrid:Pair<Int,Int>?=null,detailEnabled:Boolean=true,detailReuse:Boolean=true,detailScheduled:Boolean=true, observationEvidence:((Observation)->Unit)?=null,
+        gpuReverseBlock:Boolean=false, reverseSlotBudget:Int=6*1024*1024,
+        onReverseCapture:(()->Unit)?=null): Work {
+        require((observationEvidence==null && onReverseCapture==null && reverseSlotBudget==6*1024*1024) ||
+            context.packageName=="art.gaoge.dance.engine.cutoutqa.test")
+        require(reverseSlotBudget in 1..6*1024*1024)
+        // A cached touch observation must come from exactly this accelerator.
+        // This check precedes any allocation or tracker work.
+        require(inspection==null || inspection.backend==segmenter.effectiveAccelerator){"Mixed cutout backend"}
+
+        val measure=art.gaoge.dance.engine.BuildConfig.DEBUG ||
+            (gpuReverseBlock && context.packageName.endsWith(".cutoutreleaseqa"))
         val wallStart=System.nanoTime()
         val timing=linkedMapOf<String,Long>()
         fun addTime(name:String,nanos:Long) {
@@ -419,6 +429,12 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         val detailBudget=minOf(160,maxOf(1,(times.size+3)/4))
         var detailAttempts=0;var detailAccepted=0;var detailFailures=0;var detailSkipped=0
         var detailInline=0;var detailOpens=0;var detailSeeks=0;var detailReuseHits=0
+        var reverseBlocks=0;var reverseBlockHits=0;var reverseBlockFrames=0
+        var reverseBlockFallbacks=0;var reverseBlockOpens=0;var reverseBlockSeeks=0
+        var reverseBlockMaxBytes=0
+        // Keep the existing GPU forward prefetch and the ordinary
+        // auxiliary reader as fallback. Only isolated GPU Release opts in.
+        val useReverseBlocks=prefetch && gpuReverseBlock && detailReuse && detailEnabled
         // A single auxiliary codec per span. Descending PTS requires flush
         // and seek; a failed reuse is retried once with a fresh codec.
         val reader=object:AutoCloseable{
@@ -463,7 +479,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
             override fun close(){closeCurrent()}
         }
         fun addTracked(o:Observation,session:FrameKernel.DanceCutoutTrack,initial:Boolean,
-                       crop:((ModelCoordinateMapper,IntArray)->ByteBuffer)?=null){
+                       crop:((ModelCoordinateMapper,IntArray)->ByteBuffer)?=null,
+                       reverseCrop:((ModelCoordinateMapper,IntArray)->ByteBuffer)?=null){
             checkCurrent(current)
             if(!detailEnabled || detailAttempts>=detailBudget){
                 add(o,timed("track"){o.track(session)},initial);return
@@ -477,13 +494,17 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 val cropMapper=ModelCoordinateMapper(roi[2],roi[3])
                 val frame=if(detailReuse && crop!=null){
                     detailInline++;timed("detailDecode"){crop(cropMapper,roi)}
-                }else reader.read(o.pts,cropMapper,roi)
+                }else if(reverseCrop!=null)reverseCrop(cropMapper,roi)
+                else reader.read(o.pts,cropMapper,roi)
                 checkCurrent(current)
                 val local=timed("detailInference"){segmenter.segmentGlReadbackRgbaSync(frame,cropMapper,o.pts,
                     confidenceThreshold=.25f)}
                 o.withDetail(Observation(o.pts,local.persons,cropMapper,frame),roi)
             }catch(e:CancellationException){throw e}
-            catch(e:Exception){detailFailures++;o}
+            catch(e:Exception){
+                if(gpuReverseBlock && ComparisonCutoutBackend.isModelFailure(e))throw e
+                detailFailures++;o
+            }
             checkCurrent(current)
             val index=timed("track"){merged.finishDetail(session,o.bounds.size)}
             if(index>=o.bounds.size)detailAccepted++
@@ -556,13 +577,80 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 val records=ArrayList<ComparisonCutoutDisk.Record>()
                 decode(from,to){observation,_->records.add(timed("prefixWrite"){spool.append(observation.encode())})}
                 prefixBytes+=spool.bytes
-                try{
-                    for(record in records.asReversed()){
+                // The reverse tracker still consumes exact source PTS in
+                // descending order. Only when it requests a crop, load up
+                // to four ascending original YUV frames ending at that PTS.
+                // Four 6 MiB slots bound live source payload to 24 MiB per
+                // active reverse span; no raw source pixels in the spool.
+                val block=if(useReverseBlocks)object:AutoCloseable{
+                    val slots=Array(4){art.gaoge.dance.engine.media.CanonicalYuvToRgba.OwnedSource(reverseSlotBudget)}
+                    val output by lazy{ByteBuffer.allocateDirect(mapper.modelInputSize*mapper.modelInputSize*4)}
+                    var decoder:CanonicalYuvInferenceDecoder?=null
+                    var begin=-1
+                    var end=-1
+                    var disabled=false
+                    fun clear(){slots.forEach{it.clear()};begin=-1;end=-1}
+                    fun read(index:Int,local:ModelCoordinateMapper,roi:IntArray):ByteBuffer{
                         checkCurrent(current)
-                        val prior=timed("prefixRead"){Observation.decode(spool.read(record))}
-                        addTracked(prior,reverse,initial)
+                        // Skip/drop cached frames that the tracker already
+                        // passed; a consumed slot cannot serve stale pixels.
+                        if(index in begin..end){
+                            for(i in index+1..end)slots[i-begin].clear()
+                        }
+                        if(!disabled){
+                            try{
+                                if(index !in begin..end || !slots[index-begin].valid){
+                                    clear()
+                                    val low=maxOf(from,index-slots.size+1)
+                                    val d=decoder ?: CanonicalYuvInferenceDecoder(context,uri,description.rotation,startUs=times[low]).also{
+                                        decoder=it;reverseBlockOpens++;timed("detailOpen"){it.prepare()}
+                                    }
+                                    if(blockLoaded){timed("detailSeek"){d.seekDetailTo(times[low])};reverseBlockSeeks++}
+                                    blockLoaded=true
+                                    begin=low;end=index;reverseBlocks++
+                                    for(i in low..index){
+                                        checkCurrent(current)
+                                        val slot=slots[i-low]
+                                        timed("detailDecode"){d.captureSourceAtPts(times[i],mapper,slot)}
+                                        reverseBlockFrames++
+                                        onReverseCapture?.invoke()
+                                        checkCurrent(current)
+                                        if(!slot.valid){
+                                            disabled=true
+                                            break
+                                        }
+                                    }
+                                    reverseBlockMaxBytes=maxOf(reverseBlockMaxBytes,slots.sumOf{it.capacity})
+                                }else reverseBlockHits++
+                                if(!disabled){
+                                    var result:ByteBuffer?=null
+                                    slots[index-begin].withCrop(mapper,output){crop->
+                                        result=timed("detailDecode"){requireNotNull(crop)(local,roi)}
+                                    }
+                                    return requireNotNull(result)
+                                }
+                            }catch(e:CancellationException){throw e}
+                            catch(e:Exception){disabled=true}
+                            if(disabled)close()
+                        }
+                        reverseBlockFallbacks++
+                        return reader.read(times[index],local,roi)
                     }
-                }finally{reader.close()}
+                    var blockLoaded=false
+                    override fun close(){
+                        clear();slots.forEach{it.release()}
+                        decoder?.close();decoder=null;blockLoaded=false
+                    }
+                }else null
+                try{
+                    for(i in records.indices.reversed()){
+                        checkCurrent(current)
+                        val prior=timed("prefixRead"){Observation.decode(spool.read(records[i]))}
+                        val index=from+i
+                        require(prior.pts==times[index])
+                        addTracked(prior,reverse,initial,reverseCrop=block?.let{b->{local,roi->b.read(index,local,roi)}})
+                    }
+                }finally{try{block?.close()}finally{reader.close()}}
             }
         }
         try {
@@ -603,6 +691,10 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                         .put("role",if(reference)"reference" else "target").put("frames",times.size)
                         .put("visible",layers.visibleCount).put("alphaDiskBytes",layers.bytes)
                         .put("accelerator",segmenter.effectiveAccelerator.toString()).put("decodePrefetch",prefetch)
+                        .put("gpuReverseBlock",gpuReverseBlock).put("reverseBlocks",reverseBlocks)
+                        .put("reverseBlockHits",reverseBlockHits).put("reverseBlockFrames",reverseBlockFrames)
+                        .put("reverseBlockFallbacks",reverseBlockFallbacks).put("reverseBlockOpens",reverseBlockOpens)
+                        .put("reverseBlockSeeks",reverseBlockSeeks).put("reverseBlockMaxBytes",reverseBlockMaxBytes)
                         .put("wallMs",(System.nanoTime()-wallStart)/1_000_000)
                         .put("prefixBytes",prefixBytes).put("alphaBytesPerFrame",aw*ah)
                         .put("detailAttempts",detailAttempts).put("detailAccepted",detailAccepted).put("detailFailures",detailFailures)

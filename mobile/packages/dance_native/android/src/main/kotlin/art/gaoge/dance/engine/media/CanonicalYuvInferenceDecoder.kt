@@ -123,6 +123,18 @@ class CanonicalYuvInferenceDecoder(
         return decodeRgbaFrame(targetPtsUs,mapper,true,destination).rgbaBuffer
     }
 
+    /** Capture only the original planes for a bounded reverse ROI block.
+     * No full-frame resize or model inference on this auxiliary path. */
+    internal fun captureSourceAtPts(pts:Long,mapper:ModelCoordinateMapper,
+        source:CanonicalYuvToRgba.OwnedSource) {
+        source.clear()
+        decodeRgbaFrame(pts,mapper,true,convertFullFrame=false,onSource={image,_->
+            source.capture(image,rotationDegrees,
+                colorInt(outputFormat,MediaFormat.KEY_COLOR_STANDARD),
+                colorInt(outputFormat,MediaFormat.KEY_COLOR_RANGE))
+        })
+    }
+
     internal fun decodeDetailAtPts(targetPtsUs:Long,mapper:ModelCoordinateMapper,roi:IntArray,sceneWidth:Int,sceneHeight:Int):ByteBuffer {
         require(roi.size==4 && mapper.srcWidth==roi[2] && mapper.srcHeight==roi[3])
         return decodeRgbaFrame(targetPtsUs,mapper,true,rgbaBuffer,roi+intArrayOf(sceneWidth,sceneHeight)).rgbaBuffer
@@ -179,7 +191,8 @@ class CanonicalYuvInferenceDecoder(
         requireExactPts: Boolean,
         destination:ByteBuffer=rgbaBuffer,
         detail:IntArray?=null,
-        onSource:((Image,ByteBuffer)->Unit)?=null
+        onSource:((Image,ByteBuffer)->Unit)?=null,
+        convertFullFrame:Boolean=true
     ): DecodedRgbaFrame {
         val decoder = codec ?: error("Canonical inference decoder not prepared")
         var emptyOutputCount = 0
@@ -211,7 +224,7 @@ class CanonicalYuvInferenceDecoder(
                             }
                             image = decoder.getOutputImage(outputIndex)
                                 ?: error("Canonical decoder returned null YUV image at pts=$ptsUs")
-                            CanonicalYuvToRgba.convert(
+                            if(convertFullFrame) CanonicalYuvToRgba.convert(
                                 image = image,
                                 output = destination,
                                 mapper = mapper,
@@ -285,8 +298,84 @@ internal object CanonicalYuvToRgba {
         rotationDegrees: Int, colorStandard: Int?, colorRange: Int?,
         workspace: Workspace = Workspace(mapper.modelInputSize),detail:IntArray?=null) {
         require(image.planes.size >= 3)
+        val planes = image.planes.take(3)
+        convertPlanes(image.width,image.height,image.cropRect,
+            planes.map{it.buffer.duplicate().slice()},
+            planes.flatMap{listOf(it.rowStride,it.pixelStride)}.toIntArray(),
+            output,mapper,rotationDegrees,colorStandard,colorRange,workspace,detail)
+    }
+
+    /** One exclusively owned reverse-block source slot. Copy the exact decoder plane
+     * bytes and strides, never the model-sized RGBA. No codec Image survives
+     * the decode callback, and no raw source bytes are written to disk.
+     * Oversized frames fall back to the original auxiliary decoder. */
+    internal class OwnedSource(private val maxBytes:Int=8*1024*1024) {
+        init { require(maxBytes in 1..8*1024*1024) }
+        private var storage:ByteBuffer?=null
+        private var planes:List<ByteBuffer> = emptyList()
+        private var strides=IntArray(0)
+        private var width=0
+        private var height=0
+        private var crop=android.graphics.Rect()
+        private var rotation=0
+        private var standard:Int?=null
+        private var range:Int?=null
+        internal val valid get()=planes.size==3
+        internal val capacity get()=storage?.capacity() ?: 0
+        fun clear(){planes=emptyList()}
+        fun release(){clear();storage=null}
+        fun capture(image:Image,rotationDegrees:Int,colorStandard:Int?,colorRange:Int?) {
+            clear()
+            require(image.planes.size>=3)
+            val src=image.planes.take(3)
+            val slices=src.map{it.buffer.duplicate().slice()}
+            val size=slices.sumOf{it.remaining().toLong()}
+            if(size<=0 || size>maxBytes)return
+            // One allocation per slot, reused between blocks. If decoder
+            // plane sizes grow, fall back rather than transiently exceeding
+            // the block's direct-buffer allocation budget.
+            // No crop views retain a previous frame.
+            val existing=storage
+            if(existing!=null && existing.capacity()<size)return
+            val buffer=existing ?: ByteBuffer.allocateDirect(size.toInt()).also{storage=it}
+            buffer.clear()
+            val captured=ArrayList<ByteBuffer>(3)
+            for(plane in slices){
+                val start=buffer.position()
+                buffer.put(plane)
+                val end=buffer.position()
+                captured.add(buffer.duplicate().apply{position(start);limit(end)}.slice())
+            }
+            width=image.width;height=image.height;crop=android.graphics.Rect(image.cropRect)
+            strides=src.flatMap{listOf(it.rowStride,it.pixelStride)}.toIntArray()
+            rotation=rotationDegrees;standard=colorStandard;range=colorRange
+            planes=captured
+        }
+
+        // Crop is synchronous on the consumer, before the slot is reused.
+        // Even an escaped function cannot read the next source frame.
+        fun withCrop(scene:ModelCoordinateMapper,output:ByteBuffer,
+            consume:(((ModelCoordinateMapper,IntArray)->ByteBuffer)?)->Unit){
+            if(!valid){consume(null);return}
+            var active=true
+            try {
+                consume { local,roi ->
+                    check(active && valid)
+                    require(roi.size==4 && local.srcWidth==roi[2] && local.srcHeight==roi[3])
+                    convertPlanes(width,height,crop,planes,strides,output,local,rotation,standard,range,
+                        Workspace(local.modelInputSize),roi+intArrayOf(scene.srcWidth,scene.srcHeight))
+                    output
+                }
+            }finally{active=false;clear()}
+        }
+    }
+
+    private fun convertPlanes(width:Int,height:Int,sourceCrop:android.graphics.Rect,
+        planes:List<ByteBuffer>,strides:IntArray,output:ByteBuffer,mapper:ModelCoordinateMapper,
+        rotationDegrees:Int,colorStandard:Int?,colorRange:Int?,workspace:Workspace,detail:IntArray?){
+        require(planes.size==3 && strides.size==6)
         require(workspace.modelInputSize == mapper.modelInputSize)
-        val crop = android.graphics.Rect(image.cropRect)
+        val crop = android.graphics.Rect(sourceCrop)
         if(detail!=null){
             val (x,y,w,h)=detail
             val cw=crop.width();val ch=crop.height()
@@ -310,14 +399,11 @@ internal object CanonicalYuvToRgba {
             MediaFormat.COLOR_STANDARD_BT2020 -> 2
             else -> 1
         }
-        val metadata = intArrayOf(image.width, image.height, crop.left, crop.top, crop.right, crop.bottom,
+        val metadata = intArrayOf(width, height, crop.left, crop.top, crop.right, crop.bottom,
             mapper.srcWidth, mapper.srcHeight, ((rotationDegrees % 360) + 360) % 360,
             mapper.modelInputSize, mapper.modelInputSize, 1, matrix,
             if (colorRange == MediaFormat.COLOR_RANGE_FULL) 1 else 0, 114,
-            image.planes[0].rowStride, image.planes[0].pixelStride,
-            image.planes[1].rowStride, image.planes[1].pixelStride,
-            image.planes[2].rowStride, image.planes[2].pixelStride)
-        val planes = image.planes.take(3).map { it.buffer.duplicate().slice() }
+            strides[0], strides[1], strides[2], strides[3], strides[4], strides[5])
         art.gaoge.dance.engine.core.FrameKernel.yuv420(planes[0], planes[1], planes[2], metadata, output)
         output.rewind()
     }
