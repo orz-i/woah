@@ -60,3 +60,19 @@ resource use, export masks, and cold restores before broad enablement.
 iOS requires actual Release compile and physical-device evidence;
 simulator Debug is not equivalent. No merge to master, store submission
 or production signing is implied.
+
+## Local iOS Release build evidence
+
+The physical-device arm64 Release AOT build with `--no-codesign` succeeded
+(46.2 MB), with the experimental Dart define. The built Runner.app contains
+`WoahCutoutPreview.flag` = true and the pinned YOLO model
+SHA-256 `ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340`.
+CocoaPods lock verification passed after reusing the existing local Pods
+copy whose Manifest.lock and Podfile.lock were byte-identical. The initial
+duplicate TensorFlow git download was stopped; this is not a clean
+network-cache build. CocoaPods automatically removed an unused generated
+embed phase during resolution; the generated project edit is not committed.
+No signed installation or iPhone runtime validation was performed.
+
+Android also verified a live layout opacity change to 50%, then reset
+the control. This is separate from the original export measurement.
