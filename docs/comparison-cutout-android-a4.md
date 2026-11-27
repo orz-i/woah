@@ -353,3 +353,84 @@ and no fresh full native timing repeat after the port. A4.3 native
 65.779/74.634s remains above the proposed 60s target. Next focus on
 safe backend selection/fallback across an entire identity session
 and bounded final acceptance, not additional forward-copy experiments.
+
+## A4.5: effective backend locking and safe session restart
+
+Implementation `84f1ae37`. The isolated Release GPU candidate alone
+can adopt an effective CPU4 fallback before any selected observation
+is published. The selected pair and each inspection carry their actual
+backend. Once any selection or committed canvas has a backend, a
+mismatch cannot enter the tracker. A GPU model error marks CPU as the
+preferred backend for subsequent whole-pair selection in that native
+session; the failed uncommitted work/partial preview is discarded.
+Require the user to confirm both people again rather than silently
+reuse GPU-derived selections as CPU identities. A failed GPU repair
+keeps its original canvas, not a mixed-backend patch. Cancellation
+and non-model errors do not select CPU. An initializer that fails
+before assigning ownership now closes its local model runner.
+
+Completed canvas archives use the actual backend. Restore matches an
+exact complete permitted archive key in a single pass (CPU and GPU
+in the isolated candidate); it never relabels a CPU archive as GPU
+or probes one backend destructively before trying the other.
+The original production package remains CPU4, preview opt-in
+unchanged. No new model or tracker tuning.
+
+### Tests and Android Release evidence
+
+16 focused Kotlin unit tests and 47 Flutter comparison tests passed.
+New cases cover backend resolution and model vs cancellation/decode
+errors, exact matching of CPU and GPU archive keys, failure after
+partial preview, and inspection restart feedback. This is not full
+cross-platform or privacy end-to-end regression.
+
+OnePlus 8T, isolated local-signed arm64 Release AOT builds.
+Normal APK from the committed code plus local application-ID override:
+`7ca18d9ee2d20dc33ff3a157781376bfbffa68a2aeb33ecf1f206a2046df7162`.
+Fault-injection APK:
+`e36c3b2ae595e2b02e0e67d7295b0f6e8ab26f8e9bf7dbce93b0b598a8a9d52a`.
+Both use the same source commit provenance. The fault patch was local
+only and is not part of the branch or normal APK. These APKs are not
+distributable production packages.
+
+- Normal GPU short pair (1.2 s) selected via product gestures:
+  30/30 + 30/30, saved, effective GPU and canvas_committed=GPU.
+- Injected an exception at the GPU compile try boundary on first
+  short-clip inspection. Actual LiteRT logged requested=GPU,
+  effective=CPU, cpu_threads=4, initial_fallback=CPU4; the whole
+  short pair saved 30/30 + 30/30, canvas_committed=CPU.
+- Reinstalled normal GPU candidate, force-stopped/reopened:
+  canvas_restored=CPU, both 30/30. Export to MediaStore succeeded.
+  Pulled file SHA256
+  `709bd073c378a5ec5a7513aa914c0d7704f8b3c02862bfe5e7fd59596d3fd0c1`.
+  H.264/AAC, 1080x1550, 25fps, 30 video frames, 1.200s, full decode passed.
+- Injected model inference exception after actual GPU partial preview
+  was published in the 12s C8.3 pair at 6s. Preview screenshot showed
+  52/600 analyzed; app returned to ordinary comparison and prompted
+  complete reselection. The live log showed
+  QA_INJECTED_MODEL_FAILURE_AFTER_GPU_PREVIEW and restart_required=CPU4.
+  Re-selected both subjects in the same native session; actual
+  requested/effective CPU, 4 threads, no further GPU initialization.
+  Completed reference 300/300, target 247/300, canvas_committed=CPU;
+  export remained disabled. Observed complete by 107s after second
+  drop, still in progress at 94s. This is not a paired performance
+  benchmark. Final logcat snapshot lost the older failure lines to
+  ring-buffer turnover; the live tool transcript and screenshots
+  preserve those observations, and the final log retains CPU commit.
+- Reinstalled the normal APK after the fault tests; original
+  art.gaoge.dance app remains installed. All local source overrides
+  removed, normal source tree clean.
+
+Evidence `/tmp/woah-a45-backend`: APK hashes, local fault patch,
+test and runtime logs, screenshots 01-21, actual exported MP4 and
+ffprobe JSON.
+
+Limitations: real hardware is GPU-capable; tested controlled compile
+and post-preview inference exceptions rather than a naturally
+unsupported device or driver hang. GPU repair failure preservation
+has code/targeted test evidence, not a dedicated device fault run.
+No fresh iOS build or device privacy pipeline test. No automatic
+mid-analysis replay without user confirmation. Default GPU
+enablement remains unapproved; only the existing opt-in Release
+candidate is validated here. A4 optimization and fallback candidate
+are ready for bounded final review, not unrestricted deployment.
