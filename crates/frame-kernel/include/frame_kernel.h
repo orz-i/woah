@@ -367,6 +367,19 @@ int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRe
      the detected ellipse; it never removes detector coverage or grants identity.
      Positive len requires a valid mask/spec; invalid input leaves output intact. */
   int32_t frame_kernel_current_face_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse region,FrameKernelEllipse *output);
+/* Experimental head-cap sticker placement. Only current owned body masks,
+   kind=0 direct or 2 estimated. Direct measured and stabilized extents remain
+   required; a non-edge estimated raw seed is only a localization prior, and
+   the approved stabilized region plus current cap define coverage. square is center + half sizes for a square, NOT a mask ellipse.
+   topology 1 means a coherent upper cap with sustained widening, 2 a partial
+   cap corroborated by direct detector; 0 uses legacy support/estimated seed. Invalid leaves output intact. */
+typedef struct FrameKernelHeadSticker {
+    FrameKernelRect bounds;
+    FrameKernelEllipse square;
+    uint32_t topology,rows;
+} FrameKernelHeadSticker;
+int32_t frame_kernel_head_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
+    FrameKernelEllipse measured,FrameKernelEllipse stabilized,uint32_t kind,FrameKernelHeadSticker *output);
 /* Experimental bounded translation from a DIRECT face observation to current
    source pixels (top-down gray). The immutable seed's lease is <=150ms.
    Foreign current person boxes veto a peak, never grant ownership.

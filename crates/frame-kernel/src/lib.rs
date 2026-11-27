@@ -17,6 +17,7 @@ pub mod dance_cutout;
 mod dance_detail;
 mod dance_touch;
 pub mod face_geometry;
+pub mod face_head_topology;
 pub mod face_localization;
 pub mod face_observations;
 pub mod face_pixel_motion;

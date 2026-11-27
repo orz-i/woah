@@ -1,0 +1,246 @@
+{
+  "scope": "Approximate visual head rectangles and one torso probe per sample; marked from source frames without using rendered regions; not semantic ground truth. 8 of 90 frames per clip; local corpus sources may share choreography.",
+  "fps": 30,
+  "cases": {
+    "reference_left": {
+      "source": "real_reference.mp4",
+      "source_sha256": "8fdc019e205c1e18abe6177edb040228b28e387666d560acb4e9e9c17ffacf0e",
+      "target_id": 0,
+      "manifest_sha256": "043082d233d26d1074cc9f6714baf8cd7a0a0a4aa1481dfb3531912013d97911",
+      "labels": [
+        {
+          "index": 0,
+          "asset_sha256": "065c679a30debed12d324f34c8ec34ef4cf57d611a215913287ea5c40b3a1330",
+          "head_rect": [
+            158,
+            455,
+            215,
+            528
+          ],
+          "torso_probe": [
+            188,
+            550
+          ]
+        },
+        {
+          "index": 12,
+          "asset_sha256": "20288a04a15edebfd7b0ac0f2dc1a0f18d5db8852f3e45950946f93abbcd124b",
+          "head_rect": [
+            158,
+            461,
+            216,
+            530
+          ],
+          "torso_probe": [
+            190,
+            553
+          ]
+        },
+        {
+          "index": 24,
+          "asset_sha256": "e095ce0114cfafe8df0d235c4ccbb48f4e29cfa2473cec86d60455bb9f42d983",
+          "head_rect": [
+            146,
+            462,
+            207,
+            531
+          ],
+          "torso_probe": [
+            177,
+            552
+          ]
+        },
+        {
+          "index": 36,
+          "asset_sha256": "eaa542608b814c80d5e882b689e3cb687a828474f63718b4881cea57adb40fa9",
+          "head_rect": [
+            148,
+            448,
+            208,
+            523
+          ],
+          "torso_probe": [
+            179,
+            548
+          ]
+        },
+        {
+          "index": 48,
+          "asset_sha256": "011604c8d9f8d2e9a941b7de6cd30eb8506477bed32a8f7ba48582d85589a231",
+          "head_rect": [
+            180,
+            460,
+            235,
+            530
+          ],
+          "torso_probe": [
+            211,
+            554
+          ]
+        },
+        {
+          "index": 60,
+          "asset_sha256": "610bbf3457f739599ddb72f02dd9ab9d6d7c5535f9e568cc60ebc9712f3560e7",
+          "head_rect": [
+            198,
+            495,
+            253,
+            558
+          ],
+          "torso_probe": [
+            225,
+            582
+          ]
+        },
+        {
+          "index": 72,
+          "asset_sha256": "354bdc6ae9e237b3c35b38aef89a2827250c8e6a2e15c7ee41c5609847ccbbc6",
+          "head_rect": [
+            202,
+            492,
+            260,
+            558
+          ],
+          "torso_probe": [
+            231,
+            583
+          ]
+        },
+        {
+          "index": 89,
+          "asset_sha256": "0b231857600aa1877003d565153156afb6f97304327e641f9020ecef6290900f",
+          "head_rect": [
+            185,
+            473,
+            242,
+            548
+          ],
+          "torso_probe": [
+            215,
+            573
+          ]
+        }
+      ]
+    },
+    "target_right": {
+      "source": "real_target.mp4",
+      "source_sha256": "519737bd3614bab2bff64b9ed51dbf2d2274303c6d9f760b6a1b040aaae81363",
+      "target_id": 1,
+      "manifest_sha256": "b7330ae5e4afe027632502bdd83ba2a5af1b2ba010587895fba6f80b2190cae6",
+      "labels": [
+        {
+          "index": 0,
+          "asset_sha256": "82c37698a6c6ea8b05c4435eceadcb9780355c86f516f96600bcba8f789e46ca",
+          "head_rect": [
+            387,
+            458,
+            442,
+            524
+          ],
+          "torso_probe": [
+            414,
+            551
+          ]
+        },
+        {
+          "index": 12,
+          "asset_sha256": "2fe4183a443771fd4abf150e42fa245d3e127d6bf130c06e3246c9bddce32e8b",
+          "head_rect": [
+            387,
+            458,
+            442,
+            524
+          ],
+          "torso_probe": [
+            414,
+            551
+          ]
+        },
+        {
+          "index": 24,
+          "asset_sha256": "251ab0f88bb2ecc8d58ce6975fcb0402b0a8d62b4741c851d57b818b6baaf52f",
+          "head_rect": [
+            387,
+            458,
+            442,
+            524
+          ],
+          "torso_probe": [
+            414,
+            551
+          ]
+        },
+        {
+          "index": 36,
+          "asset_sha256": "f3b8755b4f994642ddf349417488b7aec4536a8c6faaaa0fc906c174ada7d5bd",
+          "head_rect": [
+            386,
+            472,
+            439,
+            537
+          ],
+          "torso_probe": [
+            412,
+            562
+          ]
+        },
+        {
+          "index": 48,
+          "asset_sha256": "292d8fa2e6d7d100aeba9ad6759a6e0ba2331a9a1ce105e23e258b2b0dd24935",
+          "head_rect": [
+            378,
+            453,
+            432,
+            523
+          ],
+          "torso_probe": [
+            405,
+            548
+          ]
+        },
+        {
+          "index": 60,
+          "asset_sha256": "e7e797b8f1ba0eadb1aa397490133b57f04f637090365eb48936c1e5fad57927",
+          "head_rect": [
+            402,
+            471,
+            451,
+            540
+          ],
+          "torso_probe": [
+            425,
+            565
+          ]
+        },
+        {
+          "index": 72,
+          "asset_sha256": "872421342a6b9e8e9d14254f3b331f06e7bcec251b2c7387ae2e74185d5e25cc",
+          "head_rect": [
+            408,
+            496,
+            466,
+            560
+          ],
+          "torso_probe": [
+            438,
+            585
+          ]
+        },
+        {
+          "index": 89,
+          "asset_sha256": "ceae56bcbfb18286e0f475adbdbf5d042824ee417ac24e5d961073547670f80c",
+          "head_rect": [
+            399,
+            478,
+            451,
+            548
+          ],
+          "torso_probe": [
+            425,
+            573
+          ]
+        }
+      ]
+    }
+  }
+}

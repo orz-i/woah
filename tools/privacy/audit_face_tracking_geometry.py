@@ -85,8 +85,9 @@ def audit(report, registered):
                     square = ellipse = 0.0
                 else:
                     x, y, rx, ry = row["render"]
-                    half = max(8, 1.02 * max(rx, ry))
-                    square = float(np.mean((np.abs(xx-x) <= half) & (np.abs(yy-y) <= half)))
+                    sx, sy, srx, sry = row.get("sticker", row["render"])
+                    half = max(8, 1.02 * max(srx, sry))
+                    square = float(np.mean((np.abs(xx-sx) <= half) & (np.abs(yy-sy) <= half)))
                     ellipse = float(np.mean(((xx-x)/rx)**2 + ((yy-y)/ry)**2 <= 1))
                 data[name + "_square"] = square
                 data[name + "_ellipse"] = ellipse

@@ -86,8 +86,23 @@ pub fn current_face_region(
     if !spec.valid(pixels) {
         return None;
     }
-    // Reverse the canonical detector padding only to bound a local mask search.
-    // The original ellipse is always retained, including any temporal padding.
+    let covered = legacy_face_support(pixels, spec, region)
+        .map_or(region, |support| cover_rect(region, support));
+    // A current detector ellipse still needs a sampling margin when the mask
+    // cannot establish a coherent head run. Otherwise a profile's lower chin
+    // can sit exactly at the geometric edge and remain visible after rendering.
+    // Apply this AFTER the envelope so every previously covered point remains.
+    sampled_face_region(covered, spec.transform, spec.width, spec.height)
+}
+
+/// Current source-space support used by the legacy direct-face path.
+/// This is not identity evidence.
+pub(crate) fn legacy_face_support(
+    pixels: &[u8],
+    spec: HeadMaskSpec,
+    region: Ellipse,
+) -> Option<Rect> {
+    // Reverse canonical detector padding only to bound the local mask search.
     let half_width = region.radius_x / 1.32;
     let half_height = region.radius_y / 1.48;
     let bounds = Rect {
@@ -96,13 +111,7 @@ pub fn current_face_region(
         right: region.center_x + half_width,
         bottom: region.center_y + half_height,
     };
-    let covered = observed_head_support(pixels, spec, bounds)
-        .map_or(region, |support| cover_rect(region, support));
-    // A current detector ellipse still needs a sampling margin when the mask
-    // cannot establish a coherent head run. Otherwise a profile's lower chin
-    // can sit exactly at the geometric edge and remain visible after rendering.
-    // Apply this AFTER the envelope so every previously covered point remains.
-    sampled_face_region(covered, spec.transform, spec.width, spec.height)
+    observed_head_support(pixels, spec, bounds)
 }
 
 /// Render a current face with uncertain ownership. The geometry gets the same

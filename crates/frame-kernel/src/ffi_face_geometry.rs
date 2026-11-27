@@ -9,6 +9,34 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// Pixels are readable for len bytes, output is disjoint, writable and aligned.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_head_sticker(
+    pixels: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    measured: Ellipse,
+    stabilized: Ellipse,
+    kind: u32,
+    output: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if len > 1024 * 1024 || output.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies a live readable range for this call.
+    let Some(pixels) = (unsafe { crate::ffi_tracking::borrowed(pixels, len) }) else {
+        return REGION_INVALID;
+    };
+    let Some(result) = crate::face_head_topology::sticker(pixels, spec, measured, stabilized, kind)
+    else {
+        return REGION_INVALID;
+    };
+    // SAFETY: output is disjoint and writable by contract.
+    unsafe { output.write(result) };
+    REGION_OK
+}
+
+/// # Safety
 /// The pixel and foreign-rectangle buffers must be readable for their lengths.
 /// Output is a disjoint, writable, aligned PixelBridge. No pointer is retained.
 /// A nonzero result never writes output.

@@ -34,9 +34,15 @@ Observation = struct("Observation", [("bounds", Rect), ("confidence", F), ("foot
 GrayView = struct("GrayView", [("width", U), ("height", U), ("stride", U), ("source", Rect)])
 PixelMotion = struct("PixelMotion", [(key,F) for key in ("dx","dy","correlation","uniqueness")])
 PixelBridge = struct("PixelBridge", [("motion",PixelMotion),("measurement",Ellipse),("required",Ellipse)])
+HeadSticker = struct("HeadSticker", [("bounds",Rect),("square",Ellipse),("topology",U),("rows",U)])
 
 
 def pixel_bind(lib):
+    if hasattr(lib,"frame_kernel_head_sticker"):
+        fn=lib.frame_kernel_head_sticker
+        fn.argtypes=[P,S,MaskSpec,Ellipse,Ellipse,U,P]
+        fn.restype=C.c_int32
+        lib.head_sticker=fn
     if not hasattr(lib,"frame_kernel_face_pixel_bridge"):
         return
     fn=lib.frame_kernel_face_pixel_bridge
@@ -167,11 +173,14 @@ def summarize(rows):
                 estimated_face=sum(r["kind"]==2 for r in rows),
                 rendered=len(usable), missing=[r["index"] for r in rows if r["render"] is None],
                 pixel_bridged=sum(r.get("pixel_motion") is not None for r in rows),
+                topology_frames=sum(r.get("topology") in (1,2) for r in rows),
                 max_relative_motion_error_x=max((abs(e[0]) for e in motion_audits),default=None),
                 max_relative_motion_error_y=max((abs(e[1]) for e in motion_audits),default=None),
                 relative_motion_75_pass=(len(motion_audits)==len(rows) and all(max(map(abs,e))<=75 for e in motion_audits)) if motion_audits else None,
                 head_point_covered=sum(r.get("head_covered") is True for r in usable),
                 head_point_checked=sum(r.get("head_covered") is not None for r in usable),
+                head_mask_point_covered=sum(r.get("head_mask_covered") is True for r in usable),
+                head_mask_point_checked=sum(r.get("head_mask_covered") is not None for r in usable),
                 width_ratio=ratio([r["width"] for r in usable]),
                 height_ratio=ratio([r["height"] for r in usable]),
                 sampled_width_ratio=ratio([r["width"] for r in sample]),
@@ -182,7 +191,8 @@ def summarize(rows):
 def replay(lib, face, evidence, target, drops, cover_fallback=False):
     tracking = Tracking(lib,target)
     pixel_bind(lib)
-    state, render_state, trusted, pixel_seed = State(), RenderState(), None, None
+    state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
+    sticker_seed = None
     first_head = None
     report = []
     try:
@@ -201,7 +211,8 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False):
             if index==0 and (track is None or not track["observed"]):
                 raise RuntimeError("Target ID has no initial observed identity")
             if track is None or track["dormant"]:
-                state, render_state, trusted, pixel_seed = State(), RenderState(), None, None
+                state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
+                sticker_seed = None
                 continue
             row["track"] = next(t for t in row["tracks"] if t["id"]==target)
             if "person_bbox" in frame:
@@ -264,23 +275,42 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False):
                 check(lib.render_size_step(C.byref(render_state),required,time,kind,C.byref(render)))
                 if render.x!=required.x or render.y!=required.y or render.rx<required.rx or render.ry<required.ry:
                     raise AssertionError("Size continuity lost required current coverage")
+            sticker = render
+            if hasattr(lib,"head_sticker"):
+                if kind in (0,2) and mask is not None:
+                    placement=HeadSticker()
+                    check(lib.head_sticker(ptr(mask),mask.size,spec,raw,out,kind,C.byref(placement)))
+                    sticker_required=placement.square
+                    row["topology"]=placement.topology
+                    row["topology_rows"]=placement.rows
+                    row["sticker_required_bounds"]=vals(placement.bounds)
+                elif row["pixel_motion"] is not None and sticker_seed is not None:
+                    m=row["pixel_motion"]
+                    sticker_required=Ellipse(sticker_seed.x+m["dx"],sticker_seed.y+m["dy"],sticker_seed.rx,sticker_seed.ry)
+                else:
+                    sticker_required=out
+                sticker=Ellipse()
+                check(lib.render_size_step(C.byref(sticker_state),sticker_required,time,kind,C.byref(sticker)))
+                if kind==0:
+                    sticker_seed=sticker
             if kind==0 and hasattr(lib,"pixel_motion"):
                 gray,view=gray_view(image)
                 pixel_seed=(gray,view,raw,render,time)
-            half=max(8,1.02*max(render.rx,render.ry))
-            width=min(transform.width,render.x+half)-max(0,render.x-half)
-            height=min(transform.height,render.y+half)-max(0,render.y-half)
+            half=max(8,1.02*max(sticker.rx,sticker.ry))
+            width=min(transform.width,sticker.x+half)-max(0,sticker.x-half)
+            height=min(transform.height,sticker.y+half)-max(0,sticker.y-half)
             row.update(kind=kind,raw=vals(raw),stabilized=vals(out),required=vals(required),render=vals(render),
-                       width=width,height=height,head_covered=None)
+                       sticker=vals(sticker),width=width,height=height,head_covered=None)
             if "head_x" in frame:
-                dx,dy=frame["head_x"]-render.x,frame["head_y"]-render.y
-                row["head_covered"]=(dx/render.rx)**2+(dy/render.ry)**2<=1
+                dx,dy=frame["head_x"]-sticker.x,frame["head_y"]-sticker.y
+                row["head_covered"]=max(abs(dx),abs(dy))<=half
+                row["head_mask_covered"]=((frame["head_x"]-render.x)/render.rx)**2+((frame["head_y"]-render.y)/render.ry)**2<=1
                 row["head_error"]=math.hypot(dx,dy)
                 if first_head is None:
-                    first_head=(render.x,render.y,frame["head_x"],frame["head_y"])
+                    first_head=(sticker.x,sticker.y,frame["head_x"],frame["head_y"])
                 x0,y0,hx0,hy0=first_head
-                row["relative_motion_error"]=[render.x-x0-(frame["head_x"]-hx0),
-                                               render.y-y0-(frame["head_y"]-hy0)]
+                row["relative_motion_error"]=[sticker.x-x0-(frame["head_x"]-hx0),
+                                               sticker.y-y0-(frame["head_y"]-hy0)]
     finally:
         tracking.close()
     return dict(summary=summarize(report),frames=report)
