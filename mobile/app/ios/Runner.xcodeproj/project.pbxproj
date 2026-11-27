@@ -302,7 +302,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin\n/usr/bin/python3 \"$SRCROOT/../../../tools/release/write_cutout_preview_marker.py\"";
+			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin &&\n/usr/bin/python3 \"$SRCROOT/../../../tools/release/write_cutout_preview_marker.py\"";
 		};
 		69166970E82F6618278B312E /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
