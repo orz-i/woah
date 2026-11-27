@@ -114,6 +114,11 @@ internal class ComparisonSession(
             art.gaoge.dance.engine.BuildConfig.CUTOUT_RELEASE_GPU_QA &&
             context.packageName.endsWith(".cutoutreleaseqa"))
     ) LiteRtAccelerator.GPU else LiteRtAccelerator.CPU
+    private val useGpuReverseBlock=!art.gaoge.dance.engine.BuildConfig.DEBUG &&
+        art.gaoge.dance.engine.BuildConfig.CUTOUT_PREVIEW_ENABLED &&
+        art.gaoge.dance.engine.BuildConfig.CUTOUT_RELEASE_GPU_QA &&
+        context.packageName.endsWith(".cutoutreleaseqa") &&
+        cutoutAccelerator==LiteRtAccelerator.GPU
     private fun newCutoutRuntime()=YoloLiteRtSegmenter(context,requestedAccelerator=cutoutAccelerator,cpuNumThreads=4)
     private fun takeCutoutRuntime()=idleCutoutRuntime.also{idleCutoutRuntime=null}
     private fun clearCutoutInspections(){
@@ -449,10 +454,10 @@ internal class ComparisonSession(
                     initializeCutoutRuntime(segmenter)
                     val analysis=ComparisonCutoutAnalysis(context)
                     val r=analysis.begin(teacherUri,teacher,bounds.teacherTimeUs(first),bounds.teacherTimeUs(last),
-                        bounds.teacherTimeUs(initial.startUs),bounds.teacherTimeUs(initial.endUs-1),ra,true,mirrorR,segmenter,current,inspectedR)
+                        bounds.teacherTimeUs(initial.startUs),bounds.teacherTimeUs(initial.endUs-1),ra,true,mirrorR,segmenter,current,inspectedR,gpuReverseBlock=useGpuReverseBlock)
                     r.use {
                         val t=analysis.begin(learnerUri,learner,bounds.learnerTimeUs(first),bounds.learnerTimeUs(last),
-                            bounds.learnerTimeUs(initial.startUs),bounds.learnerTimeUs(initial.endUs-1),ta,false,mirrorT,segmenter,current,inspectedT)
+                            bounds.learnerTimeUs(initial.startUs),bounds.learnerTimeUs(initial.endUs-1),ta,false,mirrorT,segmenter,current,inspectedT,gpuReverseBlock=useGpuReverseBlock)
                         t.use {
                             if(initial!=selectedWindow)withContext(Dispatchers.Main.immediate){
                                 check(!closed && foreground && cutoutRevision.get()==revision && range==bounds)
@@ -549,7 +554,7 @@ internal class ComparisonSession(
                 try {
                     initializeCutoutRuntime(segmenter)
                     ComparisonCutoutAnalysis(context).begin(uri,description,start,end,previewStart,previewEnd,
-                        seed,request.reference,mirror,segmenter,current,inspected,fixedGrid=grid).use{work->
+                        seed,request.reference,mirror,segmenter,current,inspected,fixedGrid=grid,gpuReverseBlock=useGpuReverseBlock).use{work->
                         work.finish().use{patch->
                             require(patch.layer(seed.ptsUs)!=null)
                             frozen.replacing(request.reference,context.cacheDir,patch,expected,anchor,current).also{pending=it}
