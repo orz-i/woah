@@ -19,6 +19,7 @@ mod dance_touch;
 pub mod face_geometry;
 pub mod face_localization;
 pub mod face_observations;
+pub mod face_pixel_motion;
 pub mod face_render_size;
 mod ffi;
 mod ffi_audio;

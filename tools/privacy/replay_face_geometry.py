@@ -105,7 +105,7 @@ def iou(a, b):
     return overlap / ((r-l)*(d-t)+(z-x)*(w-y)-overlap)
 
 
-def extract(lib, yolo, face, image, reference):
+def detect_instances(lib, yolo, image):
     a = np.asarray(image.convert("RGBA"))
     h, w = a.shape[:2]
     resized = np.empty((640, 640, 4), np.uint8)
@@ -122,15 +122,12 @@ def extract(lib, yolo, face, image, reference):
                                  detections, 32, ptr(masks), masks.size, None)
     if count < 0:
         raise RuntimeError(f"Instance decode failed: {count}")
-    if count == 0:
-        return None, None, None, count
-    index = max(range(count), key=lambda i: iou(detections[i].box, reference) if reference is not None else
-                (detections[i].box.right-detections[i].box.left)*(detections[i].box.bottom-detections[i].box.top))
-    person = detections[index].box
-    if reference is not None and iou(person, reference) < .30:
-        return None, None, None, count
-    mask = masks[index].copy()
-    spec = MaskSpec(160, 160, transform, person)
+    return transform, [detections[i] for i in range(count)], masks[:count].copy()
+
+
+def detect_face(lib, face, image, spec, mask):
+    person = spec.person
+    w, h = image.size
     plan = np.empty(6, np.float32)
     check(lib.face_head_plan(person, w, h, ptr(plan)))
     view = Rect(*plan[:4])
@@ -146,7 +143,7 @@ def extract(lib, yolo, face, image, reference):
     for row in candidates[:n]:
         raw = np.ascontiguousarray(np.r_[row[:5], np.float32(6), row[5:]],dtype=np.float32)
         yes = U()
-        check(lib.current_face_owned(ptr(mask),mask.size,spec,ptr(raw),C.byref(view),256,0,C.byref(yes)))
+        check(lib.current_face_owned(ptr(mask) if mask is not None else None,mask.size if mask is not None else 0,spec,ptr(raw),C.byref(view),256,0,C.byref(yes)))
         if yes.value:
             owned.append(raw)
     measurement = None
@@ -157,7 +154,22 @@ def extract(lib, yolo, face, image, reference):
         if sel >= 0:
             measurement = Ellipse()
             check(lib.detected_face_region(ptr(rows[sel]),C.byref(view),256,0,C.byref(measurement)))
-    return spec, mask, measurement, count
+    return measurement
+
+
+def extract(lib, yolo, face, image, reference):
+    transform, detections, masks = detect_instances(lib, yolo, image)
+    count = len(detections)
+    if not count:
+        return None, None, None, count
+    index = max(range(count), key=lambda i: iou(detections[i].box, reference) if reference is not None else
+                (detections[i].box.right-detections[i].box.left)*(detections[i].box.bottom-detections[i].box.top))
+    person = detections[index].box
+    if reference is not None and iou(person, reference) < .30:
+        return None, None, None, count
+    mask = masks[index]
+    spec = MaskSpec(160, 160, transform, person)
+    return spec, mask, detect_face(lib, face, image, spec, mask), count
 
 
 def run_geometry(lib, evidence):

@@ -9,6 +9,66 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// The pixel and foreign-rectangle buffers must be readable for their lengths.
+/// Output is a disjoint, writable, aligned PixelBridge. No pointer is retained.
+/// A nonzero result never writes output.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_pixel_bridge(
+    previous: *const u8,
+    previous_len: usize,
+    previous_view: crate::face_pixel_motion::GrayView,
+    current: *const u8,
+    current_len: usize,
+    current_view: crate::face_pixel_motion::GrayView,
+    seed: Ellipse,
+    covered: Ellipse,
+    age_us: i64,
+    foreign_boxes: *const Rect,
+    foreign_len: usize,
+    output: *mut crate::face_pixel_motion::PixelBridge,
+) -> i32 {
+    use crate::face_pixel_motion::{MotionError, estimate, project};
+    if output.is_null()
+        || !face_geometry::valid_seed(covered)
+        || previous_len > 256 * 1024 * 1024
+        || current_len > 256 * 1024 * 1024
+        || foreign_len > 4096
+    {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies readable arrays of the checked lengths.
+    let (Some(previous), Some(current), Some(foreign)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(previous, previous_len),
+            crate::ffi_tracking::borrowed(current, current_len),
+            crate::ffi_tracking::borrowed(foreign_boxes, foreign_len),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    match estimate(
+        previous,
+        previous_view,
+        current,
+        current_view,
+        seed,
+        age_us,
+        foreign,
+    ) {
+        Ok(motion) => {
+            let Some(bridge) = project(motion, seed, covered) else {
+                return REGION_INVALID;
+            };
+            // SAFETY: output is exclusive and aligned by the caller contract.
+            unsafe { output.write(bridge) };
+            REGION_OK
+        }
+        Err(MotionError::NoEvidence) => REGION_NONE,
+        Err(MotionError::Invalid) => REGION_INVALID,
+    }
+}
+
+/// # Safety
 /// State and output must point to disjoint writable aligned values. Caller
 /// owns the per-identity lifetime; no face is created from size history alone.
 #[unsafe(no_mangle)]

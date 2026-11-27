@@ -367,6 +367,27 @@ int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRe
      the detected ellipse; it never removes detector coverage or grants identity.
      Positive len requires a valid mask/spec; invalid input leaves output intact. */
   int32_t frame_kernel_current_face_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse region,FrameKernelEllipse *output);
+/* Experimental bounded translation from a DIRECT face observation to current
+   source pixels (top-down gray). The immutable seed's lease is <=150ms.
+   Foreign current person boxes veto a peak, never grant ownership.
+   No identity, renderability, exemption, radius, or observation is established.
+   0 success, 1 no reliable evidence, -1 invalid. Failure does not write. */
+typedef struct FrameKernelGrayView {
+    uint32_t width,height,stride;
+    FrameKernelRect source;
+} FrameKernelGrayView;
+typedef struct FrameKernelPixelMotion {
+    float dx,dy,correlation,uniqueness;
+} FrameKernelPixelMotion;
+/* Both regions keep their prior radii; only motion translates them. Feed
+   measurement to RegionState; required to final render-size continuity. */
+typedef struct FrameKernelPixelBridge {
+    FrameKernelPixelMotion motion;
+    FrameKernelEllipse measurement, required;
+} FrameKernelPixelBridge;
+int32_t frame_kernel_face_pixel_bridge(const uint8_t *previous,size_t previous_len,FrameKernelGrayView previous_view,
+    const uint8_t *current,size_t current_len,FrameKernelGrayView current_view,
+    FrameKernelEllipse seed,FrameKernelEllipse covered,int64_t age_us,const FrameKernelRect *foreign_boxes,size_t foreign_len,FrameKernelPixelBridge *output);
 /* Optional final per-owner render-size continuity. All-zero initialize.
    Feed only current, already-resolved coverage, after current-mask expansion.
    kind=0 observed, 1 projected, 2 estimated. Only observed renews the 150ms

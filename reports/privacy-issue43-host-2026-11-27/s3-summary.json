@@ -1,0 +1,2573 @@
+{
+  "baseline_commit": "173d80b1",
+  "size_only_commit": "8a438f73",
+  "scope": "host production Rust tracking + host face geometry; no mobile native render/encode acceptance",
+  "rust_tests": {
+    "passed": 174,
+    "failed": 0,
+    "ignored": 1
+  },
+  "independent_source": {
+    "file": "real_reference.mp4",
+    "sha256": "8fdc019e205c1e18abe6177edb040228b28e387666d560acb4e9e9c17ffacf0e",
+    "reference": "testdata/comparison/core-matrix-v1.json",
+    "start_s": 0,
+    "fps": 30,
+    "frames": 90,
+    "target_id": 0
+  },
+  "avc_input_sha256": "0e1298f0c48f1d6d13ef6e8544a6ea1b09138d75b577cf0c2d99faddc854b620",
+  "replays": {
+    "original": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+      "target_id": 1,
+      "injected_face_drops": [],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 15,
+        "projected_face": 3,
+        "estimated_face": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 0,
+        "max_relative_motion_error_x": 96.11555859375,
+        "max_relative_motion_error_y": 44.71005908203125,
+        "relative_motion_75_pass": false,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "width_ratio": 1.8211007406243462,
+        "height_ratio": 1.8369307468771323,
+        "sampled_width_ratio": 1.745996182988763,
+        "sampled_height_ratio": 1.7467705031154084,
+        "sampled_widths": [
+          461.74,
+          552.6,
+          517.9,
+          530.16,
+          316.49,
+          541.52,
+          500.82
+        ]
+      },
+      "size_only": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 15,
+        "projected_face": 3,
+        "estimated_face": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 0,
+        "max_relative_motion_error_x": 104.81386181640624,
+        "max_relative_motion_error_y": 42.418158447265625,
+        "relative_motion_75_pass": false,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "width_ratio": 1.2468037326583767,
+        "height_ratio": 1.2468037326583767,
+        "sampled_width_ratio": 1.2325276583971025,
+        "sampled_height_ratio": 1.2325276583971025,
+        "sampled_widths": [
+          377.57,
+          456.65,
+          451.53,
+          445.85,
+          465.36,
+          462.27,
+          451.83
+        ]
+      },
+      "candidate": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 15,
+        "projected_face": 3,
+        "estimated_face": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 3,
+        "max_relative_motion_error_x": 34.54002026367186,
+        "max_relative_motion_error_y": 25.776191650390615,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "width_ratio": 1.2462821261704156,
+        "height_ratio": 1.2462821261704156,
+        "sampled_width_ratio": 1.2325276583971025,
+        "sampled_height_ratio": 1.2325276583971025,
+        "sampled_widths": [
+          377.57,
+          456.65,
+          451.53,
+          445.85,
+          465.36,
+          462.0,
+          451.54
+        ]
+      },
+      "approximate_geometry_audit": {
+        "scope": "Audit-only conservative source envelopes for the tracked affine fixture.\n\nThe coarse manually reviewed rectangles describe the visible target head and\nneighbor head in the source JPEG. Registration uses source images only; no\ndetector or rendered region can choose or move the audit labels. This is a\ngeometric pixel envelope check, not semantic face ground truth or native export.\n",
+        "base_sha256": "bd3bf77fedb9fb85ab57faba66a99ef0afff11dc101d4784685efbc496d899d8",
+        "manifest_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+        "replay_sha256": "1bcc2662f69c3e3f4ec037889cfed960e977d1fd2c92a929f2a808069e6a9a94",
+        "target_source_polygon": [
+          [
+            330,
+            306
+          ],
+          [
+            465,
+            306
+          ],
+          [
+            465,
+            465
+          ],
+          [
+            330,
+            465
+          ]
+        ],
+        "neighbor_source_polygon": [
+          [
+            0,
+            398
+          ],
+          [
+            90,
+            398
+          ],
+          [
+            90,
+            510
+          ],
+          [
+            0,
+            510
+          ]
+        ],
+        "results": {
+          "baseline": {
+            "min_target_square": 1.0,
+            "min_target_ellipse": 0.9704793198769103,
+            "target_square_full_frames": 18,
+            "max_neighbor_square": 1.0,
+            "neighbor_square_overlap_frames": [
+              10,
+              14,
+              15
+            ]
+          },
+          "size_only": {
+            "min_target_square": 1.0,
+            "min_target_ellipse": 0.9994645137372822,
+            "target_square_full_frames": 18,
+            "max_neighbor_square": 0.08348271446862997,
+            "neighbor_square_overlap_frames": [
+              14
+            ]
+          },
+          "candidate": {
+            "min_target_square": 1.0,
+            "min_target_ellipse": 0.9994645137372822,
+            "target_square_full_frames": 18,
+            "max_neighbor_square": 0.08348271446862997,
+            "neighbor_square_overlap_frames": [
+              11,
+              12,
+              13,
+              14
+            ]
+          }
+        }
+      },
+      "candidate_frame_trace": [
+        {
+          "index": 0,
+          "time_us": 0,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "da45cbbb97a3f007f2edcf1c833c6207f2f1ac2f559f14f351fcb1991e56f3bc",
+          "kind": 0,
+          "render": [
+            353.6941833496094,
+            444.6531066894531,
+            185.0814666748047,
+            185.0814666748047
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8821864244565207,
+          "relative_motion_error": [
+            0.0,
+            0.0
+          ],
+          "width": 377.56619201660163,
+          "height": 377.56619201660163,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 0,
+            "registration_correlation": 0.9996357866746571,
+            "registration_head_error_px": 0.0068416911265562425,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 1,
+          "time_us": 33333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "9f81700ff1800d4116e1e4ba7b0423f10519dd6d1e301d751357d3f62882729a",
+          "kind": 0,
+          "render": [
+            385.07208251953125,
+            471.81561279296875,
+            183.83279418945312,
+            183.83279418945312
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8419175054300664,
+          "relative_motion_error": [
+            10.567899169921873,
+            -0.6804938964843927
+          ],
+          "width": 375.0189001464844,
+          "height": 375.0189001464844,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 1,
+            "registration_correlation": 0.9996161048124939,
+            "registration_head_error_px": 0.0024785164893452558,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 2,
+          "time_us": 66667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "0c6ae38c565f7ab6ae89eae282935622711860a2cf00f9e6aa88f115df6ad6fa",
+          "kind": 0,
+          "render": [
+            406.0912780761719,
+            487.97564697265625,
+            183.03883361816406,
+            183.03883361816406
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7887933532569791,
+          "relative_motion_error": [
+            12.035094726562534,
+            -0.19745971679691365
+          ],
+          "width": 373.39922058105464,
+          "height": 373.39922058105464,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 2,
+            "registration_correlation": 0.999681529510816,
+            "registration_head_error_px": 0.008800122187442609,
+            "target_square": 1.0,
+            "target_ellipse": 0.9994645137372822,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 3,
+          "time_us": 100000,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "498dcc498cd1028fbc7065188c0eb4713861d5d06700964f4df1de91d16afa13",
+          "kind": 0,
+          "render": [
+            427.9141845703125,
+            508.4397277832031,
+            223.8498992919922,
+            223.8498992919922
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7254276815433465,
+          "relative_motion_error": [
+            17.734001220703135,
+            24.461621093749955
+          ],
+          "width": 456.65379455566404,
+          "height": 456.65379455566404,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 3,
+            "registration_correlation": 0.9996373174486395,
+            "registration_head_error_px": 0.006921597006139793,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 4,
+          "time_us": 133333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "73132ca25f5de204af2ecc215d607cbb160fd0af5b7804d7d6fecebdab16b573",
+          "kind": 0,
+          "render": [
+            440.2512512207031,
+            464.053955078125,
+            223.1194610595703,
+            223.1194610595703
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7444806965438543,
+          "relative_motion_error": [
+            19.258067871093772,
+            2.142848388671837
+          ],
+          "width": 455.16370056152346,
+          "height": 455.16370056152346,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 4,
+            "registration_correlation": 0.9995788595697839,
+            "registration_head_error_px": 0.0043929579785788354,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 5,
+          "time_us": 166667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "2879308d5ba16696ba73a04940acc5f1b5a32a44f8aa4b4d134260b9ba41e467",
+          "kind": 0,
+          "render": [
+            442.77801513671875,
+            444.7523498535156,
+            222.4617156982422,
+            222.4617156982422
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7236674658015421,
+          "relative_motion_error": [
+            17.648831787109373,
+            12.000243164062454
+          ],
+          "width": 453.821900024414,
+          "height": 453.821900024414,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 5,
+            "registration_correlation": 0.9995678376804501,
+            "registration_head_error_px": 0.07077590017747892,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 6,
+          "time_us": 200000,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "60d6ebd84416b61af3a267dde7656ac712052ecdb193c88bbfc34c23b45d0a5e",
+          "kind": 0,
+          "render": [
+            440.59820556640625,
+            408.69677734375,
+            221.33883666992188,
+            221.33883666992188
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7882813092421218,
+          "relative_motion_error": [
+            18.66302221679689,
+            -2.262329345703165
+          ],
+          "width": 451.5312268066407,
+          "height": 451.5312268066407,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 6,
+            "registration_correlation": 0.9995762223216054,
+            "registration_head_error_px": 0.10697058602533781,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 7,
+          "time_us": 233333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "bd48c94cf46b3dba133c4088ce7f45ac3047d137f381e69db5fa052ba3900623",
+          "kind": 0,
+          "render": [
+            417.37237548828125,
+            412.0270690917969,
+            220.06666564941406,
+            220.06666564941406
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8828292218651013,
+          "relative_motion_error": [
+            5.768192138671907,
+            4.238962402343759
+          ],
+          "width": 448.9359979248047,
+          "height": 448.9359979248047,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 7,
+            "registration_correlation": 0.9995922652870998,
+            "registration_head_error_px": 0.07305688813882284,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 8,
+          "time_us": 266667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "a76f635d0e56927dc2517a4cc0c2742756add818210e457d941d8daa6fb97035",
+          "kind": 0,
+          "render": [
+            398.8698425292969,
+            439.8224182128906,
+            219.2333984375,
+            219.2333984375
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8820668855624693,
+          "relative_motion_error": [
+            3.654659179687542,
+            13.939311523437482
+          ],
+          "width": 447.23613281250005,
+          "height": 447.23613281250005,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 8,
+            "registration_correlation": 0.9995993135157134,
+            "registration_head_error_px": 0.07467248110754614,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 9,
+          "time_us": 300000,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "e6afca8678caed16e997cd64925a5f293d22728684c088690a667631459315c1",
+          "kind": 0,
+          "render": [
+            367.31207275390625,
+            463.8631591796875,
+            218.5516815185547,
+            218.5516815185547
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.9121469063019706,
+          "relative_motion_error": [
+            -7.364110595703096,
+            5.9650524902343705
+          ],
+          "width": 445.84543029785164,
+          "height": 445.84543029785164,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 9,
+            "registration_correlation": 0.9996213668562189,
+            "registration_head_error_px": 0.05982153605993505,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 10,
+          "time_us": 333333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "f2b771db3cc9d5763a858181e28ca654d2971f3033f0e47f0d126048cb11ec1c",
+          "kind": 0,
+          "render": [
+            328.2060241699219,
+            512.499267578125,
+            228.11802673339844,
+            228.11802673339844
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8717054136502402,
+          "relative_motion_error": [
+            -24.342159179687485,
+            22.68216088867183
+          ],
+          "width": 465.3607745361328,
+          "height": 465.3607745361328,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 10,
+            "registration_correlation": 0.9995708073033539,
+            "registration_head_error_px": 0.021428485330387888,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 11,
+          "time_us": 366667,
+          "detected_persons": 1,
+          "tracking_snapshot_sha256": "a3a36326f880413c6026c3d3cfaa6c484e1a3ac733680ce1d6e1d1473559d507",
+          "kind": 1,
+          "render": [
+            303.5447082519531,
+            531.6243896484375,
+            228.11802673339844,
+            228.11802673339844
+          ],
+          "pixel_motion": {
+            "dx": -24.661306381225586,
+            "dy": 19.12509536743164,
+            "correlation": 0.985184907913208,
+            "uniqueness": 0.23289328813552856
+          },
+          "audit_track_iou": 0.5494561097717269,
+          "relative_motion_error": [
+            -28.172475097656218,
+            24.209282958984375
+          ],
+          "width": 465.3607745361328,
+          "height": 465.3607745361328,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 11,
+            "registration_correlation": 0.9995728864740567,
+            "registration_head_error_px": 0.004895477474335064,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.017600429934166332,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 12,
+          "time_us": 400000,
+          "detected_persons": 0,
+          "tracking_snapshot_sha256": "64fdbd58f811b5a2ee3be5a8341ef2a407085bfb072ae8a748c3a800d2cbca36",
+          "kind": 1,
+          "render": [
+            284.41961669921875,
+            527.5980224609375,
+            228.11802673339844,
+            228.11802673339844
+          ],
+          "pixel_motion": {
+            "dx": -43.786399841308594,
+            "dy": 15.098758697509766,
+            "correlation": 0.9730604887008667,
+            "uniqueness": 0.21416060626506805
+          },
+          "audit_track_iou": 0.5023079533251633,
+          "relative_motion_error": [
+            -30.53156665039063,
+            24.77091577148434
+          ],
+          "width": 465.3607745361328,
+          "height": 465.3607745361328,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 12,
+            "registration_correlation": 0.9995485116791135,
+            "registration_head_error_px": 0.01832951242939259,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.05535374502681197,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 13,
+          "time_us": 433333,
+          "detected_persons": 0,
+          "tracking_snapshot_sha256": "f034fcdada851184900504091d7d67dcc7fd8e94855925a0c13af990461fc060",
+          "kind": 1,
+          "render": [
+            274.3537902832031,
+            503.94329833984375,
+            228.11802673339844,
+            228.11802673339844
+          ],
+          "pixel_motion": {
+            "dx": -53.85224151611328,
+            "dy": -8.555963516235352,
+            "correlation": 0.9715592265129089,
+            "uniqueness": 0.21368151903152466
+          },
+          "audit_track_iou": 0.5089916722260444,
+          "relative_motion_error": [
+            -30.075393066406207,
+            25.776191650390615
+          ],
+          "width": 465.3607745361328,
+          "height": 465.3607745361328,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 13,
+            "registration_correlation": 0.9995491453939969,
+            "registration_head_error_px": 0.04880278667900279,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.051869991095280496,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 14,
+          "time_us": 466667,
+          "detected_persons": 1,
+          "tracking_snapshot_sha256": "bdea9ef2be47eb367befa16a3bf69cd1a763c89d65a6bd8e185fd97c364f356a",
+          "kind": 0,
+          "render": [
+            266.8421630859375,
+            467.952392578125,
+            228.09596252441406,
+            228.09596252441406
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.828202978165746,
+          "relative_motion_error": [
+            -34.54002026367186,
+            23.430285888671847
+          ],
+          "width": 465.3157635498046,
+          "height": 465.3157635498046,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 14,
+            "registration_correlation": 0.9995516982889598,
+            "registration_head_error_px": 0.04955805677488849,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.08348271446862997,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 15,
+          "time_us": 500000,
+          "detected_persons": 1,
+          "tracking_snapshot_sha256": "60a3d6fd02c3db19015050276f6c6936fe9a542347b12ad6005ab021bfc03354",
+          "kind": 0,
+          "render": [
+            284.13714599609375,
+            427.99822998046875,
+            226.47239685058594,
+            226.47239685058594
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8404638646280084,
+          "relative_motion_error": [
+            -21.818037353515592,
+            11.18312329101559
+          ],
+          "width": 462.00368957519527,
+          "height": 462.00368957519527,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 15,
+            "registration_correlation": 0.999553394121293,
+            "registration_head_error_px": 0.061914747914651,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 16,
+          "time_us": 533333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "d48762edcb4673f7716d4443c6dddbf25514ea0dfa9fe34e0b87a478f2ccbdd1",
+          "kind": 0,
+          "render": [
+            303.25140380859375,
+            416.7372741699219,
+            224.2974090576172,
+            224.2974090576172
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.9186745146592792,
+          "relative_motion_error": [
+            -14.06277954101563,
+            9.787167480468725
+          ],
+          "width": 457.5667144775391,
+          "height": 457.5667144775391,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 16,
+            "registration_correlation": 0.9995664675171945,
+            "registration_head_error_px": 0.0670928424187555,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 17,
+          "time_us": 566667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "5d6f6811ea770a52a4a8d81967ef214152dea2ab1cd159f06586e498d572f92c",
+          "kind": 0,
+          "render": [
+            325.6297302246094,
+            424.2337341308594,
+            221.34153747558594,
+            221.34153747558594
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.9030630320169978,
+          "relative_motion_error": [
+            -8.263453124999955,
+            5.848627441406222
+          ],
+          "width": 451.53673645019535,
+          "height": 451.53673645019535,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 17,
+            "registration_correlation": 0.9995609933357652,
+            "registration_head_error_px": 0.06645538590571885,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        }
+      ]
+    },
+    "avc": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "755cad628fee690f4b70037144e9d708866aad8cb7db6dc16ba035dac7130f94",
+      "target_id": 1,
+      "injected_face_drops": [],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 17,
+        "direct_face": 17,
+        "projected_face": 1,
+        "estimated_face": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 0,
+        "max_relative_motion_error_x": 48.51842114257812,
+        "max_relative_motion_error_y": 39.83790991210941,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "width_ratio": 1.9538584956377818,
+        "height_ratio": 1.95991676301363,
+        "sampled_width_ratio": 1.8008888358864175,
+        "sampled_height_ratio": 1.8008888358864175,
+        "sampled_widths": [
+          491.9,
+          521.3,
+          522.13,
+          528.35,
+          293.39,
+          525.86,
+          503.7
+        ]
+      },
+      "size_only": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 17,
+        "direct_face": 17,
+        "projected_face": 1,
+        "estimated_face": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 0,
+        "max_relative_motion_error_x": 57.967060058593745,
+        "max_relative_motion_error_y": 38.639393066406285,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "width_ratio": 1.1589942801734774,
+        "height_ratio": 1.1589942801734774,
+        "sampled_width_ratio": 1.1429832485046636,
+        "sampled_height_ratio": 1.1429832485046636,
+        "sampled_widths": [
+          402.81,
+          437.75,
+          437.81,
+          435.89,
+          460.4,
+          454.83,
+          444.46
+        ]
+      },
+      "candidate": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 17,
+        "direct_face": 17,
+        "projected_face": 1,
+        "estimated_face": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 1,
+        "max_relative_motion_error_x": 41.29893139648436,
+        "max_relative_motion_error_y": 19.541125732421847,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "width_ratio": 1.1589942801734774,
+        "height_ratio": 1.1589942801734774,
+        "sampled_width_ratio": 1.1429832485046636,
+        "sampled_height_ratio": 1.1429832485046636,
+        "sampled_widths": [
+          402.81,
+          437.75,
+          437.81,
+          435.89,
+          460.4,
+          454.83,
+          444.46
+        ]
+      },
+      "approximate_geometry_audit": {
+        "scope": "Audit-only conservative source envelopes for the tracked affine fixture.\n\nThe coarse manually reviewed rectangles describe the visible target head and\nneighbor head in the source JPEG. Registration uses source images only; no\ndetector or rendered region can choose or move the audit labels. This is a\ngeometric pixel envelope check, not semantic face ground truth or native export.\n",
+        "base_sha256": "bd3bf77fedb9fb85ab57faba66a99ef0afff11dc101d4784685efbc496d899d8",
+        "manifest_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+        "replay_sha256": "dc2eda32750087a4d597eefe0013648f38043726627a4b169235594eebd8e97a",
+        "target_source_polygon": [
+          [
+            330,
+            306
+          ],
+          [
+            465,
+            306
+          ],
+          [
+            465,
+            465
+          ],
+          [
+            330,
+            465
+          ]
+        ],
+        "neighbor_source_polygon": [
+          [
+            0,
+            398
+          ],
+          [
+            90,
+            398
+          ],
+          [
+            90,
+            510
+          ],
+          [
+            0,
+            510
+          ]
+        ],
+        "results": {
+          "baseline": {
+            "min_target_square": 1.0,
+            "min_target_ellipse": 1.0,
+            "target_square_full_frames": 18,
+            "max_neighbor_square": 1.0,
+            "neighbor_square_overlap_frames": [
+              10,
+              11,
+              13,
+              14,
+              15
+            ]
+          },
+          "size_only": {
+            "min_target_square": 1.0,
+            "min_target_ellipse": 1.0,
+            "target_square_full_frames": 18,
+            "max_neighbor_square": 0.1431433659839715,
+            "neighbor_square_overlap_frames": [
+              13,
+              14
+            ]
+          },
+          "candidate": {
+            "min_target_square": 1.0,
+            "min_target_ellipse": 1.0,
+            "target_square_full_frames": 18,
+            "max_neighbor_square": 0.1431433659839715,
+            "neighbor_square_overlap_frames": [
+              12,
+              13,
+              14
+            ]
+          }
+        }
+      },
+      "candidate_frame_trace": [
+        {
+          "index": 0,
+          "time_us": 0,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "5c426f16c7c452b226f24fdcef9f888418c4f725e0dca42429438aee75357caa",
+          "kind": 0,
+          "render": [
+            355.396484375,
+            452.37451171875,
+            197.4547882080078,
+            197.4547882080078
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8785645595921561,
+          "relative_motion_error": [
+            0.0,
+            0.0
+          ],
+          "width": 402.80776794433586,
+          "height": 402.80776794433586,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 0,
+            "registration_correlation": 0.9996357866746571,
+            "registration_head_error_px": 0.0068416911265562425,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 1,
+          "time_us": 33333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "9f2c21c39f31fc3cbe7c9c8b816ac7547a87f05c1f33a12f03b2ef3b7a280a65",
+          "kind": 0,
+          "render": [
+            383.1220703125,
+            468.0294189453125,
+            196.14007568359375,
+            196.14007568359375
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8438772813226716,
+          "relative_motion_error": [
+            6.915585937499998,
+            -12.188092773437518
+          ],
+          "width": 400.1257543945312,
+          "height": 400.1257543945312,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 1,
+            "registration_correlation": 0.9996161048124939,
+            "registration_head_error_px": 0.0024785164893452558,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 2,
+          "time_us": 66667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "f23eb216eaec427cf87bc17b6d788960160e11d6c1e52606842f60d05bdc5130",
+          "kind": 0,
+          "render": [
+            408.0640869140625,
+            496.56744384765625,
+            202.06185913085938,
+            202.06185913085938
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7948108724696569,
+          "relative_motion_error": [
+            12.305602539062534,
+            0.6729321289062113
+          ],
+          "width": 412.20619262695305,
+          "height": 412.20619262695305,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 2,
+            "registration_correlation": 0.999681529510816,
+            "registration_head_error_px": 0.008800122187442609,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 3,
+          "time_us": 100000,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "2a2d30720baf3a8fe04931ad65a627faeabc35a5746c58accb3ddabc97f52908",
+          "kind": 0,
+          "render": [
+            426.0349426269531,
+            503.85028076171875,
+            214.58575439453125,
+            214.58575439453125
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7328589292731336,
+          "relative_motion_error": [
+            14.152458251953135,
+            12.150769042968705
+          ],
+          "width": 437.7549389648438,
+          "height": 437.7549389648438,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 3,
+            "registration_correlation": 0.9996373174486395,
+            "registration_head_error_px": 0.006921597006139793,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 4,
+          "time_us": 133333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "7660330503a50844949c8d992f5645e40a7abd083598759f847253422af59055",
+          "kind": 0,
+          "render": [
+            438.2546081542969,
+            472.40484619140625,
+            214.22384643554688,
+            214.22384643554688
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8044759630539917,
+          "relative_motion_error": [
+            15.559123779296897,
+            2.772334472656212
+          ],
+          "width": 437.0166467285157,
+          "height": 437.0166467285157,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 4,
+            "registration_correlation": 0.9995788595697839,
+            "registration_head_error_px": 0.0043929579785788354,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 5,
+          "time_us": 166667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "99bbd444af57d6b4f5f569940bd86bc637875c73d77698f8853636fa7f1cf6cf",
+          "kind": 0,
+          "render": [
+            442.8561096191406,
+            440.1074523925781,
+            213.54351806640625,
+            213.54351806640625
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7380302602639555,
+          "relative_motion_error": [
+            16.024625244140623,
+            -0.3660593261719214
+          ],
+          "width": 435.6287768554687,
+          "height": 435.6287768554687,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 5,
+            "registration_correlation": 0.9995678376804501,
+            "registration_head_error_px": 0.07077590017747892,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 6,
+          "time_us": 200000,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "2a84bea9c437a9356bb8be010f68ea613c5b0ba8ca6f001ba14e3444c0cfca3a",
+          "kind": 0,
+          "render": [
+            434.10107421875,
+            423.8897705078125,
+            214.61314392089844,
+            214.61314392089844
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7944212020426211,
+          "relative_motion_error": [
+            10.463589843750015,
+            5.20925878906246
+          ],
+          "width": 437.8108135986329,
+          "height": 437.8108135986329,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 6,
+            "registration_correlation": 0.9995762223216054,
+            "registration_head_error_px": 0.10697058602533781,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 7,
+          "time_us": 233333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "cb7d3b976b6f4246f1ac012258d45285a2c4a903879402c099afbe2e111ca808",
+          "kind": 0,
+          "render": [
+            414.79693603515625,
+            411.817626953125,
+            213.96151733398438,
+            213.96151733398438
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8973807011466436,
+          "relative_motion_error": [
+            1.4904516601562818,
+            -3.691884765624991
+          ],
+          "width": 436.48149536132814,
+          "height": 436.48149536132814,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 7,
+            "registration_correlation": 0.9995922652870998,
+            "registration_head_error_px": 0.07305688813882284,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 8,
+          "time_us": 266667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "903d8aaa893448e053a34ef15887ad8f411cad60a7f5070b321e0dac84661a7a",
+          "kind": 0,
+          "render": [
+            395.8057861328125,
+            444.17999267578125,
+            213.9088592529297,
+            213.9088592529297
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8855935498937184,
+          "relative_motion_error": [
+            -1.1116982421874582,
+            10.575480957031232
+          ],
+          "width": 436.37407287597665,
+          "height": 436.37407287597665,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 8,
+            "registration_correlation": 0.9995993135157134,
+            "registration_head_error_px": 0.07467248110754614,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 9,
+          "time_us": 300000,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "57e471c6a1e2bea53cd7bdc62a330edd53e112168ad3554c6fd57a82a6f7d486",
+          "kind": 0,
+          "render": [
+            367.7979431152344,
+            467.840087890625,
+            213.6719207763672,
+            213.6719207763672
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.9078183115708651,
+          "relative_motion_error": [
+            -8.580541259765596,
+            2.2205761718749955
+          ],
+          "width": 435.89071838378914,
+          "height": 435.89071838378914,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 9,
+            "registration_correlation": 0.9996213668562189,
+            "registration_head_error_px": 0.05982153605993505,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 10,
+          "time_us": 333333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "d6f696ed4832b00dd862c3d7a0e140f29883aa0f7ef61774a7d0ae5a2795d00c",
+          "kind": 0,
+          "render": [
+            327.5212707519531,
+            512.0978393554688,
+            227.32522583007812,
+            227.32522583007812
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8810651619262037,
+          "relative_motion_error": [
+            -26.72921362304686,
+            14.559327636718706
+          ],
+          "width": 463.74346069335934,
+          "height": 463.74346069335934,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 10,
+            "registration_correlation": 0.9995708073033539,
+            "registration_head_error_px": 0.021428485330387888,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 11,
+          "time_us": 366667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "b65a4bb01b8d63ff6cca212c69e0a5b5bc528fbe3960f48f29af604ba3bb133a",
+          "kind": 0,
+          "render": [
+            307.0118408203125,
+            515.9043579101562,
+            225.68751525878906,
+            225.68751525878906
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8455086601984809,
+          "relative_motion_error": [
+            -26.407643554687468,
+            0.7678461914062495
+          ],
+          "width": 460.4025311279297,
+          "height": 460.4025311279297,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 11,
+            "registration_correlation": 0.9995728864740567,
+            "registration_head_error_px": 0.004895477474335064,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 12,
+          "time_us": 400000,
+          "detected_persons": 0,
+          "tracking_snapshot_sha256": "bf6cf8a10369df9725fb8bffd38cab5271e0be8d4817016f5744e42dc0e9a4f1",
+          "kind": 1,
+          "render": [
+            288.5578918457031,
+            512.6949462890625,
+            225.68751525878906,
+            225.68751525878906
+          ],
+          "pixel_motion": {
+            "dx": -18.45394515991211,
+            "dy": -3.209381580352783,
+            "correlation": 0.993786096572876,
+            "uniqueness": 0.16727131605148315
+          },
+          "audit_track_iou": 0.6143527593431587,
+          "relative_motion_error": [
+            -28.09559252929688,
+            2.146434570312465
+          ],
+          "width": 460.4025311279297,
+          "height": 460.4025311279297,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 12,
+            "registration_correlation": 0.9995485116791135,
+            "registration_head_error_px": 0.01832951242939259,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.009167964020065733,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 13,
+          "time_us": 433333,
+          "detected_persons": 1,
+          "tracking_snapshot_sha256": "e1fceb1110631588ac9a38c25e463c2e31c91f543c93ba60a1d9969dbcdfa3d8",
+          "kind": 0,
+          "render": [
+            266.1001892089844,
+            504.4740295410156,
+            225.65647888183594,
+            225.65647888183594
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8125613903957445,
+          "relative_motion_error": [
+            -40.03129516601558,
+            18.585517822265615
+          ],
+          "width": 460.33921691894534,
+          "height": 460.33921691894534,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 13,
+            "registration_correlation": 0.9995491453939969,
+            "registration_head_error_px": 0.04880278667900279,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.1431433659839715,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 14,
+          "time_us": 466667,
+          "detected_persons": 1,
+          "tracking_snapshot_sha256": "fe75e7144486c95bd6358a4f897e787d7282fd5bc1f3a672d470694393b0de9f",
+          "kind": 0,
+          "render": [
+            261.7855529785156,
+            471.7846374511719,
+            225.13449096679688,
+            225.13449096679688
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8099978037436977,
+          "relative_motion_error": [
+            -41.29893139648436,
+            19.541125732421847
+          ],
+          "width": 459.27436157226566,
+          "height": 459.27436157226566,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 14,
+            "registration_correlation": 0.9995516982889598,
+            "registration_head_error_px": 0.04955805677488849,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.11984635083226633,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 15,
+          "time_us": 500000,
+          "detected_persons": 1,
+          "tracking_snapshot_sha256": "b0e062f59370a293287452ddd2d84e3473b97892dd1d78f88aa5541cc478f4cb",
+          "kind": 0,
+          "render": [
+            288.5887145996094,
+            428.2231140136719,
+            222.9561309814453,
+            222.9561309814453
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.841688159778255,
+          "relative_motion_error": [
+            -19.068769775390592,
+            3.6866022949218404
+          ],
+          "width": 454.8305072021485,
+          "height": 454.8305072021485,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 15,
+            "registration_correlation": 0.999553394121293,
+            "registration_head_error_px": 0.061914747914651,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 16,
+          "time_us": 533333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "686d2fecc19de6c9690d34aa41e6fa1e91174261b18035e9173a247ccdbe029a",
+          "kind": 0,
+          "render": [
+            305.83111572265625,
+            412.54241943359375,
+            220.35031127929688,
+            220.35031127929688
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.9177423326060201,
+          "relative_motion_error": [
+            -13.185368652343755,
+            -2.1290922851562755
+          ],
+          "width": 449.5146350097657,
+          "height": 449.5146350097657,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 16,
+            "registration_correlation": 0.9995664675171945,
+            "registration_head_error_px": 0.0670928424187555,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 17,
+          "time_us": 566667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "546c1b17dfc20a42f7ef2996986b043abfc288d3809f1540df717dcf5143ee13",
+          "kind": 0,
+          "render": [
+            327.8447570800781,
+            427.37957763671875,
+            217.87451171875,
+            217.87451171875
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.9022629372998715,
+          "relative_motion_error": [
+            -7.75072729492183,
+            1.2730659179687223
+          ],
+          "width": 444.46400390625007,
+          "height": 444.46400390625007,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 17,
+            "registration_correlation": 0.9995609933357652,
+            "registration_head_error_px": 0.06645538590571885,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        }
+      ]
+    },
+    "drop": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+      "target_id": 1,
+      "injected_face_drops": [
+        6,
+        7,
+        8
+      ],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 12,
+        "projected_face": 6,
+        "estimated_face": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 0,
+        "max_relative_motion_error_x": 96.11555859375,
+        "max_relative_motion_error_y": 44.71005908203125,
+        "relative_motion_75_pass": false,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "width_ratio": 1.8100582439139716,
+        "height_ratio": 1.8129326138637272,
+        "sampled_width_ratio": 1.705647723068115,
+        "sampled_height_ratio": 1.7064041493271218,
+        "sampled_widths": [
+          461.74,
+          552.6,
+          357.44,
+          538.62,
+          323.98,
+          544.39,
+          502.99
+        ]
+      },
+      "size_only": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 12,
+        "projected_face": 6,
+        "estimated_face": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 0,
+        "max_relative_motion_error_x": 104.81386181640624,
+        "max_relative_motion_error_y": 42.418158447265625,
+        "relative_motion_75_pass": false,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "width_ratio": 1.2606494380079818,
+        "height_ratio": 1.2606494380079818,
+        "sampled_width_ratio": 1.246736406837578,
+        "sampled_height_ratio": 1.246736406837578,
+        "sampled_widths": [
+          377.57,
+          456.65,
+          453.82,
+          452.36,
+          470.73,
+          466.73,
+          455.61
+        ]
+      },
+      "candidate": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 12,
+        "projected_face": 6,
+        "estimated_face": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 6,
+        "max_relative_motion_error_x": 33.48450878906249,
+        "max_relative_motion_error_y": 25.824958740234365,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "width_ratio": 1.2572567866989597,
+        "height_ratio": 1.2572567866989597,
+        "sampled_width_ratio": 1.2433811981846898,
+        "sampled_height_ratio": 1.2433811981846898,
+        "sampled_widths": [
+          377.57,
+          456.65,
+          453.82,
+          452.18,
+          469.46,
+          465.52,
+          454.51
+        ]
+      },
+      "approximate_geometry_audit": {
+        "scope": "Audit-only conservative source envelopes for the tracked affine fixture.\n\nThe coarse manually reviewed rectangles describe the visible target head and\nneighbor head in the source JPEG. Registration uses source images only; no\ndetector or rendered region can choose or move the audit labels. This is a\ngeometric pixel envelope check, not semantic face ground truth or native export.\n",
+        "base_sha256": "bd3bf77fedb9fb85ab57faba66a99ef0afff11dc101d4784685efbc496d899d8",
+        "manifest_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+        "replay_sha256": "48dac06650e11674b207fb82fea98598c1a2acaa2d2b63dd4ebbae397037cb73",
+        "target_source_polygon": [
+          [
+            330,
+            306
+          ],
+          [
+            465,
+            306
+          ],
+          [
+            465,
+            465
+          ],
+          [
+            330,
+            465
+          ]
+        ],
+        "neighbor_source_polygon": [
+          [
+            0,
+            398
+          ],
+          [
+            90,
+            398
+          ],
+          [
+            90,
+            510
+          ],
+          [
+            0,
+            510
+          ]
+        ],
+        "results": {
+          "baseline": {
+            "min_target_square": 0.9852619609901163,
+            "min_target_ellipse": 0.9285839237295548,
+            "target_square_full_frames": 16,
+            "max_neighbor_square": 1.0,
+            "neighbor_square_overlap_frames": [
+              10,
+              14,
+              15
+            ]
+          },
+          "size_only": {
+            "min_target_square": 1.0,
+            "min_target_ellipse": 0.9994645137372822,
+            "target_square_full_frames": 18,
+            "max_neighbor_square": 0.10089628681177977,
+            "neighbor_square_overlap_frames": [
+              14
+            ]
+          },
+          "candidate": {
+            "min_target_square": 1.0,
+            "min_target_ellipse": 0.9994645137372822,
+            "target_square_full_frames": 18,
+            "max_neighbor_square": 0.10089628681177977,
+            "neighbor_square_overlap_frames": [
+              11,
+              12,
+              13,
+              14
+            ]
+          }
+        }
+      },
+      "candidate_frame_trace": [
+        {
+          "index": 0,
+          "time_us": 0,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "da45cbbb97a3f007f2edcf1c833c6207f2f1ac2f559f14f351fcb1991e56f3bc",
+          "kind": 0,
+          "render": [
+            353.6941833496094,
+            444.6531066894531,
+            185.0814666748047,
+            185.0814666748047
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8821864244565207,
+          "relative_motion_error": [
+            0.0,
+            0.0
+          ],
+          "width": 377.56619201660163,
+          "height": 377.56619201660163,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 0,
+            "registration_correlation": 0.9996357866746571,
+            "registration_head_error_px": 0.0068416911265562425,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 1,
+          "time_us": 33333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "9f81700ff1800d4116e1e4ba7b0423f10519dd6d1e301d751357d3f62882729a",
+          "kind": 0,
+          "render": [
+            385.07208251953125,
+            471.81561279296875,
+            183.83279418945312,
+            183.83279418945312
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8419175054300664,
+          "relative_motion_error": [
+            10.567899169921873,
+            -0.6804938964843927
+          ],
+          "width": 375.0189001464844,
+          "height": 375.0189001464844,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 1,
+            "registration_correlation": 0.9996161048124939,
+            "registration_head_error_px": 0.0024785164893452558,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 2,
+          "time_us": 66667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "0c6ae38c565f7ab6ae89eae282935622711860a2cf00f9e6aa88f115df6ad6fa",
+          "kind": 0,
+          "render": [
+            406.0912780761719,
+            487.97564697265625,
+            183.03883361816406,
+            183.03883361816406
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7887933532569791,
+          "relative_motion_error": [
+            12.035094726562534,
+            -0.19745971679691365
+          ],
+          "width": 373.39922058105464,
+          "height": 373.39922058105464,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 2,
+            "registration_correlation": 0.999681529510816,
+            "registration_head_error_px": 0.008800122187442609,
+            "target_square": 1.0,
+            "target_ellipse": 0.9994645137372822,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 3,
+          "time_us": 100000,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "498dcc498cd1028fbc7065188c0eb4713861d5d06700964f4df1de91d16afa13",
+          "kind": 0,
+          "render": [
+            427.9141845703125,
+            508.4397277832031,
+            223.8498992919922,
+            223.8498992919922
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7254276815433465,
+          "relative_motion_error": [
+            17.734001220703135,
+            24.461621093749955
+          ],
+          "width": 456.65379455566404,
+          "height": 456.65379455566404,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 3,
+            "registration_correlation": 0.9996373174486395,
+            "registration_head_error_px": 0.006921597006139793,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 4,
+          "time_us": 133333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "73132ca25f5de204af2ecc215d607cbb160fd0af5b7804d7d6fecebdab16b573",
+          "kind": 0,
+          "render": [
+            440.2512512207031,
+            464.053955078125,
+            223.1194610595703,
+            223.1194610595703
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7444806965438543,
+          "relative_motion_error": [
+            19.258067871093772,
+            2.142848388671837
+          ],
+          "width": 455.16370056152346,
+          "height": 455.16370056152346,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 4,
+            "registration_correlation": 0.9995788595697839,
+            "registration_head_error_px": 0.0043929579785788354,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 5,
+          "time_us": 166667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "2879308d5ba16696ba73a04940acc5f1b5a32a44f8aa4b4d134260b9ba41e467",
+          "kind": 0,
+          "render": [
+            442.77801513671875,
+            444.7523498535156,
+            222.4617156982422,
+            222.4617156982422
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.7236674658015421,
+          "relative_motion_error": [
+            17.648831787109373,
+            12.000243164062454
+          ],
+          "width": 453.821900024414,
+          "height": 453.821900024414,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 5,
+            "registration_correlation": 0.9995678376804501,
+            "registration_head_error_px": 0.07077590017747892,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 6,
+          "time_us": 200000,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "60d6ebd84416b61af3a267dde7656ac712052ecdb193c88bbfc34c23b45d0a5e",
+          "kind": 1,
+          "render": [
+            435.79901123046875,
+            422.7416687011719,
+            222.4617156982422,
+            222.4617156982422
+          ],
+          "pixel_motion": {
+            "dx": -6.978997707366943,
+            "dy": -22.010684967041016,
+            "correlation": 0.9856376647949219,
+            "uniqueness": 0.1523890644311905
+          },
+          "audit_track_iou": 0.7882813092421218,
+          "relative_motion_error": [
+            13.86382788085939,
+            11.78256201171871
+          ],
+          "width": 453.821900024414,
+          "height": 453.821900024414,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 6,
+            "registration_correlation": 0.9995762223216054,
+            "registration_head_error_px": 0.10697058602533781,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 7,
+          "time_us": 233333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "bd48c94cf46b3dba133c4088ce7f45ac3047d137f381e69db5fa052ba3900623",
+          "kind": 1,
+          "render": [
+            418.0830993652344,
+            424.3522033691406,
+            222.4617156982422,
+            222.4617156982422
+          ],
+          "pixel_motion": {
+            "dx": -24.694915771484375,
+            "dy": -20.400146484375,
+            "correlation": 0.9555774927139282,
+            "uniqueness": 0.13337281346321106
+          },
+          "audit_track_iou": 0.8828292218651013,
+          "relative_motion_error": [
+            6.478916015625032,
+            16.56409667968751
+          ],
+          "width": 453.821900024414,
+          "height": 453.821900024414,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 7,
+            "registration_correlation": 0.9995922652870998,
+            "registration_head_error_px": 0.07305688813882284,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 8,
+          "time_us": 266667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "a76f635d0e56927dc2517a4cc0c2742756add818210e457d941d8daa6fb97035",
+          "kind": 1,
+          "render": [
+            396.6092529296875,
+            443.67864990234375,
+            222.4617156982422,
+            222.4617156982422
+          ],
+          "pixel_motion": {
+            "dx": -46.16875457763672,
+            "dy": -1.073691964149475,
+            "correlation": 0.9165952205657959,
+            "uniqueness": 0.10613439977169037
+          },
+          "audit_track_iou": 0.8820668855624693,
+          "relative_motion_error": [
+            1.3940695800781668,
+            17.795543212890607
+          ],
+          "width": 453.821900024414,
+          "height": 453.821900024414,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 8,
+            "registration_correlation": 0.9995993135157134,
+            "registration_head_error_px": 0.07467248110754614,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 9,
+          "time_us": 300000,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "e6afca8678caed16e997cd64925a5f293d22728684c088690a667631459315c1",
+          "kind": 0,
+          "render": [
+            370.0762939453125,
+            463.846923828125,
+            221.65455627441406,
+            221.65455627441406
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.9121469063019706,
+          "relative_motion_error": [
+            -4.599889404296846,
+            5.9488171386718705
+          ],
+          "width": 452.17529479980476,
+          "height": 452.17529479980476,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 9,
+            "registration_correlation": 0.9996213668562189,
+            "registration_head_error_px": 0.05982153605993505,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 10,
+          "time_us": 333333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "f2b771db3cc9d5763a858181e28ca654d2971f3033f0e47f0d126048cb11ec1c",
+          "kind": 0,
+          "render": [
+            330.5703125,
+            512.5480346679688,
+            230.12681579589844,
+            230.12681579589844
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8717054136502402,
+          "relative_motion_error": [
+            -21.97787084960936,
+            22.73092797851558
+          ],
+          "width": 469.4587042236328,
+          "height": 469.4587042236328,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 10,
+            "registration_correlation": 0.9995708073033539,
+            "registration_head_error_px": 0.021428485330387888,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 11,
+          "time_us": 366667,
+          "detected_persons": 1,
+          "tracking_snapshot_sha256": "a3a36326f880413c6026c3d3cfaa6c484e1a3ac733680ce1d6e1d1473559d507",
+          "kind": 1,
+          "render": [
+            305.90899658203125,
+            531.6731567382812,
+            230.12681579589844,
+            230.12681579589844
+          ],
+          "pixel_motion": {
+            "dx": -24.661306381225586,
+            "dy": 19.12509536743164,
+            "correlation": 0.985184907913208,
+            "uniqueness": 0.23289328813552856
+          },
+          "audit_track_iou": 0.5494561097717269,
+          "relative_motion_error": [
+            -25.808186767578093,
+            24.258050048828125
+          ],
+          "width": 469.4587042236328,
+          "height": 469.4587042236328,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 11,
+            "registration_correlation": 0.9995728864740567,
+            "registration_head_error_px": 0.004895477474335064,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.017600429934166332,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 12,
+          "time_us": 400000,
+          "detected_persons": 0,
+          "tracking_snapshot_sha256": "64fdbd58f811b5a2ee3be5a8341ef2a407085bfb072ae8a748c3a800d2cbca36",
+          "kind": 1,
+          "render": [
+            286.7839050292969,
+            527.6467895507812,
+            230.12681579589844,
+            230.12681579589844
+          ],
+          "pixel_motion": {
+            "dx": -43.786399841308594,
+            "dy": 15.098758697509766,
+            "correlation": 0.9730604887008667,
+            "uniqueness": 0.21416060626506805
+          },
+          "audit_track_iou": 0.5023079533251633,
+          "relative_motion_error": [
+            -28.167278320312505,
+            24.81968286132809
+          ],
+          "width": 469.4587042236328,
+          "height": 469.4587042236328,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 12,
+            "registration_correlation": 0.9995485116791135,
+            "registration_head_error_px": 0.01832951242939259,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.05535374502681197,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 13,
+          "time_us": 433333,
+          "detected_persons": 0,
+          "tracking_snapshot_sha256": "f034fcdada851184900504091d7d67dcc7fd8e94855925a0c13af990461fc060",
+          "kind": 1,
+          "render": [
+            276.71807861328125,
+            503.9920654296875,
+            230.12681579589844,
+            230.12681579589844
+          ],
+          "pixel_motion": {
+            "dx": -53.85224151611328,
+            "dy": -8.555963516235352,
+            "correlation": 0.9715592265129089,
+            "uniqueness": 0.21368151903152466
+          },
+          "audit_track_iou": 0.5089916722260444,
+          "relative_motion_error": [
+            -27.711104736328082,
+            25.824958740234365
+          ],
+          "width": 469.4587042236328,
+          "height": 469.4587042236328,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 13,
+            "registration_correlation": 0.9995491453939969,
+            "registration_head_error_px": 0.04880278667900279,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.051869991095280496,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 14,
+          "time_us": 466667,
+          "detected_persons": 1,
+          "tracking_snapshot_sha256": "bdea9ef2be47eb367befa16a3bf69cd1a763c89d65a6bd8e185fd97c364f356a",
+          "kind": 0,
+          "render": [
+            267.8976745605469,
+            467.94970703125,
+            229.96080017089844,
+            229.96080017089844
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.828202978165746,
+          "relative_motion_error": [
+            -33.48450878906249,
+            23.427600341796847
+          ],
+          "width": 469.1200323486328,
+          "height": 469.1200323486328,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 14,
+            "registration_correlation": 0.9995516982889598,
+            "registration_head_error_px": 0.04955805677488849,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.10089628681177977,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 15,
+          "time_us": 500000,
+          "detected_persons": 1,
+          "tracking_snapshot_sha256": "60a3d6fd02c3db19015050276f6c6936fe9a542347b12ad6005ab021bfc03354",
+          "kind": 0,
+          "render": [
+            285.06658935546875,
+            427.9981384277344,
+            228.19544982910156,
+            228.19544982910156
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.8404638646280084,
+          "relative_motion_error": [
+            -20.888593994140592,
+            11.183031738281215
+          ],
+          "width": 465.51871765136724,
+          "height": 465.51871765136724,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 15,
+            "registration_correlation": 0.999553394121293,
+            "registration_head_error_px": 0.061914747914651,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 16,
+          "time_us": 533333,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "d48762edcb4673f7716d4443c6dddbf25514ea0dfa9fe34e0b87a478f2ccbdd1",
+          "kind": 0,
+          "render": [
+            304.0507507324219,
+            416.76788330078125,
+            225.88525390625,
+            225.88525390625
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.9186745146592792,
+          "relative_motion_error": [
+            -13.263432617187505,
+            9.8177766113281
+          ],
+          "width": 460.80591796875,
+          "height": 460.80591796875,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 16,
+            "registration_correlation": 0.9995664675171945,
+            "registration_head_error_px": 0.0670928424187555,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        },
+        {
+          "index": 17,
+          "time_us": 566667,
+          "detected_persons": 2,
+          "tracking_snapshot_sha256": "5d6f6811ea770a52a4a8d81967ef214152dea2ab1cd159f06586e498d572f92c",
+          "kind": 0,
+          "render": [
+            326.3355712890625,
+            424.2458190917969,
+            222.7989959716797,
+            222.7989959716797
+          ],
+          "pixel_motion": null,
+          "audit_track_iou": 0.9030630320169978,
+          "relative_motion_error": [
+            -7.55761206054683,
+            5.860712402343722
+          ],
+          "width": 454.5099517822266,
+          "height": 454.5099517822266,
+          "head_covered": true,
+          "geometry_audit": {
+            "index": 17,
+            "registration_correlation": 0.9995609933357652,
+            "registration_head_error_px": 0.06645538590571885,
+            "target_square": 1.0,
+            "target_ellipse": 1.0,
+            "neighbor_square": 0.0,
+            "neighbor_ellipse": 0.0
+          }
+        }
+      ]
+    },
+    "independent": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "043082d233d26d1074cc9f6714baf8cd7a0a0a4aa1481dfb3531912013d97911",
+      "target_id": 0,
+      "injected_face_drops": [],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 90,
+        "tracked": 90,
+        "body_observed": 89,
+        "direct_face": 54,
+        "projected_face": 26,
+        "estimated_face": 10,
+        "rendered": 90,
+        "missing": [],
+        "pixel_bridged": 0,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "width_ratio": 4.234169007291175,
+        "height_ratio": 4.234169007291171,
+        "sampled_width_ratio": 4.202549199944143,
+        "sampled_height_ratio": 4.20254919994414,
+        "sampled_widths": [
+          56.95,
+          57.44,
+          58.78,
+          138.92,
+          138.31,
+          128.05,
+          138.81,
+          46.27,
+          150.42,
+          50.96,
+          150.42,
+          150.42,
+          126.56,
+          138.31,
+          57.4,
+          53.08,
+          126.19,
+          126.19,
+          162.54,
+          44.44,
+          48.54,
+          50.85,
+          118.11,
+          49.61,
+          126.19,
+          138.31,
+          45.45,
+          44.64,
+          162.54,
+          49.34,
+          186.77
+        ]
+      },
+      "size_only": {
+        "frames": 90,
+        "tracked": 90,
+        "body_observed": 89,
+        "direct_face": 54,
+        "projected_face": 26,
+        "estimated_face": 10,
+        "rendered": 90,
+        "missing": [],
+        "pixel_bridged": 0,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "width_ratio": 2.592378398342914,
+        "height_ratio": 2.5923783983429147,
+        "sampled_width_ratio": 2.592378398342914,
+        "sampled_height_ratio": 2.5923783983429147,
+        "sampled_widths": [
+          56.95,
+          57.44,
+          58.78,
+          126.19,
+          124.67,
+          122.12,
+          121.99,
+          121.35,
+          135.22,
+          130.81,
+          133.67,
+          133.67,
+          129.1,
+          126.59,
+          125.06,
+          124.02,
+          119.16,
+          114.46,
+          136.17,
+          134.29,
+          131.12,
+          120.71,
+          109.59,
+          108.71,
+          139.9,
+          133.03,
+          128.62,
+          128.62,
+          132.09,
+          132.09,
+          147.64
+        ]
+      },
+      "candidate": {
+        "frames": 90,
+        "tracked": 90,
+        "body_observed": 89,
+        "direct_face": 54,
+        "projected_face": 26,
+        "estimated_face": 10,
+        "rendered": 90,
+        "missing": [],
+        "pixel_bridged": 10,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "width_ratio": 2.592378398342914,
+        "height_ratio": 2.5923783983429147,
+        "sampled_width_ratio": 2.592378398342914,
+        "sampled_height_ratio": 2.5923783983429147,
+        "sampled_widths": [
+          56.95,
+          57.44,
+          58.78,
+          126.19,
+          124.67,
+          122.12,
+          121.99,
+          121.35,
+          135.22,
+          130.81,
+          133.67,
+          133.67,
+          129.1,
+          126.59,
+          125.06,
+          124.02,
+          119.16,
+          114.46,
+          136.17,
+          134.29,
+          131.12,
+          120.71,
+          109.59,
+          108.71,
+          139.9,
+          133.03,
+          128.62,
+          128.62,
+          132.09,
+          132.09,
+          147.64
+        ]
+      }
+    },
+    "fallback-experiment": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "043082d233d26d1074cc9f6714baf8cd7a0a0a4aa1481dfb3531912013d97911",
+      "target_id": 0,
+      "injected_face_drops": [],
+      "experimental_cover_fallback": true,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 90,
+        "tracked": 90,
+        "body_observed": 89,
+        "direct_face": 54,
+        "projected_face": 26,
+        "estimated_face": 10,
+        "rendered": 90,
+        "missing": [],
+        "pixel_bridged": 0,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "width_ratio": 4.234169007291175,
+        "height_ratio": 4.234169007291171,
+        "sampled_width_ratio": 4.202549199944143,
+        "sampled_height_ratio": 4.20254919994414,
+        "sampled_widths": [
+          56.95,
+          57.44,
+          58.78,
+          138.92,
+          138.31,
+          128.05,
+          138.81,
+          46.27,
+          150.42,
+          50.96,
+          150.42,
+          150.42,
+          126.56,
+          138.31,
+          57.4,
+          53.08,
+          126.19,
+          126.19,
+          162.54,
+          44.44,
+          48.54,
+          50.85,
+          118.11,
+          49.61,
+          126.19,
+          138.31,
+          45.45,
+          44.64,
+          162.54,
+          49.34,
+          186.77
+        ]
+      },
+      "candidate": {
+        "frames": 90,
+        "tracked": 90,
+        "body_observed": 89,
+        "direct_face": 54,
+        "projected_face": 26,
+        "estimated_face": 10,
+        "rendered": 90,
+        "missing": [],
+        "pixel_bridged": 10,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "width_ratio": 1.3188281376429287,
+        "height_ratio": 1.3188281376429287,
+        "sampled_width_ratio": 1.2899185805959361,
+        "sampled_height_ratio": 1.289918580595937,
+        "sampled_widths": [
+          128.85,
+          127.67,
+          127.39,
+          126.54,
+          124.9,
+          122.27,
+          122.09,
+          121.43,
+          135.22,
+          130.81,
+          133.67,
+          133.67,
+          129.1,
+          126.59,
+          125.06,
+          124.02,
+          119.16,
+          114.46,
+          136.17,
+          134.29,
+          131.12,
+          126.82,
+          118.64,
+          116.59,
+          139.9,
+          133.03,
+          128.62,
+          128.62,
+          132.09,
+          132.09,
+          147.64
+        ]
+      }
+    }
+  },
+  "fallback_experiment_decision": "not adopted: blanket mask envelope expansion enlarges the initial sticker into shoulder areas on visual review; ratio alone is not acceptance"
+}
