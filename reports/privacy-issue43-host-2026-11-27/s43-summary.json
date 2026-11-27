@@ -1,0 +1,3602 @@
+{
+  "baseline_commit": "88d9c9a9",
+  "scope": "host-only anonymous garment and current coverage experiment, not canonical identity or native privacy acceptance",
+  "source": {
+    "file": "group-hd-8956295.mp4",
+    "sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+    "fps": 15,
+    "width": 960,
+    "height": 540,
+    "frames": 120,
+    "manifest_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d"
+  },
+  "mirrored_manifest_sha256": "bb44f58ce9df3b6206a1e9d4af587ec6e6fc108db5f0c07f98746cfd368ce489",
+  "replays": {
+    "id3": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "target_id": 3,
+      "identity_protected_roots": [
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "injected_face_drops": [],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 97,
+        "direct_face": 89,
+        "projected_face": 7,
+        "estimated_face": 2,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 98,
+        "missing": [
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119
+        ],
+        "pixel_bridged": 3,
+        "topology_frames": 13,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 2.2448015353883792,
+        "height_ratio": 2.2448015353883792,
+        "sampled_width_ratio": 2.2448015353883792,
+        "sampled_height_ratio": 2.2448015353883792,
+        "sampled_widths": [
+          43.62,
+          44.67,
+          79.56,
+          97.92,
+          95.31,
+          86.82,
+          71.45,
+          72.43,
+          72.21,
+          58.62,
+          51.7,
+          48.63,
+          47.46,
+          47.11,
+          74.07,
+          57.77,
+          50.8,
+          47.35,
+          46.19,
+          74.79,
+          74.39,
+          73.85,
+          73.62,
+          76.04,
+          72.43,
+          69.54,
+          67.43,
+          67.37,
+          73.41,
+          72.32,
+          79.56,
+          85.68,
+          84.38
+        ]
+      },
+      "candidate": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 97,
+        "direct_face": 89,
+        "projected_face": 7,
+        "estimated_face": 2,
+        "coverage_only_recovered": 8,
+        "garment_reappearance": 8,
+        "terminal_current_continuations": 0,
+        "rendered": 106,
+        "missing": [
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111
+        ],
+        "pixel_bridged": 3,
+        "topology_frames": 13,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 2.2448015353883792,
+        "height_ratio": 2.2448015353883792,
+        "sampled_width_ratio": 2.2448015353883792,
+        "sampled_height_ratio": 2.2448015353883792,
+        "sampled_widths": [
+          43.62,
+          44.67,
+          79.56,
+          97.92,
+          95.31,
+          86.82,
+          71.45,
+          72.43,
+          72.21,
+          58.62,
+          51.7,
+          48.63,
+          47.46,
+          47.11,
+          74.07,
+          57.77,
+          50.8,
+          47.35,
+          46.19,
+          74.79,
+          74.39,
+          73.85,
+          73.62,
+          76.04,
+          72.43,
+          69.54,
+          67.43,
+          67.37,
+          73.41,
+          72.32,
+          79.56,
+          85.68,
+          84.38,
+          56.16,
+          55.07,
+          55.85
+        ]
+      },
+      "reappearance_trace": [
+        {
+          "index": 110,
+          "time_us": 7333333,
+          "kind": null,
+          "tracking_snapshot_sha256": "7b76c25f478800e0d5668007047e57d40451e69f232cd4eb57641cca5fc0c698",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 14,
+            "since": 14,
+            "age": 111,
+            "observed": false,
+            "bounds": [
+              202.4197998046875,
+              220.8855743408203,
+              279.716064453125,
+              439.0413513183594
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1000000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1000000,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 1,
+            "candidates": 2,
+            "candidate_eligible": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "index": 111,
+          "time_us": 7400000,
+          "kind": null,
+          "tracking_snapshot_sha256": "3a77bcb5f1b59a8be05dbad0588bca0ee9dd19e07b47aa206afe280edc2869ce",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 15,
+            "since": 15,
+            "age": 112,
+            "observed": false,
+            "bounds": [
+              195.8154754638672,
+              220.69918823242188,
+              273.1116943359375,
+              438.85491943359375
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1066667,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1066667,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 1,
+            "candidates": 2,
+            "candidate_eligible": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "index": 112,
+          "time_us": 7466667,
+          "kind": 4,
+          "tracking_snapshot_sha256": "95b2e520818961bc2eae5d1bc8d7609f4fb35bea56f331d43740efefee936b30",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 16,
+            "since": 16,
+            "age": 113,
+            "observed": false,
+            "bounds": [
+              183.61410522460938,
+              220.8612060546875,
+              260.9103088378906,
+              439.0168762207031
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1133334,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1133334,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 3,
+            "similarity": 0.817888081073761,
+            "rival_root": 0.6542194485664368,
+            "rival_current": 0.5164315104484558
+          },
+          "sticker": [
+            381.0,
+            212.99996948242188,
+            33.00000762939453,
+            33.00000762939453
+          ],
+          "sticker_required_bounds": [
+            348.0,
+            179.99996948242188,
+            414.0,
+            240.0
+          ]
+        },
+        {
+          "index": 113,
+          "time_us": 7533333,
+          "kind": 4,
+          "tracking_snapshot_sha256": "f30ad1e87ffa4b7323befd52a235e4bb5c47eb01f655ed2c974333d39814666f",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 17,
+            "since": 17,
+            "age": 114,
+            "observed": false,
+            "bounds": [
+              182.938720703125,
+              221.0599365234375,
+              260.23492431640625,
+              439.2156066894531
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1200000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1200000,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8726748824119568,
+            "rival_root": 0.6453518867492676,
+            "rival_current": 0.5358254313468933
+          },
+          "sticker": [
+            389.0269470214844,
+            209.0269317626953,
+            29.026979446411133,
+            29.026979446411133
+          ],
+          "sticker_required_bounds": [
+            359.9999694824219,
+            179.99996948242188,
+            414.5746765136719,
+            238.05389404296875
+          ]
+        },
+        {
+          "index": 114,
+          "time_us": 7600000,
+          "kind": 4,
+          "tracking_snapshot_sha256": "8077216f7ed69f62495a9434fd53be5036851bebd0abebd5131d295d0283517d",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 18,
+            "since": 18,
+            "age": 115,
+            "observed": false,
+            "bounds": [
+              183.48524475097656,
+              221.1937255859375,
+              260.78143310546875,
+              439.349365234375
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1266667,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1266667,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8964899182319641,
+            "rival_root": 0.6761203408241272,
+            "rival_current": 0.5559794902801514
+          },
+          "sticker": [
+            387.5285339355469,
+            213.5285186767578,
+            27.528566360473633,
+            27.528566360473633
+          ],
+          "sticker_required_bounds": [
+            359.9999694824219,
+            185.99996948242188,
+            415.05706787109375,
+            239.7181854248047
+          ]
+        },
+        {
+          "index": 115,
+          "time_us": 7666667,
+          "kind": 4,
+          "tracking_snapshot_sha256": "a908c166d9dcd04b9ac0602037eb81a79ffbb717bd4aac38a8eddb3fa690e010",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 19,
+            "since": 19,
+            "age": 116,
+            "observed": false,
+            "bounds": [
+              178.71994018554688,
+              221.07791137695312,
+              256.01611328125,
+              439.23358154296875
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1333334,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1333334,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8928865194320679,
+            "rival_root": 0.7090803980827332,
+            "rival_current": 0.6006295084953308
+          },
+          "sticker": [
+            389.080810546875,
+            215.08079528808594,
+            29.080842971801758,
+            29.080842971801758
+          ],
+          "sticker_required_bounds": [
+            359.9999694824219,
+            185.99996948242188,
+            418.16162109375,
+            242.57366943359375
+          ]
+        },
+        {
+          "index": 116,
+          "time_us": 7733333,
+          "kind": 4,
+          "tracking_snapshot_sha256": "e885cdbe2077def558ef3a0e38a2515c2e93a88ad06576254a7788439580b7b3",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 20,
+            "since": 20,
+            "age": 117,
+            "observed": false,
+            "bounds": [
+              173.90521240234375,
+              221.09454345703125,
+              251.20140075683594,
+              439.25018310546875
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1400000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1400000,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8990941047668457,
+            "rival_root": 0.7121630311012268,
+            "rival_current": 0.617478609085083
+          },
+          "sticker": [
+            392.92010498046875,
+            212.92010498046875,
+            26.920137405395508,
+            26.920137405395508
+          ],
+          "sticker_required_bounds": [
+            365.9999694824219,
+            185.99996948242188,
+            417.0746154785156,
+            239.84022521972656
+          ]
+        },
+        {
+          "index": 117,
+          "time_us": 7800000,
+          "kind": 4,
+          "tracking_snapshot_sha256": "7416c526834c4a932ed792dbf6b4a990eaeb6f2f86053be4fd8089e175273316",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 21,
+            "since": 21,
+            "age": 118,
+            "observed": false,
+            "bounds": [
+              169.48358154296875,
+              221.0880126953125,
+              246.77978515625,
+              439.24365234375
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1466667,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1466667,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8874539136886597,
+            "rival_root": 0.7332494854927063,
+            "rival_current": 0.6062837243080139
+          },
+          "sticker": [
+            392.9967346191406,
+            212.9967498779297,
+            26.996782302856445,
+            26.996782302856445
+          ],
+          "sticker_required_bounds": [
+            365.9999694824219,
+            185.99996948242188,
+            418.8654479980469,
+            239.99351501464844
+          ]
+        },
+        {
+          "index": 118,
+          "time_us": 7866667,
+          "kind": 4,
+          "tracking_snapshot_sha256": "58d745d391386178786f529131449991cba9478832b2a960d407dfc5013663bc",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 22,
+            "since": 22,
+            "age": 119,
+            "observed": false,
+            "bounds": [
+              165.857177734375,
+              221.1231689453125,
+              243.15338134765625,
+              439.27880859375
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1533334,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1533334,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8838695883750916,
+            "rival_root": 0.6576846241950989,
+            "rival_current": 0.6159069538116455
+          },
+          "sticker": [
+            394.3687438964844,
+            220.36874389648438,
+            28.368778228759766,
+            28.368778228759766
+          ],
+          "sticker_required_bounds": [
+            365.9999694824219,
+            191.99996948242188,
+            422.7375183105469,
+            242.63223266601562
+          ]
+        },
+        {
+          "index": 119,
+          "time_us": 7933333,
+          "kind": 4,
+          "tracking_snapshot_sha256": "3963b0a01d8d0b99030a90e634b8dbfa2cf389b38578b29212e3c28b40af62b3",
+          "track": {
+            "id": 3,
+            "state": 3,
+            "missed": 1,
+            "since": 23,
+            "age": 120,
+            "observed": false,
+            "bounds": [
+              286.4295654296875,
+              200.52459716796875,
+              370.35797119140625,
+              462.256103515625
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1600000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1600000,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 3,
+            "similarity": 0.9101887345314026,
+            "rival_root": 0.7089603543281555,
+            "rival_current": 0.6143325567245483
+          },
+          "sticker": [
+            399.3783264160156,
+            213.37832641601562,
+            27.378360748291016,
+            27.378360748291016
+          ],
+          "sticker_required_bounds": [
+            371.9999694824219,
+            185.99996948242188,
+            422.4454650878906,
+            240.75668334960938
+          ]
+        }
+      ],
+      "audit": {
+        "scope": "Evaluate sparse source-reviewed head envelopes independently of the detector.\n\nNever changes a track or renders a sticker; approximate labels are not semantic\nground truth. Input frames are identified by the local fixture manifest hash\nand their individual SHA-256s.\n",
+        "case": "reappearing_id3",
+        "labels_sha256": "82e9fd3595badcd0cf406dd91cf7166284c8d041d23fdfa348414c80dcac1568",
+        "replay_sha256": "38014ad0065a5219346b90b280e90cbc5036a420fd98467bb2c0ab939ff452a7",
+        "results": {
+          "baseline": {
+            "samples": 8,
+            "full_head_envelopes": 0,
+            "min_head_coverage": 0.0,
+            "torso_probes_covered": 0,
+            "neighbor_rects_checked": 16,
+            "max_neighbor_rect_overlap": 0.0,
+            "rows": [
+              {
+                "index": 112,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 113,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 114,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 115,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 116,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 117,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 118,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 119,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          },
+          "candidate": {
+            "samples": 8,
+            "full_head_envelopes": 8,
+            "min_head_coverage": 1.0,
+            "torso_probes_covered": 0,
+            "neighbor_rects_checked": 16,
+            "max_neighbor_rect_overlap": 0.0,
+            "rows": [
+              {
+                "index": 112,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 113,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 114,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 115,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 116,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 117,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 118,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 119,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "id3_dropout": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "target_id": 3,
+      "identity_protected_roots": [
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "injected_face_drops": [
+        115
+      ],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 97,
+        "direct_face": 89,
+        "projected_face": 7,
+        "estimated_face": 2,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 98,
+        "missing": [
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119
+        ],
+        "pixel_bridged": 3,
+        "topology_frames": 13,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 2.2448015353883792,
+        "height_ratio": 2.2448015353883792,
+        "sampled_width_ratio": 2.2448015353883792,
+        "sampled_height_ratio": 2.2448015353883792,
+        "sampled_widths": [
+          43.62,
+          44.67,
+          79.56,
+          97.92,
+          95.31,
+          86.82,
+          71.45,
+          72.43,
+          72.21,
+          58.62,
+          51.7,
+          48.63,
+          47.46,
+          47.11,
+          74.07,
+          57.77,
+          50.8,
+          47.35,
+          46.19,
+          74.79,
+          74.39,
+          73.85,
+          73.62,
+          76.04,
+          72.43,
+          69.54,
+          67.43,
+          67.37,
+          73.41,
+          72.32,
+          79.56,
+          85.68,
+          84.38
+        ]
+      },
+      "candidate": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 97,
+        "direct_face": 89,
+        "projected_face": 7,
+        "estimated_face": 2,
+        "coverage_only_recovered": 7,
+        "garment_reappearance": 7,
+        "terminal_current_continuations": 0,
+        "rendered": 105,
+        "missing": [
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          115
+        ],
+        "pixel_bridged": 3,
+        "topology_frames": 13,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 2.2448015353883792,
+        "height_ratio": 2.2448015353883792,
+        "sampled_width_ratio": 2.2448015353883792,
+        "sampled_height_ratio": 2.2448015353883792,
+        "sampled_widths": [
+          43.62,
+          44.67,
+          79.56,
+          97.92,
+          95.31,
+          86.82,
+          71.45,
+          72.43,
+          72.21,
+          58.62,
+          51.7,
+          48.63,
+          47.46,
+          47.11,
+          74.07,
+          57.77,
+          50.8,
+          47.35,
+          46.19,
+          74.79,
+          74.39,
+          73.85,
+          73.62,
+          76.04,
+          72.43,
+          69.54,
+          67.43,
+          67.37,
+          73.41,
+          72.32,
+          79.56,
+          85.68,
+          84.38,
+          56.16,
+          55.07,
+          55.85
+        ]
+      },
+      "reappearance_trace": [
+        {
+          "index": 110,
+          "time_us": 7333333,
+          "kind": null,
+          "tracking_snapshot_sha256": "7b76c25f478800e0d5668007047e57d40451e69f232cd4eb57641cca5fc0c698",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 14,
+            "since": 14,
+            "age": 111,
+            "observed": false,
+            "bounds": [
+              202.4197998046875,
+              220.8855743408203,
+              279.716064453125,
+              439.0413513183594
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1000000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1000000,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 1,
+            "candidates": 2,
+            "candidate_eligible": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "index": 111,
+          "time_us": 7400000,
+          "kind": null,
+          "tracking_snapshot_sha256": "3a77bcb5f1b59a8be05dbad0588bca0ee9dd19e07b47aa206afe280edc2869ce",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 15,
+            "since": 15,
+            "age": 112,
+            "observed": false,
+            "bounds": [
+              195.8154754638672,
+              220.69918823242188,
+              273.1116943359375,
+              438.85491943359375
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1066667,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1066667,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 1,
+            "candidates": 2,
+            "candidate_eligible": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "index": 112,
+          "time_us": 7466667,
+          "kind": 4,
+          "tracking_snapshot_sha256": "95b2e520818961bc2eae5d1bc8d7609f4fb35bea56f331d43740efefee936b30",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 16,
+            "since": 16,
+            "age": 113,
+            "observed": false,
+            "bounds": [
+              183.61410522460938,
+              220.8612060546875,
+              260.9103088378906,
+              439.0168762207031
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1133334,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1133334,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 3,
+            "similarity": 0.817888081073761,
+            "rival_root": 0.6542194485664368,
+            "rival_current": 0.5164315104484558
+          },
+          "sticker": [
+            381.0,
+            212.99996948242188,
+            33.00000762939453,
+            33.00000762939453
+          ],
+          "sticker_required_bounds": [
+            348.0,
+            179.99996948242188,
+            414.0,
+            240.0
+          ]
+        },
+        {
+          "index": 113,
+          "time_us": 7533333,
+          "kind": 4,
+          "tracking_snapshot_sha256": "f30ad1e87ffa4b7323befd52a235e4bb5c47eb01f655ed2c974333d39814666f",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 17,
+            "since": 17,
+            "age": 114,
+            "observed": false,
+            "bounds": [
+              182.938720703125,
+              221.0599365234375,
+              260.23492431640625,
+              439.2156066894531
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1200000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1200000,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8726748824119568,
+            "rival_root": 0.6453518867492676,
+            "rival_current": 0.5358254313468933
+          },
+          "sticker": [
+            389.0269470214844,
+            209.0269317626953,
+            29.026979446411133,
+            29.026979446411133
+          ],
+          "sticker_required_bounds": [
+            359.9999694824219,
+            179.99996948242188,
+            414.5746765136719,
+            238.05389404296875
+          ]
+        },
+        {
+          "index": 114,
+          "time_us": 7600000,
+          "kind": 4,
+          "tracking_snapshot_sha256": "8077216f7ed69f62495a9434fd53be5036851bebd0abebd5131d295d0283517d",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 18,
+            "since": 18,
+            "age": 115,
+            "observed": false,
+            "bounds": [
+              183.48524475097656,
+              221.1937255859375,
+              260.78143310546875,
+              439.349365234375
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1266667,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1266667,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8964899182319641,
+            "rival_root": 0.6761203408241272,
+            "rival_current": 0.5559794902801514
+          },
+          "sticker": [
+            387.5285339355469,
+            213.5285186767578,
+            27.528566360473633,
+            27.528566360473633
+          ],
+          "sticker_required_bounds": [
+            359.9999694824219,
+            185.99996948242188,
+            415.05706787109375,
+            239.7181854248047
+          ]
+        },
+        {
+          "index": 116,
+          "time_us": 7733333,
+          "kind": 4,
+          "tracking_snapshot_sha256": "e885cdbe2077def558ef3a0e38a2515c2e93a88ad06576254a7788439580b7b3",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 20,
+            "since": 20,
+            "age": 117,
+            "observed": false,
+            "bounds": [
+              173.90521240234375,
+              221.09454345703125,
+              251.20140075683594,
+              439.25018310546875
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1400000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1400000,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8990941047668457,
+            "rival_root": 0.7121630311012268,
+            "rival_current": 0.617478609085083
+          },
+          "sticker": [
+            392.92010498046875,
+            212.92010498046875,
+            26.920137405395508,
+            26.920137405395508
+          ],
+          "sticker_required_bounds": [
+            365.9999694824219,
+            185.99996948242188,
+            417.0746154785156,
+            239.84022521972656
+          ]
+        },
+        {
+          "index": 117,
+          "time_us": 7800000,
+          "kind": 4,
+          "tracking_snapshot_sha256": "7416c526834c4a932ed792dbf6b4a990eaeb6f2f86053be4fd8089e175273316",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 21,
+            "since": 21,
+            "age": 118,
+            "observed": false,
+            "bounds": [
+              169.48358154296875,
+              221.0880126953125,
+              246.77978515625,
+              439.24365234375
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1466667,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1466667,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8874539136886597,
+            "rival_root": 0.7332494854927063,
+            "rival_current": 0.6062837243080139
+          },
+          "sticker": [
+            392.9967346191406,
+            212.9967498779297,
+            26.996782302856445,
+            26.996782302856445
+          ],
+          "sticker_required_bounds": [
+            365.9999694824219,
+            185.99996948242188,
+            418.8654479980469,
+            239.99351501464844
+          ]
+        },
+        {
+          "index": 118,
+          "time_us": 7866667,
+          "kind": 4,
+          "tracking_snapshot_sha256": "58d745d391386178786f529131449991cba9478832b2a960d407dfc5013663bc",
+          "track": {
+            "id": 3,
+            "state": 2,
+            "missed": 22,
+            "since": 22,
+            "age": 119,
+            "observed": false,
+            "bounds": [
+              165.857177734375,
+              221.1231689453125,
+              243.15338134765625,
+              439.27880859375
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [
+              4
+            ],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1533334,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1533334,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 1,
+            "similarity": 0.8838695883750916,
+            "rival_root": 0.6576846241950989,
+            "rival_current": 0.6159069538116455
+          },
+          "sticker": [
+            394.3687438964844,
+            220.36874389648438,
+            28.368778228759766,
+            28.368778228759766
+          ],
+          "sticker_required_bounds": [
+            365.9999694824219,
+            191.99996948242188,
+            422.7375183105469,
+            242.63223266601562
+          ]
+        },
+        {
+          "index": 119,
+          "time_us": 7933333,
+          "kind": 4,
+          "tracking_snapshot_sha256": "3963b0a01d8d0b99030a90e634b8dbfa2cf389b38578b29212e3c28b40af62b3",
+          "track": {
+            "id": 3,
+            "state": 3,
+            "missed": 1,
+            "since": 23,
+            "age": 120,
+            "observed": false,
+            "bounds": [
+              286.4295654296875,
+              200.52459716796875,
+              370.35797119140625,
+              462.256103515625
+            ],
+            "confidence": 0.3957143723964691,
+            "foot": 456.0667724609375,
+            "occluders": [],
+            "canonical": [
+              287.34271240234375,
+              281.4869689941406,
+              358.0067138671875,
+              456.0667724609375
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1600000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1600000,
+            "root_indices": [
+              95,
+              93,
+              91
+            ],
+            "rival_count": 12,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              0
+            ],
+            "candidate_index": 3,
+            "similarity": 0.9101887345314026,
+            "rival_root": 0.7089603543281555,
+            "rival_current": 0.6143325567245483
+          },
+          "sticker": [
+            399.3783264160156,
+            213.37832641601562,
+            27.378360748291016,
+            27.378360748291016
+          ],
+          "sticker_required_bounds": [
+            371.9999694824219,
+            185.99996948242188,
+            422.4454650878906,
+            240.75668334960938
+          ]
+        }
+      ]
+    },
+    "id4": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "target_id": 4,
+      "identity_protected_roots": [
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "injected_face_drops": [],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 107,
+        "direct_face": 81,
+        "projected_face": 13,
+        "estimated_face": 15,
+        "coverage_only_recovered": 11,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 1,
+        "rendered": 120,
+        "missing": [],
+        "pixel_bridged": 5,
+        "topology_frames": 76,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 4.504319900654336,
+        "height_ratio": 3.6402311519250707,
+        "sampled_width_ratio": 4.186543117118976,
+        "sampled_height_ratio": 3.4285201064760376,
+        "sampled_widths": [
+          48.96,
+          48.96,
+          48.96,
+          48.96,
+          62.72,
+          73.44,
+          64.54,
+          60.49,
+          79.56,
+          84.2,
+          75.25,
+          67.04,
+          67.32,
+          67.32,
+          65.84,
+          73.44,
+          70.83,
+          69.65,
+          73.44,
+          73.44,
+          70.54,
+          79.56,
+          83.88,
+          87.7,
+          87.21,
+          140.76,
+          130.26,
+          116.31,
+          104.99,
+          107.42,
+          120.91,
+          125.25,
+          120.06,
+          116.58,
+          121.27,
+          171.24,
+          158.91,
+          152.79,
+          175.15,
+          204.97,
+          203.36
+        ]
+      },
+      "candidate": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 107,
+        "direct_face": 81,
+        "projected_face": 13,
+        "estimated_face": 15,
+        "coverage_only_recovered": 11,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 1,
+        "rendered": 120,
+        "missing": [],
+        "pixel_bridged": 5,
+        "topology_frames": 76,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 4.504319900654336,
+        "height_ratio": 3.6402311519250707,
+        "sampled_width_ratio": 4.186543117118976,
+        "sampled_height_ratio": 3.4285201064760376,
+        "sampled_widths": [
+          48.96,
+          48.96,
+          48.96,
+          48.96,
+          62.72,
+          73.44,
+          64.54,
+          60.49,
+          79.56,
+          84.2,
+          75.25,
+          67.04,
+          67.32,
+          67.32,
+          65.84,
+          73.44,
+          70.83,
+          69.65,
+          73.44,
+          73.44,
+          70.54,
+          79.56,
+          83.88,
+          87.7,
+          87.21,
+          140.76,
+          130.26,
+          116.31,
+          104.99,
+          107.42,
+          120.91,
+          125.25,
+          120.06,
+          116.58,
+          121.27,
+          171.24,
+          158.91,
+          152.79,
+          175.15,
+          204.97,
+          203.36
+        ]
+      },
+      "reappearance_trace": [],
+      "sticker_trace_equal": true
+    },
+    "id2": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "target_id": 2,
+      "identity_protected_roots": [
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "injected_face_drops": [],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 108,
+        "direct_face": 46,
+        "projected_face": 9,
+        "estimated_face": 53,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 108,
+        "missing": [
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119
+        ],
+        "pixel_bridged": 2,
+        "topology_frames": 54,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 2.7351869085155784,
+        "height_ratio": 2.735186908515577,
+        "sampled_width_ratio": 2.335053258648908,
+        "sampled_height_ratio": 2.335053258648907,
+        "sampled_widths": [
+          67.75,
+          76.88,
+          82.58,
+          74.92,
+          67.38,
+          79.15,
+          80.91,
+          82.86,
+          72.0,
+          62.31,
+          57.74,
+          68.29,
+          101.86,
+          109.68,
+          111.24,
+          95.32,
+          102.56,
+          91.3,
+          92.49,
+          97.89,
+          101.7,
+          92.55,
+          99.69,
+          99.75,
+          97.88,
+          97.81,
+          97.89,
+          106.0,
+          108.78,
+          108.1,
+          98.17,
+          106.49,
+          100.91,
+          93.21,
+          119.4,
+          134.82
+        ]
+      },
+      "candidate": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 108,
+        "direct_face": 46,
+        "projected_face": 9,
+        "estimated_face": 53,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 108,
+        "missing": [
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119
+        ],
+        "pixel_bridged": 2,
+        "topology_frames": 54,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 2.7351869085155784,
+        "height_ratio": 2.735186908515577,
+        "sampled_width_ratio": 2.335053258648908,
+        "sampled_height_ratio": 2.335053258648907,
+        "sampled_widths": [
+          67.75,
+          76.88,
+          82.58,
+          74.92,
+          67.38,
+          79.15,
+          80.91,
+          82.86,
+          72.0,
+          62.31,
+          57.74,
+          68.29,
+          101.86,
+          109.68,
+          111.24,
+          95.32,
+          102.56,
+          91.3,
+          92.49,
+          97.89,
+          101.7,
+          92.55,
+          99.69,
+          99.75,
+          97.88,
+          97.81,
+          97.89,
+          106.0,
+          108.78,
+          108.1,
+          98.17,
+          106.49,
+          100.91,
+          93.21,
+          119.4,
+          134.82
+        ]
+      },
+      "reappearance_trace": [],
+      "sticker_trace_equal": true
+    },
+    "mirrored": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "bb44f58ce9df3b6206a1e9d4af587ec6e6fc108db5f0c07f98746cfd368ce489",
+      "target_id": 4,
+      "identity_protected_roots": [
+        0,
+        3,
+        4,
+        5,
+        6
+      ],
+      "injected_face_drops": [],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 97,
+        "direct_face": 91,
+        "projected_face": 5,
+        "estimated_face": 1,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 97,
+        "missing": [
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119
+        ],
+        "pixel_bridged": 3,
+        "topology_frames": 11,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 1.9602022007932236,
+        "height_ratio": 1.9602022007932287,
+        "sampled_width_ratio": 1.9602022007932236,
+        "sampled_height_ratio": 1.9602022007932287,
+        "sampled_widths": [
+          43.71,
+          79.56,
+          61.82,
+          68.35,
+          63.61,
+          71.54,
+          72.13,
+          71.9,
+          58.75,
+          53.2,
+          51.14,
+          49.4,
+          49.22,
+          72.61,
+          72.64,
+          70.34,
+          56.85,
+          79.1,
+          77.88,
+          76.57,
+          76.04,
+          74.89,
+          79.56,
+          76.86,
+          72.32,
+          73.08,
+          73.44,
+          69.13,
+          71.96,
+          73.44,
+          79.56,
+          85.68,
+          73.75
+        ]
+      },
+      "candidate": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 97,
+        "direct_face": 91,
+        "projected_face": 5,
+        "estimated_face": 1,
+        "coverage_only_recovered": 8,
+        "garment_reappearance": 8,
+        "terminal_current_continuations": 0,
+        "rendered": 105,
+        "missing": [
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111
+        ],
+        "pixel_bridged": 3,
+        "topology_frames": 11,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 1.9602022007932236,
+        "height_ratio": 1.9602022007932287,
+        "sampled_width_ratio": 1.9602022007932236,
+        "sampled_height_ratio": 1.9602022007932287,
+        "sampled_widths": [
+          43.71,
+          79.56,
+          61.82,
+          68.35,
+          63.61,
+          71.54,
+          72.13,
+          71.9,
+          58.75,
+          53.2,
+          51.14,
+          49.4,
+          49.22,
+          72.61,
+          72.64,
+          70.34,
+          56.85,
+          79.1,
+          77.88,
+          76.57,
+          76.04,
+          74.89,
+          79.56,
+          76.86,
+          72.32,
+          73.08,
+          73.44,
+          69.13,
+          71.96,
+          73.44,
+          79.56,
+          85.68,
+          73.75,
+          56.04,
+          57.44,
+          54.44
+        ]
+      },
+      "reappearance_trace": [
+        {
+          "index": 108,
+          "time_us": 7200000,
+          "kind": null,
+          "tracking_snapshot_sha256": "b3591a9c60033e9234b496059b4a3a08adde68161cd94e8fe19eadf4e16e8698",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 12,
+            "since": 12,
+            "age": 109,
+            "observed": false,
+            "bounds": [
+              662.9083251953125,
+              229.46630859375,
+              741.1234130859375,
+              447.4886474609375
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1000000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1000000,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 1,
+            "candidates": 2,
+            "candidate_eligible": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "index": 109,
+          "time_us": 7266667,
+          "kind": null,
+          "tracking_snapshot_sha256": "aef3e3e8d82fd327a47d1cf3cdd902754962e09b5bc5ea139c9ad0d65062afdb",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 13,
+            "since": 13,
+            "age": 110,
+            "observed": false,
+            "bounds": [
+              669.4302978515625,
+              228.87664794921875,
+              747.645263671875,
+              446.8984375
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1066667,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1066667,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 1,
+            "candidates": 2,
+            "candidate_eligible": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "index": 110,
+          "time_us": 7333333,
+          "kind": null,
+          "tracking_snapshot_sha256": "d09b8bcdf854ae46fcc241f7aab00775a4b43f0a9071f034979bdb1f0184ea41",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 14,
+            "since": 14,
+            "age": 111,
+            "observed": false,
+            "bounds": [
+              675.1859130859375,
+              229.11917114257812,
+              753.4007568359375,
+              447.1406555175781
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1133333,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1133333,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 1,
+            "candidates": 2,
+            "candidate_eligible": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "index": 111,
+          "time_us": 7400000,
+          "kind": null,
+          "tracking_snapshot_sha256": "ee1b2875b806b1f472fa40372899faa653e475c0f8bbe0ead396c04ea67197bf",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 15,
+            "since": 15,
+            "age": 112,
+            "observed": false,
+            "bounds": [
+              684.1253662109375,
+              229.39089965820312,
+              762.340087890625,
+              447.4122314453125
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1200000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1200000,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 1,
+            "candidates": 2,
+            "candidate_eligible": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "index": 112,
+          "time_us": 7466667,
+          "kind": 4,
+          "tracking_snapshot_sha256": "3f57881e59a585bd6e61a730535108991a4d4921b8a55a12d5cbfb08388d7adc",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 16,
+            "since": 16,
+            "age": 113,
+            "observed": false,
+            "bounds": [
+              692.4619750976562,
+              229.12405395507812,
+              770.6766967773438,
+              447.14532470703125
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1266667,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1266667,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              1
+            ],
+            "candidate_index": 2,
+            "similarity": 0.8221355080604553,
+            "rival_root": 0.6925699710845947,
+            "rival_current": 0.49690723419189453
+          },
+          "sticker": [
+            579.0,
+            212.99996948242188,
+            33.00000762939453,
+            33.00000762939453
+          ],
+          "sticker_required_bounds": [
+            546.0,
+            179.99996948242188,
+            612.0,
+            235.14468383789062
+          ]
+        },
+        {
+          "index": 113,
+          "time_us": 7533333,
+          "kind": 4,
+          "tracking_snapshot_sha256": "5c709c66aa29a87ceade07db28838fd3e8afc4d5b17d9016055edb3a9f4840cd",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 17,
+            "since": 17,
+            "age": 114,
+            "observed": false,
+            "bounds": [
+              701.1793823242188,
+              229.6326904296875,
+              779.3941040039062,
+              447.6539306640625
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1333333,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1333333,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              1
+            ],
+            "candidate_index": 2,
+            "similarity": 0.8864296674728394,
+            "rival_root": 0.6965242624282837,
+            "rival_current": 0.5181577205657959
+          },
+          "sticker": [
+            575.922607421875,
+            216.07733154296875,
+            30.077394485473633,
+            30.077394485473633
+          ],
+          "sticker_required_bounds": [
+            545.8452758789062,
+            185.99996948242188,
+            606.0,
+            246.0
+          ]
+        },
+        {
+          "index": 114,
+          "time_us": 7600000,
+          "kind": 4,
+          "tracking_snapshot_sha256": "081e4f8fe71128c79f92cfbe8fa9e924b22dff31c02633f9b90586091fa1aa5c",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 18,
+            "since": 18,
+            "age": 115,
+            "observed": false,
+            "bounds": [
+              700.9479370117188,
+              229.5245361328125,
+              779.1626586914062,
+              447.5457458496094
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1400000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1400000,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              1
+            ],
+            "candidate_index": 2,
+            "similarity": 0.9196549654006958,
+            "rival_root": 0.7035370469093323,
+            "rival_current": 0.5211828947067261
+          },
+          "sticker": [
+            566.529052734375,
+            213.47084045410156,
+            27.470888137817383,
+            27.470888137817383
+          ],
+          "sticker_required_bounds": [
+            543.2796630859375,
+            185.99996948242188,
+            593.9999389648438,
+            240.9416961669922
+          ]
+        },
+        {
+          "index": 115,
+          "time_us": 7666667,
+          "kind": 4,
+          "tracking_snapshot_sha256": "339e11e4681e5247a336085ad1106fc81c9e755084664e19df9a718294f6ab10",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 19,
+            "since": 19,
+            "age": 116,
+            "observed": false,
+            "bounds": [
+              702.759521484375,
+              229.88824462890625,
+              780.9742431640625,
+              447.909423828125
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1466667,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1466667,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              1
+            ],
+            "candidate_index": 2,
+            "similarity": 0.9209280610084534,
+            "rival_root": 0.741180956363678,
+            "rival_current": 0.5795294046401978
+          },
+          "sticker": [
+            565.4911499023438,
+            214.50877380371094,
+            28.508808135986328,
+            28.508808135986328
+          ],
+          "sticker_required_bounds": [
+            540.5184326171875,
+            185.99996948242188,
+            593.9999389648438,
+            243.017578125
+          ]
+        },
+        {
+          "index": 116,
+          "time_us": 7733333,
+          "kind": 4,
+          "tracking_snapshot_sha256": "8b4bf454aba93689cd6d4d976774b81b03fd23c398bc352a7077958010110ed4",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 20,
+            "since": 20,
+            "age": 117,
+            "observed": false,
+            "bounds": [
+              706.6962890625,
+              229.82095336914062,
+              784.9110107421875,
+              447.8421630859375
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1533333,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1533333,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              1
+            ],
+            "candidate_index": 2,
+            "similarity": 0.9117511510848999,
+            "rival_root": 0.7633804082870483,
+            "rival_current": 0.5728396773338318
+          },
+          "sticker": [
+            573.0,
+            218.99996948242188,
+            33.00000762939453,
+            33.00000762939453
+          ],
+          "sticker_required_bounds": [
+            540.0,
+            185.99996948242188,
+            606.0,
+            243.22561645507812
+          ]
+        },
+        {
+          "index": 117,
+          "time_us": 7800000,
+          "kind": 4,
+          "tracking_snapshot_sha256": "b617ad07cbf0469bac6069d47949a82c660d510c008cf6ed2afc7e94bcb4fc3a",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 21,
+            "since": 21,
+            "age": 118,
+            "observed": false,
+            "bounds": [
+              710.25390625,
+              229.87356567382812,
+              788.4686279296875,
+              447.894775390625
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1600000,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1600000,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 0,
+            "candidates": 4,
+            "candidate_eligible": [
+              1,
+              0,
+              1,
+              0
+            ],
+            "candidate_index": 2,
+            "similarity": 0.902233362197876,
+            "rival_root": 0.7698450088500977,
+            "rival_current": 0.7350919842720032
+          },
+          "sticker": [
+            565.8413696289062,
+            214.1585235595703,
+            28.158571243286133,
+            28.158571243286133
+          ],
+          "sticker_required_bounds": [
+            539.0675659179688,
+            185.99996948242188,
+            593.9999389648438,
+            242.3170623779297
+          ]
+        },
+        {
+          "index": 118,
+          "time_us": 7866667,
+          "kind": 4,
+          "tracking_snapshot_sha256": "5fefe15b51eca258ee009e4880190874fabdd549553dc4d2500434e48deb88a0",
+          "track": {
+            "id": 4,
+            "state": 2,
+            "missed": 22,
+            "since": 22,
+            "age": 119,
+            "observed": false,
+            "bounds": [
+              713.8095703125,
+              229.77398681640625,
+              792.0242919921875,
+              447.795166015625
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [
+              3
+            ],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1666667,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1666667,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 0,
+            "candidates": 3,
+            "candidate_eligible": [
+              1,
+              0,
+              1
+            ],
+            "candidate_index": 2,
+            "similarity": 0.9097117781639099,
+            "rival_root": 0.6764206290245056,
+            "rival_current": 0.5956966876983643
+          },
+          "sticker": [
+            560.1160888671875,
+            213.88380432128906,
+            27.883852005004883,
+            27.883852005004883
+          ],
+          "sticker_required_bounds": [
+            538.692138671875,
+            185.99996948242188,
+            587.9999389648438,
+            241.7676239013672
+          ]
+        },
+        {
+          "index": 119,
+          "time_us": 7933333,
+          "kind": 4,
+          "tracking_snapshot_sha256": "e7aa07d66910f980d97170f8f48728ce9e168553f8df4060154638b92c6cbe00",
+          "track": {
+            "id": 4,
+            "state": 3,
+            "missed": 1,
+            "since": 23,
+            "age": 120,
+            "observed": false,
+            "bounds": [
+              589.20068359375,
+              200.8559112548828,
+              674.4964599609375,
+              460.9759521484375
+            ],
+            "confidence": 0.2546617090702057,
+            "foot": 458.5276794433594,
+            "occluders": [],
+            "canonical": [
+              603.4959716796875,
+              282.6053466796875,
+              674.6295776367188,
+              458.5276794433594
+            ],
+            "dormant": false
+          },
+          "recovery_attempt": {
+            "age_us": 1733333,
+            "probe_status": 1,
+            "continuation": false
+          },
+          "reappearance_attempt": {
+            "age_us": 1733333,
+            "root_indices": [
+              93,
+              91,
+              89
+            ],
+            "rival_count": 11,
+            "status": 0,
+            "candidates": 4,
+            "candidate_eligible": [
+              0,
+              0,
+              1,
+              1
+            ],
+            "candidate_index": 2,
+            "similarity": 0.9288458824157715,
+            "rival_root": 0.7095663547515869,
+            "rival_current": 0.7469512224197388
+          },
+          "sticker": [
+            561.314453125,
+            212.68544006347656,
+            26.685487747192383,
+            26.685487747192383
+          ],
+          "sticker_required_bounds": [
+            537.0599975585938,
+            185.99996948242188,
+            587.9999389648438,
+            239.37091064453125
+          ]
+        }
+      ],
+      "audit": {
+        "scope": "Evaluate sparse source-reviewed head envelopes independently of the detector.\n\nNever changes a track or renders a sticker; approximate labels are not semantic\nground truth. Input frames are identified by the local fixture manifest hash\nand their individual SHA-256s.\n",
+        "case": "mirrored_reappearance",
+        "labels_sha256": "d937309ef8b6ae6bdea05a7d82be6aa515984889f6e6aa911fbd0e62ac2969e4",
+        "replay_sha256": "9f9443811b11f77a7f1d883e35f32b70c1970d0575d59ab506591cb06afb130a",
+        "results": {
+          "baseline": {
+            "samples": 8,
+            "full_head_envelopes": 0,
+            "min_head_coverage": 0.0,
+            "torso_probes_covered": 0,
+            "neighbor_rects_checked": 16,
+            "max_neighbor_rect_overlap": 0.0,
+            "rows": [
+              {
+                "index": 112,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 113,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 114,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 115,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 116,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 117,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 118,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 119,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          },
+          "candidate": {
+            "samples": 8,
+            "full_head_envelopes": 8,
+            "min_head_coverage": 1.0,
+            "torso_probes_covered": 0,
+            "neighbor_rects_checked": 16,
+            "max_neighbor_rect_overlap": 0.0,
+            "rows": [
+              {
+                "index": 112,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 113,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 114,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 115,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 116,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 117,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 118,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 119,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "original": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+      "target_id": 1,
+      "identity_protected_roots": [
+        1
+      ],
+      "injected_face_drops": [],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 15,
+        "projected_face": 3,
+        "estimated_face": 0,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 3,
+        "topology_frames": 15,
+        "max_relative_motion_error_x": 13.911893066406265,
+        "max_relative_motion_error_y": 37.42111962890624,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "head_mask_point_covered": 18,
+        "head_mask_point_checked": 18,
+        "width_ratio": 1.31496257873733,
+        "height_ratio": 1.31496257873733,
+        "sampled_width_ratio": 1.3145463845662126,
+        "sampled_height_ratio": 1.3145463845662126,
+        "sampled_widths": [
+          309.99,
+          407.5,
+          397.58,
+          380.73,
+          375.66,
+          364.29,
+          353.97
+        ]
+      },
+      "candidate": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 15,
+        "projected_face": 3,
+        "estimated_face": 0,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 3,
+        "topology_frames": 15,
+        "max_relative_motion_error_x": 13.911893066406265,
+        "max_relative_motion_error_y": 37.42111962890624,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "head_mask_point_covered": 18,
+        "head_mask_point_checked": 18,
+        "width_ratio": 1.31496257873733,
+        "height_ratio": 1.31496257873733,
+        "sampled_width_ratio": 1.3145463845662126,
+        "sampled_height_ratio": 1.3145463845662126,
+        "sampled_widths": [
+          309.99,
+          407.5,
+          397.58,
+          380.73,
+          375.66,
+          364.29,
+          353.97
+        ]
+      },
+      "reappearance_trace": [],
+      "sticker_trace_equal": true,
+      "audit": {
+        "baseline": {
+          "min_target_square": 1.0,
+          "min_target_ellipse": 0.9994645137372822,
+          "target_square_full_frames": 18,
+          "max_neighbor_square": 0.0,
+          "neighbor_square_overlap_frames": []
+        },
+        "candidate": {
+          "min_target_square": 1.0,
+          "min_target_ellipse": 0.9994645137372822,
+          "target_square_full_frames": 18,
+          "max_neighbor_square": 0.0,
+          "neighbor_square_overlap_frames": []
+        }
+      }
+    },
+    "avc": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "755cad628fee690f4b70037144e9d708866aad8cb7db6dc16ba035dac7130f94",
+      "target_id": 1,
+      "identity_protected_roots": [
+        1
+      ],
+      "injected_face_drops": [],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 17,
+        "direct_face": 17,
+        "projected_face": 1,
+        "estimated_face": 0,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 1,
+        "topology_frames": 17,
+        "max_relative_motion_error_x": 23.026134765624988,
+        "max_relative_motion_error_y": 25.78043359374999,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "head_mask_point_covered": 18,
+        "head_mask_point_checked": 18,
+        "width_ratio": 1.1834374581819942,
+        "height_ratio": 1.1834374581819942,
+        "sampled_width_ratio": 1.177712606966608,
+        "sampled_height_ratio": 1.177712606966608,
+        "sampled_widths": [
+          328.18,
+          386.5,
+          380.54,
+          368.86,
+          359.55,
+          349.11,
+          342.0
+        ]
+      },
+      "candidate": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 17,
+        "direct_face": 17,
+        "projected_face": 1,
+        "estimated_face": 0,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 1,
+        "topology_frames": 17,
+        "max_relative_motion_error_x": 23.026134765624988,
+        "max_relative_motion_error_y": 25.78043359374999,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "head_mask_point_covered": 18,
+        "head_mask_point_checked": 18,
+        "width_ratio": 1.1834374581819942,
+        "height_ratio": 1.1834374581819942,
+        "sampled_width_ratio": 1.177712606966608,
+        "sampled_height_ratio": 1.177712606966608,
+        "sampled_widths": [
+          328.18,
+          386.5,
+          380.54,
+          368.86,
+          359.55,
+          349.11,
+          342.0
+        ]
+      },
+      "reappearance_trace": [],
+      "sticker_trace_equal": true,
+      "audit": {
+        "baseline": {
+          "min_target_square": 1.0,
+          "min_target_ellipse": 1.0,
+          "target_square_full_frames": 18,
+          "max_neighbor_square": 0.0,
+          "neighbor_square_overlap_frames": []
+        },
+        "candidate": {
+          "min_target_square": 1.0,
+          "min_target_ellipse": 1.0,
+          "target_square_full_frames": 18,
+          "max_neighbor_square": 0.0,
+          "neighbor_square_overlap_frames": []
+        }
+      }
+    },
+    "drop": {
+      "scope": "production Rust tracking + host CPU face geometry; not native export or pixel privacy acceptance",
+      "fixture_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+      "target_id": 1,
+      "identity_protected_roots": [
+        1
+      ],
+      "injected_face_drops": [
+        6,
+        7,
+        8
+      ],
+      "experimental_cover_fallback": false,
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "tracking_snapshot_equal": true,
+      "baseline": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 12,
+        "projected_face": 6,
+        "estimated_face": 0,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 6,
+        "topology_frames": 12,
+        "max_relative_motion_error_x": 10.093913818359397,
+        "max_relative_motion_error_y": 39.60788720703124,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "head_mask_point_covered": 18,
+        "head_mask_point_checked": 18,
+        "width_ratio": 1.31496257873733,
+        "height_ratio": 1.31496257873733,
+        "sampled_width_ratio": 1.3145463845662126,
+        "sampled_height_ratio": 1.3145463845662126,
+        "sampled_widths": [
+          309.99,
+          407.5,
+          401.88,
+          395.01,
+          388.66,
+          374.81,
+          362.28
+        ]
+      },
+      "candidate": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 12,
+        "projected_face": 6,
+        "estimated_face": 0,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 6,
+        "topology_frames": 12,
+        "max_relative_motion_error_x": 10.093913818359397,
+        "max_relative_motion_error_y": 39.60788720703124,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "head_mask_point_covered": 18,
+        "head_mask_point_checked": 18,
+        "width_ratio": 1.31496257873733,
+        "height_ratio": 1.31496257873733,
+        "sampled_width_ratio": 1.3145463845662126,
+        "sampled_height_ratio": 1.3145463845662126,
+        "sampled_widths": [
+          309.99,
+          407.5,
+          401.88,
+          395.01,
+          388.66,
+          374.81,
+          362.28
+        ]
+      },
+      "reappearance_trace": [],
+      "sticker_trace_equal": true,
+      "audit": {
+        "baseline": {
+          "min_target_square": 1.0,
+          "min_target_ellipse": 0.9994645137372822,
+          "target_square_full_frames": 18,
+          "max_neighbor_square": 0.0,
+          "neighbor_square_overlap_frames": []
+        },
+        "candidate": {
+          "min_target_square": 1.0,
+          "min_target_ellipse": 0.9994645137372822,
+          "target_square_full_frames": 18,
+          "max_neighbor_square": 0.0,
+          "neighbor_square_overlap_frames": []
+        }
+      }
+    }
+  },
+  "remaining_visibility": {
+    "target_id": 3,
+    "unresolved_frames": [
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111
+    ],
+    "source_review": "foreground dancer blocks target; 110\u2013111 partial visibility or uncertainty; earlier frames not densely labeled as fully hidden. Existing four detail tiles yielded no independently owned target face at tested 108\u2013111."
+  },
+  "new_lane": "root age >950ms and <=2s, current raw garment+face+exclusive mask, >=2 spaced direct root snapshots, current and historical rival comparisons, no canonical state or direct lease renewal",
+  "limitations": [
+    "Same clothing or an unobserved rival may be ambiguous; no identity proof. Missing competing descriptors cannot be treated as evidence of absence.",
+    "Only one underlying group scene and its mirror; not independent holdout. Other ID2 retains 12 unresolved frames, original ID3 retains 14.",
+    "No mobile integration or native compositing, no semantic pixel ground truth."
+  ],
+  "rejected_early_version": "Initial 8 detections recovered, 7/8 approximate head envelopes were not completely covered. Connected current crown repair restored 8/8.",
+  "clippy_all_targets": "passed",
+  "abi_v1_smoke": "passed",
+  "rust_full_suite_before_last_test_only_addition": {
+    "passed": 190,
+    "failed": 0,
+    "ignored": 1
+  },
+  "final_focused_reappearance_tests": {
+    "passed": 3,
+    "failed": 0,
+    "note": "one additional test added after full-suite binary was compiled; no production algorithm changes"
+  }
+}

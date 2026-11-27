@@ -9,6 +9,113 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// Current mask readable; output is disjoint writable aligned HeadSticker.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_reappearance_sticker(
+    pixels: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    face: Ellipse,
+    output: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    use crate::face_reappearance::{Error, cover_reappearance};
+    if len > 1024 * 1024 || output.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: checked length and caller-owned readable input.
+    let Some(pixels) = (unsafe { crate::ffi_tracking::borrowed(pixels, len) }) else {
+        return REGION_INVALID;
+    };
+    match cover_reappearance(pixels, spec, face) {
+        Ok(result) => {
+            // SAFETY: caller-owned disjoint writable output.
+            unsafe { output.write(result) };
+            REGION_OK
+        }
+        Err(Error::NoEvidence) => REGION_NONE,
+        Err(Error::Invalid) => REGION_INVALID,
+    }
+}
+
+/// # Safety
+/// All input ranges readable; output is disjoint writable aligned Garment.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_garment(
+    rgb: *const u8,
+    rgb_len: usize,
+    masks: *const u8,
+    mask_len: usize,
+    count: usize,
+    index: usize,
+    spec: HeadMaskSpec,
+    face: Ellipse,
+    output: *mut crate::face_reappearance::Garment,
+) -> i32 {
+    use crate::face_reappearance::{Error, describe};
+    if rgb_len > 256 * 1024 * 1024 || mask_len > 256 * 1024 * 1024 || output.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: checked lengths, caller owns readable ranges.
+    let (Some(rgb), Some(masks)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(rgb, rgb_len),
+            crate::ffi_tracking::borrowed(masks, mask_len),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    match describe(rgb, masks, count, index, spec, face) {
+        Ok(result) => {
+            // SAFETY: disjoint aligned writable output.
+            unsafe { output.write(result) };
+            REGION_OK
+        }
+        Err(Error::NoEvidence) => REGION_NONE,
+        Err(Error::Invalid) => REGION_INVALID,
+    }
+}
+
+/// # Safety
+/// Readable arrays of fixed-size descriptors, disjoint writable output.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_reappearance_choose(
+    root_body: Rect,
+    root_face: Ellipse,
+    age_us: i64,
+    roots: *const crate::face_reappearance::Garment,
+    root_count: usize,
+    rivals: *const crate::face_reappearance::Garment,
+    rival_count: usize,
+    current: *const crate::face_reappearance::Candidate,
+    count: usize,
+    output: *mut crate::face_reappearance::Decision,
+) -> i32 {
+    use crate::face_reappearance::{Error, choose};
+    if root_count > 8 || rival_count > 256 || count > 256 || output.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: checked lengths, caller owns readable arrays.
+    let (Some(roots), Some(rivals), Some(current)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(roots, root_count),
+            crate::ffi_tracking::borrowed(rivals, rival_count),
+            crate::ffi_tracking::borrowed(current, count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    match choose(root_body, root_face, age_us, roots, rivals, current) {
+        Ok(result) => {
+            // SAFETY: disjoint writable output.
+            unsafe { output.write(result) };
+            REGION_OK
+        }
+        Err(Error::NoEvidence) => REGION_NONE,
+        Err(Error::Invalid) => REGION_INVALID,
+    }
+}
+
+/// # Safety
 /// Inputs are readable arrays; output is a disjoint writable aligned index.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_face_recovery_probe(

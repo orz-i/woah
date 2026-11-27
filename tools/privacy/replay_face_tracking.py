@@ -37,9 +37,25 @@ PixelBridge = struct("PixelBridge", [("motion",PixelMotion),("measurement",Ellip
 HeadSticker = struct("HeadSticker", [("bounds",Rect),("square",Ellipse),("topology",U),("rows",U)])
 RecoveryAnchor = struct("RecoveryAnchor", [("root_body",Rect),("root_face",Ellipse),("predicted_body",Rect),("age_us",I64)])
 RecoveryPrevious = struct("RecoveryPrevious", [("body",Rect),("face",Ellipse),("root_age_us",I64)])
+Garment = struct("Garment", [("rgb",F*512),("chroma",F*512),("samples",U)])
+ReappearanceCandidate = struct("ReappearanceCandidate", [("garment",Garment),("body",Rect),("face",Ellipse),("eligible",U)])
+ReappearanceDecision = struct("ReappearanceDecision", [("index",U),("similarity",F),("rival_root",F),("rival_current",F)])
 
 
 def pixel_bind(lib):
+    if hasattr(lib,"frame_kernel_face_garment"):
+        fn=lib.frame_kernel_face_garment
+        fn.argtypes=[P,S,P,S,S,S,MaskSpec,Ellipse,P]
+        fn.restype=C.c_int32
+        lib.garment=fn
+        fn=lib.frame_kernel_face_reappearance_choose
+        fn.argtypes=[Rect,Ellipse,I64,P,S,P,S,P,S,P]
+        fn.restype=C.c_int32
+        lib.reappearance_choose=fn
+        fn=lib.frame_kernel_face_reappearance_sticker
+        fn.argtypes=[P,S,MaskSpec,Ellipse,P]
+        fn.restype=C.c_int32
+        lib.reappearance_sticker=fn
     if hasattr(lib,"frame_kernel_face_recovery_probe"):
         fn=lib.frame_kernel_face_recovery_probe
         fn.argtypes=[RecoveryAnchor,P,S,P,S,P]
@@ -246,6 +262,104 @@ def recover_current(lib,face,image,transform,detections,masks,snapshot,track,tru
     return measured,required,placement,next_previous
 
 
+def garment_candidates(lib,face,entry,known=None):
+    frame,image,transform,detections,masks=entry
+    rgb=np.ascontiguousarray(image.convert("RGB"))
+    result=[]
+    for j,d in enumerate(detections):
+        if d.confidence < .25:
+            continue
+        spec=MaskSpec(160,160,transform,d.box)
+        measured=known[1] if known is not None and j==known[0] else detect_face(lib,face,image,spec,masks[j])
+        if measured is None:
+            continue
+        descriptor=Garment()
+        status=lib.garment(ptr(rgb),rgb.size,ptr(masks),masks.size,len(detections),j,spec,measured,C.byref(descriptor))
+        if status<0:
+            raise RuntimeError("invalid garment input")
+        if status==0:
+            result.append((j,spec,measured,descriptor))
+    return result
+
+
+def garment_roots(lib,face,evidence,report,trusted):
+    # No current or future annotation enters these references. Require at least
+    # two separate exact direct observations spaced by 100ms; freeze during gap.
+    roots,rivals,indices=[],[],[]
+    last=trusted[2]+100_000
+    for old in reversed(report[:-1]):
+        if old["kind"]!=0 or not old["track"]["observed"] or not 0<=trusted[2]-old["time_us"]<=500_000:
+            continue
+        if last-old["time_us"]<100_000:
+            continue
+        entry=evidence[old["index"]]
+        ds=entry[3]
+        found=[j for j,d in enumerate(ds) if iou(d.box,Rect(*old["track"]["bounds"]))>.99]
+        if len(found)!=1:
+            continue
+        j=found[0]
+        candidates=garment_candidates(lib,face,entry,(j,Ellipse(*old["raw"])))
+        selected=next((x for x in candidates if x[0]==j),None)
+        if selected is None:
+            continue
+        roots.append(selected[3])
+        rivals.extend(x[3] for x in candidates if x[0]!=j)
+        indices.append(old["index"])
+        last=old["time_us"]
+        if len(roots)==3:
+            break
+    return roots,rivals,indices
+
+
+def reappear_current(lib,face,evidence,entry,report,snapshot,track,trusted,target,row,cache):
+    if not hasattr(lib,"reappearance_choose") or trusted is None or track["observed"]:
+        return None
+    age=row["time_us"]-trusted[2]
+    if not 950_000<age<=2_000_000:
+        return None
+    # Reappearance is restricted to a retained track with actual occlusion
+    # state after the immutable direct root; ordinary lost tracks do not qualify.
+    if track["state"] not in (2,3) or not any(
+        q["time_us"]>trusted[2] and q.get("track") and q["track"]["state"]==2
+        for q in report[:-1]
+    ):
+        return None
+    if cache.get("time")!=trusted[2]:
+        roots,rivals,indices=garment_roots(lib,face,evidence,report,trusted)
+        cache.update(time=trusted[2],roots=roots,rivals=rivals,indices=indices)
+    roots,rivals=cache["roots"],cache["rivals"]
+    row["reappearance_attempt"]={"age_us":age,"root_indices":cache["indices"],"rival_count":len(rivals)}
+    if len(roots)<2 or not rivals:
+        return None
+    frame,image,transform,detections,masks=entry
+    candidates=garment_candidates(lib,face,entry)
+    rows=[]
+    foreign=[t for t in snapshot["tracks"] if t["id"]!=target and t["observed"]]
+    for j,spec,f,g in candidates:
+        # A committed foreign observation is a negative example, not a
+        # recovery candidate. Require raw current face and body evidence.
+        conflict=any(iou(spec.person,t["bounds"])>.9 or
+                     (t["mask"] is not None and np.array_equal(masks[j],t["mask"])) for t in foreign)
+        rows.append(ReappearanceCandidate(g,spec.person,f,int(not conflict and detections[j].confidence>=.5)))
+    a=(Garment*len(roots))(*roots);b=(Garment*len(rivals))(*rivals)
+    c=(ReappearanceCandidate*len(rows))(*rows)
+    decision=ReappearanceDecision()
+    status=lib.reappearance_choose(trusted[0],trusted[1],age,a,len(a),b,len(b),c if len(c) else None,len(c),C.byref(decision))
+    row["reappearance_attempt"].update(status=status,candidates=len(c),candidate_eligible=[x.eligible for x in rows])
+    if status!=0:
+        return None
+    j,spec,measured,g=candidates[decision.index]
+    mask=masks[j]
+    placement=HeadSticker()
+    check(lib.reappearance_sticker(ptr(mask),mask.size,spec,measured,C.byref(placement)))
+    required=Ellipse()
+    check(lib.current_face_region(ptr(mask),mask.size,spec,measured,C.byref(required)))
+    row["reappearance_attempt"].update(candidate_index=j,similarity=decision.similarity,
+                                        rival_root=decision.rival_root,rival_current=decision.rival_current)
+    # Do not renew the root, set a body observation, or seed any continuation.
+    return measured,required,placement,None
+
+
 def summarize(rows):
     usable = [r for r in rows if r["render"] is not None]
     sample = [r for r in usable if r["index"] % 3 == 0 or r["index"] == rows[-1]["index"]]
@@ -256,7 +370,8 @@ def summarize(rows):
                 body_observed=sum(r["track"] is not None and r["track"]["observed"] for r in rows),
                 direct_face=sum(r["kind"]==0 for r in rows), projected_face=sum(r["kind"]==1 for r in rows),
                 estimated_face=sum(r["kind"]==2 for r in rows),
-                coverage_only_recovered=sum(r["kind"]==3 for r in rows),
+                coverage_only_recovered=sum(r["kind"] in (3,4) for r in rows),
+                garment_reappearance=sum(r["kind"]==4 for r in rows),
                 terminal_current_continuations=sum(r["kind"]==3 and r.get("recovery_attempt",{}).get("continuation",False) for r in rows),
                 rendered=len(usable), missing=[r["index"] for r in rows if r["render"] is None],
                 pixel_bridged=sum(r.get("pixel_motion") is not None for r in rows),
@@ -281,6 +396,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
     sticker_seed = None
     recovery_previous = None
+    reappearance_cache = {}
     first_head = None
     report = []
     try:
@@ -303,6 +419,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
             if track is None or track["dormant"]:
                 state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
                 sticker_seed = None
+                reappearance_cache.clear()
                 continue
             row["track"] = next(t for t in row["tracks"] if t["id"]==target)
             if "person_bbox" in frame:
@@ -350,12 +467,16 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 raw,kind=fallback.region,2
             else:
                 recovery=recover_current(lib,face,image,transform,detections,masks,snapshot,track,trusted,time,target,row,prior_recovery) if index not in drops else None
+                coverage_kind=3
+                if recovery is None and index not in drops:
+                    recovery=reappear_current(lib,face,evidence,evidence[index],report,snapshot,track,trusted,target,row,reappearance_cache)
+                    coverage_kind=4
                 if recovery is None:
                     continue
                 raw,required,placement,recovery_previous=recovery
                 sticker=placement.square
                 half=max(8,1.02*max(sticker.rx,sticker.ry))
-                row.update(kind=3,raw=vals(raw),required=vals(required),render=vals(required),
+                row.update(kind=coverage_kind,raw=vals(raw),required=vals(required),render=vals(required),
                            sticker=vals(sticker),topology=placement.topology,topology_rows=placement.rows,
                            sticker_required_bounds=vals(placement.bounds),
                            width=min(transform.width,sticker.x+half)-max(0,sticker.x-half),

@@ -382,6 +382,24 @@ typedef struct FrameKernelHeadSticker {
 } FrameKernelHeadSticker;
 int32_t frame_kernel_head_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
     FrameKernelEllipse measured,FrameKernelEllipse stabilized,uint32_t kind,FrameKernelHeadSticker *output);
+/* Experimental garment-only reappearance evidence, never a canonical
+   identity assignment or exemption. RGB top-down tightly packed; all raw
+   masks contiguous and same transform. Face region is only used to locate
+   a garment band below it; face pixels are not sampled. */
+typedef struct FrameKernelFaceGarment { float rgb[512],chroma[512];uint32_t samples; } FrameKernelFaceGarment;
+typedef struct FrameKernelFaceReappearanceCandidate {
+    FrameKernelFaceGarment garment; FrameKernelRect body; FrameKernelEllipse face; uint32_t eligible;
+} FrameKernelFaceReappearanceCandidate;
+typedef struct FrameKernelFaceReappearanceDecision {
+    uint32_t index;float similarity,rival_root,rival_current;
+} FrameKernelFaceReappearanceDecision;
+int32_t frame_kernel_face_garment(const uint8_t *rgb,size_t rgb_len,const uint8_t *masks,size_t mask_len,
+    size_t count,size_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,FrameKernelFaceGarment *output);
+int32_t frame_kernel_face_reappearance_choose(FrameKernelRect root_body,FrameKernelEllipse root_face,int64_t age_us,
+    const FrameKernelFaceGarment *roots,size_t root_count,const FrameKernelFaceGarment *rivals,size_t rival_count,
+    const FrameKernelFaceReappearanceCandidate *current,size_t count,FrameKernelFaceReappearanceDecision *output);
+int32_t frame_kernel_face_reappearance_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
+    FrameKernelEllipse face,FrameKernelHeadSticker *output);
 /* Experimental current-frame coverage-only recovery. Root must be the last
    canonically owned DIRECT face and body; predicted_body the retained
    selected track's current prediction. Hard age <=800ms; never renews
