@@ -1874,7 +1874,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                       ? '已恢复画布'
                       : controller.cutoutArchived
                       ? '已缓存画布'
-                      : '实验画布'} · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}',
+                      : '抠像画布'} · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}',
             style: const TextStyle(fontSize: 12),
           ),
         ),
