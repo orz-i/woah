@@ -1,5 +1,6 @@
 import java.time.Instant
 import java.security.MessageDigest
+import java.util.Base64
 import groovy.json.JsonSlurper
 
 fun sha256(file: File): String {
@@ -41,6 +42,14 @@ allprojects {
 plugins {
     id("com.android.library")
 }
+
+// Native and Flutter use the same build-time opt-in. Do not enable QA fixtures.
+val cutoutPreviewDefines = providers.gradleProperty("dart-defines").orNull.orEmpty()
+    .split(",").filter { it.isNotBlank() }
+    .map { String(Base64.getDecoder().decode(it), Charsets.UTF_8) }
+    .filter { it.substringBefore("=") == "WOAH_ENABLE_CUTOUT_PREVIEW" }
+require(cutoutPreviewDefines.size <= 1) { "Duplicate cutout preview build define" }
+val cutoutPreviewEnabled = cutoutPreviewDefines.singleOrNull() == "WOAH_ENABLE_CUTOUT_PREVIEW=true"
 
 val diagnosticGitCommitSha = System.getenv("GIT_COMMIT_SHA")?.takeIf { it.isNotBlank() }
     ?: runCatching {
@@ -137,6 +146,7 @@ android {
         buildConfigField("String", "GIT_COMMIT_SHA", "\"$diagnosticGitCommitSha\"")
         buildConfigField("String", "BUILD_TIMESTAMP", "\"$diagnosticBuildTimestamp\"")
         buildConfigField("String", "CUTOUT_QA_BACKEND", "\"$cutoutQaBackend\"")
+        buildConfigField("boolean", "CUTOUT_PREVIEW_ENABLED", cutoutPreviewEnabled.toString())
     }
 
     buildFeatures {

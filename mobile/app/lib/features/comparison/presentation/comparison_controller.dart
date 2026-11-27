@@ -87,7 +87,15 @@ class ComparisonController extends ChangeNotifier {
   }
 
   bool get cutoutMode => cutoutSelecting || cutoutPreparing || cutoutActive;
-  bool get supportsCutout => kDebugMode && gateway is ComparisonCutoutGateway;
+  // Release candidate opt-in. Do not tie experimental algorithms or QA
+  // entry points to this product flag; absent an explicit build opt-in the
+  // existing production behavior remains unchanged.
+  static const bool releaseCutoutPreviewEnabled = bool.fromEnvironment(
+    'WOAH_ENABLE_CUTOUT_PREVIEW',
+  );
+  bool get supportsCutout =>
+      (kDebugMode || releaseCutoutPreviewEnabled) &&
+      gateway is ComparisonCutoutGateway;
   (int, int, bool) get cutoutViewport => (_width, _height, _horizontal);
   int _cutoutRequest = 0;
   bool enteringPractice = false;

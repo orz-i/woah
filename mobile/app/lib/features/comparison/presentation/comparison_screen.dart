@@ -1128,7 +1128,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                   '确认点 ${(position / 1e6).toStringAsFixed(2)}s · 选段需包含确认点，最多10秒',
                 ),
                 const SizedBox(height: 6),
-                const Text('缺失仍会隐藏，不使用旧 Mask 填充。应用后请检查人物是否正确。'),
+                const Text('纠错可能增加或减少可见帧。缺失仍会隐藏，不使用旧遮罩填充。应用后请检查人物是否正确。'),
               ],
             ),
             actions: [
@@ -1163,7 +1163,12 @@ class _ComparisonScreenState extends State<ComparisonScreen>
     final seed = role ? _cutoutReference : _cutoutTarget;
     if (seed == null) return;
     final applied = await controller.applyCutoutRepair(seed);
-    if (mounted && applied) setState(_resetCutoutSeeds);
+    if (mounted && applied) {
+      setState(_resetCutoutSeeds);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已应用局部纠错，请检查修复区间及边界。')));
+    }
   }
 
   Future<void> _exitCutout() async {
@@ -1217,6 +1222,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 : '仅分析当前 A/B 选段',
             style: const TextStyle(fontSize: 12),
           ),
+          if (!controller.cutoutRepairing)
+            const Text(
+              '实验功能：建议先用单人清晰、少遮挡的短选段。多人交叉可能错选，请检查结果。',
+              style: TextStyle(fontSize: 12),
+            ),
           Text(
             controller.cutoutRepairing
                 ? '${controller.cutoutRepairReference! ? '参考' : '目标'}：${(controller.cutoutRepairReference! ? reference : target) ? '已确认候选' : '未选择'}'
@@ -1841,7 +1851,8 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         (result.targetAnalyzed ?? result.targetFrames);
     final total = result.referenceFrames + result.targetFrames;
     final missing = analyzed - result.referenceVisible - result.targetVisible;
-    return Row(
+    final incomplete = !partial && !controller.cutoutSaving && missing > 0;
+    final controls = Row(
       children: [
         Expanded(
           child: Text(
@@ -1850,11 +1861,10 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 : partial
                 ? '已分析 $analyzed/$total 帧 · 正在分析剩余片段，暂不能导出'
                 : '${controller.cutoutRestored
-                          ? '已恢复画布'
-                          : controller.cutoutArchived
-                          ? '已缓存画布'
-                          : '实验画布'} · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}'
-                      '${missing > 0 ? ' · 缺失帧已隐藏，暂不能导出' : ''}',
+                      ? '已恢复画布'
+                      : controller.cutoutArchived
+                      ? '已缓存画布'
+                      : '实验画布'} · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}',
             style: const TextStyle(fontSize: 12),
           ),
         ),
@@ -1880,6 +1890,21 @@ class _ComparisonScreenState extends State<ComparisonScreen>
         TextButton(
           onPressed: controller.exporting ? null : _exitCutout,
           child: const Text('退出画布'),
+        ),
+      ],
+    );
+    if (!incomplete) return controls;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        controls,
+        const Padding(
+          padding: EdgeInsets.fromLTRB(12, 0, 12, 4),
+          child: Text(
+            '缺失帧已隐藏，暂不能导出；可局部纠错或退出后缩短 A/B 选段。',
+            style: TextStyle(fontSize: 12),
+          ),
         ),
       ],
     );
