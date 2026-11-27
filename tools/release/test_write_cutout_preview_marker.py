@@ -13,11 +13,15 @@ def encoded(*values):
 
 
 class CutoutPreviewMarkerTest(unittest.TestCase):
-    def test_explicit_opt_in_only(self):
-        self.assertFalse(marker.enabled(""))
+    def test_default_on_and_explicit_rollback(self):
+        self.assertTrue(marker.enabled(""))
         self.assertFalse(marker.enabled(encoded("WOAH_ENABLE_CUTOUT_PREVIEW=false")))
-        self.assertFalse(marker.enabled(encoded("OTHER=WOAH_ENABLE_CUTOUT_PREVIEW=true")))
+        self.assertTrue(marker.enabled(encoded("OTHER=WOAH_ENABLE_CUTOUT_PREVIEW=false")))
         self.assertTrue(marker.enabled(encoded("OTHER=hidden", "WOAH_ENABLE_CUTOUT_PREVIEW=true")))
+
+    def test_invalid_rejected(self):
+        with self.assertRaises(ValueError):
+            marker.enabled(encoded("WOAH_ENABLE_CUTOUT_PREVIEW=maybe"))
 
     def test_duplicate_rejected(self):
         with self.assertRaises(ValueError):
@@ -30,9 +34,12 @@ class CutoutPreviewMarkerTest(unittest.TestCase):
             with patch.dict(os.environ, dict(env, DART_DEFINES=encoded("WOAH_ENABLE_CUTOUT_PREVIEW=true")), clear=True):
                 marker.main()
                 self.assertEqual(flag.read_text(), "true\n")
-            with patch.dict(os.environ, env, clear=True):
+            with patch.dict(os.environ, dict(env, DART_DEFINES=encoded("WOAH_ENABLE_CUTOUT_PREVIEW=false")), clear=True):
                 marker.main()
                 self.assertEqual(flag.read_text(), "false\n")
+            with patch.dict(os.environ, env, clear=True):
+                marker.main()
+                self.assertEqual(flag.read_text(), "true\n")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,22 @@ import kotlinx.coroutines.CancellationException
 import kotlin.test.*
 
 class ComparisonCutoutBackendTest {
+    @Test fun releasePolicyIsPackageIndependentGpuFirstWithExplicitRollback() {
+        val gpu=LiteRtAccelerator.GPU;val cpu=LiteRtAccelerator.CPU
+        assertEquals(gpu,ComparisonCutoutBackend.configured(false,false,true,true))
+        assertEquals(cpu,ComparisonCutoutBackend.configured(false,true,true,false))
+        assertEquals(cpu,ComparisonCutoutBackend.configured(false,true,false,true))
+        assertEquals(cpu,ComparisonCutoutBackend.configured(true,false,true,true))
+        assertEquals(gpu,ComparisonCutoutBackend.configured(true,true,false,false))
+        assertTrue(ComparisonCutoutBackend.acceptsBothArchives(false,true))
+        assertFalse(ComparisonCutoutBackend.acceptsBothArchives(true,true))
+        assertFalse(ComparisonCutoutBackend.acceptsBothArchives(false,false))
+        // A GPU archive is still playable after a CPU rollback, but cannot
+        // acquire CPU observations in its local repair.
+        assertTrue(ComparisonCutoutBackend.requiresFullReselection(gpu,cpu))
+        assertFalse(ComparisonCutoutBackend.requiresFullReselection(cpu,gpu))
+        assertFalse(ComparisonCutoutBackend.requiresFullReselection(null,cpu))
+    }
     @Test fun onlyAnUnboundSelectionCanAdoptTheActualCpuFallback() {
         val gpu=LiteRtAccelerator.GPU
         val cpu=LiteRtAccelerator.CPU

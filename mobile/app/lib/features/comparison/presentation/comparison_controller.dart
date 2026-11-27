@@ -91,11 +91,11 @@ class ComparisonController extends ChangeNotifier {
   }
 
   bool get cutoutMode => cutoutSelecting || cutoutPreparing || cutoutActive;
-  // Release candidate opt-in. Do not tie experimental algorithms or QA
-  // entry points to this product flag; absent an explicit build opt-in the
-  // existing production behavior remains unchanged.
+  // Production default-on. An explicit false remains an emergency Release
+  // build rollback; it does not enable or disable Debug-only QA entry points.
   static const bool releaseCutoutPreviewEnabled = bool.fromEnvironment(
     'WOAH_ENABLE_CUTOUT_PREVIEW',
+    defaultValue: true,
   );
   bool get supportsCutout =>
       (kDebugMode || releaseCutoutPreviewEnabled) &&

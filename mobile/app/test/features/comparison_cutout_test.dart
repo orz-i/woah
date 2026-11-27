@@ -270,7 +270,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('comparison-view')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('抠像画布（实验）'));
+    await tester.tap(find.text('抠像画布'));
     await tester.pumpAndSettle();
     final finder = find.byKey(const ValueKey('comparison-cutout-gesture'));
     expect(finder, findsOneWidget);

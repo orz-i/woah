@@ -102,23 +102,20 @@ internal class ComparisonSession(
     private var targetInspection: ComparisonCutoutAnalysis.Inspection?=null
     // Only an idle runner is held on the main thread. An ongoing inspect or
     // prepare takes exclusive ownership and closes it on cancellation/failure.
-    // GPU QA keeps the idle runtime between selections to avoid compiling
-    // the graph per selected role. CPU keeps its existing short lifetime.
+    // GPU and its CPU fallback reuse one runner between subject selections.
+    // Debug QA retains its explicit policy; production is package-independent.
     private var idleCutoutRuntime:YoloLiteRtSegmenter?=null
-    private val configuredCutoutAccelerator=if(
-        (art.gaoge.dance.engine.BuildConfig.DEBUG &&
-            art.gaoge.dance.engine.BuildConfig.CUTOUT_QA_BACKEND=="gpu" &&
-            context.packageName.endsWith(".cutoutqa")) ||
-        (!art.gaoge.dance.engine.BuildConfig.DEBUG &&
-            art.gaoge.dance.engine.BuildConfig.CUTOUT_PREVIEW_ENABLED &&
-            art.gaoge.dance.engine.BuildConfig.CUTOUT_RELEASE_GPU_QA &&
-            context.packageName.endsWith(".cutoutreleaseqa"))
-    ) LiteRtAccelerator.GPU else LiteRtAccelerator.CPU
-    private val allowCutoutFallback=!art.gaoge.dance.engine.BuildConfig.DEBUG &&
-        art.gaoge.dance.engine.BuildConfig.CUTOUT_PREVIEW_ENABLED &&
-        art.gaoge.dance.engine.BuildConfig.CUTOUT_RELEASE_GPU_QA &&
-        context.packageName.endsWith(".cutoutreleaseqa") &&
+    private val releaseCanvasEnabled=!art.gaoge.dance.engine.BuildConfig.DEBUG &&
+        art.gaoge.dance.engine.BuildConfig.CUTOUT_PREVIEW_ENABLED
+    private val configuredCutoutAccelerator=ComparisonCutoutBackend.configured(
+        art.gaoge.dance.engine.BuildConfig.DEBUG,
+        art.gaoge.dance.engine.BuildConfig.CUTOUT_QA_BACKEND=="gpu" &&
+            context.packageName.endsWith(".cutoutqa"),
+        releaseCanvasEnabled,art.gaoge.dance.engine.BuildConfig.CUTOUT_RELEASE_GPU_ENABLED)
+    private val allowCutoutFallback=releaseCanvasEnabled &&
         configuredCutoutAccelerator==LiteRtAccelerator.GPU
+    private val acceptsBothArchives=ComparisonCutoutBackend.acceptsBothArchives(
+        art.gaoge.dance.engine.BuildConfig.DEBUG,releaseCanvasEnabled)
     // Main-thread state only. A failed GPU is not retried during this
     // ComparisonSession; a previously committed canvas keeps its backend.
     private var preferredCutoutBackend=configuredCutoutAccelerator
@@ -421,7 +418,7 @@ internal class ComparisonSession(
         val uri=if(reference)teacherUri else learnerUri
         val locked=canvasBackend ?: selectionBackend()
         val requested=locked ?: preferredCutoutBackend
-        if(allowCutoutFallback && locked==LiteRtAccelerator.GPU && preferredCutoutBackend==LiteRtAccelerator.CPU)
+        if(ComparisonCutoutBackend.requiresFullReselection(locked,preferredCutoutBackend))
             throw ComparisonCutoutBackend.restart()
         val revision=cutoutRevision.incrementAndGet()
         cutoutPreparing=true
@@ -524,7 +521,7 @@ internal class ComparisonSession(
             cache.setLayout(requestedLayout)
             cutoutCache=cache;pendingCache=null;cutoutWindow=selectedWindow;partialWork=null;canvasBackend=requested
             cutoutSelection=ComparisonCutoutSelection(ra,ta);cutoutOrigin=bounds.teacherStartUs
-            if(allowCutoutFallback)android.util.Log.i("WoahCutoutBackend","canvas_committed="+requested.name)
+            if(releaseCanvasEnabled)android.util.Log.i("WoahCutoutBackend","canvas_committed="+requested.name)
             referenceInspection=null;targetInspection=null
             pendingUs=position;wantsPlay=wasPlaying
             try{buildEngine()}finally{partial?.close();partial=null}
@@ -574,7 +571,7 @@ internal class ComparisonSession(
         val original=requireNotNull(cutoutCache)
         val requested=requireNotNull(canvasBackend)
         check(inspected.backend==requested)
-        if(allowCutoutFallback && requested==LiteRtAccelerator.GPU && preferredCutoutBackend==LiteRtAccelerator.CPU)
+        if(ComparisonCutoutBackend.requiresFullReselection(requested,preferredCutoutBackend))
             throw ComparisonCutoutBackend.restart()
         val selection=requireNotNull(cutoutSelection)
         val description=requireNotNull(if(request.reference)a else b)
@@ -696,7 +693,7 @@ internal class ComparisonSession(
                 require(projectId.matches(Regex("[A-Za-z0-9_-]{1,80}")))
                 if(!java.io.File(context.cacheDir,"comparison-cutout-v1/$projectId.cutout").isFile)return@withContext null
                 val key=archiveKey(bounds.teacherStartUs,offset,scale,window,mr,mt,preferred,current)
-                val keys=if(allowCutoutFallback)listOf(key,key.copy(backend=
+                val keys=if(acceptsBothArchives)listOf(key,key.copy(backend=
                     if(preferred==LiteRtAccelerator.GPU)"CPU" else "GPU"))else listOf(key)
                 val analysis=ComparisonCutoutAnalysis(context)
                 archive().restoreMatching(projectId,keys,{seed->
@@ -717,7 +714,7 @@ internal class ComparisonSession(
             val position=positionUs().coerceIn(window.startUs,window.endUs-1)
             restored.cache.setLayout(requested)
             canvasBackend=LiteRtAccelerator.valueOf(restored.backend)
-            if(allowCutoutFallback)android.util.Log.i("WoahCutoutBackend","canvas_restored="+restored.backend)
+            if(releaseCanvasEnabled)android.util.Log.i("WoahCutoutBackend","canvas_restored="+restored.backend)
             cutoutCache=restored.cache;pending=null;cutoutSelection=restored.selection;cutoutOrigin=bounds.teacherStartUs
             cutoutWindow=window;pendingUs=position;wantsPlay=false
             clearCutoutInspections()

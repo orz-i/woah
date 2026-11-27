@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write only the native canvas opt-in, never the other Dart build defines."""
+"""Write only the default-on native canvas flag, never other Dart defines."""
 import base64
 import os
 from pathlib import Path
@@ -16,7 +16,11 @@ def enabled(encoded: str) -> bool:
     matches = [value for value in values if value.partition("=")[0] == KEY]
     if len(matches) > 1:
         raise ValueError("Duplicate cutout preview build define")
-    return matches == [f"{KEY}=true"]
+    if not matches:
+        return True
+    if matches[0] not in (f"{KEY}=true", f"{KEY}=false"):
+        raise ValueError("Invalid cutout preview boolean")
+    return matches[0] == f"{KEY}=true"
 
 
 def main() -> None:

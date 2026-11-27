@@ -671,7 +671,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
       if (controller.supportsCutout)
         _viewOption(
           _ComparisonViewAction.cutout,
-          '抠像画布（实验）',
+          '抠像画布',
           Icons.content_cut_rounded,
           enabled: controller.canPlay && _manualSession == null,
         ),
@@ -1234,7 +1234,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
           ),
           if (!controller.cutoutRepairing)
             const Text(
-              '实验功能：建议先用单人清晰、少遮挡的短选段。多人交叉可能错选，请检查结果。',
+              '建议先用单人清晰、少遮挡的短选段。多人交叉可能错选，请检查结果。',
               style: TextStyle(fontSize: 12),
             ),
           Text(
