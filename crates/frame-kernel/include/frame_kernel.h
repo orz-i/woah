@@ -101,6 +101,22 @@ typedef struct FrameKernelTransform {
     float scale, pad_left, pad_top;
     uint32_t source_width, source_height, input_size, proto_size;
 } FrameKernelTransform;
+/* Cutout: display-oriented unmirrored normalized points and immutable anchor.
+   Select: >=0 instance index, -1 background, -2 ambiguous, -3 invalid.
+   All masks share the exact frame transform, contiguous proto bytes.
+   Alpha: 0 success, -1 invalid, no aliasing or retained pointers. */
+int32_t frame_kernel_cutout_select(const uint8_t *masks, size_t len, FrameKernelTransform transform, float x, float y);
+/* Bounded adaptive alpha grid; zero viewport for invalid requests. */
+FrameKernelViewport frame_kernel_cutout_grid(uint32_t source_width, uint32_t source_height,
+    uint32_t frames, uint32_t preview_frames);
+int32_t frame_kernel_cutout_alpha(const uint8_t *mask, size_t len, FrameKernelTransform transform, uint32_t width, uint32_t height, uint8_t *out, size_t out_len);
+/* Straight RGBA still in the model-input square, top-down output. Returns nonzero
+   alpha crop in model coordinates or an empty viewport; transparent bytes are zero. */
+FrameKernelViewport frame_kernel_cutout_thumbnail(const uint8_t *mask, size_t mask_len,
+    FrameKernelTransform transform, const uint8_t *rgba, size_t rgba_len, uint32_t bottom_up,
+    uint8_t *output, size_t output_len);
+FrameKernelQuad frame_kernel_cutout_quad(uint32_t width, uint32_t height, double aspect, FrameKernelRect anchor, double x, double y, double subject_height, uint32_t mirror);
+
 uint32_t frame_kernel_abi_version(void);
 typedef struct FrameKernelAssociationWeights { float bounds, mask, motion, direction, gating_threshold; } FrameKernelAssociationWeights;
 typedef struct FrameKernelAssociationEvidence {
@@ -253,6 +269,66 @@ int32_t frame_kernel_tracking_selection(uint64_t session,
 int32_t frame_kernel_tracking_step(uint64_t session, uint32_t action, int64_t timestamp_us,
  const FrameKernelTrackingObservation *observations, size_t count,
  const uint8_t *pixels, size_t pixels_len, const int64_t *assigned_ids, size_t assigned_len);
+/* Cutout-only tracker: seed >=0 selects original strong detection index,
+   -1 continues at strictly monotonic exact PTS (one direction per handle). >=0 raw current index; -1 unavailable;
+   -2 invalid. Uses a dedicated tracking handle and contiguous proto masks. */
+int32_t frame_kernel_cutout_track_step(uint64_t session, int64_t at, int32_t seed,
+    const FrameKernelInstanceDetection *detections, size_t count, const uint8_t *masks, size_t len,
+    FrameKernelTransform transform);
+/* Dance-comparison only. Appearance descriptor uses 29 floats per instance
+   (all zero for insufficient mask pixels). RGBA is model-sized, planar RGB
+   uses normalized top-down CHW. Returned step index is current raw mask only. */
+#define FRAME_KERNEL_DANCE_APPEARANCE_BINS 29
+uint64_t frame_kernel_dance_cutout_create(void);
+int32_t frame_kernel_dance_cutout_destroy(uint64_t session);
+int32_t frame_kernel_dance_appearance_rgba(const uint8_t *rgba, size_t rgba_len,
+    uint32_t bottom_up, const uint8_t *masks, size_t mask_len, size_t count,
+    FrameKernelTransform transform, float *out, size_t out_len);
+int32_t frame_kernel_dance_appearance_planar(const float *rgb, size_t rgb_len,
+    const uint8_t *masks, size_t mask_len, size_t count,
+    FrameKernelTransform transform, float *out, size_t out_len);
+int32_t frame_kernel_dance_cutout_step(uint64_t session, int64_t at, int32_t seed,
+    const FrameKernelInstanceDetection *detections, size_t count, const uint8_t *masks,
+    size_t mask_len, FrameKernelTransform transform, const float *features, size_t features_len);
+/* Full-frame first. -3 requests one same-PTS detail retry without state commit.
+   Otherwise returns current selected raw index or -1; -2 invalid. */
+int32_t frame_kernel_dance_step_or_detail(uint64_t session,int64_t at,
+    const FrameKernelInstanceDetection *detections,size_t count,const uint8_t *masks,size_t mask_len,
+    FrameKernelTransform transform,const float *features,size_t features_len,FrameKernelViewport *roi);
+/* Scheduled variant: -4 is a committed full-only missing frame,
+   with optional local inference skipped due to bounded failure backoff. */
+int32_t frame_kernel_dance_step_or_detail_scheduled(uint64_t session,int64_t at,
+    const FrameKernelInstanceDetection *detections,size_t count,const uint8_t *masks,size_t mask_len,
+    FrameKernelTransform transform,const float *features,size_t features_len,FrameKernelViewport *roi);
+/* Commit the stored full-frame state; only a current appended detail
+   index may be returned for this frame. No detail track memory is committed. */
+int32_t frame_kernel_dance_finish_detail(uint64_t session,int64_t at,size_t full_count,
+    const FrameKernelInstanceDetection *detections,size_t count,const uint8_t *masks,size_t mask_len,
+    FrameKernelTransform transform,const float *features,size_t features_len);
+/* Explicit touch fallback only after a canonical miss. Mode 0 first crop,
+   1 smaller on no hit, 2 expanded on artificial-edge truncation.
+   All observations must refer to the same exact source sample. */
+FrameKernelViewport frame_kernel_dance_touch_view(FrameKernelTransform transform,float x,float y,uint32_t mode);
+typedef struct FrameKernelTouchRows {
+    const FrameKernelInstanceDetection *rows; size_t count;
+    const uint8_t *masks; size_t mask_len;
+    const float *features; size_t feature_len;
+    FrameKernelTransform transform;
+} FrameKernelTouchRows;
+typedef struct FrameKernelTouchOutput {
+    FrameKernelInstanceDetection *rows; size_t capacity;
+    uint8_t *masks; size_t mask_len;
+    float *features; size_t feature_len;
+} FrameKernelTouchOutput;
+typedef struct FrameKernelTouchResult { int32_t index; uint32_t count; } FrameKernelTouchResult;
+/* -1 no local touch; -2 ambiguous; -3 invalid; -4 crop truncation;
+   -5 rejected remap/seed. Only success writes the caller-owned outputs. */
+FrameKernelTouchResult frame_kernel_dance_touch_merge(FrameKernelTouchRows full,FrameKernelTouchRows local,
+    FrameKernelViewport roi,float x,float y,FrameKernelTouchOutput out);
+int32_t frame_kernel_dance_detail_remap(FrameKernelInstanceDetection local,const uint8_t *mask,size_t mask_len,
+    FrameKernelTransform local_transform,FrameKernelTransform scene,FrameKernelViewport roi,
+    const FrameKernelInstanceDetection *full,size_t count,const uint8_t *full_masks,size_t full_len,
+    uint8_t *out,size_t out_len,FrameKernelInstanceDetection *result);
 /* Snapshot v1 uses little-endian fixed-width fields, as documented in
    tracking-session-v1.md. Null/zero queries the required size. A successful
    copy returns its byte count; -1 invalid handle/buffer, -2 insufficient space.

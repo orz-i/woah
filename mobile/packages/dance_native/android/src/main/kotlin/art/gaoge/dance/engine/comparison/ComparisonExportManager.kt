@@ -41,6 +41,7 @@ internal class ComparisonExportManager private constructor(private val context: 
         ComparisonExportRecord.parse(JSONObject(metadata.readFully().toString(Charsets.UTF_8)))
     }.getOrNull()
     private var cancelled=AtomicBoolean(false)
+    private var cutoutSnapshot:ComparisonCutoutExportSnapshot?=null
     private var publication=art.gaoge.dance.engine.core.FrameKernel.WorkLifecycle()
     private var lastPersist=0L
     init {
@@ -54,6 +55,9 @@ internal class ComparisonExportManager private constructor(private val context: 
             partial(it.id).delete();packets(it.id).delete();persist()
         }
         // Never guess ownership if the last export metadata was unreadable.
+        if(current?.spec?.cutout==true && current?.state in setOf("failed","cancelled","interrupted")) {
+            current=current!!.copy(error="抠像缓存已释放，请重新选择人物后导出");persist()
+        }
         if (current!=null) prunePrivateOutputs(current!!.id)
         if (current?.state=="completed") publication.observe("completed")
     }
@@ -109,9 +113,12 @@ internal class ComparisonExportManager private constructor(private val context: 
     @Synchronized private fun status(id: String): ComparisonExportDto? = current?.takeIf { it.id==id }?.let { dto(it) }
     private fun dto(value: ComparisonExportRecord) = ComparisonExportDto(value.id,value.spec.projectId,value.state,value.stage,
         value.progress,value.spec.startUs,value.spec.endUs,value.spec.width.toLong(),value.spec.height.toLong(),
-        if (value.state=="completed" && output(value.id).isFile) output(value.id).absolutePath else null,value.savedUri,art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.comparisonMessage(value.error))
+        if (value.state=="completed" && output(value.id).isFile) output(value.id).absolutePath else null,value.savedUri,art.gaoge.dance.engine.diagnostics.NativeDiagnosticPrivacy.comparisonMessage(value.error),
+        value.spec.cutout,!value.spec.cutout || cutoutSnapshot!=null)
     @Synchronized private fun requireJob(id: String) = requireNotNull(current?.takeIf { it.id==id }) { "导出任务已变化，请重新打开导出" }
-    @Synchronized fun start(spec: ComparisonExportSpec, replacePreviousUnsaved: Boolean=false): ComparisonExportDto {
+    @Synchronized fun start(spec: ComparisonExportSpec, replacePreviousUnsaved: Boolean=false,
+        snapshot:ComparisonCutoutExportSnapshot?=null): ComparisonExportDto {
+        check(spec.cutout==(snapshot!=null)) { "抠像缓存已释放，请重新选择人物后导出" }
         check(current?.active!=true) { "已有对比视频正在导出" }
         val previous=current
         if (previous?.state=="completed" && previous.savedUri==null &&
@@ -121,17 +128,20 @@ internal class ComparisonExportManager private constructor(private val context: 
         val job=ComparisonExportRecord(UUID.randomUUID().toString(),spec)
         val oldCancellation=cancelled
         val oldPublication=publication
+        val oldSnapshot=cutoutSnapshot
+        cutoutSnapshot=snapshot?.retained()
         current=job;cancelled=AtomicBoolean(false);publication=art.gaoge.dance.engine.core.FrameKernel.WorkLifecycle()
         try { persist() }
-        catch (e: Throwable) { current=previous;cancelled=oldCancellation;publication=oldPublication;throw e }
+        catch (e: Throwable) { current=previous;cancelled=oldCancellation;publication=oldPublication;cutoutSnapshot?.close();cutoutSnapshot=oldSnapshot;throw e }
         try { ComparisonExportService.start(context,job.id) }
         catch (e: Throwable) {
             // If Android refused the foreground service, retain the old job
             // and its sole local movie so a failed launch never discards data.
-            if (previous!=null) { current=previous;cancelled=oldCancellation;publication=oldPublication;persist() }
+            if (previous!=null) { current=previous;cancelled=oldCancellation;publication=oldPublication;cutoutSnapshot?.close();cutoutSnapshot=oldSnapshot;persist() }
             else { current=job.copy(state="failed",stage="导出未启动",error="无法启动导出，请回到应用后重试");persist() }
             throw e
         }
+        oldSnapshot?.close()
         // The new job owns the latest record. Only now can the user-confirmed
         // predecessor be retired; orphan cleanup is best effort.
         runCatching {
@@ -143,7 +153,7 @@ internal class ComparisonExportManager private constructor(private val context: 
     @Synchronized fun retry(id: String): ComparisonExportDto {
         val job=requireJob(id)
         check(job.state in setOf("failed","cancelled","interrupted"))
-        return start(job.spec)
+        return start(job.spec,snapshot=if(job.spec.cutout)requireNotNull(cutoutSnapshot) else null)
     }
     @Synchronized fun cancel(id: String): ComparisonExportDto {
         val job=requireJob(id)
@@ -162,12 +172,12 @@ internal class ComparisonExportManager private constructor(private val context: 
     }
     fun execute(id: String,notify: (ComparisonExportDto)->Unit) {
         // Keep this worker's cancellation token even if an interrupted job is retried.
-        val (job,cancellation)=synchronized(this) {
+        val (job,cancellation,snapshot)=synchronized(this) {
             val value=current?.takeIf { it.id==id && it.active } ?: return
-            value to cancelled
+            Triple(value,cancelled,cutoutSnapshot?.retained())
         }
         try {
-            ComparisonExportPipeline(context).execute(job.spec,partial(id),packets(id),cancellation) { stage,p ->
+            ComparisonExportPipeline(context).execute(job.spec,partial(id),packets(id),cancellation,snapshot) { stage,p ->
                 progress(id,stage,p)?.let(notify)
             }
             synchronized(this) {
@@ -189,13 +199,24 @@ internal class ComparisonExportManager private constructor(private val context: 
                     current=if (value.state=="interrupted") value else value.copy(
                         state=if (stopped) "cancelled" else "failed",stage=if (stopped) "已取消导出" else "导出失败",
                         pendingUri=null,error=if (stopped) null else if (error.message=="存储空间不足") "存储空间不足，请释放空间后重试"
+                            else if(error is ComparisonCutoutExportUnavailable) "抠像画布分析不完整或源视频已变化，请重新选人"
                             else "导出未完成，请重试或重新关联源视频")
+                    if(error is ComparisonCutoutExportUnavailable){cutoutSnapshot?.close();cutoutSnapshot=null}
                     persist()
                 }
             }
             if (art.gaoge.dance.engine.BuildConfig.DEBUG) android.util.Log.i("WoahComparisonExport",
                 "result=${status(id)?.state} cause=${error.javaClass.simpleName} locations=${error.stackTrace.take(6).joinToString()}")
-        } finally { packets(id).delete();status(id)?.let(notify) }
+        } finally {
+            packets(id).delete()
+            synchronized(this) {
+                if(current?.id==id && (current?.state=="completed" || current?.error=="抠像画布分析不完整或源视频已变化，请重新选人")) {
+                    cutoutSnapshot?.close();cutoutSnapshot=null
+                }
+            }
+            snapshot?.close()
+            status(id)?.let(notify)
+        }
     }
     /** MediaStore ownership avoids storage permission prompts on Android 10+. */
     fun publish(id: String): ComparisonExportDto {

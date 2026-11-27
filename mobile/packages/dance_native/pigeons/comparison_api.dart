@@ -60,6 +60,83 @@ class ComparisonPlaybackDto {
   });
 }
 
+class ComparisonCutoutSeedDto {
+  int sourcePtsUs;
+  double x;
+  double y;
+  ComparisonCutoutSeedDto({
+    required this.sourcePtsUs,
+    required this.x,
+    required this.y,
+  });
+}
+
+class ComparisonCutoutPreviewDto {
+  int sourcePtsUs;
+  Uint8List png;
+  int width;
+  int height;
+  ComparisonCutoutPreviewDto({
+    required this.sourcePtsUs,
+    required this.png,
+    required this.width,
+    required this.height,
+  });
+}
+
+class ComparisonCanvasLayerDto {
+  double x;
+  double y;
+  double height;
+  double opacity;
+  bool mirror;
+  ComparisonCanvasLayerDto({
+    required this.x,
+    required this.y,
+    required this.height,
+    required this.opacity,
+    required this.mirror,
+  });
+}
+
+class ComparisonCanvasLayoutDto {
+  ComparisonCanvasLayerDto reference;
+  ComparisonCanvasLayerDto target;
+  bool targetOnTop;
+  int background;
+  ComparisonCanvasLayoutDto({
+    required this.reference,
+    required this.target,
+    required this.targetOnTop,
+    required this.background,
+  });
+}
+
+class ComparisonCutoutResultDto {
+  ComparisonPlaybackDto playback;
+  int referenceVisible;
+  int referenceFrames;
+  int targetVisible;
+  int targetFrames;
+  bool? analyzing;
+  int? previewStartUs;
+  int? previewEndUs;
+  int? referenceAnalyzed;
+  int? targetAnalyzed;
+  ComparisonCutoutResultDto({
+    required this.playback,
+    required this.referenceVisible,
+    required this.referenceFrames,
+    required this.targetVisible,
+    required this.targetFrames,
+    this.analyzing,
+    this.previewStartUs,
+    this.previewEndUs,
+    this.referenceAnalyzed,
+    this.targetAnalyzed,
+  });
+}
+
 class ComparisonPictureDto {
   double zoom;
   double panX;
@@ -141,6 +218,8 @@ class ComparisonExportDto {
   String? outputPath;
   String? savedUri;
   String? error;
+  bool? cutout;
+  bool? retryAvailable;
   ComparisonExportDto({
     required this.jobId,
     required this.projectId,
@@ -154,6 +233,8 @@ class ComparisonExportDto {
     this.outputPath,
     this.savedUri,
     this.error,
+    this.cutout,
+    this.retryAvailable,
   });
 }
 
@@ -195,6 +276,45 @@ abstract class DanceComparisonApi {
   @async
   ComparisonPlaybackDto getState();
   @async
+  ComparisonCutoutPreviewDto inspectCutout(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+  );
+  @async
+  ComparisonCutoutResultDto prepareCutout(
+    ComparisonCutoutSeedDto reference,
+    ComparisonCutoutSeedDto target,
+    ComparisonCanvasLayoutDto? layout,
+  );
+  @async
+  ComparisonCutoutResultDto? getCutoutStatus();
+  @async
+  ComparisonPlaybackDto beginCutoutRepair(
+    bool reference,
+    int startUs,
+    int endUs,
+  );
+  @async
+  ComparisonCutoutResultDto repairCutout(
+    ComparisonCutoutSeedDto seed,
+    String projectId,
+  );
+  @async
+  ComparisonCutoutResultDto cancelCutoutRepair();
+  @async
+  bool saveCutout(String projectId);
+  @async
+  ComparisonCutoutResultDto? restoreCutout(
+    String projectId,
+    ComparisonCanvasLayoutDto? layout,
+  );
+  @async
+  void forgetCutout(String projectId);
+  @async
+  ComparisonPlaybackDto setCutoutLayout(ComparisonCanvasLayoutDto layout);
+  @async
+  ComparisonPlaybackDto clearCutout();
+  @async
   MusicAlignmentDto alignMusic(String teacherUri, String learnerUri);
   @async
   void cancelAlignment();
@@ -209,6 +329,19 @@ abstract class DanceComparisonApi {
     bool sideBySide,
     bool replacePreviousUnsaved,
   );
+  @async
+  ComparisonExportDto startCutoutExport(
+    String projectJson,
+    int startUs,
+    int endUs,
+    int width,
+    int height,
+    int gap,
+    bool sideBySide,
+    bool replacePreviousUnsaved,
+  );
+  @async
+  ComparisonPlaybackDto resumeCutoutPreview();
   @async
   ComparisonExportDto? getExport();
   @async

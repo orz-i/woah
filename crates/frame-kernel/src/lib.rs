@@ -4,6 +4,7 @@
 //! The C ABI is the only unsafe boundary; algorithms operate on checked slices.
 #![doc = include_str!("../README.md")]
 
+pub mod appearance;
 pub mod association;
 pub mod association_score;
 pub mod audio_alignment;
@@ -12,12 +13,16 @@ pub mod audio_pcm;
 pub mod box_filter;
 pub mod camera;
 pub mod composition;
+pub mod dance_cutout;
+mod dance_detail;
+mod dance_touch;
 pub mod face_geometry;
 pub mod face_localization;
 pub mod face_observations;
 mod ffi;
 mod ffi_audio;
 mod ffi_class;
+mod ffi_dance_cutout;
 mod ffi_face;
 mod ffi_face_geometry;
 mod ffi_face_observations;
@@ -34,6 +39,7 @@ pub mod region_continuation;
 pub mod temporal_region;
 pub mod timeline;
 pub mod tracking;
+mod tracking_cutout;
 pub mod tracking_evidence;
 pub mod tracking_groups;
 pub mod tracking_lifecycle;
@@ -49,6 +55,7 @@ pub mod yuv;
 pub use ffi::*;
 pub use ffi_audio::*;
 pub use ffi_class::*;
+pub use ffi_dance_cutout::*;
 pub use ffi_face::*;
 pub use ffi_face_geometry::*;
 pub use ffi_face_observations::*;

@@ -794,6 +794,229 @@ JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_quadN
     return out;
 }
 
+/* Cutout inputs are immutable source-frame data; no GPU or selection policy in JNI. */
+/* Selected dance identity. Only the compact descriptor is retained by native
+ * analysis; RGBA is borrowed from the decoder and never stored in the spool. */
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceAppearanceNative(
+    JNIEnv *env,jobject self,jobject frame,jbyteArray masks,jfloatArray transform) {
+    (void)self;FrameKernelTransform t;
+    if(!frame||!masks||!read_transform(env,transform,&t)||!t.proto_size||t.proto_size>1024||t.input_size>1024){invalid(env);return NULL;}
+    size_t area=(size_t)t.proto_size*t.proto_size;
+    jsize bytes=(*env)->GetArrayLength(env,masks);
+    if((size_t)bytes%area || (size_t)bytes/area>256){invalid(env);return NULL;}
+    size_t count=(size_t)bytes/area,len=count*FRAME_KERNEL_DANCE_APPEARANCE_BINS;
+    const uint8_t *rgb=(*env)->GetDirectBufferAddress(env,frame);
+    jlong rgb_len=(*env)->GetDirectBufferCapacity(env,frame);
+    if(!rgb||rgb_len<0){invalid(env);return NULL;}
+    jbyte *m=bytes?(*env)->GetByteArrayElements(env,masks,NULL):NULL;
+    jfloat f[256*FRAME_KERNEL_DANCE_APPEARANCE_BINS];
+    if(bytes&&!m)return NULL;
+    int32_t result=frame_kernel_dance_appearance_rgba(rgb,(size_t)rgb_len,1,(const uint8_t*)m,(size_t)bytes,count,t,f,len);
+    if(m)(*env)->ReleaseByteArrayElements(env,masks,m,JNI_ABORT);
+    if(result){invalid(env);return NULL;}
+    jfloatArray out=(*env)->NewFloatArray(env,(jsize)len);
+    if(out&&len)(*env)->SetFloatArrayRegion(env,out,0,(jsize)len,f);
+    return out;
+}
+JNIEXPORT jlong JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutCreateNative(JNIEnv *env,jobject self){
+    (void)self;uint64_t id=frame_kernel_dance_cutout_create();if(!id)invalid(env);return (jlong)id;
+}
+JNIEXPORT void JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutDestroyNative(JNIEnv *env,jobject self,jlong id){
+    (void)self;if(frame_kernel_dance_cutout_destroy((uint64_t)id))invalid(env);
+}
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceCutoutStepNative(
+    JNIEnv *env,jobject self,jlong id,jlong pts,jint seed,jfloatArray rows,jbyteArray masks,jfloatArray transform,jfloatArray features,jintArray roi,jint fullCount,jboolean scheduled) {
+    (void)self;FrameKernelTransform t;
+    if(!rows||!masks||!features||!read_transform(env,transform,&t))return -2;
+    jsize n=(*env)->GetArrayLength(env,rows),bytes=(*env)->GetArrayLength(env,masks),nf=(*env)->GetArrayLength(env,features);
+    if(n%5||n>256*5||nf!=n/5*FRAME_KERNEL_DANCE_APPEARANCE_BINS)return -2;
+    FrameKernelInstanceDetection d[256];
+    jfloat *v=n?(*env)->GetFloatArrayElements(env,rows,NULL):NULL;
+    jbyte *m=bytes?(*env)->GetByteArrayElements(env,masks,NULL):NULL;
+    jfloat *f=nf?(*env)->GetFloatArrayElements(env,features,NULL):NULL;
+    jint result=-2;
+    if((n&&!v)||(bytes&&!m)||(nf&&!f))goto done_dance;
+    for(jsize i=0;i<n/5;i++)d[i]=(FrameKernelInstanceDetection){{v[5*i],v[5*i+1],v[5*i+2],v[5*i+3]},v[5*i+4]};
+    if(roi){
+        if(seed!=-1 || (*env)->GetArrayLength(env,roi)!=4)goto done_dance;
+        FrameKernelViewport view={0};
+        result=scheduled?frame_kernel_dance_step_or_detail_scheduled((uint64_t)id,pts,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf,&view):
+            frame_kernel_dance_step_or_detail((uint64_t)id,pts,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf,&view);
+        jint v[4]={view.x,view.top,view.width,view.height};
+        (*env)->SetIntArrayRegion(env,roi,0,4,v);
+    }else if(fullCount>=0)result=frame_kernel_dance_finish_detail((uint64_t)id,pts,(size_t)fullCount,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf);
+    else result=frame_kernel_dance_cutout_step((uint64_t)id,pts,seed,d,(size_t)n/5,(const uint8_t*)m,(size_t)bytes,t,f,(size_t)nf);
+ done_dance:
+    if(v)(*env)->ReleaseFloatArrayElements(env,rows,v,JNI_ABORT);
+    if(m)(*env)->ReleaseByteArrayElements(env,masks,m,JNI_ABORT);
+    if(f)(*env)->ReleaseFloatArrayElements(env,features,f,JNI_ABORT);
+    return result;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceDetailRemapNative(
+    JNIEnv *env,jobject self,jfloatArray local,jbyteArray mask,jfloatArray lt,jfloatArray st,
+    jintArray viewport,jfloatArray full,jbyteArray fullMasks,jbyteArray output){
+    (void)self;FrameKernelTransform l,t;FrameKernelViewport roi;
+    if(!local||!mask||!full||!fullMasks||!output||!read_transform(env,lt,&l)||!read_transform(env,st,&t)||
+       !viewport_input(env,viewport,&roi)||(*env)->GetArrayLength(env,local)!=5)return NULL;
+    jsize n=(*env)->GetArrayLength(env,full);
+    if(n%5||n>1280)return NULL;
+    jfloat row[5],rows[1280];FrameKernelInstanceDetection d[256],mapped;
+    (*env)->GetFloatArrayRegion(env,local,0,5,row);
+    if(n)(*env)->GetFloatArrayRegion(env,full,0,n,rows);
+    for(jsize i=0;i<n/5;i++)d[i]=(FrameKernelInstanceDetection){{rows[i*5],rows[i*5+1],rows[i*5+2],rows[i*5+3]},rows[i*5+4]};
+    FrameKernelInstanceDetection value={{row[0],row[1],row[2],row[3]},row[4]};
+    jsize ml=(*env)->GetArrayLength(env,mask),fl=(*env)->GetArrayLength(env,fullMasks),ol=(*env)->GetArrayLength(env,output);
+    jbyte *m=(*env)->GetByteArrayElements(env,mask,NULL),*f=fl?(*env)->GetByteArrayElements(env,fullMasks,NULL):NULL;
+    jbyte *o=(*env)->GetByteArrayElements(env,output,NULL);
+    jint result=-1;
+    if(m&&o&&(!fl||f)) result=frame_kernel_dance_detail_remap(value,(const uint8_t*)m,ml,l,t,roi,d,n/5,(const uint8_t*)f,fl,(uint8_t*)o,ol,&mapped);
+    if(m)(*env)->ReleaseByteArrayElements(env,mask,m,JNI_ABORT);
+    if(f)(*env)->ReleaseByteArrayElements(env,fullMasks,f,JNI_ABORT);
+    if(o)(*env)->ReleaseByteArrayElements(env,output,o,result==1?0:JNI_ABORT);
+    if(result!=1)return NULL;
+    jfloat a[5]={mapped.bounds.left,mapped.bounds.top,mapped.bounds.right,mapped.bounds.bottom,mapped.confidence};
+    jfloatArray out=(*env)->NewFloatArray(env,5);
+    if(out)(*env)->SetFloatArrayRegion(env,out,0,5,a);
+    return out;
+}
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceTouchViewNative(
+    JNIEnv *env,jobject self,jfloatArray transform,jfloat x,jfloat y,jint mode){
+    (void)self;FrameKernelTransform t;FrameKernelViewport v={0};
+    if(read_transform(env,transform,&t))v=frame_kernel_dance_touch_view(t,x,y,(uint32_t)mode);
+    jint a[4]={v.x,v.top,v.width,v.height};
+    jintArray out=(*env)->NewIntArray(env,4);
+    if(out)(*env)->SetIntArrayRegion(env,out,0,4,a);
+    return out;
+}
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_danceTouchMergeNative(
+    JNIEnv *env,jobject self,jfloatArray fullRows,jbyteArray fullMasks,jfloatArray fullT,jfloatArray fullF,
+    jfloatArray localRows,jbyteArray localMasks,jfloatArray localT,jfloatArray localF,
+    jintArray viewport,jfloat x,jfloat y,jfloatArray outRows,jbyteArray outMasks,jfloatArray outF){
+    (void)self;FrameKernelTransform ft,lt;FrameKernelViewport roi;
+    FrameKernelTouchResult result={-3,0};
+    if(!fullRows||!fullMasks||!fullF||!localRows||!localMasks||!localF||!outRows||!outMasks||!outF||
+        !read_transform(env,fullT,&ft)||!read_transform(env,localT,&lt)||!viewport_input(env,viewport,&roi)||
+        (*env)->IsSameObject(env,outMasks,fullMasks)||(*env)->IsSameObject(env,outMasks,localMasks)||
+        (*env)->IsSameObject(env,outF,fullF)||(*env)->IsSameObject(env,outF,localF)||
+        (*env)->IsSameObject(env,outRows,outF))goto touch_result;
+    jsize fn=(*env)->GetArrayLength(env,fullRows),ln=(*env)->GetArrayLength(env,localRows),on=(*env)->GetArrayLength(env,outRows);
+    if(fn%5||ln%5||on%5||fn>1280||ln>1280||on>1280)goto touch_result;
+    jfloat fv[1280],lv[1280],ov[1280];
+    FrameKernelInstanceDetection fd[256],ld[256],od[256];
+    if(fn)(*env)->GetFloatArrayRegion(env,fullRows,0,fn,fv);
+    if(ln)(*env)->GetFloatArrayRegion(env,localRows,0,ln,lv);
+    for(jsize i=0;i<fn/5;i++)fd[i]=(FrameKernelInstanceDetection){{fv[i*5],fv[i*5+1],fv[i*5+2],fv[i*5+3]},fv[i*5+4]};
+    for(jsize i=0;i<ln/5;i++)ld[i]=(FrameKernelInstanceDetection){{lv[i*5],lv[i*5+1],lv[i*5+2],lv[i*5+3]},lv[i*5+4]};
+    jsize fml=(*env)->GetArrayLength(env,fullMasks),ffl=(*env)->GetArrayLength(env,fullF);
+    jsize lml=(*env)->GetArrayLength(env,localMasks),lfl=(*env)->GetArrayLength(env,localF);
+    jsize oml=(*env)->GetArrayLength(env,outMasks),ofl=(*env)->GetArrayLength(env,outF);
+    jbyte *fm=fml?(*env)->GetByteArrayElements(env,fullMasks,NULL):NULL;
+    jbyte *lm=lml?(*env)->GetByteArrayElements(env,localMasks,NULL):NULL;
+    jbyte *om=oml?(*env)->GetByteArrayElements(env,outMasks,NULL):NULL;
+    jfloat *ff=ffl?(*env)->GetFloatArrayElements(env,fullF,NULL):NULL;
+    jfloat *lf=lfl?(*env)->GetFloatArrayElements(env,localF,NULL):NULL;
+    jfloat *of=ofl?(*env)->GetFloatArrayElements(env,outF,NULL):NULL;
+    if((!fml||fm)&&(!lml||lm)&&(!oml||om)&&(!ffl||ff)&&(!lfl||lf)&&(!ofl||of)){
+        FrameKernelTouchRows f={fd,(size_t)fn/5,(const uint8_t*)fm,(size_t)fml,ff,(size_t)ffl,ft};
+        FrameKernelTouchRows l={ld,(size_t)ln/5,(const uint8_t*)lm,(size_t)lml,lf,(size_t)lfl,lt};
+        FrameKernelTouchOutput o={od,(size_t)on/5,(uint8_t*)om,(size_t)oml,of,(size_t)ofl};
+        result=frame_kernel_dance_touch_merge(f,l,roi,x,y,o);
+        if(result.index>=0){
+            for(uint32_t i=0;i<result.count;i++){
+                FrameKernelInstanceDetection d=od[i];
+                ov[i*5]=d.bounds.left;ov[i*5+1]=d.bounds.top;ov[i*5+2]=d.bounds.right;ov[i*5+3]=d.bounds.bottom;ov[i*5+4]=d.confidence;
+            }
+            (*env)->SetFloatArrayRegion(env,outRows,0,(jsize)result.count*5,ov);
+        }
+    }
+    if(fm)(*env)->ReleaseByteArrayElements(env,fullMasks,fm,JNI_ABORT);
+    if(lm)(*env)->ReleaseByteArrayElements(env,localMasks,lm,JNI_ABORT);
+    if(om)(*env)->ReleaseByteArrayElements(env,outMasks,om,result.index>=0?0:JNI_ABORT);
+    if(ff)(*env)->ReleaseFloatArrayElements(env,fullF,ff,JNI_ABORT);
+    if(lf)(*env)->ReleaseFloatArrayElements(env,localF,lf,JNI_ABORT);
+    if(of)(*env)->ReleaseFloatArrayElements(env,outF,of,result.index>=0?0:JNI_ABORT);
+ touch_result:;
+    jint values[2]={result.index,(jint)result.count};
+    jintArray output=(*env)->NewIntArray(env,2);
+    if(output)(*env)->SetIntArrayRegion(env,output,0,2,values);
+    return output;
+}
+JNIEXPORT jint JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutSelectNative(JNIEnv *env,jobject self,jbyteArray masks,jfloatArray transform,jfloat x,jfloat y) {
+    (void)self; FrameKernelTransform t;
+    if(!masks || !read_transform(env,transform,&t)) return -3;
+    jsize n=(*env)->GetArrayLength(env,masks);
+    if(!n) return frame_kernel_cutout_select(NULL,0,t,x,y);
+    jbyte *bytes=(*env)->GetByteArrayElements(env,masks,NULL);
+    if(!bytes) return -3;
+    jint result=frame_kernel_cutout_select((const uint8_t*)bytes,(size_t)n,t,x,y);
+    (*env)->ReleaseByteArrayElements(env,masks,bytes,JNI_ABORT);
+    return result;
+}
+/* Thumbnail output is a compact ARGB bitmap transport: width,height,pixels. */
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutThumbnailNative(JNIEnv *env,jobject self,jbyteArray mask,jfloatArray transform,jbyteArray rgba,jboolean bottom_up) {
+    (void)self;FrameKernelTransform t;
+    if(!mask||!rgba||!read_transform(env,transform,&t)||t.input_size<1||t.input_size>1024)return NULL;
+    size_t n=t.input_size, length=n*n*4;
+    if((size_t)(*env)->GetArrayLength(env,rgba)!=length)return NULL;
+    jsize mask_len=(*env)->GetArrayLength(env,mask);
+    jbyte *m=(*env)->GetByteArrayElements(env,mask,NULL),*r=(*env)->GetByteArrayElements(env,rgba,NULL);
+    uint8_t *output=malloc(length);jint *pixels=NULL;jintArray result=NULL;
+    if(!m||!r||!output)goto done;
+    FrameKernelViewport crop=frame_kernel_cutout_thumbnail((const uint8_t*)m,(size_t)mask_len,t,
+        (const uint8_t*)r,length,bottom_up?1:0,output,length);
+    if(crop.width<=0||crop.height<=0)goto done;
+    size_t count=(size_t)crop.width*crop.height+2;
+    pixels=malloc(count*sizeof(jint));if(!pixels)goto done;
+    pixels[0]=crop.width;pixels[1]=crop.height;
+    for(int y=0;y<crop.height;y++)for(int x=0;x<crop.width;x++){
+        size_t i=((size_t)(crop.top+y)*n+crop.x+x)*4;
+        pixels[2+(size_t)y*crop.width+x]=(jint)(((uint32_t)output[i+3]<<24)|((uint32_t)output[i]<<16)|((uint32_t)output[i+1]<<8)|output[i+2]);
+    }
+    result=(*env)->NewIntArray(env,(jsize)count);
+    if(result)(*env)->SetIntArrayRegion(env,result,0,(jsize)count,pixels);
+ done:
+    if(m)(*env)->ReleaseByteArrayElements(env,mask,m,JNI_ABORT);
+    if(r)(*env)->ReleaseByteArrayElements(env,rgba,r,JNI_ABORT);
+    free(output);free(pixels);return result;
+}
+JNIEXPORT jintArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutGridNative(
+    JNIEnv *env,jobject self,jint width,jint height,jint frames,jint preview) {
+    (void)self;
+    if(width<=0 || height<=0 || frames<=0 || preview<=0){invalid(env);return NULL;}
+    FrameKernelViewport grid=frame_kernel_cutout_grid((uint32_t)width,(uint32_t)height,(uint32_t)frames,(uint32_t)preview);
+    if(grid.width<=0 || grid.height<=0){invalid(env);return NULL;}
+    jint data[2]={grid.width,grid.height};
+    jintArray result=(*env)->NewIntArray(env,2);
+    if(result)(*env)->SetIntArrayRegion(env,result,0,2,data);
+    return result;
+}
+JNIEXPORT jbyteArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutAlphaNative(JNIEnv *env,jobject self,jbyteArray mask,jfloatArray transform,jint width,jint height) {
+    (void)self; FrameKernelTransform t;
+    if(!mask || width<1 || height<1 || width>4096 || height>4096 || !read_transform(env,transform,&t)) {invalid(env);return NULL;}
+    jsize n=(*env)->GetArrayLength(env,mask), count=width*height;
+    jbyteArray output=(*env)->NewByteArray(env,count);
+    if(!output) return NULL;
+    jbyte *input=(*env)->GetByteArrayElements(env,mask,NULL);
+    if(!input) return NULL;
+    jbyte *out=(*env)->GetByteArrayElements(env,output,NULL);
+    if(!out) {(*env)->ReleaseByteArrayElements(env,mask,input,JNI_ABORT);return NULL;}
+    int result=frame_kernel_cutout_alpha((const uint8_t*)input,(size_t)n,t,width,height,(uint8_t*)out,(size_t)count);
+    (*env)->ReleaseByteArrayElements(env,output,out,result==0?0:JNI_ABORT);
+    (*env)->ReleaseByteArrayElements(env,mask,input,JNI_ABORT);
+    if(result!=0) {invalid(env);return NULL;}
+    return output;
+}
+JNIEXPORT jfloatArray JNICALL Java_art_gaoge_dance_engine_core_FrameKernel_cutoutQuadNative(JNIEnv *env,jobject self,jint width,jint height,jdouble aspect,jfloatArray anchor,jdouble x,jdouble y,jdouble subjectHeight,jboolean mirror) {
+    (void)self; FrameKernelRect a;
+    if(!read_rect(env,anchor,&a)) return NULL;
+    FrameKernelQuad q=frame_kernel_cutout_quad(width,height,aspect,a,x,y,subjectHeight,mirror);
+    if(!q.valid) {invalid(env);return NULL;}
+    jfloat values[4]={q.scale_x,q.scale_y,q.shift_x,q.shift_y};
+    jfloatArray out=(*env)->NewFloatArray(env,4);
+    if(out) (*env)->SetFloatArrayRegion(env,out,0,4,values);
+    return out;
+}
+
 /* Shared audio transport; no DSP or matching policy in JNI. */
 static void audio_error(JNIEnv *env,int64_t code) {
     const char *name=code==-2 ? "art/gaoge/dance/engine/comparison/ComparisonAlignmentTooLong":

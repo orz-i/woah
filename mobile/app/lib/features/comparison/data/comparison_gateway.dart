@@ -42,7 +42,56 @@ abstract interface class ComparisonGateway {
   Future<void> close();
 }
 
-class NativeComparisonGateway implements ComparisonGateway {
+abstract interface class ComparisonCutoutGateway {
+  Future<ComparisonCutoutPreviewDto> inspectCutout(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+  );
+  Future<ComparisonCutoutResultDto> prepareCutout(
+    ComparisonCutoutSeedDto reference,
+    ComparisonCutoutSeedDto target,
+    ComparisonCanvasLayoutDto? layout,
+  );
+  Future<ComparisonPlaybackDto> setCutoutLayout(
+    ComparisonCanvasLayoutDto layout,
+  );
+  Future<ComparisonPlaybackDto> clearCutout();
+  Future<ComparisonPlaybackDto> resumeCutoutPreview();
+}
+
+abstract interface class ComparisonProgressiveCutoutGateway {
+  Future<ComparisonCutoutResultDto?> cutoutStatus();
+}
+
+abstract interface class ComparisonSavedCutoutGateway {
+  Future<bool> saveCutout(String projectId);
+  Future<ComparisonCutoutResultDto?> restoreCutout(
+    String projectId,
+    ComparisonCanvasLayoutDto? layout,
+  );
+  Future<void> forgetCutout(String projectId);
+}
+
+abstract interface class ComparisonRepairCutoutGateway {
+  Future<ComparisonPlaybackDto> beginCutoutRepair(
+    bool reference,
+    int startUs,
+    int endUs,
+  );
+  Future<ComparisonCutoutResultDto> repairCutout(
+    ComparisonCutoutSeedDto seed,
+    String projectId,
+  );
+  Future<ComparisonCutoutResultDto> cancelCutoutRepair();
+}
+
+class NativeComparisonGateway
+    implements
+        ComparisonGateway,
+        ComparisonCutoutGateway,
+        ComparisonProgressiveCutoutGateway,
+        ComparisonSavedCutoutGateway,
+        ComparisonRepairCutoutGateway {
   final DanceComparisonApi _api;
   NativeComparisonGateway({DanceComparisonApi? api})
     : _api = api ?? DanceComparisonApi();
@@ -139,6 +188,51 @@ class NativeComparisonGateway implements ComparisonGateway {
     bool horizontal,
   ) => _api.resize(width, height, horizontal);
   @override
+  Future<ComparisonCutoutPreviewDto> inspectCutout(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+  ) => _api.inspectCutout(reference, seed);
+  @override
+  Future<ComparisonCutoutResultDto> prepareCutout(
+    ComparisonCutoutSeedDto reference,
+    ComparisonCutoutSeedDto target,
+    ComparisonCanvasLayoutDto? layout,
+  ) => _api.prepareCutout(reference, target, layout);
+  @override
+  Future<ComparisonCutoutResultDto?> cutoutStatus() => _api.getCutoutStatus();
+  @override
+  Future<ComparisonPlaybackDto> beginCutoutRepair(
+    bool reference,
+    int startUs,
+    int endUs,
+  ) => _api.beginCutoutRepair(reference, startUs, endUs);
+  @override
+  Future<ComparisonCutoutResultDto> repairCutout(
+    ComparisonCutoutSeedDto seed,
+    String projectId,
+  ) => _api.repairCutout(seed, projectId);
+  @override
+  Future<ComparisonCutoutResultDto> cancelCutoutRepair() =>
+      _api.cancelCutoutRepair();
+  @override
+  Future<bool> saveCutout(String projectId) => _api.saveCutout(projectId);
+  @override
+  Future<ComparisonCutoutResultDto?> restoreCutout(
+    String projectId,
+    ComparisonCanvasLayoutDto? layout,
+  ) => _api.restoreCutout(projectId, layout);
+  @override
+  Future<void> forgetCutout(String projectId) => _api.forgetCutout(projectId);
+  @override
+  Future<ComparisonPlaybackDto> setCutoutLayout(
+    ComparisonCanvasLayoutDto layout,
+  ) => _api.setCutoutLayout(layout);
+  @override
+  Future<ComparisonPlaybackDto> resumeCutoutPreview() =>
+      _api.resumeCutoutPreview();
+  @override
+  Future<ComparisonPlaybackDto> clearCutout() => _api.clearCutout();
+  @override
   Future<ComparisonPlaybackDto> state() => _api.getState();
   @override
   Future<MusicAlignmentDto> align(ComparisonProject p) =>
@@ -149,7 +243,7 @@ class NativeComparisonGateway implements ComparisonGateway {
   Future<ComparisonExportDto> startExport(
     ComparisonExportPlan p, {
     bool replacePreviousUnsaved = false,
-  }) => _api.startExport(
+  }) => (p.cutout ? _api.startCutoutExport : _api.startExport)(
     jsonEncode(p.project.toJson()),
     p.startUs,
     p.endUs,
@@ -171,4 +265,21 @@ class NativeComparisonGateway implements ComparisonGateway {
   Future<void> openExport(String id) => _api.openExport(id);
   @override
   Future<void> close() => _api.close();
+}
+
+ComparisonCanvasLayoutDto canvasLayoutDto(ComparisonCanvasLayout layout) {
+  ComparisonCanvasLayerDto layer(ComparisonCanvasLayer value) =>
+      ComparisonCanvasLayerDto(
+        x: value.x,
+        y: value.y,
+        height: value.height,
+        opacity: value.opacity,
+        mirror: value.mirror,
+      );
+  return ComparisonCanvasLayoutDto(
+    reference: layer(layout.reference),
+    target: layer(layout.target),
+    targetOnTop: layout.targetOnTop,
+    background: layout.background,
+  );
 }

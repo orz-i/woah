@@ -110,6 +110,141 @@ func decodedImage(_ url: URL) async throws -> CVPixelBuffer {
   return expectedBuffer!
 }
 
+func cutoutSmoke(reference: URL, target: URL) async throws {
+  let left: [UInt8] = [255,255,0,0, 255,255,0,0, 255,255,0,0, 255,255,0,0]
+  let right: [UInt8] = [0,0,255,255, 0,0,255,255, 0,0,255,255, 0,0,255,255]
+  func hit(_ masks: [UInt8], _ x: Float) -> Int {
+    IOSComparisonTimeCore.cutoutSelect(masks: masks, scale: 1, padLeft: 0, padTop: 0,
+      sourceWidth: 4, sourceHeight: 4, inputSize: 4, protoSize: 4, x: x, y: 0.125)
+  }
+  precondition(hit(left+right,0.125) == 0 && hit(left+right,0.875) == 1)
+  precondition(hit(left+left,0.125) == -2 && hit(left+right,1) == -1)
+  let probabilities: [UInt8] = [0,0,0,0, 0,128,255,255, 0,128,255,255, 0,0,0,0]
+  precondition(IOSComparisonTimeCore.cutoutAlpha(mask: probabilities, scale: 1, padLeft: 0, padTop: 1,
+    sourceWidth: 4, sourceHeight: 2, inputSize: 4, protoSize: 4, width: 4, height: 2)
+    == [0,66,255,255,0,66,255,255])
+
+  // M0 cutout: decoded source pixels, an asymmetric top-down mask, independent
+  // placements, exact source PTS, and a moving mask with a fixed calibration.
+  let r = try await decodedImage(reference)
+  let t = try await decodedImage(target)
+  let layout = try IOSComparisonLayout(width: 200, height: 100, gap: 4, sideBySide: true)
+  let instruction = IOSComparisonVideoInstruction(timeRange: .zero, layout: layout,
+    reference: IOSComparisonVideoLayer(trackID: 1, preferredTransform: .identity, aspect: 1.5, mirror: false, picture: .identity),
+    target: IOSComparisonVideoLayer(trackID: 2, preferredTransform: .identity, aspect: 1.5, mirror: false, picture: .identity))
+  let renderer = IOSComparisonCompositor()
+  var result: CVPixelBuffer?
+  precondition(CVPixelBufferCreate(kCFAllocatorDefault, 200, 100, kCVPixelFormatType_32BGRA,
+    [kCVPixelBufferIOSurfacePropertiesKey as String: [:]] as CFDictionary, &result) == kCVReturnSuccess)
+  let canvas = result!
+  let a = IOSComparisonCutoutPlacement(anchor: SIMD4(0,0,1,1), x: 0.25, y: 0.9, subjectHeight: 0.8, mirror: false, opacity: 1)
+  let b = IOSComparisonCutoutPlacement(anchor: SIMD4(0,0,1,1), x: 0.75, y: 0.9, subjectHeight: 0.8, mirror: true, opacity: 1)
+  func mask(_ pts: Int64, _ pixels: [UInt8], _ placement: IOSComparisonCutoutPlacement) -> IOSComparisonCutoutLayer {
+    IOSComparisonCutoutLayer(sourcePtsUs: pts, width: 4, height: 4, alpha: pixels, placement: placement)
+  }
+  let topLeft: [UInt8] = [255,255,0,0, 255,255,0,0, 0,0,0,0, 0,0,0,0]
+  let bottomRight: [UInt8] = [0,0,0,0, 0,0,0,0, 0,0,255,255, 0,0,255,255]
+  renderer.render(reference: r, target: t, instruction: instruction, output: canvas,
+    cutout: IOSComparisonCutoutFrame(referencePtsUs: 0,targetPtsUs: 0,
+      reference: mask(0,topLeft,a),target: mask(0,topLeft,b)))
+  color(canvas, 20, 25, 255, 0, 0)
+  sameColor(canvas, 175, 25, expected: t, 48, 32)
+  color(canvas, 20, 75, 0, 0, 0)
+  color(canvas, 125, 25, 0, 0, 0)
+  // Different PTS may use different masks; never reuse the first frame's mask.
+  renderer.render(reference: r, target: t, instruction: instruction, output: canvas,
+    cutout: IOSComparisonCutoutFrame(referencePtsUs: 40_000,targetPtsUs: 30_000,
+      reference: mask(40_000,bottomRight,a),target: mask(0,topLeft,b)))
+  color(canvas, 20, 25, 0, 0, 0)
+  color(canvas, 80, 75, 0, 0, 255)
+  color(canvas, 175, 25, 0, 0, 0)
+  let rStamp = IOSComparisonSourceStamp(r)!, tStamp = IOSComparisonSourceStamp(t)!
+  precondition(rStamp.agrees(with: IOSComparisonSourceStamp(r)!))
+  precondition(!rStamp.agrees(with: tStamp))
+  let rc = IOSComparisonCutoutTrackCache(entries: [
+    0: IOSComparisonCachedCutout(stamp: rStamp,layer: mask(0,topLeft,a)),
+    40_000: IOSComparisonCachedCutout(stamp: rStamp,layer: nil)],times: [0,40_000])
+  let tc = IOSComparisonCutoutTrackCache(entries: [
+    0: IOSComparisonCachedCutout(stamp: tStamp,layer: mask(0,topLeft,b))],times: [0])
+  let cache = IOSComparisonCutoutCache(reference: rc,target: tc,referenceStartUs: 0,offsetUs: 0,timeScale: 1)
+  precondition(rc.visibleCount == 1)
+  let good = cache.frame(at: .zero,referenceBuffer: r,targetBuffer: t)
+  precondition(good.layer(referenceRole: true) != nil && good.layer(referenceRole: false) != nil)
+  let mismatch = cache.frame(at: .zero,referenceBuffer: t,targetBuffer: r)
+  precondition(mismatch.layer(referenceRole: true) == nil && mismatch.layer(referenceRole: false) == nil)
+  let missing = cache.frame(at: CMTime(value: 40_000,timescale: 1_000_000),referenceBuffer: r,targetBuffer: t)
+  precondition(missing.layer(referenceRole: true) == nil)
+  let strict=try cache.strictFrame(referencePts:0,targetPts:0,referenceBuffer:r,targetBuffer:t)
+  precondition(renderer.render(reference:r,target:t,instruction:instruction,output:canvas,cutout:strict))
+  precondition(!renderer.render(reference:r,target:t,instruction:instruction,output:canvas,cutout:missing))
+  do {
+    _=try cache.strictFrame(referencePts:40_000,targetPts:0,referenceBuffer:r,targetBuffer:t)
+    preconditionFailure("Missing alpha became an export frame")
+  } catch {precondition(error is IOSComparisonCutoutExportUnavailable)}
+  do {
+    _=try cache.strictFrame(referencePts:0,targetPts:0,referenceBuffer:t,targetBuffer:r)
+    preconditionFailure("Wrong source sample became an export frame")
+  } catch {precondition(error is IOSComparisonCutoutExportUnavailable)}
+  let referenceDigest=try IOSComparisonCutoutFingerprint.read(reference,current:{true})
+  let targetDigest=try IOSComparisonCutoutFingerprint.read(target,current:{true})
+  let complete=IOSComparisonCutoutCache(reference:IOSComparisonCutoutTrackCache(
+    entries:[0:IOSComparisonCachedCutout(stamp:rStamp,layer:mask(0,topLeft,a))],times:[0],fingerprint:referenceDigest),
+    target:IOSComparisonCutoutTrackCache(entries:tc.entries,times:tc.times,fingerprint:targetDigest),
+    referenceStartUs:0,offsetUs:0,timeScale:1)
+  precondition(complete.complete && !cache.complete)
+  try complete.verifySources(referenceURL:reference,targetURL:target,current:{true})
+  // Mutate a disposable copy, never the original fixture.
+  let changed=reference.deletingLastPathComponent().appendingPathComponent("changed.mov")
+  try FileManager.default.copyItem(at:reference,to:changed)
+  let handle=try FileHandle(forWritingTo:changed)
+  try handle.seekToEnd();try handle.write(contentsOf:Data([0x77]));try handle.close()
+  do {
+    try complete.verifySources(referenceURL:changed,targetURL:target,current:{true})
+    preconditionFailure("Changed source bytes became an export input")
+  } catch {precondition(error is IOSComparisonCutoutExportUnavailable)}
+  let dir=reference.deletingLastPathComponent()
+  let diskTimes=(0..<400).map{Int64($0*33333)}
+  let store=try IOSComparisonCutoutDiskTrack(times:diskTimes,directory:dir)
+  for i in diskTimes.indices.reversed(){
+    try store.add(diskTimes[i],stamp:rStamp,
+      layer:i==5 ? nil : mask(diskTimes[i],Array(repeating:UInt8(i%255+1),count:16),a),placement:a)
+  }
+  try store.seal(anchor:diskTimes[200])
+  let diskCache=IOSComparisonCutoutTrackCache(disk:store,fingerprint:referenceDigest)
+  precondition(diskCache.visibleCount==399)
+  for i in [0,31,32,350,399,15,200]{
+    precondition(diskCache.exact(diskTimes[i])?.layer?.alpha.first==UInt8(i%255+1))
+  }
+  precondition(diskCache.exact(diskTimes[5])?.layer==nil)
+  precondition(diskCache.exact(diskTimes[200]+1)==nil)
+  let patchTimes=Array(diskTimes[4..<9])
+  let patchStore=try IOSComparisonCutoutDiskTrack(times:patchTimes,directory:dir)
+  for pts in patchTimes {
+    try patchStore.add(pts,stamp:rStamp,layer:pts==diskTimes[6] ? nil :
+      mask(pts,Array(repeating:UInt8(99),count:16),a),placement:a)
+  }
+  try patchStore.seal(anchor:diskTimes[5])
+  let patch=IOSComparisonCutoutTrackCache(disk:patchStore,fingerprint:referenceDigest)
+  let merged=try diskCache.replacing(patch,expected:patchTimes,originalAnchor:diskTimes[200],current:{true})
+  precondition(merged.visibleCount==399 && merged.exact(diskTimes[5])?.layer?.alpha.first==99)
+  precondition(merged.exact(diskTimes[6])?.layer==nil && merged.exact(diskTimes[9])?.layer?.alpha.first==10)
+  precondition(diskCache.exact(diskTimes[5])?.layer==nil)
+  do { _=try diskCache.replacing(patch,expected:Array(patchTimes.dropFirst()),originalAnchor:diskTimes[200],current:{true})
+    preconditionFailure("accepted a non-exact patch") } catch {}
+  do { _=try diskCache.replacing(patch,expected:patchTimes,originalAnchor:diskTimes[200],current:{false})
+    preconditionFailure("accepted cancelled patch") } catch is CancellationError {}
+  let spool=try IOSComparisonCutoutDisk(directory:dir,budget:100)
+  let record=try spool.append(Data([1,2,3]))
+  let decoded=try spool.read(record)
+  precondition(decoded==Data([1,2,3]))
+  do{_=try spool.append(Data(repeating:0,count:100));preconditionFailure("budget accepted")}
+  catch{precondition(error is IOSComparisonCutoutExportUnavailable)}
+  spool.close()
+  let files=try FileManager.default.contentsOfDirectory(atPath:dir.path)
+  precondition(files.allSatisfy{!$0.hasSuffix(".scratch")})
+  print("Comparison Cutout Canvas: decoded pixels, top-down alpha, mirror, fixed anchor and stale PTS, sample-stamp mismatch, strict export and source mutation passed (macOS)")
+}
+
 func run() async throws {
   let directory = FileManager.default.temporaryDirectory.appendingPathComponent("woah-composition-\(UUID().uuidString)")
   try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -118,6 +253,10 @@ func run() async throws {
   let target = directory.appendingPathComponent("target.mov")
   try await fixture(reference, pointsUs: [0, 40_000, 110_000, 150_000], endUs: 200_000, reference: true)
   try await fixture(target, pointsUs: [0, 30_000, 90_000, 180_000, 250_000, 390_000], endUs: 400_000, reference: false)
+  if CommandLine.arguments.contains("--cutout-only") {
+    try await cutoutSmoke(reference: reference, target: target)
+    return
+  }
   let index = try IOSComparisonFrameIndex.read(url: reference, isCancelled: { false })
   precondition(index.presentationTimesUs == [0, 40_000, 110_000, 150_000])
   precondition(index.frame(atOrBefore: 70_000) == 40_000)

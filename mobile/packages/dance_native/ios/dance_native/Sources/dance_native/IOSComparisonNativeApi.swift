@@ -123,6 +123,96 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
       durationUs: 0, teacherStartUs: 0, offsetUs: 0, speed: 1)
   }
 
+  func inspectCutout(reference: Bool,seed: ComparisonCutoutSeedDto) async throws -> ComparisonCutoutPreviewDto {
+    do {
+      #if DEBUG
+      return try await requirePlayer().inspectCutout(reference:reference,seed:seed)
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    } catch { throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison) }
+  }
+  func prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto,layout: ComparisonCanvasLayoutDto?) async throws -> ComparisonCutoutResultDto {
+    do {
+      #if DEBUG
+      return try await requirePlayer().prepareCutout(reference: reference,target: target,layout:layout)
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    } catch { throw IOSDiagnosticPrivacy.pigeon(error,stage: .comparison) }
+  }
+  func getCutoutStatus() async throws -> ComparisonCutoutResultDto? {
+    #if DEBUG
+    return player?.cutoutStatus()
+    #else
+    return nil
+    #endif
+  }
+  func beginCutoutRepair(reference:Bool,startUs:Int64,endUs:Int64)async throws->ComparisonPlaybackDto{
+    do{
+      #if DEBUG
+      return try await requirePlayer().beginCutoutRepair(reference:reference,startUs:startUs,endUs:endUs)
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    }catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func repairCutout(seed:ComparisonCutoutSeedDto,projectId:String)async throws->ComparisonCutoutResultDto{
+    do{
+      #if DEBUG
+      return try await requirePlayer().repairCutout(seed:seed,projectId:projectId)
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    }catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func cancelCutoutRepair()async throws->ComparisonCutoutResultDto{
+    do{
+      #if DEBUG
+      return try await requirePlayer().cancelCutoutRepair()
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    }catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func saveCutout(projectId:String)async throws->Bool{
+    do{
+      #if DEBUG
+      return try await requirePlayer().saveCutout(projectId:projectId)
+      #else
+      return false
+      #endif
+    }catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func restoreCutout(projectId:String,layout:ComparisonCanvasLayoutDto?)async throws->ComparisonCutoutResultDto?{
+    do{
+      #if DEBUG
+      return try await requirePlayer().restoreCutout(projectId:projectId,layout:layout)
+      #else
+      return nil
+      #endif
+    }catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func forgetCutout(projectId:String)async throws{
+    #if DEBUG
+    do{try await Task.detached(priority:.utility){try IOSComparisonCutoutArchive.forget(projectId)}.value}
+    catch{throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+    #endif
+  }
+  func setCutoutLayout(layout: ComparisonCanvasLayoutDto) async throws -> ComparisonPlaybackDto {
+    do {
+      #if DEBUG
+      return try await requirePlayer().setCutoutLayout(layout)
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    } catch {throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func clearCutout() async throws -> ComparisonPlaybackDto {
+    do { return try await requirePlayer().clearCutout() }
+    catch { throw IOSDiagnosticPrivacy.pigeon(error,stage: .comparison) }
+  }
+
   func alignMusic(teacherUri: String, learnerUri: String) async throws -> MusicAlignmentDto {
     do {
       matchRevision &+= 1
@@ -172,6 +262,7 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
     replacePreviousUnsaved: Bool) async throws -> ComparisonExportDto {
     do {
       try canvas(width, height)
+          guard player?.hasCutout != true else { throw invalid("抠像画布暂不支持导出") }
           guard gap > 0 && gap <= 64 else { throw invalid("画面间距无效") }
           closePlayer()
           return try await withCheckedThrowingContinuation { continuation in
@@ -185,6 +276,39 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
       throw IOSDiagnosticPrivacy.pigeon(error, stage: .comparison)
     }
   }
+  func startCutoutExport(projectJson: String,startUs: Int64,endUs: Int64,width: Int64,height: Int64,
+    gap: Int64,sideBySide: Bool,replacePreviousUnsaved: Bool) async throws -> ComparisonExportDto {
+    do {
+      #if DEBUG
+      try canvas(width,height)
+      guard gap>0,gap<=64 else {throw invalid("画面间距无效")}
+      var spec=try IOSComparisonExportSpec.fromProject(projectJson,startUs:startUs,endUs:endUs,
+        width:Int(width),height:Int(height),gap:Int(gap),sideBySide:sideBySide)
+      spec.cutout=true
+      let owner=try requirePlayer()
+      let snapshot=try owner.freezeCutoutExport(spec)
+      try owner.suspendCutoutForExport()
+      do {
+        return try await withCheckedThrowingContinuation { continuation in
+          exports.startCutout(spec:spec,snapshot:snapshot,replacePreviousUnsaved:replacePreviousUnsaved) {
+            continuation.resume(with:$0)
+          }
+        }
+      } catch {
+        _ = try? await owner.resumeCutoutPreview()
+        throw error
+      }
+      #else
+      throw invalid("抠像画布正在测试")
+      #endif
+    } catch {throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
+  func resumeCutoutPreview() async throws -> ComparisonPlaybackDto {
+    do {
+      guard !activeExport else {throw invalid("导出尚未结束")}
+      return try await requirePlayer().resumeCutoutPreview()
+    } catch {throw IOSDiagnosticPrivacy.pigeon(error,stage:.comparison)}
+  }
   func getExport() async throws -> ComparisonExportDto? { exports.latest() }
   func cancelExport(jobId: String) async throws -> ComparisonExportDto {
     do {
@@ -195,7 +319,15 @@ final class IOSComparisonNativeApi: DanceComparisonApi {
   }
   func retryExport(jobId: String) async throws -> ComparisonExportDto {
     do {
-      closePlayer()
+      guard let job=exports.latest(),job.jobId==jobId,["failed","cancelled","interrupted"].contains(job.state) else {throw invalid("当前任务不能重试")}
+      if job.cutout==true {
+        guard job.retryAvailable==true else {throw IOSComparisonCutoutExportUnavailable()}
+        if player?.hasCutout==true {try player?.suspendCutoutForExport()}
+        else {closePlayer()}
+      } else {
+        guard player?.hasCutout != true else {throw invalid("请先退出抠像画布")}
+        closePlayer()
+      }
           return try await withCheckedThrowingContinuation { continuation in
             exports.retry(jobId: jobId) { continuation.resume(with: $0) }
           }

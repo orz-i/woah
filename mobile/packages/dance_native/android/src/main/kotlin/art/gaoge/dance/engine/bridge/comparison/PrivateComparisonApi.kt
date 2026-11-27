@@ -64,6 +64,53 @@ internal class PrivateComparisonApi(private val delegate: DanceComparisonApi) : 
         throw NativeDiagnosticPrivacy.comparison(error)
     }
 
+    override suspend fun inspectCutout(reference: Boolean, seed: ComparisonCutoutSeedDto): ComparisonCutoutPreviewDto = try {
+        delegate.inspectCutout(reference, seed)
+    } catch (error: Throwable) {
+        throw NativeDiagnosticPrivacy.comparison(error)
+    }
+
+    override suspend fun prepareCutout(reference: ComparisonCutoutSeedDto, target: ComparisonCutoutSeedDto, layout: ComparisonCanvasLayoutDto?): ComparisonCutoutResultDto = try {
+        delegate.prepareCutout(reference, target, layout)
+    } catch (error: Throwable) {
+        throw NativeDiagnosticPrivacy.comparison(error)
+    }
+
+    override suspend fun getCutoutStatus():ComparisonCutoutResultDto? = try {
+        delegate.getCutoutStatus()
+    } catch(error:Throwable){throw NativeDiagnosticPrivacy.comparison(error)}
+
+    override suspend fun beginCutoutRepair(reference:Boolean,startUs:Long,endUs:Long):ComparisonPlaybackDto=try{
+        delegate.beginCutoutRepair(reference,startUs,endUs)
+    }catch(e:Throwable){throw NativeDiagnosticPrivacy.comparison(e)}
+    override suspend fun repairCutout(seed:ComparisonCutoutSeedDto,projectId:String):ComparisonCutoutResultDto=try{
+        delegate.repairCutout(seed,projectId)
+    }catch(e:Throwable){throw NativeDiagnosticPrivacy.comparison(e)}
+    override suspend fun cancelCutoutRepair():ComparisonCutoutResultDto=try{
+        delegate.cancelCutoutRepair()
+    }catch(e:Throwable){throw NativeDiagnosticPrivacy.comparison(e)}
+    override suspend fun saveCutout(projectId:String):Boolean=try {
+        delegate.saveCutout(projectId)
+    }catch(e:Throwable){throw NativeDiagnosticPrivacy.comparison(e)}
+    override suspend fun restoreCutout(projectId:String,layout:ComparisonCanvasLayoutDto?):ComparisonCutoutResultDto?=try {
+        delegate.restoreCutout(projectId,layout)
+    }catch(e:Throwable){throw NativeDiagnosticPrivacy.comparison(e)}
+    override suspend fun forgetCutout(projectId:String):Unit=try {
+        delegate.forgetCutout(projectId)
+    }catch(e:Throwable){throw NativeDiagnosticPrivacy.comparison(e)}
+
+    override suspend fun setCutoutLayout(layout: ComparisonCanvasLayoutDto): ComparisonPlaybackDto = try {
+        delegate.setCutoutLayout(layout)
+    } catch (error: Throwable) {
+        throw NativeDiagnosticPrivacy.comparison(error)
+    }
+
+    override suspend fun clearCutout(): ComparisonPlaybackDto = try {
+        delegate.clearCutout()
+    } catch (error: Throwable) {
+        throw NativeDiagnosticPrivacy.comparison(error)
+    }
+
     override suspend fun alignMusic(teacherUri: String, learnerUri: String): MusicAlignmentDto = try {
         delegate.alignMusic(teacherUri, learnerUri)
     } catch (error: Throwable) {
@@ -81,6 +128,15 @@ internal class PrivateComparisonApi(private val delegate: DanceComparisonApi) : 
     } catch (error: Throwable) {
         throw NativeDiagnosticPrivacy.comparison(error)
     }
+
+    override suspend fun startCutoutExport(projectJson:String,startUs:Long,endUs:Long,width:Long,height:Long,
+        gap:Long,sideBySide:Boolean,replacePreviousUnsaved:Boolean):ComparisonExportDto = try {
+        delegate.startCutoutExport(projectJson,startUs,endUs,width,height,gap,sideBySide,replacePreviousUnsaved)
+    } catch(error:Throwable){throw NativeDiagnosticPrivacy.comparison(error)}
+
+    override suspend fun resumeCutoutPreview():ComparisonPlaybackDto = try {
+        delegate.resumeCutoutPreview()
+    } catch(error:Throwable){throw NativeDiagnosticPrivacy.comparison(error)}
 
     override suspend fun getExport(): ComparisonExportDto? = try {
         delegate.getExport()

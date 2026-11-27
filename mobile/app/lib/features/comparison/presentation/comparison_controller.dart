@@ -26,6 +26,70 @@ class ComparisonController extends ChangeNotifier {
   bool calibrating = false, exporting = false;
   bool stepping = false;
   bool adjusting = false;
+  bool cutoutSelecting = false,
+      cutoutPreparing = false,
+      cutoutInspecting = false;
+  ComparisonCutoutResultDto? cutoutResult;
+  bool cutoutAnalysisPending = false;
+  bool cutoutRestored = false, cutoutArchived = false;
+  bool cutoutRestoring = false, cutoutSaving = false;
+  bool? cutoutRepairReference;
+  (int, int)? cutoutRepairRange;
+  bool get supportsCutoutRepair =>
+      supportsCutout && gateway is ComparisonRepairCutoutGateway;
+  bool get cutoutRepairing => cutoutRepairReference != null;
+  bool get supportsSavedCutout =>
+      supportsCutout && gateway is ComparisonSavedCutoutGateway;
+  bool get cutoutPartial => cutoutResult?.analyzing == true;
+  (int, int)? get cutoutPlayableRange {
+    final a = cutoutResult?.previewStartUs, b = cutoutResult?.previewEndUs;
+    if (cutoutPartial && a != null && b != null && a >= 0 && b > a) {
+      return (a, b);
+    }
+    return cutoutPracticeRange;
+  }
+
+  bool get cutoutActive => cutoutResult != null;
+  bool get cutoutExportReady {
+    final r = cutoutResult;
+    return !cutoutAnalysisPending &&
+        r != null &&
+        r.analyzing != true &&
+        r.referenceFrames > 0 &&
+        r.targetFrames > 0 &&
+        r.referenceVisible == r.referenceFrames &&
+        r.targetVisible == r.targetFrames;
+  }
+
+  bool _awaitingCanvasViewport = false;
+  bool get _canvasViewportReady =>
+      !_awaitingCanvasViewport &&
+      _activeResizes == 0 &&
+      _resize?.isActive != true;
+  bool get canEditCanvas =>
+      cutoutActive && !cutoutAnalysisPending && canPlay && _canvasViewportReady;
+  bool get canExportCanvas =>
+      cutoutExportReady && canPlay && _canvasViewportReady;
+
+  bool cutoutEditing = false, cutoutApplying = false;
+  ComparisonCanvasLayout get canvasLayout =>
+      project.canvasLayout ??
+      ComparisonCanvasLayout.sideBySide(
+        mirrorReference: project.mirrorTeacher,
+        mirrorTarget: project.mirrorLearner,
+      );
+
+  (int, int)? get cutoutPracticeRange {
+    final a = project.loopStartUs, b = project.loopEndUs;
+    return project.loopEnabled && a != null && b != null && a >= 0 && b > a
+        ? (a, b)
+        : null;
+  }
+
+  bool get cutoutMode => cutoutSelecting || cutoutPreparing || cutoutActive;
+  bool get supportsCutout => kDebugMode && gateway is ComparisonCutoutGateway;
+  (int, int, bool) get cutoutViewport => (_width, _height, _horizontal);
+  int _cutoutRequest = 0;
   bool enteringPractice = false;
   bool _settingLoopRange = false;
   bool _settingPractice = false;
@@ -38,12 +102,17 @@ class ComparisonController extends ChangeNotifier {
   bool _closed = false, _opening = false, _polling = false, _dirty = false;
   int _revision = 0, _width = 0, _height = 0;
   bool _horizontal = false;
+  int _activeResizes = 0;
   bool _lastSaveSucceeded = true;
   int _openRequest = 0, _resizeRequest = 0;
   int _practiceRequest = 0, _controlRequest = 0, _pendingSaves = 0;
   Timer? _poll, _autosave, _resize;
   Future<void> _writeTail = Future.value();
   bool get busy =>
+      cutoutSelecting ||
+      cutoutPreparing ||
+      cutoutEditing ||
+      cutoutApplying ||
       picking ||
       matching ||
       calibrating ||
@@ -77,6 +146,21 @@ class ComparisonController extends ChangeNotifier {
     _practiceRequest++;
     _controlRequest++;
     _settingPractice = false;
+    _cutoutRequest++;
+    cutoutSelecting = false;
+    cutoutPreparing = false;
+    cutoutInspecting = false;
+    cutoutEditing = false;
+    cutoutApplying = false;
+    cutoutResult = null;
+    cutoutAnalysisPending = false;
+    cutoutRestored = false;
+    cutoutArchived = false;
+    cutoutRestoring = false;
+    cutoutSaving = false;
+    cutoutRepairReference = null;
+    cutoutRepairRange = null;
+    _awaitingCanvasViewport = false;
   }
 
   void _clearAlignmentReview() {
@@ -129,10 +213,26 @@ class ComparisonController extends ChangeNotifier {
   }
 
   void setViewport(int width, int height, bool horizontal) {
+    // The final analysis reply changes the toolbar and preview constraints.
+    // Wait for the actual new layout before enabling the edit/export actions.
+    final acknowledged =
+        _awaitingCanvasViewport &&
+        cutoutActive &&
+        !cutoutAnalysisPending &&
+        width >= 2 &&
+        height >= 2;
+    if (acknowledged) _awaitingCanvasViewport = false;
     if (_closed ||
+        cutoutSelecting ||
+        cutoutPreparing ||
+        cutoutEditing ||
+        cutoutApplying ||
+        cutoutAnalysisPending ||
+        (cutoutActive && exporting) ||
         width < 2 ||
         height < 2 ||
         (_width == width && _height == height && _horizontal == horizontal)) {
+      if (acknowledged) _notify();
       return;
     }
     _width = width;
@@ -164,6 +264,7 @@ class ComparisonController extends ChangeNotifier {
           openRequest == _openRequest &&
           !calibrating &&
           !exporting;
+      _activeResizes++;
       try {
         final state = await gateway.resize(_width, _height, _horizontal);
         if (!isCurrent()) return;
@@ -174,8 +275,15 @@ class ComparisonController extends ChangeNotifier {
           error = '画面调整失败，请重新打开此项目。';
           _notify();
         }
+      } finally {
+        _activeResizes--;
+        if (cutoutActive) _notify();
       }
     });
+    // Layout changes after partial -> full readiness can enqueue a resize
+    // after the frame with the new toolbar. Disable edit/export until both
+    // the debounce and the native resize have settled.
+    if (cutoutActive) _notify();
   }
 
   Future<void> _open() async {
@@ -211,8 +319,68 @@ class ComparisonController extends ChangeNotifier {
     }
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refreshCutoutProgress() async {
     if (_closed ||
+        _polling ||
+        stepping ||
+        !cutoutAnalysisPending ||
+        gateway is! ComparisonProgressiveCutoutGateway) {
+      return;
+    }
+    final request = _cutoutRequest, control = _controlRequest;
+    _polling = true;
+    try {
+      final result = await (gateway as ComparisonProgressiveCutoutGateway)
+          .cutoutStatus();
+      if (_closed ||
+          request != _cutoutRequest ||
+          !cutoutAnalysisPending ||
+          result == null ||
+          result.analyzing != true) {
+        return;
+      }
+      if (control != _controlRequest) return;
+      final a = result.previewStartUs, b = result.previewEndUs;
+      if (a == null ||
+          b == null ||
+          a < 0 ||
+          b <= a ||
+          b > result.playback.durationUs) {
+        return;
+      }
+      if (result.playback.phase != 'paused' &&
+          result.playback.phase != 'playing' &&
+          result.playback.phase != 'buffering') {
+        if (!cutoutPartial) {
+          return; // Wait for the first actual composed texture.
+        }
+      }
+      playback = result.playback;
+      cutoutResult = result;
+      cutoutSelecting = false;
+      cutoutPreparing = false;
+      if (result.playback.error != null) error = result.playback.error;
+      if (project.positionUs != result.playback.positionUs) {
+        project = project.copyWith(positionUs: result.playback.positionUs);
+        _dirty = true;
+      }
+      _notify();
+    } catch (_) {
+      // The pending prepare reply owns failure/cleanup.
+    } finally {
+      _polling = false;
+    }
+  }
+
+  Future<void> _refresh() async {
+    if (cutoutAnalysisPending) {
+      await _refreshCutoutProgress();
+      return;
+    }
+    if (_closed ||
+        cutoutSelecting ||
+        cutoutPreparing ||
+        cutoutApplying ||
         calibrating ||
         exporting ||
         enteringPractice ||
@@ -265,7 +433,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> pick(String role) async {
-    if (busy || _closed) return;
+    if (busy || cutoutMode || _closed) return;
     picking = true;
     error = null;
     _notify();
@@ -310,6 +478,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> matchMusic() async {
+    if (cutoutMode) return;
     if (_closed || !project.hasPair || busy) return;
     matching = true;
     _clearAlignmentReview();
@@ -554,6 +723,43 @@ class ComparisonController extends ChangeNotifier {
 
   Future<(ComparisonExportPlan, ComparisonExportPlan?)?> prepareExport() async {
     if (!canPlay || _closed) return null;
+    if (cutoutActive) {
+      if (!_canvasViewportReady) return null;
+      if (!cutoutExportReady) {
+        error = '存在人物缺失帧，不能导出完整画布，请重新选人或缩短 A/B 选段。';
+        _notify();
+        return null;
+      }
+      exporting = true;
+      _resize?.cancel();
+      _notify();
+      try {
+        if (!await _control(ComparisonCommand.pause, 0) || _closed) {
+          throw StateError('Cutout pause failed');
+        }
+        await save();
+        if (!_lastSaveSucceeded || _closed) {
+          throw StateError('Project save failed');
+        }
+        final plan = ComparisonExportPlan(
+          project: project,
+          durationUs: playback!.durationUs,
+          previewWidth: _width,
+          previewHeight: _height,
+          sideBySide: _horizontal,
+          cutout: true,
+        );
+        return (plan, null);
+      } catch (_) {
+        exporting = false;
+        if (!_closed) {
+          error = '画布导出准备未完成，请重试。';
+          _notify();
+        }
+        return null;
+      }
+    }
+    if (cutoutMode) return null;
     exporting = true;
     _invalidatePlayer();
     _resize?.cancel();
@@ -603,6 +809,24 @@ class ComparisonController extends ChangeNotifier {
   Future<void> finishExport() async {
     if (_closed || !exporting) return;
     pendingExport = null;
+    if (cutoutActive) {
+      try {
+        playback = await (gateway as ComparisonCutoutGateway)
+            .resumeCutoutPreview();
+        error = playback?.error;
+      } catch (_) {
+        // A failed restore must not show ordinary panes as an active cutout.
+        await gateway.close();
+        _invalidatePlayer();
+        exporting = false;
+        await _open();
+        error = '画布恢复失败，请重新选择人物。';
+      } finally {
+        exporting = false;
+        _notify();
+      }
+      return;
+    }
     exporting = false;
     await _open();
     _notify();
@@ -611,6 +835,7 @@ class ComparisonController extends ChangeNotifier {
   Future<bool> enterManualCalibration() => _enterPractice(manual: true);
 
   Future<bool> _enterPractice({required bool manual}) async {
+    if (cutoutMode) return false;
     if (_closed || busy || !project.hasPair || (!manual && !canPlay)) {
       return false;
     }
@@ -740,7 +965,526 @@ class ComparisonController extends ChangeNotifier {
     return saved;
   }
 
+  Future<bool> beginCutout({bool reselect = false}) async {
+    if (!supportsCutout ||
+        !canPlay ||
+        cutoutMode ||
+        _opening ||
+        _activeResizes > 0 ||
+        _resize?.isActive == true ||
+        playback?.durationUs == 0) {
+      return false;
+    }
+    final request = ++_cutoutRequest;
+    // Freeze the viewport and reject concurrent edits before asking native to pause.
+    cutoutSelecting = true;
+    cutoutRestored = false;
+    cutoutArchived = false;
+    error = null;
+    _notify();
+    final paused = await _control(ComparisonCommand.pause, 0);
+    if (_closed || request != _cutoutRequest) return false;
+    final state = playback;
+    if (!paused ||
+        state?.phase != 'paused' ||
+        state?.teacherFrameUs == null ||
+        state?.learnerFrameUs == null ||
+        state?.teacherAspect == null ||
+        state?.learnerAspect == null) {
+      cutoutSelecting = false;
+      error = '请暂停在已显示的画面后重试。';
+      _notify();
+      return false;
+    }
+    if (gateway is ComparisonSavedCutoutGateway) {
+      cutoutPreparing = true;
+      cutoutRestoring = true;
+      _notify();
+      final archives = gateway as ComparisonSavedCutoutGateway;
+      try {
+        if (reselect) {
+          await archives.forgetCutout(project.id);
+        } else {
+          final restored = await archives.restoreCutout(
+            project.id,
+            canvasLayoutDto(canvasLayout),
+          );
+          if (_closed || request != _cutoutRequest) return false;
+          if (restored != null) {
+            cutoutRestored = true;
+            cutoutArchived = true;
+            cutoutRestoring = false;
+            cutoutResult = restored;
+            playback = restored.playback;
+            cutoutSelecting = false;
+            cutoutPreparing = false;
+            _awaitingCanvasViewport = true;
+            project = project.copyWith(
+              positionUs: restored.playback.positionUs,
+            );
+            _dirty = true;
+            _notify();
+            return true;
+          }
+        }
+      } catch (_) {
+        if (_closed || request != _cutoutRequest) return false;
+        cutoutSelecting = false;
+        error = '已保存画布无法读取或清除，请重试。';
+        return false;
+      } finally {
+        if (!_closed && request == _cutoutRequest) {
+          cutoutPreparing = false;
+          cutoutRestoring = false;
+          _notify();
+        }
+      }
+      if (_closed || request != _cutoutRequest) return false;
+    }
+    final range = cutoutPracticeRange;
+    if (range != null &&
+        (state!.positionUs < range.$1 || state.positionUs >= range.$2)) {
+      cutoutSelecting = false;
+      error = '请先将播放位置移到 A/B 选段内，再进入抠像画布。';
+      _notify();
+      return false;
+    }
+    _notify();
+    return true;
+  }
+
+  // Selection mode suspends normal polling. Wait for the actual native
+  // presented source after a rebuild, not an old cached PTS.
+  Future<ComparisonPlaybackDto> _repairReady(
+    ComparisonPlaybackDto value,
+    int request,
+  ) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 15));
+    var state = value;
+    while (state.phase != 'paused' ||
+        state.teacherFrameUs == null ||
+        state.learnerFrameUs == null) {
+      if (_closed ||
+          request != _cutoutRequest ||
+          DateTime.now().isAfter(deadline) ||
+          state.phase == 'error' ||
+          state.phase == 'closed') {
+        throw StateError('Repair viewport unavailable');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      if (_closed || request != _cutoutRequest) {
+        throw StateError('Repair cancelled');
+      }
+      state = await gateway.state();
+    }
+    return state;
+  }
+
+  Future<bool> beginCutoutRepair(bool reference, int start, int end) async {
+    if (!supportsCutoutRepair || !canEditCanvas || cutoutRepairing) {
+      return false;
+    }
+    final window = cutoutPlayableRange ?? (0, playback!.durationUs);
+    final position = playback!.positionUs;
+    if (start < window.$1 ||
+        end > window.$2 ||
+        end <= start ||
+        end - start > 10000000 ||
+        position < start ||
+        position >= end) {
+      return false;
+    }
+    final request = ++_cutoutRequest;
+    final original = cutoutResult!;
+    cutoutPreparing = true;
+    error = null;
+    _notify();
+    final repairGateway = gateway as ComparisonRepairCutoutGateway;
+    var nativeEntered = false;
+    try {
+      if (!await _control(ComparisonCommand.pause, 0) ||
+          _closed ||
+          request != _cutoutRequest) {
+        return false;
+      }
+      final state = await repairGateway.beginCutoutRepair(
+        reference,
+        start,
+        end,
+      );
+      nativeEntered = true;
+      if (_closed || request != _cutoutRequest) return false;
+      cutoutRepairReference = reference;
+      cutoutRepairRange = (start, end);
+      playback = await _repairReady(state, request);
+      if (_closed || request != _cutoutRequest) return false;
+      cutoutResult = null;
+      cutoutSelecting = true;
+      _awaitingCanvasViewport = false;
+      return true;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) {
+        if (nativeEntered) {
+          try {
+            final restored = await repairGateway.cancelCutoutRepair();
+            if (!_closed && request == _cutoutRequest) {
+              playback = restored.playback;
+            }
+          } catch (_) {}
+        }
+        if (!_closed && request == _cutoutRequest) {
+          cutoutResult = original;
+          cutoutRepairReference = null;
+          cutoutRepairRange = null;
+          error = '无法打开局部纠错，请在画面稳定后重试。';
+        }
+      }
+      return false;
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutPreparing = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<bool> applyCutoutRepair(ComparisonCutoutSeedDto seed) async {
+    if (_closed ||
+        !cutoutRepairing ||
+        !cutoutSelecting ||
+        cutoutPreparing ||
+        cutoutInspecting ||
+        (cutoutRepairReference!
+                ? playback?.teacherFrameUs
+                : playback?.learnerFrameUs) !=
+            seed.sourcePtsUs) {
+      return false;
+    }
+    final request = ++_cutoutRequest;
+    cutoutPreparing = true;
+    error = null;
+    _notify();
+    try {
+      final result = await (gateway as ComparisonRepairCutoutGateway)
+          .repairCutout(seed, project.id);
+      if (_closed || request != _cutoutRequest) return false;
+      cutoutArchived = false;
+      cutoutRestored = false;
+      // Atomic native commit has completed; only readiness/persistence remain.
+      cutoutRepairReference = null;
+      cutoutRepairRange = null;
+      cutoutSelecting = false;
+      cutoutResult = result;
+      playback = result.playback;
+      _awaitingCanvasViewport = true;
+      if (result.referenceVisible == result.referenceFrames &&
+          result.targetVisible == result.targetFrames &&
+          result.referenceFrames > 0 &&
+          result.targetFrames > 0 &&
+          gateway is ComparisonSavedCutoutGateway) {
+        cutoutSaving = true;
+        _notify();
+        try {
+          final saved = await (gateway as ComparisonSavedCutoutGateway)
+              .saveCutout(project.id);
+          if (_closed || request != _cutoutRequest) return false;
+          cutoutArchived = saved;
+          if (!saved) error = '已应用局部纠错，但本次缓存未保存。';
+        } catch (_) {
+          if (!_closed && request == _cutoutRequest) {
+            error = '已应用局部纠错，但本次缓存未保存。';
+          }
+        }
+      }
+      if (_closed || request != _cutoutRequest) return false;
+      try {
+        final state = await gateway.state();
+        if (_closed || request != _cutoutRequest) return false;
+        playback = state;
+      } catch (_) {}
+      if (_closed || request != _cutoutRequest) return false;
+      message = '已应用局部纠错；请检查修复后的区间及边界。';
+      return true;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) {
+        error = '局部纠错未完成，原画布保留。请重新确认或取消。';
+      }
+      return false;
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutPreparing = false;
+        cutoutSaving = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<void> cancelCutoutRepair() async {
+    if (_closed || !cutoutRepairing) return;
+    final request = ++_cutoutRequest;
+    cutoutPreparing = true;
+    _notify();
+    try {
+      final restored = await (gateway as ComparisonRepairCutoutGateway)
+          .cancelCutoutRepair();
+      if (_closed || request != _cutoutRequest) return;
+      cutoutResult = restored;
+      playback = restored.playback;
+      cutoutRepairReference = null;
+      cutoutRepairRange = null;
+      cutoutSelecting = false;
+      cutoutInspecting = false;
+      cutoutArchived = false;
+      _awaitingCanvasViewport = true;
+      error = null;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) error = '无法返回画布，请重试取消。';
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutPreparing = false;
+        cutoutInspecting = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<ComparisonCutoutPreviewDto?> inspectCutout(
+    bool reference,
+    ComparisonCutoutSeedDto seed,
+  ) async {
+    if (_closed ||
+        !cutoutSelecting ||
+        (cutoutRepairing && cutoutRepairReference != reference) ||
+        cutoutPreparing ||
+        cutoutInspecting ||
+        (reference ? playback?.teacherFrameUs : playback?.learnerFrameUs) !=
+            seed.sourcePtsUs) {
+      return null;
+    }
+    final request = ++_cutoutRequest;
+    cutoutInspecting = true;
+    error = null;
+    _notify();
+    try {
+      final result = await (gateway as ComparisonCutoutGateway).inspectCutout(
+        reference,
+        seed,
+      );
+      if (_closed || request != _cutoutRequest || !cutoutSelecting) return null;
+      if (result.sourcePtsUs != seed.sourcePtsUs ||
+          result.width < 1 ||
+          result.height < 1 ||
+          result.width > 1024 ||
+          result.height > 1024 ||
+          result.png.isEmpty ||
+          result.png.length > 5 * 1024 * 1024) {
+        throw StateError('Invalid cutout still');
+      }
+      return result;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) {
+        error = '未能明确提取所选人物，请长按人物身体中央重试。';
+      }
+      return null;
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutInspecting = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<void> prepareCutout(
+    ComparisonCutoutSeedDto reference,
+    ComparisonCutoutSeedDto target,
+  ) async {
+    if (_closed ||
+        !cutoutSelecting ||
+        cutoutRepairing ||
+        cutoutPreparing ||
+        cutoutInspecting ||
+        playback?.teacherFrameUs != reference.sourcePtsUs ||
+        playback?.learnerFrameUs != target.sourcePtsUs) {
+      return;
+    }
+    final request = ++_cutoutRequest;
+    cutoutPreparing = true;
+    cutoutAnalysisPending = true;
+    error = null;
+    _notify();
+    try {
+      final result = await (gateway as ComparisonCutoutGateway).prepareCutout(
+        reference,
+        target,
+        canvasLayoutDto(canvasLayout),
+      );
+      if (_closed || request != _cutoutRequest) return;
+      if (gateway is ComparisonSavedCutoutGateway &&
+          result.referenceFrames > 0 &&
+          result.targetFrames > 0 &&
+          result.referenceVisible == result.referenceFrames &&
+          result.targetVisible == result.targetFrames) {
+        cutoutSaving = true;
+        cutoutPreparing = true;
+        _notify();
+        try {
+          final archived = await (gateway as ComparisonSavedCutoutGateway)
+              .saveCutout(project.id);
+          if (_closed || request != _cutoutRequest) return;
+          cutoutArchived = archived;
+          if (!archived) error = '画布已就绪，但本次分析未能保存。';
+        } catch (_) {
+          if (_closed || request != _cutoutRequest) return;
+          error = '画布已就绪，但本次分析未能保存。';
+        }
+        // During the archive write the native player may have finished
+        // rebuilding or advanced. Don't publish the older prepare state.
+        try {
+          final latest = await gateway.state();
+          if (_closed || request != _cutoutRequest) return;
+          result.playback = latest;
+        } catch (_) {}
+      }
+      if (_closed || request != _cutoutRequest) return;
+      _awaitingCanvasViewport = cutoutPartial;
+      cutoutAnalysisPending = false;
+      playback = result.playback;
+      cutoutResult = result;
+      cutoutSelecting = false;
+    } catch (_) {
+      if (_closed || request != _cutoutRequest) return;
+      final hadPartial = cutoutPartial;
+      cutoutAnalysisPending = false;
+      _awaitingCanvasViewport = false;
+      if (hadPartial) {
+        cutoutResult = null;
+        cutoutSelecting = false;
+        try {
+          final state = await gateway.state();
+          if (!_closed && request == _cutoutRequest) playback = state;
+        } catch (_) {}
+      }
+      if (_closed || request != _cutoutRequest) return;
+      error = '人物分析未完成。请缩短 A/B 选段（每路最多3600帧，受存储空间限制），或重新选择人物。';
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutPreparing = false;
+        cutoutAnalysisPending = false;
+        cutoutSaving = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<bool> beginCanvasEditing() async {
+    if (_closed || !canEditCanvas) {
+      return false;
+    }
+    final request = ++_cutoutRequest;
+    cutoutEditing = true;
+    error = null;
+    _notify();
+    final ok = await _control(ComparisonCommand.pause, 0);
+    if (_closed || request != _cutoutRequest) return false;
+    if (!ok || playback?.phase != 'paused') {
+      cutoutEditing = false;
+      error = '请等待画布暂停后再编辑。';
+      _notify();
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> applyCanvasLayout(ComparisonCanvasLayout value) async {
+    if (_closed ||
+        !cutoutActive ||
+        !cutoutEditing ||
+        cutoutApplying ||
+        !value.valid) {
+      return false;
+    }
+    final request = ++_cutoutRequest;
+    cutoutApplying = true;
+    error = null;
+    _controlRequest++;
+    _notify();
+    try {
+      final state = await (gateway as ComparisonCutoutGateway).setCutoutLayout(
+        canvasLayoutDto(value),
+      );
+      if (_closed || request != _cutoutRequest) return false;
+      if (state.phase == 'error') throw StateError('Canvas update failed');
+      playback = state;
+      project = project.copyWith(
+        canvasLayout: value,
+        positionUs: state.positionUs,
+      );
+      _dirty = true;
+      await save();
+      return !_closed && request == _cutoutRequest;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) error = '画布调整未应用，请重试。';
+      return false;
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutApplying = false;
+        _notify();
+      }
+    }
+  }
+
+  void finishCanvasEditing() {
+    if (!cutoutApplying) {
+      cutoutEditing = false;
+      _notify();
+    }
+  }
+
+  Future<void> exitCutout() async {
+    if (_closed || !cutoutMode || cutoutApplying) return;
+    cutoutEditing = false;
+    final request = ++_cutoutRequest;
+    cutoutAnalysisPending = false;
+    cutoutRestored = false;
+    cutoutArchived = false;
+    cutoutRestoring = false;
+    cutoutSaving = false;
+    cutoutRepairReference = null;
+    cutoutRepairRange = null;
+    _awaitingCanvasViewport = false;
+    final needsNative =
+        cutoutSelecting || cutoutPreparing || cutoutInspecting || cutoutActive;
+    if (!needsNative) {
+      cutoutSelecting = false;
+      error = null;
+      _notify();
+      return;
+    }
+    cutoutPreparing = true;
+    _notify();
+    try {
+      final state = await (gateway as ComparisonCutoutGateway).clearCutout();
+      if (_closed || request != _cutoutRequest) return;
+      playback = state;
+      cutoutResult = null;
+      cutoutSelecting = false;
+      cutoutInspecting = false;
+      error = state.error;
+    } catch (_) {
+      if (!_closed && request == _cutoutRequest) {
+        error = '画布退出未完成，请重试。';
+      }
+    } finally {
+      if (!_closed && request == _cutoutRequest) {
+        cutoutPreparing = false;
+        cutoutInspecting = false;
+        _notify();
+      }
+    }
+  }
+
   Future<void> toggle() async {
+    if (!canPlay) return;
     await _control(
       playing ? ComparisonCommand.pause : ComparisonCommand.play,
       0,
@@ -752,7 +1496,17 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> seek(int positionUs) async {
-    if (stepping) return;
+    if (stepping ||
+        cutoutSelecting ||
+        cutoutPreparing ||
+        cutoutEditing ||
+        cutoutApplying) {
+      return;
+    }
+    final selected = cutoutActive ? cutoutPlayableRange : null;
+    if (selected != null) {
+      positionUs = positionUs.clamp(selected.$1, selected.$2 - 1);
+    }
     await _control(ComparisonCommand.seek, positionUs);
   }
 
@@ -779,6 +1533,7 @@ class ComparisonController extends ChangeNotifier {
 
   Future<void> setMirror(bool reference) async {
     if (_closed ||
+        cutoutMode ||
         picking ||
         matching ||
         stepping ||
@@ -991,6 +1746,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<bool> setLoopRange(int startUs, int endUs) async {
+    if (cutoutMode) return false;
     if (!canPlay || _closed) return false;
     final duration = playback!.durationUs;
     if (startUs < 0 || endUs <= startUs || endUs > duration) {
@@ -1030,6 +1786,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> toggleLoop() async {
+    if (cutoutMode) return;
     if (busy || project.loopStartUs == null || project.loopEndUs == null) {
       return;
     }
@@ -1037,6 +1794,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> clearLoop() async {
+    if (cutoutMode) return;
     if (busy) return;
     await _setPractice(project.copyWith(clearLoop: true));
   }
@@ -1092,6 +1850,7 @@ class ComparisonController extends ChangeNotifier {
 
   Future<void> setSideBySide(bool value) async {
     if (_closed ||
+        cutoutMode ||
         picking ||
         matching ||
         enteringPractice ||
@@ -1142,7 +1901,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> swap() async {
-    if (!project.hasPair || busy) return;
+    if (!project.hasPair || busy || cutoutMode) return;
     await pause();
     await gateway.cancelAlignment();
     _invalidatePlayer();
@@ -1171,6 +1930,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> selectProject(ComparisonProject value) async {
+    if (cutoutMode) return;
     await cancelMatching();
     await pause();
     await save();
@@ -1188,6 +1948,7 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> newProject() async {
+    if (cutoutMode) return;
     await cancelMatching();
     await pause();
     await save();
@@ -1254,6 +2015,10 @@ class ComparisonController extends ChangeNotifier {
   }
 
   Future<void> background() async {
+    if (cutoutApplying || exporting) return;
+    if (cutoutSelecting || cutoutPreparing || cutoutAnalysisPending) {
+      await exitCutout();
+    }
     await pause();
     if (!adjusting) await save();
   }

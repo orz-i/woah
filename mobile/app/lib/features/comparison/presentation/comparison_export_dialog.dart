@@ -189,7 +189,11 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
         }
       },
       child: AlertDialog(
-        title: const Text('导出对比视频'),
+        title: Text(
+          widget.full?.cutout == true || job?.cutout == true
+              ? '导出画布视频'
+              : '导出对比视频',
+        ),
         content: SizedBox(
           width: 360,
           child: SingleChildScrollView(
@@ -200,35 +204,46 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
                 if (_loading)
                   const Center(child: CircularProgressIndicator())
                 else if (job == null) ...[
-                  RadioGroup<bool>(
-                    groupValue: _selection,
-                    onChanged: (v) {
-                      if (!_working) setState(() => _selection = v!);
-                    },
-                    child: Column(
-                      children: [
-                        RadioListTile<bool>(
-                          value: false,
-                          title: const Text('全段'),
-                          subtitle: Text(
-                            comparisonTime(widget.full!.durationUs),
+                  if (widget.full!.cutout)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        '已分析区间：${comparisonTime(widget.full!.startUs)} – ${comparisonTime(widget.full!.endUs)}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    )
+                  else
+                    RadioGroup<bool>(
+                      groupValue: _selection,
+                      onChanged: (v) {
+                        if (!_working) setState(() => _selection = v!);
+                      },
+                      child: Column(
+                        children: [
+                          RadioListTile<bool>(
+                            value: false,
+                            title: const Text('全段'),
+                            subtitle: Text(
+                              comparisonTime(widget.full!.durationUs),
+                            ),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        RadioListTile<bool>(
-                          value: true,
-                          title: const Text('A/B 选段'),
-                          enabled: widget.selection != null,
-                          subtitle: Text(
-                            widget.selection == null
-                                ? '请先在播放条上选定起止点'
-                                : comparisonTime(widget.selection!.durationUs),
+                          RadioListTile<bool>(
+                            value: true,
+                            title: const Text('A/B 选段'),
+                            enabled: widget.selection != null,
+                            subtitle: Text(
+                              widget.selection == null
+                                  ? '请先在播放条上选定起止点'
+                                  : comparisonTime(
+                                      widget.selection!.durationUs,
+                                    ),
+                            ),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
                   Text(
                     '${plan!.width} × ${plan.height} · 1× · H.264/AAC',
                     style: const TextStyle(fontSize: 13),
@@ -265,7 +280,8 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
                             : () => setState(() => _job = _previous),
                         child: const Text('查看上次导出'),
                       )
-                    else
+                    else if (widget.full?.cutout != true &&
+                        _previous!.retryAvailable != false)
                       TextButton(
                         onPressed: _working
                             ? null
@@ -384,12 +400,23 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
                     },
               child: Text(!isIOS && job.savedUri == null ? '保存视频' : '查看视频'),
             ),
-          ] else
+          ] else if (job.retryAvailable != false)
             FilledButton(
               onPressed: _working
                   ? null
                   : () => _run(() => widget.gateway.retryExport(job.jobId)),
               child: const Text('重试导出'),
+            )
+          else if (widget.full?.cutout == true)
+            TextButton(
+              onPressed: _working
+                  ? null
+                  : () => setState(() {
+                      _previous = job;
+                      _job = null;
+                      _error = null;
+                    }),
+              child: const Text('新建画布导出'),
             ),
         ],
       ),

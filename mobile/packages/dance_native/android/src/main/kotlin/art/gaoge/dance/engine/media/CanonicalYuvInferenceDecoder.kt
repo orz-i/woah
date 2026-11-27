@@ -45,10 +45,13 @@ class CanonicalYuvInferenceDecoder(
     private var outputEos = false
     private var outputFormat: MediaFormat? = null
     private val bufferInfo = MediaCodec.BufferInfo()
-    private val rgbaBuffer = ByteBuffer.allocateDirect(modelInputSize * modelInputSize * 4).apply {
-        order(ByteOrder.nativeOrder())
+    private val rgbaBuffer by lazy {
+        ByteBuffer.allocateDirect(modelInputSize * modelInputSize * 4).apply {
+            order(ByteOrder.nativeOrder())
+        }
     }
     private val conversionWorkspace = CanonicalYuvToRgba.Workspace(modelInputSize)
+    private val detailBuffer by lazy { ByteBuffer.allocateDirect(modelInputSize*modelInputSize*4) }
 
     var runtimeInfo: RuntimeInfo? = null
         private set
@@ -85,9 +88,14 @@ class CanonicalYuvInferenceDecoder(
         )
 
         val decoder = MediaCodec.createDecoderByType(mime)
-        decoder.configure(inputFormat, null, null, 0)
-        decoder.start()
-        codec = decoder
+        try {
+            decoder.configure(inputFormat, null, null, 0)
+            decoder.start()
+            codec = decoder
+        }catch(error:Throwable){
+            try{decoder.release()}catch(_:Throwable){}
+            throw error
+        }
         outputFormat = null
         updateRuntimeInfo(decoder.name, inputFormat)
     }
@@ -105,6 +113,53 @@ class CanonicalYuvInferenceDecoder(
         requireExactPts = true
     ).rgbaBuffer
 
+    /** Exact-PTS decode into an exclusively owned caller buffer. The
+     * comparison producer alternates two buffers; other decoder callers
+     * continue to use the original single reusable buffer contract. */
+    internal fun decodeRgbaAtPtsInto(
+        targetPtsUs:Long, mapper:ModelCoordinateMapper, destination:ByteBuffer
+    ):ByteBuffer {
+        require(destination.isDirect && destination.capacity()==modelInputSize*modelInputSize*4)
+        return decodeRgbaFrame(targetPtsUs,mapper,true,destination).rgbaBuffer
+    }
+
+    internal fun decodeDetailAtPts(targetPtsUs:Long,mapper:ModelCoordinateMapper,roi:IntArray,sceneWidth:Int,sceneHeight:Int):ByteBuffer {
+        require(roi.size==4 && mapper.srcWidth==roi[2] && mapper.srcHeight==roi[3])
+        return decodeRgbaFrame(targetPtsUs,mapper,true,rgbaBuffer,roi+intArrayOf(sceneWidth,sceneHeight)).rgbaBuffer
+    }
+
+    /** Borrow the exact source image only during this synchronous callback.
+     * No Image or crop function may be used after the codec buffer is released. */
+    internal fun decodeRgbaWithDetailAtPts(
+        pts:Long,mapper:ModelCoordinateMapper,
+        consume:(ByteBuffer,(ModelCoordinateMapper,IntArray)->ByteBuffer)->Unit
+    ) {
+        decodeRgbaFrame(pts,mapper,true,onSource={image,rgba->
+            var active=true
+            try {
+                consume(rgba){local,roi->
+                    check(active)
+                    require(roi.size==4 && local.srcWidth==roi[2] && local.srcHeight==roi[3])
+                    CanonicalYuvToRgba.convert(image,detailBuffer,local,rotationDegrees,
+                        colorInt(outputFormat,MediaFormat.KEY_COLOR_STANDARD),
+                        colorInt(outputFormat,MediaFormat.KEY_COLOR_RANGE),conversionWorkspace,
+                        roi+intArrayOf(mapper.srcWidth,mapper.srcHeight))
+                    detailBuffer
+                }
+            }finally{active=false}
+        })
+    }
+
+    /** Reposition an already-running synchronous codec after all borrowed
+     * images have been released. The next decode still requires exact PTS. */
+    internal fun seekDetailTo(pts:Long){
+        require(pts>=0)
+        val decoder=checkNotNull(codec)
+        extractor.seekTo(pts,MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+        decoder.flush()
+        inputEos=false;outputEos=false
+    }
+
     /**
      * Decodes the first display frame at or after [targetPtsUs]. This is used by one-shot
      * analysis where a millisecond trim boundary is not guaranteed to be an exact source PTS.
@@ -121,7 +176,10 @@ class CanonicalYuvInferenceDecoder(
     private fun decodeRgbaFrame(
         targetPtsUs: Long,
         mapper: ModelCoordinateMapper,
-        requireExactPts: Boolean
+        requireExactPts: Boolean,
+        destination:ByteBuffer=rgbaBuffer,
+        detail:IntArray?=null,
+        onSource:((Image,ByteBuffer)->Unit)?=null
     ): DecodedRgbaFrame {
         val decoder = codec ?: error("Canonical inference decoder not prepared")
         var emptyOutputCount = 0
@@ -155,14 +213,15 @@ class CanonicalYuvInferenceDecoder(
                                 ?: error("Canonical decoder returned null YUV image at pts=$ptsUs")
                             CanonicalYuvToRgba.convert(
                                 image = image,
-                                output = rgbaBuffer,
+                                output = destination,
                                 mapper = mapper,
                                 rotationDegrees = rotationDegrees,
                                 colorStandard = colorInt(outputFormat, MediaFormat.KEY_COLOR_STANDARD),
                                 colorRange = colorInt(outputFormat, MediaFormat.KEY_COLOR_RANGE),
-                                workspace = conversionWorkspace
+                                workspace = conversionWorkspace,detail=detail
                             )
-                            return DecodedRgbaFrame(ptsUs = ptsUs, rgbaBuffer = rgbaBuffer)
+                            onSource?.invoke(image,destination)
+                            return DecodedRgbaFrame(ptsUs = ptsUs, rgbaBuffer = destination)
                         }
                     } finally {
                         try { image?.close() } catch (_: Throwable) {}
@@ -224,10 +283,28 @@ internal object CanonicalYuvToRgba {
     internal class Workspace(val modelInputSize: Int)
     fun convert(image: Image, output: ByteBuffer, mapper: ModelCoordinateMapper,
         rotationDegrees: Int, colorStandard: Int?, colorRange: Int?,
-        workspace: Workspace = Workspace(mapper.modelInputSize)) {
+        workspace: Workspace = Workspace(mapper.modelInputSize),detail:IntArray?=null) {
         require(image.planes.size >= 3)
         require(workspace.modelInputSize == mapper.modelInputSize)
-        val crop = image.cropRect
+        val crop = android.graphics.Rect(image.cropRect)
+        if(detail!=null){
+            val (x,y,w,h)=detail
+            val cw=crop.width();val ch=crop.height()
+            val rotation=((rotationDegrees%360)+360)%360
+            val dw=if(rotation%180==0)cw else ch
+            val dh=if(rotation%180==0)ch else cw
+            require(detail.size==6 && detail[4]==dw && detail[5]==dh &&
+                x>=0 && y>=0 && w>0 && h>0 && x+w<=dw && y+h<=dh)
+            val local=when(rotation){
+                0->android.graphics.Rect(x,y,x+w,y+h)
+                90->android.graphics.Rect(y,ch-x-w,y+h,ch-x)
+                180->android.graphics.Rect(cw-x-w,ch-y-h,cw-x,ch-y)
+                270->android.graphics.Rect(cw-y-h,x,cw-y,x+w)
+                else->error("Invalid detail rotation")
+            }
+            local.offset(crop.left,crop.top)
+            crop.set(local)
+        }
         val matrix = when (colorStandard ?: MediaFormat.COLOR_STANDARD_BT709) {
             MediaFormat.COLOR_STANDARD_BT601_PAL, MediaFormat.COLOR_STANDARD_BT601_NTSC -> 0
             MediaFormat.COLOR_STANDARD_BT2020 -> 2

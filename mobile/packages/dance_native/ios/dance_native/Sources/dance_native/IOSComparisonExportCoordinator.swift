@@ -19,6 +19,7 @@ final class IOSComparisonExportCoordinator {
   private let metadata: URL
   private var current: IOSComparisonExportRecord?
   private var runtime: Runtime?
+  private var cutoutSnapshot: IOSComparisonCutoutCache?
   private var storageError: Error?
   private var lastPersist = Date.distantPast
 
@@ -37,7 +38,10 @@ final class IOSComparisonExportCoordinator {
       if FileManager.default.fileExists(atPath: metadata.path) {
         let record = try JSONDecoder().decode(IOSComparisonExportRecord.self, from: Data(contentsOf: metadata))
         try record.validate()
-        let recovered = record.recovered(outputExists: FileManager.default.fileExists(atPath: output(record.id).path))
+        var recovered = record.recovered(outputExists: FileManager.default.fileExists(atPath: output(record.id).path))
+        if recovered.spec.isCutout && ["failed","cancelled","interrupted"].contains(recovered.state) {
+          recovered.error="抠像缓存已释放，请重新选择人物后导出"
+        }
         current = recovered
         try persistLocked(recovered)
         // Remove only this record's unfinished temporary movie. Completed files
@@ -69,6 +73,16 @@ final class IOSComparisonExportCoordinator {
     } catch { deliver(completion, .failure(error)) }
   }
 
+  func startCutout(spec: IOSComparisonExportSpec,snapshot: IOSComparisonCutoutCache,
+    replacePreviousUnsaved:Bool,completion:@escaping (Result<ComparisonExportDto,Error>)->Void) {
+    do {
+      guard spec.isCutout,snapshot.complete else {throw IOSComparisonCutoutExportUnavailable()}
+      _=try IOSComparisonFiles.resolve(spec.teacherURI)
+      _=try IOSComparisonFiles.resolve(spec.learnerURI)
+      deliver(completion,.success(try launch(spec:spec,replacePreviousUnsaved:replacePreviousUnsaved,snapshot:snapshot)))
+    } catch {deliver(completion,.failure(error))}
+  }
+
   func latest() -> ComparisonExportDto? {
     withLock { current.map(dto) }
   }
@@ -95,14 +109,15 @@ final class IOSComparisonExportCoordinator {
 
   func retry(jobId: String, completion: @escaping (Result<ComparisonExportDto, Error>) -> Void) {
     do {
-      let spec = try withLock { () throws -> IOSComparisonExportSpec in
+      let (spec,snapshot) = try withLock { () throws -> (IOSComparisonExportSpec,IOSComparisonCutoutCache?) in
         let record = try requireLocked(jobId)
         guard ["failed", "cancelled", "interrupted"].contains(record.state), runtime == nil else {
           throw failure("当前导出不能重试")
         }
-        return record.spec
+        guard !record.spec.isCutout || cutoutSnapshot != nil else {throw IOSComparisonCutoutExportUnavailable()}
+        return (record.spec,record.spec.isCutout ? cutoutSnapshot : nil)
       }
-      deliver(completion, .success(try launch(spec: spec, id: jobId)))
+      deliver(completion, .success(try launch(spec: spec, id: jobId,snapshot:snapshot)))
     } catch { deliver(completion, .failure(error)) }
   }
 
@@ -159,7 +174,8 @@ final class IOSComparisonExportCoordinator {
   }
 
   private func launch(spec: IOSComparisonExportSpec, id: String = UUID().uuidString,
-    replacePreviousUnsaved: Bool = false) throws -> ComparisonExportDto {
+    replacePreviousUnsaved: Bool = false,snapshot:IOSComparisonCutoutCache?=nil) throws -> ComparisonExportDto {
+    guard spec.isCutout==(snapshot != nil) else {throw IOSComparisonCutoutExportUnavailable()}
     let cancellation = IOSComparisonExportCancellation()
     let background = IOSComparisonExportBackgroundTask()
     var replacedId: String?
@@ -177,6 +193,7 @@ final class IOSComparisonExportCoordinator {
       try persistLocked(record)
       replacedId = previous?.id
       runtime = Runtime(id: id, cancellation: cancellation, background: background)
+      cutoutSnapshot=snapshot
       return dto(record)
     }
     // New metadata is durable before retiring the previous local movie.
@@ -187,16 +204,21 @@ final class IOSComparisonExportCoordinator {
       self?.backgroundExpired(id: id)
     }
     Task.detached(priority: .userInitiated) { [self] in
-      await run(id: id, spec: spec, cancellation: cancellation, background: background)
+      await run(id: id, spec: spec, cancellation: cancellation, background: background,snapshot:snapshot)
     }
     return initial
   }
 
   private func run(id: String, spec: IOSComparisonExportSpec,
-    cancellation: IOSComparisonExportCancellation, background: IOSComparisonExportBackgroundTask) async {
+    cancellation: IOSComparisonExportCancellation, background: IOSComparisonExportBackgroundTask,
+    snapshot:IOSComparisonCutoutCache?) async {
     defer {
       try? FileManager.default.removeItem(at: partial(id))
-      withLock { if runtime?.id == id { runtime = nil } }
+      withLock {
+        if runtime?.id == id { runtime = nil }
+        if current?.id==id && (current?.state=="completed" ||
+            current?.error=="抠像画布分析不完整或源视频已变化，请重新选人") {cutoutSnapshot=nil}
+      }
       background.end()
     }
     do {
@@ -206,11 +228,11 @@ final class IOSComparisonExportCoordinator {
         var record = try requireLocked(id)
         guard record.state == "queued" else { throw failure("导出已取消") }
         record.state = "encoding"
-        record.stage = "合成对比视频"
+        record.stage = spec.isCutout ? "合成抠像画布" : "合成对比视频"
         try persistLocked(record)
       }
       try await IOSComparisonExportPipeline().execute(spec: spec, outputURL: partial(id),
-        cancellation: cancellation) { [weak self] value in self?.progress(id: id, value: value) }
+        cancellation: cancellation,cutout:snapshot) { [weak self] value in self?.progress(id: id, value: value) }
       try cancellation.commit {
         try withLock {
           var record = try requireLocked(id)
@@ -261,6 +283,7 @@ final class IOSComparisonExportCoordinator {
           record.state = "failed"
           record.stage = "导出失败"
           record.error = userMessage(error)
+          if error is IOSComparisonCutoutExportUnavailable {cutoutSnapshot=nil}
         }
         do { try persistLocked(record) }
         catch { current = record; storageError = error }
@@ -381,7 +404,8 @@ final class IOSComparisonExportCoordinator {
       startUs: record.spec.startUs, endUs: record.spec.endUs,
       width: Int64(record.spec.width), height: Int64(record.spec.height),
       outputPath: hasOutput ? output(record.id).path : nil,
-      savedUri: record.savedAssetIdentifier.map { "ph://\($0)" }, error: IOSDiagnosticPrivacy.comparisonMessage(record.error))
+      savedUri: record.savedAssetIdentifier.map { "ph://\($0)" }, error: IOSDiagnosticPrivacy.comparisonMessage(record.error),
+      cutout:record.spec.isCutout,retryAvailable:!record.spec.isCutout || cutoutSnapshot != nil)
   }
 
   private func output(_ id: String) -> URL { directory.appendingPathComponent("\(id).mp4") }
@@ -390,6 +414,7 @@ final class IOSComparisonExportCoordinator {
     IOSComparisonExportError(code: "COMPARISON_EXPORT_STATE", message: message)
   }
   private func userMessage(_ error: Error) -> String {
+    if error is IOSComparisonCutoutExportUnavailable {return "抠像画布分析不完整或源视频已变化，请重新选人"}
     let nsError = error as NSError
     if nsError.domain == NSCocoaErrorDomain && nsError.code == NSFileWriteOutOfSpaceError {
       return "存储空间不足，请释放空间后重试"

@@ -152,3 +152,545 @@ mod tests {
         assert_eq!(frame_kernel_pane(2, 2, 1, 1, 0).width, 0);
     }
 }
+
+// Cutout Canvas uses display-oriented, unmirrored source coordinates. The
+// selection anchor and placement are immutable across frames; never normalize
+// each moving detection box, which would erase dance motion.
+use crate::geometry::{Rect, Transform};
+
+fn mask_sample(mask: &[u8], t: Transform, x: f32, y: f32) -> f32 {
+    if !(0.0..1.0).contains(&x) || !(0.0..1.0).contains(&y) {
+        return 0.0;
+    }
+    let n = t.proto_size as usize;
+    let u =
+        (x * t.source_width as f32 * t.scale + t.pad_left) * n as f32 / t.input_size as f32 - 0.5;
+    let v =
+        (y * t.source_height as f32 * t.scale + t.pad_top) * n as f32 / t.input_size as f32 - 0.5;
+    if u < -0.5 || v < -0.5 || u > n as f32 - 0.5 || v > n as f32 - 0.5 {
+        return 0.0;
+    }
+    let u = u.clamp(0.0, (n - 1) as f32);
+    let v = v.clamp(0.0, (n - 1) as f32);
+    let (i, j) = (u.floor() as usize, v.floor() as usize);
+    let (dx, dy) = (u - i as f32, v - j as f32);
+    let a = mask[j * n + i] as f32;
+    let b = mask[j * n + (i + 1).min(n - 1)] as f32;
+    let c = mask[(j + 1).min(n - 1) * n + i] as f32;
+    let d = mask[(j + 1).min(n - 1) * n + (i + 1).min(n - 1)] as f32;
+    (a + (b - a) * dx) * (1.0 - dy) + (c + (d - c) * dx) * dy
+}
+
+fn mask_area(t: Transform) -> Option<usize> {
+    t.valid().then(|| (t.proto_size as usize).pow(2))
+}
+
+/// -1: background, -2: competing masks, -3: invalid input. Never select
+/// by bounding box alone, or by detector ordering when two masks overlap.
+pub fn cutout_select(masks: &[u8], t: Transform, x: f32, y: f32) -> i32 {
+    let Some(area) = mask_area(t) else { return -3 };
+    if !masks.len().is_multiple_of(area)
+        || masks.len() / area > 256
+        || !x.is_finite()
+        || !y.is_finite()
+    {
+        return -3;
+    }
+    let (mut best, mut runner, mut index) = (0.0_f32, 0.0_f32, -1);
+    for (i, mask) in masks.chunks_exact(area).enumerate() {
+        let score = mask_sample(mask, t, x, y);
+        if score > best {
+            runner = best;
+            best = score;
+            index = i as i32;
+        } else {
+            runner = runner.max(score);
+        }
+    }
+    if best < 128.0 {
+        -1
+    } else if runner >= 128.0 && best - runner < 24.0 {
+        -2
+    } else {
+        index
+    }
+}
+
+/// Choose the largest supported display-oriented alpha grid that fits a
+/// worst-case dense track in the existing per-role budget. Reserve space
+/// for stamps/record headers on both platforms and bound the partial preview
+/// resident bytes. Never change the detector's proto grid or threshold.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_cutout_grid(
+    sw: u32,
+    sh: u32,
+    frames: u32,
+    preview_frames: u32,
+) -> Viewport {
+    if sw == 0
+        || sh == 0
+        || !(1..=3600).contains(&frames)
+        || !(1..=256).contains(&preview_frames)
+        || preview_frames > frames
+    {
+        return Viewport::default();
+    }
+    let longest = u64::from(sw.max(sh));
+    for edge in [384u64, 320, 256] {
+        let dim = |source: u32| ((u64::from(source) * edge + longest / 2) / longest).max(1);
+        let (w, h) = (dim(sw), dim(sh));
+        let bytes = w * h;
+        if (bytes + 3200) * u64::from(frames) <= 256 * 1024 * 1024
+            && (bytes + 3200) * u64::from(preview_frames) <= 18 * 1024 * 1024
+        {
+            return Viewport {
+                x: 0,
+                top: 0,
+                width: w as i32,
+                height: h as i32,
+            };
+        }
+    }
+    Viewport::default()
+}
+
+/// Precompute each independent coordinate using the same floating point
+/// expression as mask_sample. Retain the exact old bilinear arithmetic.
+fn alpha_axis(size: u32, source: u32, pad: f32, t: Transform) -> Vec<Option<(usize, usize, f32)>> {
+    let n = t.proto_size as usize;
+    (0..size)
+        .map(|x| {
+            let p = (x as f32 + 0.5) / size as f32;
+            let u = (p * source as f32 * t.scale + pad) * n as f32 / t.input_size as f32 - 0.5;
+            if !(0.0..1.0).contains(&p) || u < -0.5 || u > n as f32 - 0.5 {
+                return None;
+            }
+            let u = u.clamp(0.0, (n - 1) as f32);
+            let i = u.floor() as usize;
+            Some((i, (i + 1).min(n - 1), u - i as f32))
+        })
+        .collect()
+}
+
+/// Convert model confidence to an initial soft alpha, not to a learned matte.
+/// No dilation, privacy fallback region or retained mask is applied.
+pub fn cutout_alpha(mask: &[u8], t: Transform, width: u32, height: u32, output: &mut [u8]) -> bool {
+    if mask_area(t) != Some(mask.len())
+        || width == 0
+        || height == 0
+        || width > 4096
+        || height > 4096
+        || output.len() != width as usize * height as usize
+    {
+        return false;
+    }
+    let xs = alpha_axis(width, t.source_width, t.pad_left, t);
+    let ys = alpha_axis(height, t.source_height, t.pad_top, t);
+    let n = t.proto_size as usize;
+    for (row, y) in output.chunks_exact_mut(width as usize).zip(ys) {
+        let Some((j, j1, dy)) = y else {
+            row.fill(0);
+            continue;
+        };
+        let top = &mask[j * n..(j + 1) * n];
+        let bottom = &mask[j1 * n..(j1 + 1) * n];
+        for (pixel, x) in row.iter_mut().zip(&xs) {
+            let Some((i, i1, dx)) = *x else {
+                *pixel = 0;
+                continue;
+            };
+            let (a, b, c, d) = (top[i], top[i1], bottom[i], bottom[i1]);
+            if a <= 96 && b <= 96 && c <= 96 && d <= 96 {
+                *pixel = 0;
+                continue;
+            }
+            if a >= 192 && b >= 192 && c >= 192 && d >= 192 {
+                *pixel = 255;
+                continue;
+            }
+            let (a, b, c, d) = (a as f32, b as f32, c as f32, d as f32);
+            let score = (a + (b - a) * dx) * (1.0 - dy) + (c + (d - c) * dx) * dy;
+            let a = ((score - 96.0) / 96.0).clamp(0.0, 1.0);
+            *pixel = (a * a * (3.0 - 2.0 * a) * 255.0).round() as u8;
+        }
+    }
+    true
+}
+
+/// Place the full source image based on a fixed, normalized selection bbox.
+/// The anchor bottom center maps to (x,y), and its height to canvasHeight*height.
+/// Negative or off-canvas coordinates are allowed only for the resulting quad.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_cutout_quad(
+    width: u32,
+    height: u32,
+    aspect: f64,
+    anchor: Rect,
+    x: f64,
+    y: f64,
+    subject_height: f64,
+    mirror: u32,
+) -> Quad {
+    if !(2..=65535).contains(&width)
+        || !(2..=65535).contains(&height)
+        || !anchor.valid()
+        || anchor.left < 0.0
+        || anchor.top < 0.0
+        || anchor.right > 1.0
+        || anchor.bottom > 1.0
+        || !aspect.is_finite()
+        || !(0.01..=100.0).contains(&aspect)
+        || !x.is_finite()
+        || !y.is_finite()
+        || !(0.0..=1.0).contains(&x)
+        || !(0.0..=1.0).contains(&y)
+        || !(0.05..=2.0).contains(&subject_height)
+        || anchor.bottom - anchor.top < 0.01
+        || mirror > 1
+    {
+        return Quad::default();
+    }
+    let sy = subject_height / f64::from(anchor.bottom - anchor.top);
+    let sx = sy * f64::from(height) * aspect / f64::from(width);
+    let ax = (f64::from(anchor.left) + f64::from(anchor.right)) / 2.0;
+    let ax = if mirror == 1 { 1.0 - ax } else { ax };
+    Quad {
+        scale_x: sx as f32,
+        scale_y: sy as f32,
+        shift_x: (2.0 * x - 1.0 - (2.0 * ax - 1.0) * sx) as f32,
+        shift_y: (1.0 - 2.0 * y - (1.0 - 2.0 * f64::from(anchor.bottom)) * sy) as f32,
+        valid: 1,
+    }
+}
+
+/// # Safety
+/// Non-null buffers must contain the specified number of readable bytes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_cutout_select(
+    masks: *const u8,
+    len: usize,
+    t: Transform,
+    x: f32,
+    y: f32,
+) -> i32 {
+    let Some(area) = mask_area(t) else { return -3 };
+    if len > area * 256 || (len != 0 && masks.is_null()) {
+        return -3;
+    }
+    let bytes = if len == 0 {
+        &[]
+    } else {
+        // SAFETY: caller supplies len readable bytes; size and null checked above.
+        unsafe { std::slice::from_raw_parts(masks, len) }
+    };
+    cutout_select(bytes, t, x, y)
+}
+
+/// # Safety
+/// Input/output must be valid, non-overlapping buffers of the stated sizes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_cutout_alpha(
+    mask: *const u8,
+    len: usize,
+    t: Transform,
+    width: u32,
+    height: u32,
+    out: *mut u8,
+    out_len: usize,
+) -> i32 {
+    if mask_area(t) != Some(len)
+        || mask.is_null()
+        || out.is_null()
+        || width == 0
+        || height == 0
+        || width > 4096
+        || height > 4096
+        || out_len != width as usize * height as usize
+    {
+        return -1;
+    }
+    // SAFETY: caller guarantees valid, non-overlapping buffers; lengths checked above.
+    let input = unsafe { std::slice::from_raw_parts(mask, len) };
+    // SAFETY: output is writable for out_len bytes and does not alias input.
+    let output = unsafe { std::slice::from_raw_parts_mut(out, out_len) };
+    if cutout_alpha(input, t, width, height, output) {
+        0
+    } else {
+        -1
+    }
+}
+
+#[cfg(test)]
+mod cutout_tests {
+    use super::*;
+    fn transform() -> Transform {
+        Transform {
+            scale: 1.0,
+            pad_left: 0.0,
+            pad_top: 0.0,
+            source_width: 4,
+            source_height: 4,
+            input_size: 4,
+            proto_size: 4,
+        }
+    }
+    #[test]
+    fn hit_uses_masks_and_rejects_overlap_and_background() {
+        let t = transform();
+        let a = [
+            255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0,
+        ];
+        let b = [
+            0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255,
+        ];
+        let masks = [a, b].concat();
+        assert_eq!(cutout_select(&masks, t, 0.125, 0.125), 0);
+        assert_eq!(cutout_select(&masks, t, 0.875, 0.125), 1);
+        assert_eq!(cutout_select(&[a, a].concat(), t, 0.125, 0.125), -2);
+        assert_eq!(cutout_select(&masks, t, 1.0, 0.5), -1);
+        assert_eq!(cutout_select(&[0; 16], t, 0.5, 0.5), -1);
+        assert_eq!(cutout_select(&[1], t, 0.5, 0.5), -3);
+    }
+    #[test]
+    fn alpha_projects_letterbox_and_soft_edges() {
+        let t = Transform {
+            source_width: 4,
+            source_height: 2,
+            pad_top: 1.0,
+            ..transform()
+        };
+        let m = [0, 0, 0, 0, 0, 128, 255, 255, 0, 128, 255, 255, 0, 0, 0, 0];
+        let mut a = [9; 8];
+        assert!(cutout_alpha(&m, t, 4, 2, &mut a));
+        assert_eq!(a, [0, 66, 255, 255, 0, 66, 255, 255]);
+        assert!(!cutout_alpha(&m, t, 4, 3, &mut a));
+    }
+    #[test]
+    fn alpha_grid_is_budgeted_and_aspect_preserving() {
+        let wide = frame_kernel_cutout_grid(768, 432, 750, 26);
+        assert_eq!((wide.width, wide.height), (384, 216));
+        let tall = frame_kernel_cutout_grid(432, 768, 750, 26);
+        assert_eq!((tall.width, tall.height), (216, 384));
+        let long = frame_kernel_cutout_grid(1080, 1080, 3600, 256);
+        assert_eq!((long.width, long.height), (256, 256));
+        for &(w, h) in &[(1, 1), (1080, 1920), (1920, 1080), (4096, 1), (100, 100)] {
+            for count in [1, 90, 750, 1800, 3600] {
+                let preview = count.min(256);
+                let grid = frame_kernel_cutout_grid(w, h, count, preview);
+                let bytes = i64::from(grid.width) * i64::from(grid.height) + 3200;
+                assert!(
+                    grid.valid()
+                        && bytes * i64::from(count) <= 256 * 1024 * 1024
+                        && bytes * i64::from(preview) <= 18 * 1024 * 1024
+                );
+            }
+        }
+        assert_eq!(
+            frame_kernel_cutout_grid(0, 100, 100, 30),
+            Viewport::default()
+        );
+    }
+    #[test]
+    fn optimized_projection_is_exact_against_original_sampling() {
+        for &(sw, sh, pad_x, pad_y) in &[
+            (768, 432, 0., 140.),
+            (432, 768, 140., 0.),
+            (640, 640, 0., 0.),
+        ] {
+            let t = Transform {
+                source_width: sw,
+                source_height: sh,
+                scale: 640. / sw.max(sh) as f32,
+                pad_left: pad_x,
+                pad_top: pad_y,
+                input_size: 640,
+                proto_size: 160,
+            };
+            let mut state = 42u32;
+            let raw = (0..160 * 160)
+                .map(|_| {
+                    state = state.wrapping_mul(1664525).wrapping_add(1013904223);
+                    (state >> 24) as u8
+                })
+                .collect::<Vec<_>>();
+            for (w, h) in [(1, 1), (257, 143), (216, 384), (384, 216)] {
+                let mut output = vec![0; w * h];
+                assert!(cutout_alpha(&raw, t, w as u32, h as u32, &mut output));
+                for y in 0..h {
+                    for x in 0..w {
+                        let value = mask_sample(
+                            &raw,
+                            t,
+                            (x as f32 + 0.5) / w as f32,
+                            (y as f32 + 0.5) / h as f32,
+                        );
+                        let a = ((value - 96.) / 96.).clamp(0., 1.);
+                        assert_eq!(
+                            output[y * w + x],
+                            (a * a * (3. - 2. * a) * 255.).round() as u8
+                        );
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn fixed_anchor_and_mirror_preserve_translation_and_aspect() {
+        let anchor = Rect {
+            left: 0.1,
+            top: 0.2,
+            right: 0.5,
+            bottom: 0.8,
+        };
+        for mirror in [0, 1] {
+            let q = frame_kernel_cutout_quad(1000, 500, 1.5, anchor, 0.25, 0.85, 0.6, mirror);
+            let ax = if mirror == 1 { 0.7 } else { 0.3 };
+            assert_eq!(q.valid, 1);
+            assert!((q.scale_x - 0.75).abs() < 1e-6);
+            assert!(((2.0 * ax - 1.0) * q.scale_x + q.shift_x + 0.5).abs() < 1e-6);
+            assert!(((1.0 - 1.6) * q.scale_y + q.shift_y + 0.7).abs() < 1e-6);
+            assert!((q.scale_y * 0.1 - 0.1).abs() < 1e-6);
+        }
+    }
+}
+
+/// Render an unmirrored, transparent still from the *same* letterboxed input
+/// that produced the selected instance. Pixels are RGBA straight-alpha;
+/// output is top-down in model coordinates. The returned crop excludes
+/// transparent padding/background. No predicted or unselected mask is used.
+pub fn cutout_thumbnail(
+    mask: &[u8],
+    t: Transform,
+    rgba: &[u8],
+    bottom_up: bool,
+    output: &mut [u8],
+) -> Viewport {
+    let size = t.input_size as usize;
+    if mask_area(t) != Some(mask.len())
+        || !(1..=1024).contains(&size)
+        || rgba.len() != size * size * 4
+        || output.len() != rgba.len()
+    {
+        return Viewport::default();
+    }
+    output.fill(0);
+    let (mut left, mut top, mut right, mut bottom) = (size, size, 0, 0);
+    for y in 0..size {
+        for x in 0..size {
+            let sx = (x as f32 + 0.5 - t.pad_left) / (t.scale * t.source_width as f32);
+            let sy = (y as f32 + 0.5 - t.pad_top) / (t.scale * t.source_height as f32);
+            let score = mask_sample(mask, t, sx, sy);
+            let a = ((score - 96.0) / 96.0).clamp(0.0, 1.0);
+            let alpha = (a * a * (3.0 - 2.0 * a) * 255.0).round() as u8;
+            if alpha == 0 {
+                continue;
+            }
+            let row = if bottom_up { size - y - 1 } else { y };
+            let from = (row * size + x) * 4;
+            let to = (y * size + x) * 4;
+            output[to..to + 3].copy_from_slice(&rgba[from..from + 3]);
+            output[to + 3] = alpha;
+            left = left.min(x);
+            top = top.min(y);
+            right = right.max(x + 1);
+            bottom = bottom.max(y + 1);
+        }
+    }
+    if right <= left || bottom <= top {
+        return Viewport::default();
+    }
+    Viewport {
+        x: left as i32,
+        top: top as i32,
+        width: (right - left) as i32,
+        height: (bottom - top) as i32,
+    }
+}
+
+/// # Safety
+/// Each buffer must be valid for its declared length; output must not overlap inputs.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_cutout_thumbnail(
+    mask: *const u8,
+    mask_len: usize,
+    t: Transform,
+    rgba: *const u8,
+    rgba_len: usize,
+    bottom_up: u32,
+    output: *mut u8,
+    output_len: usize,
+) -> Viewport {
+    let n = t.input_size as usize;
+    if !(1..=1024).contains(&n)
+        || mask_area(t) != Some(mask_len)
+        || rgba_len != n * n * 4
+        || output_len != rgba_len
+        || bottom_up > 1
+        || mask.is_null()
+        || rgba.is_null()
+        || output.is_null()
+    {
+        return Viewport::default();
+    }
+    // SAFETY: caller owns valid nonoverlapping buffers of the checked lengths.
+    let mask = unsafe { std::slice::from_raw_parts(mask, mask_len) };
+    // SAFETY: input is readable for the checked length.
+    let rgba = unsafe { std::slice::from_raw_parts(rgba, rgba_len) };
+    // SAFETY: output is writable and does not alias either input.
+    let output = unsafe { std::slice::from_raw_parts_mut(output, output_len) };
+    cutout_thumbnail(mask, t, rgba, bottom_up != 0, output)
+}
+
+#[cfg(test)]
+mod thumbnail_tests {
+    use super::*;
+    #[test]
+    fn thumbnail_keeps_selected_rgb_and_rejects_padding_and_background() {
+        let t = Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 1.,
+            source_width: 4,
+            source_height: 2,
+            input_size: 4,
+            proto_size: 4,
+        };
+        let m = [
+            255, 255, 255, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255,
+        ];
+        let mut rgba = [0u8; 64];
+        for i in 0..16 {
+            rgba[4 * i] = i as u8;
+            rgba[4 * i + 3] = 255;
+        }
+        let mut out = [99; 64];
+        assert_eq!(
+            cutout_thumbnail(&m, t, &rgba, false, &mut out),
+            Viewport {
+                x: 0,
+                top: 1,
+                width: 1,
+                height: 2
+            }
+        );
+        assert_eq!(&out[16..20], &[4, 0, 0, 255]);
+        assert_eq!(&out[32..36], &[8, 0, 0, 255]);
+        assert!(out[..16].iter().all(|&x| x == 0));
+        assert_eq!(&out[20..24], &[0; 4]);
+        assert_eq!(
+            cutout_thumbnail(&m, t, &rgba, true, &mut out),
+            Viewport {
+                x: 0,
+                top: 1,
+                width: 1,
+                height: 2
+            }
+        );
+        assert_eq!(&out[16..20], &[8, 0, 0, 255]);
+        assert_eq!(&out[32..36], &[4, 0, 0, 255]);
+        assert_eq!(
+            cutout_thumbnail(&[0; 16], t, &rgba, false, &mut out),
+            Viewport::default()
+        );
+    }
+}

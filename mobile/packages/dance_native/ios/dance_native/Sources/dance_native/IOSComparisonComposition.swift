@@ -14,7 +14,8 @@ struct IOSComparisonComposition {
 
   static func make(referenceURL: URL, targetURL: URL, offsetUs: Int64, timeScale: Double,
     rangeStartUs: Int64 = 0, rangeEndUs: Int64? = nil, width: Int, height: Int,
-    gap: Int, sideBySide: Bool, practice: ComparisonPracticeDto) async throws -> IOSComparisonComposition {
+    gap: Int, sideBySide: Bool, practice: ComparisonPracticeDto,
+    cutout: IOSComparisonCutoutCache? = nil) async throws -> IOSComparisonComposition {
     let layout = try IOSComparisonLayout(width: width, height: height, gap: gap, sideBySide: sideBySide)
     let referencePicture = try picture(practice.teacherPicture)
     let targetPicture = try picture(practice.learnerPicture)
@@ -79,7 +80,7 @@ struct IOSComparisonComposition {
       reference: IOSComparisonVideoLayer(trackID: reference.trackID, preferredTransform: referenceTransform,
         aspect: referenceAspect, mirror: practice.mirrorTeacher, picture: referencePicture),
       target: IOSComparisonVideoLayer(trackID: target.trackID, preferredTransform: targetTransform,
-        aspect: targetAspect, mirror: practice.mirrorLearner, picture: targetPicture))
+        aspect: targetAspect, mirror: practice.mirrorLearner, picture: targetPicture),cutout: cutout)
     let video = AVMutableVideoComposition()
     video.customVideoCompositorClass = IOSComparisonCompositor.self
     video.renderSize = CGSize(width: CGFloat(width), height: CGFloat(height))

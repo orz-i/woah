@@ -8,8 +8,16 @@ import Foundation
 final class IOSComparisonExportPipeline {
   func execute(spec: IOSComparisonExportSpec, outputURL: URL,
     cancellation: IOSComparisonExportCancellation,
+    cutout: IOSComparisonCutoutCache? = nil,
     progress: @escaping (Double) -> Void) async throws {
     try spec.validate()
+    guard spec.isCutout==(cutout != nil) else {throw IOSComparisonCutoutExportUnavailable()}
+    let referenceURL=try IOSComparisonFiles.resolve(spec.teacherURI),targetURL=try IOSComparisonFiles.resolve(spec.learnerURI)
+    if let cutout {
+      guard cutout.complete,cutout.window==(spec.startUs..<spec.endUs),
+        cutout.offsetUs==spec.offsetUs,cutout.timeScale==spec.timeScale else {throw IOSComparisonCutoutExportUnavailable()}
+      try cutout.verifySources(referenceURL:referenceURL,targetURL:targetURL,current:{cancellation.reason==nil})
+    }
     try cancellation.check()
     let practice = ComparisonPracticeDto(mirrorTeacher: spec.mirrorTeacher,
       mirrorLearner: spec.mirrorLearner, loopStartUs: nil, loopEndUs: nil, loopEnabled: false,
@@ -27,19 +35,30 @@ final class IOSComparisonExportPipeline {
     guard composition.durationUs == spec.durationUs else {
       throw IOSComparisonExportError.invalid("选段已超出当前视频的共同区间")
     }
+    if let cutout, composition.referenceStartUs != cutout.referenceStartUs+spec.startUs {
+      throw IOSComparisonCutoutExportUnavailable()
+    }
     try await encode(composition: composition, spec: spec, outputURL: outputURL,
-      cancellation: cancellation, progress: progress)
+      cancellation: cancellation,cutout:cutout, progress: progress)
+    if let cutout {
+      do {
+        try cutout.verifySources(referenceURL:referenceURL,targetURL:targetURL,current:{cancellation.reason==nil})
+        try cancellation.check()
+      } catch {try? FileManager.default.removeItem(at:outputURL);throw error}
+    }
   }
 
   // Internal for the AVFoundation regression harness: the same writer exercises
   // a synthetic VFR composition without requiring a Flutter engine.
   func encode(composition: IOSComparisonComposition, spec: IOSComparisonExportSpec,
     outputURL: URL, cancellation: IOSComparisonExportCancellation,
+    cutout: IOSComparisonCutoutCache? = nil,
     progress: @escaping (Double) -> Void) async throws {
+    guard spec.isCutout==(cutout != nil) else {throw IOSComparisonCutoutExportUnavailable()}
     let duration = CMTime(value: spec.durationUs, timescale: 1_000_000)
     let asset = composition.asset
     let frames = try await IOSComparisonExportFrames(spec: spec, composition: composition,
-      cancellation: cancellation)
+      cancellation: cancellation,cutout:cutout)
     defer { frames.close() }
     let audioTracks = try await asset.loadTracks(withMediaType: .audio)
     let reader = try AVAssetReader(asset: asset)
@@ -227,12 +246,14 @@ private final class IOSComparisonExportFrames {
   private let compositor = IOSComparisonCompositor()
   private let pool: CVPixelBufferPool
   private let cancellation: IOSComparisonExportCancellation
+  private let cutout: IOSComparisonCutoutCache?
   private var clock: CMTime
 
   init(spec: IOSComparisonExportSpec, composition: IOSComparisonComposition,
-    cancellation: IOSComparisonExportCancellation) async throws {
+    cancellation: IOSComparisonExportCancellation,cutout: IOSComparisonCutoutCache? = nil) async throws {
     self.spec = spec
     self.cancellation = cancellation
+    self.cutout=cutout
     start = CMTime(value: composition.referenceStartUs, timescale: 1_000_000)
     end = CMTimeAdd(start, CMTime(value: spec.durationUs, timescale: 1_000_000))
     clock = start
@@ -271,7 +292,14 @@ private final class IOSComparisonExportFrames {
     var pixel: CVPixelBuffer?
     guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pixel) == kCVReturnSuccess,
           let pixel else { throw IOSComparisonExportError.invalid("无法分配导出画面") }
-    compositor.render(reference: r, target: t, instruction: instruction, output: pixel)
+    let frame: IOSComparisonCutoutFrame?
+    if let cutout {
+      guard let rp=reference.currentPtsUs,let tp=target.currentPtsUs else {throw IOSComparisonCutoutExportUnavailable()}
+      frame=try cutout.strictFrame(referencePts:rp,targetPts:tp,referenceBuffer:r,targetBuffer:t)
+    } else {frame=nil}
+    guard compositor.render(reference:r,target:t,instruction:instruction,output:pixel,cutout:frame) else {
+      throw IOSComparisonCutoutExportUnavailable()
+    }
     var format: CMVideoFormatDescription?
     guard CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault,
       imageBuffer: pixel, formatDescriptionOut: &format) == noErr, let format else {
@@ -296,6 +324,7 @@ private final class IOSComparisonExportFrames {
     private var current: CMSampleBuffer?
     private var following: CMSampleBuffer?
     var nextTime: CMTime? { following.map { CMSampleBufferGetPresentationTimeStamp($0) } }
+    var currentPtsUs:Int64? {current.flatMap {IOSComparisonTimeCore.map(CMSampleBufferGetOutputPresentationTimeStamp($0))}}
 
     init(url: URL, time: Int64, cancellation: IOSComparisonExportCancellation) async throws {
       self.cancellation = cancellation

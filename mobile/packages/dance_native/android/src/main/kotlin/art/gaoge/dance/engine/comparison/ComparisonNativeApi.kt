@@ -159,6 +159,47 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
         requireNotNull(session).setPractice(practice)
     override suspend fun stepFrame(forward: Boolean): ComparisonPlaybackDto =
         requireNotNull(session).stepFrame(forward)
+    override suspend fun inspectCutout(reference: Boolean,seed: ComparisonCutoutSeedDto): ComparisonCutoutPreviewDto {
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).inspectCutout(reference,seed)
+    }
+    override suspend fun prepareCutout(reference: ComparisonCutoutSeedDto,target: ComparisonCutoutSeedDto,layout: ComparisonCanvasLayoutDto?): ComparisonCutoutResultDto {
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG) { "抠像画布正在测试" }
+        return requireNotNull(session).prepareCutout(reference,target,layout)
+    }
+    override suspend fun getCutoutStatus():ComparisonCutoutResultDto? {
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return session?.cutoutStatus()
+    }
+    override suspend fun beginCutoutRepair(reference:Boolean,startUs:Long,endUs:Long):ComparisonPlaybackDto{
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).beginCutoutRepair(reference,startUs,endUs)
+    }
+    override suspend fun repairCutout(seed:ComparisonCutoutSeedDto,projectId:String):ComparisonCutoutResultDto{
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).repairCutout(seed,projectId)
+    }
+    override suspend fun cancelCutoutRepair():ComparisonCutoutResultDto{
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).cancelCutoutRepair()
+    }
+    override suspend fun saveCutout(projectId:String):Boolean {
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).saveCutout(projectId)
+    }
+    override suspend fun restoreCutout(projectId:String,layout:ComparisonCanvasLayoutDto?):ComparisonCutoutResultDto? {
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).restoreCutout(projectId,layout)
+    }
+    override suspend fun forgetCutout(projectId:String):Unit=withContext(Dispatchers.IO){
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        ComparisonCutoutArchive(File(context.cacheDir,"comparison-cutout-v1"),context.cacheDir).forget(projectId)
+    }
+    override suspend fun setCutoutLayout(layout: ComparisonCanvasLayoutDto): ComparisonPlaybackDto {
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        return requireNotNull(session).setCutoutLayout(layout)
+    }
+    override suspend fun clearCutout(): ComparisonPlaybackDto = requireNotNull(session).clearCutout()
     override suspend fun alignMusic(teacherUri: String,learnerUri: String): MusicAlignmentDto {
         session?.control(ComparisonCommand.PAUSE,0,1.0)
         val generation=alignmentGeneration.incrementAndGet()
@@ -204,15 +245,39 @@ internal class ComparisonNativeApi(private val context: Context,private val regi
     }
     override suspend fun startExport(projectJson: String,startUs: Long,endUs: Long,width: Long,height: Long,
         gap: Long,sideBySide: Boolean,replacePreviousUnsaved: Boolean): ComparisonExportDto {
+        check(session?.hasCutout!=true) { "抠像画布暂不支持导出" }
         require(width in 16..1920 && height in 16..1920 && gap in 1..64)
         val spec=ComparisonExportSpec.fromProject(projectJson,startUs,endUs,width.toInt(),height.toInt(),gap.toInt(),sideBySide)
         session?.close();session=null
         return exports.start(spec,replacePreviousUnsaved)
     }
+    override suspend fun startCutoutExport(projectJson:String,startUs:Long,endUs:Long,width:Long,height:Long,
+        gap:Long,sideBySide:Boolean,replacePreviousUnsaved:Boolean):ComparisonExportDto {
+        check(art.gaoge.dance.engine.BuildConfig.DEBUG)
+        require(width in 16..1920 && height in 16..1920 && gap in 1..64)
+        val spec=ComparisonExportSpec.fromProject(projectJson,startUs,endUs,width.toInt(),height.toInt(),gap.toInt(),sideBySide).copy(cutout=true)
+        val owner=requireNotNull(session)
+        val snapshot=owner.freezeCutoutExport(spec)
+        try {
+            owner.suspendCutoutForExport()
+            return exports.start(spec,replacePreviousUnsaved,snapshot)
+        } catch(error:Throwable){owner.resumeCutoutPreview();throw error}
+        finally {snapshot.close()}
+    }
+    override suspend fun resumeCutoutPreview():ComparisonPlaybackDto {
+        check(exports.latest()?.state !in setOf("queued","encoding","cancelling","publishing"))
+        return requireNotNull(session).resumeCutoutPreview()
+    }
     override suspend fun getExport(): ComparisonExportDto? = exports.latest()
     override suspend fun cancelExport(jobId: String): ComparisonExportDto = exports.cancel(jobId)
     override suspend fun retryExport(jobId: String): ComparisonExportDto {
-        session?.close();session=null
+        val job=requireNotNull(exports.latest())
+        check(job.jobId==jobId && job.state in setOf("failed","cancelled","interrupted"))
+        if(job.cutout==true) {
+            check(job.retryAvailable==true)
+            if(session?.hasCutout==true)session?.suspendCutoutForRetry()
+            else {session?.close();session=null}
+        } else {check(session?.hasCutout!=true);session?.close();session=null}
         return exports.retry(jobId)
     }
     override suspend fun saveExport(jobId: String): ComparisonExportDto {

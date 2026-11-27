@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "purpose": "C9.3 source-only independent stress sample, sparse visible landmarks; no dense identity truth",
+  "frozenCommit": "7f15e5aab4d9ecee138064810fd091faeeba506b",
+  "modelSha256": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+  "durationUs": 12000000,
+  "cadence": 25,
+  "dimensions": [
+    960,
+    540
+  ],
+  "framesPerRole": 300,
+  "anchorUs": 3000000,
+  "contourCoordinateSize": [
+    640,
+    360
+  ],
+  "sources": {
+    "reference": {
+      "file": "group12.mp4",
+      "title": "Cultural_dancers_performing_at_an_event.webm",
+      "author": "Tusk media",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "descriptionUrl": "https://commons.wikimedia.org/wiki/File:Cultural_dancers_performing_at_an_event.webm",
+      "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/9/93/Cultural_dancers_performing_at_an_event.webm",
+      "downloadSha256": "016cc1eecd63c65e4649b26880f6c1fd8c3bc34b0f4420193cea94b4eee7d224",
+      "testedMp4Sha256": "6e3572294b22467400d26a370080d79e419ca0e69381230b47c1c94bd1901d14",
+      "startSeconds": 30,
+      "seed": [
+        0.125,
+        0.728
+      ],
+      "subjectDescription": "leftmost red-shirt performer beside dark drum, not red performer in central group"
+    }
+  },
+  "annotations": {
+    "reference": [
+      {
+        "ptsUs": 0,
+        "selected": [
+          0.1375,
+          0.74074
+        ],
+        "distractor": [
+          0.2625,
+          0.58148
+        ]
+      },
+      {
+        "ptsUs": 3000000,
+        "selected": [
+          0.125,
+          0.72778
+        ],
+        "distractor": [
+          0.27187,
+          0.50556
+        ]
+      },
+      {
+        "ptsUs": 6000000,
+        "selected": [
+          0.11458,
+          0.55556
+        ],
+        "distractor": [
+          0.24583,
+          0.34074
+        ]
+      },
+      {
+        "ptsUs": 9000000,
+        "selected": [
+          0.11042,
+          0.25926
+        ],
+        "distractor": [
+          0.275,
+          0.12963
+        ]
+      },
+      {
+        "ptsUs": 10000000,
+        "selected": [
+          0.11458,
+          0.17037
+        ],
+        "distractor": [
+          0.28542,
+          0.08148
+        ]
+      }
+    ]
+  },
+  "notes": "Source-only marks set before inference. These clips were previously source-previewed but not used in C9.2/C9.3 development replay. Transcoded video only, 25 fps, 960x540, silent."
+}

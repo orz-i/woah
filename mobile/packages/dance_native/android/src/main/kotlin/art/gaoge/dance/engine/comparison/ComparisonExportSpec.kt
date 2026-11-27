@@ -19,6 +19,7 @@ internal data class ComparisonExportSpec(
     val mirrorLearner: Boolean,
     val teacherPicture: ComparisonPicture,
     val learnerPicture: ComparisonPicture,
+    val cutout: Boolean = false,
 ) {
     init {
         require(projectId.matches(Regex("[A-Za-z0-9_-]{1,80}")))
@@ -37,6 +38,7 @@ internal data class ComparisonExportSpec(
         put("offsetUs",offsetUs);put("timeScale",timeScale);put("startUs",startUs);put("endUs",endUs)
         put("width",width);put("height",height);put("gap",gap);put("sideBySide",sideBySide)
         put("mirrorTeacher",mirrorTeacher);put("mirrorLearner",mirrorLearner)
+        if(cutout)put("cutout",true)
         fun picture(value: ComparisonPicture) = JSONObject().apply {
             put("zoom",value.zoom);put("panX",value.panX);put("panY",value.panY)
         }
@@ -58,7 +60,7 @@ internal data class ComparisonExportSpec(
             p.getString("learnerUri"),p.getLong("offsetUs"),p.getDouble("timeScale"),p.getLong("startUs"),p.getLong("endUs"),
             p.getInt("width"),p.getInt("height"),p.getInt("gap"),p.getBoolean("sideBySide"),
             p.getBoolean("mirrorTeacher"),p.getBoolean("mirrorLearner"),
-            picture(p.getJSONObject("teacherPicture")),picture(p.getJSONObject("learnerPicture")))
+            picture(p.getJSONObject("teacherPicture")),picture(p.getJSONObject("learnerPicture")),p.optBoolean("cutout",false))
     }
 }
 

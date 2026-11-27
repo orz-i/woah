@@ -72,6 +72,17 @@ record.savedAssetIdentifier = "saved-asset/L0/001"
 precondition(record.recovered(outputExists: true).savedAssetIdentifier == record.savedAssetIdentifier)
 print("PASS interrupted recovery, rename-before-metadata recovery and Photos idempotency fence")
 
+var cutoutSpec=spec
+cutoutSpec.cutout=true
+let cutoutThawed=try JSONDecoder().decode(IOSComparisonExportSpec.self,from:JSONEncoder().encode(cutoutSpec))
+precondition(cutoutThawed.isCutout && !thawed.isCutout)
+var cutoutRecord=IOSComparisonExportRecord(id:"cutout",spec:cutoutThawed)
+cutoutRecord.state="encoding"
+let cutoutRecovered=cutoutRecord.recovered(outputExists:false)
+precondition(cutoutRecovered.spec.isCutout && cutoutRecovered.state=="interrupted")
+precondition(cutoutRecovered.error=="抠像缓存已释放，请重新选择人物后导出")
+print("PASS cutout export kind survives persistence; lost snapshot must reselect")
+
 let cancelled = IOSComparisonExportCancellation()
 precondition(cancelled.cancel(.user))
 precondition(cancelled.reason == .user)

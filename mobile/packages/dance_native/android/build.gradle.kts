@@ -52,6 +52,14 @@ val diagnosticGitCommitSha = System.getenv("GIT_COMMIT_SHA")?.takeIf { it.isNotB
 val diagnosticBuildTimestamp = System.getenv("BUILD_TIMESTAMP")?.takeIf { it.isNotBlank() }
     ?: Instant.now().toString()
 
+// Experimental comparison backend is selectable only in the isolated QA
+// package. Normal Debug and Release builds retain CPU4.
+val cutoutQaBackend = providers.gradleProperty("WOAH_CUTOUT_QA_BACKEND").orNull ?: "cpu4"
+require(cutoutQaBackend in setOf("cpu4", "gpu")) { "Invalid WOAH_CUTOUT_QA_BACKEND" }
+require(cutoutQaBackend == "cpu4" || providers.gradleProperty("WOAH_CUTOUT_QA").orNull == "true") {
+    "GPU cutout experiments require WOAH_CUTOUT_QA=true"
+}
+
 // Old local checkouts may still contain source files under pre-Woah package
 // roots. Those files were previously hidden by an over-broad `debug/` ignore
 // rule and can still be picked up by Kotlin from src/**/kotlin. Keep them out
@@ -120,12 +128,15 @@ android {
         minSdk = 24
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Opt-in local QA ID preserves previously installed, differently signed test packages.
-        if (providers.gradleProperty("WOAH_MIRROR_QA").orNull == "true") {
+        if (providers.gradleProperty("WOAH_CUTOUT_QA").orNull == "true") {
+            testApplicationId = "art.gaoge.dance.engine.cutoutqa.test"
+        } else if (providers.gradleProperty("WOAH_MIRROR_QA").orNull == "true") {
             testApplicationId = "art.gaoge.dance.engine.mirrorqa.test"
         }
         consumerProguardFiles("consumer-rules.pro")
         buildConfigField("String", "GIT_COMMIT_SHA", "\"$diagnosticGitCommitSha\"")
         buildConfigField("String", "BUILD_TIMESTAMP", "\"$diagnosticBuildTimestamp\"")
+        buildConfigField("String", "CUTOUT_QA_BACKEND", "\"$cutoutQaBackend\"")
     }
 
     buildFeatures {

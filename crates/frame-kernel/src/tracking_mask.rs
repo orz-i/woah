@@ -73,6 +73,35 @@ fn interpolate(mask: &Mask, w: Warp, x: usize, y: usize) -> f32 {
     (sample(mask, x0, y0) * wx0 + sample(mask, x1, y0) * wx1) * wy0
         + (sample(mask, x0, y1) * wx0 + sample(mask, x1, y1) * wx1) * wy1
 }
+pub(crate) fn raw_mask_iou(a: &Mask, b: &Mask) -> f32 {
+    if a.transform != b.transform || a.width != b.width || a.height != b.height {
+        return 0.0;
+    }
+    // A >=128 comparison is exactly the top bit of an unsigned byte.
+    // Process eight samples at a time, preserving >=128 and empty-union
+    // semantics (unlike the privacy render-mask comparison's >128).
+    const HIGH: u64 = 0x8080_8080_8080_8080;
+    let count = a.pixels.len().min(b.pixels.len());
+    let mut aa = a.pixels[..count].chunks_exact(8);
+    let mut bb = b.pixels[..count].chunks_exact(8);
+    let (mut intersection, mut union) = (0u32, 0u32);
+    for (x, y) in aa.by_ref().zip(bb.by_ref()) {
+        let x = u64::from_ne_bytes(x.try_into().expect("eight bytes"));
+        let y = u64::from_ne_bytes(y.try_into().expect("eight bytes"));
+        intersection += (x & y & HIGH).count_ones();
+        union += ((x | y) & HIGH).count_ones();
+    }
+    for (&x, &y) in aa.remainder().iter().zip(bb.remainder()) {
+        intersection += u32::from(x >= 128 && y >= 128);
+        union += u32::from(x >= 128 || y >= 128);
+    }
+    if union == 0 {
+        0.0
+    } else {
+        intersection as f32 / union as f32
+    }
+}
+
 pub fn mask_iou(a: Option<&Mask>, b: Option<&Mask>, stride: usize) -> f32 {
     let (Some(a), Some(b)) = (a, b) else {
         return 0.0;
@@ -246,6 +275,49 @@ pub fn conservative_mask(mask: &Mask, predicted: Rect, missed: u32) -> Option<Ma
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn raw_iou_popcount_matches_scalar_at_threshold_and_tail() {
+        let t = crate::geometry::Transform {
+            scale: 1.,
+            pad_left: 0.,
+            pad_top: 0.,
+            source_width: 5,
+            source_height: 5,
+            input_size: 5,
+            proto_size: 5,
+        };
+        let mut state = 7u32;
+        let mut random = || {
+            state = state.wrapping_mul(1664525).wrapping_add(1013904223);
+            (state >> 24) as u8
+        };
+        for _ in 0..32 {
+            let mut a = (0..25).map(|_| random()).collect::<Vec<_>>();
+            let mut b = (0..25).map(|_| random()).collect::<Vec<_>>();
+            a[24] = 128;
+            b[24] = 127;
+            let mut inter = 0;
+            let mut union = 0;
+            for (&x, &y) in a.iter().zip(&b) {
+                inter += u32::from(x >= 128 && y >= 128);
+                union += u32::from(x >= 128 || y >= 128);
+            }
+            let a = Mask {
+                width: 5,
+                height: 5,
+                pixels: Arc::from(a),
+                transform: t,
+            };
+            let b = Mask {
+                width: 5,
+                height: 5,
+                pixels: Arc::from(b),
+                transform: t,
+            };
+            assert_eq!(raw_mask_iou(&a, &b), inter as f32 / union.max(1) as f32);
+        }
+    }
+
     use super::*;
     use crate::geometry::Transform;
     fn mask(data: [u8; 4]) -> Mask {

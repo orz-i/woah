@@ -126,6 +126,7 @@ pub struct Track {
     pub reliable_motion: [f32; 2],
     pub reliable_motion_at_us: i64,
     pub offscreen_dormant: bool,
+    pub(crate) appearance: Option<crate::appearance::AppearanceMemory>,
 }
 impl Track {
     pub(crate) fn observed(id: i64, d: Detection) -> Self {
@@ -155,6 +156,7 @@ impl Track {
             reliable_motion: [0.0; 2],
             reliable_motion_at_us: i64::MIN,
             offscreen_dormant: false,
+            appearance: None,
         }
     }
     pub fn missed_frames(&self) -> u32 {

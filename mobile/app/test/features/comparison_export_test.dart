@@ -98,6 +98,7 @@ Future<void> showExport(
   WidgetTester tester,
   ExportGateway gateway, {
   bool selection = true,
+  bool cutout = false,
   TargetPlatform platform = TargetPlatform.android,
 }) async {
   await tester.pumpWidget(
@@ -111,8 +112,17 @@ Future<void> showExport(
               barrierDismissible: false,
               builder: (_) => ComparisonExportDialog(
                 gateway: gateway,
-                full: plan(exportProject()),
-                selection: selection
+                full: cutout
+                    ? ComparisonExportPlan(
+                        project: exportProject().copyWith(loopEnabled: true),
+                        durationUs: 12000000,
+                        previewWidth: 1080,
+                        previewHeight: 1801,
+                        sideBySide: true,
+                        cutout: true,
+                      )
+                    : plan(exportProject()),
+                selection: selection && !cutout
                     ? plan(exportProject(), selection: true)
                     : null,
               ),
@@ -128,6 +138,41 @@ Future<void> showExport(
 }
 
 void main() {
+  testWidgets(
+    'cutout dialog offers only analyzed interval and submits explicit cutout mode',
+    (tester) async {
+      final g = ExportGateway();
+      await showExport(tester, g, cutout: true);
+      expect(find.text('导出画布视频'), findsOneWidget);
+      expect(find.textContaining('已分析区间'), findsOneWidget);
+      expect(find.byType(RadioListTile<bool>), findsNothing);
+      await tester.tap(find.text('开始导出'));
+      await tester.pumpAndSettle();
+      expect(g.submitted!.cutout, isTrue);
+      expect(g.submitted!.startUs, 1234567);
+      expect(g.submitted!.endUs, 4567891);
+      await tester.tap(find.text('取消导出'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('完成'));
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets('lost cutout snapshot offers no retry as ordinary export', (
+    tester,
+  ) async {
+    final g = ExportGateway()
+      ..status = (job('failed')
+        ..cutout = true
+        ..retryAvailable = false
+        ..error = '抠像缓存已释放，请重新选择人物后导出');
+    await showExport(tester, g);
+    expect(find.text('重试上次中断或失败的导出'), findsNothing);
+    expect(g.retried, 0);
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('iOS export explains the system background time limit', (
     tester,
   ) async {

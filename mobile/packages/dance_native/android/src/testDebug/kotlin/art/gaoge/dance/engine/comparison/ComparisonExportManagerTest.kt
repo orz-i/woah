@@ -96,7 +96,7 @@ class ComparisonExportManagerTest {
                     if (args.method.name=="execute") {
                         token.set(args.arguments[3] as AtomicBoolean)
                         @Suppress("UNCHECKED_CAST")
-                        val progress=args.arguments[4] as (String,Double)->Unit
+                        val progress=args.arguments[5] as (String,Double)->Unit
                         File(root,"files/comparison-exports/${first.jobId}.partial.mp4").writeText("old partial")
                         progress("held worker",.1)
                         progress("late old progress",.9)
@@ -149,6 +149,18 @@ class ComparisonExportManagerTest {
         assertEquals("queued",manager.latest()!!.state)
         assertEquals(retry.jobId,manager.latest()!!.jobId)
         manager.interrupted(retry.jobId)
+        assertEquals("interrupted",manager.latest()!!.state)
+    }
+    @Test fun persistedCutoutCannotRestartAsOrdinaryWhenSnapshotIsGone() = withManager { manager,_ ->
+        val cutout=spec().copy(cutout=true)
+        assertFailsWith<IllegalStateException>{manager.start(cutout)}
+        val field=ComparisonExportManager::class.java.getDeclaredField("current")
+        field.isAccessible=true
+        field.set(manager,ComparisonExportRecord("old-cutout",cutout,state="interrupted"))
+        assertEquals(true,manager.latest()!!.cutout)
+        assertEquals(false,manager.latest()!!.retryAvailable)
+        assertFailsWith<IllegalArgumentException>{manager.retry("old-cutout")}
+        assertEquals("old-cutout",manager.latest()!!.jobId)
         assertEquals("interrupted",manager.latest()!!.state)
     }
 }

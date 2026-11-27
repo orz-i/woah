@@ -270,7 +270,7 @@ impl Tracker {
         self.tracks.retain(|t| t.state != TrackState::Removed);
         Ok(())
     }
-    fn add_observation(&mut self, d: Detection) -> Result<()> {
+    pub(super) fn add_observation(&mut self, d: Detection) -> Result<()> {
         let id = self.next_id;
         self.next_id = id.checked_add(1).ok_or(TrackingError::IdentityOverflow)?;
         self.tracks.push(Track::observed(id, d));
