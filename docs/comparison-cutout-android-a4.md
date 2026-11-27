@@ -267,3 +267,89 @@ default preview opening remain unchanged.
 Evidence: `/tmp/woah-a4-reverse` (cleanup inventory, reports, alpha
 files, build/run logs, parity.json, comparison.json and
 c5-comparison.json, scripts). No footage or signing keys committed.
+
+## A4.4: selective Release GPU integration and lifecycle validation
+
+Commit `23375cdc` selectively ports the reverse-block implementation
+from `5f234707`, including only the required original YUV-plane copy
+primitive and source-only decoder capture. Neither forward experiment
+is migrated. Reverse blocks are enabled by the existing explicit isolated
+Release GPU opt-in, never by the ordinary production CPU4 policy.
+Forward prefetch, model, tracking, ROI schedule, missing-mask semantics,
+archive provenance and iOS behavior stay unchanged. The shared Android
+YUV conversion calls the same Rust converter with the same metadata;
+no separate privacy algorithm changes were made.
+
+Each reverse block contains at most four source slots, each capped at
+6 MiB. A slot allocates once; unexpectedly growing plane storage falls
+back rather than allocating a larger buffer. Invalidate consumed slots,
+drop buffer references at span exit or cancellation, and retain the
+existing exact-source fallback. These are bounds on live owned source
+buffers, not an OS peak-memory or GC reclamation guarantee.
+
+### Physical Android native tests
+
+- Four rotations and exact crop parity passed after the selective port.
+- A real decoder input encoded at 3840x2160, 25fps, 1.2 seconds
+  (upscaled existing C8.3 fixture, not independent quality footage)
+  exceeded the 6 MiB slot cap without allocating a source slot; the
+  fallback crop was byte-exact. This was a decoder-level test, not
+  full 4K dual-video end-to-end analysis.
+- Deterministically cancelled the actual C5 reverse analysis immediately
+  after its first source capture. Cancellation propagated, work closed,
+  and anonymous cutout scratch file descriptors remained 0 before and
+  after the test.
+- Reinitialized the GPU in a new runner and retried the C5 lane with a
+  test-only one-byte slot budget. All 59 requested reverse crops fell
+  back, 63 total detail attempts/35 accepted, zero detail failures,
+  267/300 visible. The 300-record alpha file matches the original
+  C5 baseline byte-for-byte. This tests source-buffer fallback, not
+  GPU compilation failure or backend switching.
+- Three device instrumentation cases and all 45 Flutter comparison
+  tests passed. No new privacy-path end-to-end run was performed.
+
+### Actual Android Release product smoke
+
+Locally signed, isolated `art.gaoge.dance.cutoutreleaseqa` AOT APK,
+64.3 MB, no debuggable flag; normal product UI, no instrumentation entry.
+APK SHA256 `5d7d5f3f2ec839c113724975cfceb22bc0aba9a30bae53c9028625ee92503b17`.
+Temporary package-ID override removed after build. Original application
+remains installed. This is not a distributable signed release.
+
+C8.3 12s pair, 6s playhead, real gestures as A4.1. Effective GPU
+confirmed; model compilation 2201ms. First playable observed by 8s,
+analysis still running at 40s, completed by 50s after the second
+drop (UI sampling upper bounds). Reference 300/300, target 251/300,
+matching prior GPU Release visibility. Target log: 13 reverse blocks,
+19 hits, 48 source frames, zero fallbacks, 4455672 allocated slot bytes,
+11 reverse-block seeks plus one ordinary auxiliary seek. 68 detail
+attempts/23 accepted, no failures. ROI decode 5712ms. Missing-frame
+export remained disabled. Analysis PSS sampled at 324904 KiB, not peak.
+Previous observed GPU Release completion by 53s and CPU Release by
+103s are separate manual observations, not precise paired measurements.
+
+Re-entered long-clip analysis, then cancelled and returned to the
+normal comparison UI. Switched to the existing suitable 1.2s pair
+and freshly selected both subjects; saved complete canvas observed by
+6s after second drop, both 30/30. Export saved via MediaStore and pulled
+from device; H.264/AAC, 1080x1550, 25fps, 30 video frames, actual
+1.200s container duration, full FFmpeg decode passed. Export SHA256
+`fa57b7e31adf0c754a71f7b01115f143a0440f8dd1f384df56468dfb3bca7aa7`.
+Force-stopped the app, reopened the project, and confirmed restored
+canvas 30/30 and 30/30. Release logs prove reverse-block activation on
+the long clip; short export smoke at zero anchor is a product lifecycle
+check, not proof of export from a complete reverse-block-heavy scene.
+
+Evidence: `/tmp/woah-a4-integration` (APK hashes, native lifecycle
+and crop reports, byte-exact fallback alpha, screenshots, actual MP4,
+runtime logs and Flutter test logs). No raw footage, buffers or signing
+secrets committed.
+
+Decision: isolated GPU Release reverse-ROI integration and tested
+lifecycle pass. Do not promote GPU globally: unsupported GPU/init
+failure currently remains fail-closed in this isolated trial, no
+atomic CPU4 restart implemented/verified, only one physical device,
+and no fresh full native timing repeat after the port. A4.3 native
+65.779/74.634s remains above the proposed 60s target. Next focus on
+safe backend selection/fallback across an entire identity session
+and bounded final acceptance, not additional forward-copy experiments.
