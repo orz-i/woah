@@ -1,0 +1,322 @@
+{
+  "scope": "Approximate visually reviewed source head envelopes during selected-body quarantine; not semantic face truth or exhaustive neighbor annotations. Coordinates from 960x540 source frame crop.",
+  "fps": 15,
+  "cases": {
+    "group_gap": {
+      "source": "group-hd-8956295.mp4",
+      "source_sha256": "d95c0ba298ab0701c01e349185afa049d51ae1037b6907c960d6e1b8fcd01cd5",
+      "target_id": 4,
+      "manifest_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "labels": [
+        {
+          "index": 50,
+          "asset_sha256": "0269f6d8e1864248359e0dfe3b6dbd679faac27faf06b6e53ca2df9b36410ef6",
+          "head_rect": [
+            431,
+            115,
+            473,
+            166
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              288,
+              128,
+              330,
+              179
+            ],
+            [
+              554,
+              112,
+              597,
+              165
+            ]
+          ]
+        },
+        {
+          "index": 51,
+          "asset_sha256": "2cbe9839209240a359cf491677c0dc629430ad4443d129e58cdf1c51423f1a2f",
+          "head_rect": [
+            431,
+            115,
+            473,
+            166
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              288,
+              128,
+              330,
+              179
+            ],
+            [
+              554,
+              112,
+              597,
+              169
+            ]
+          ]
+        },
+        {
+          "index": 52,
+          "asset_sha256": "487b4ac9557aaf78cf4815e06a527f1a48e37bafd744024214d5bf16c12cb9ee",
+          "head_rect": [
+            432,
+            117,
+            474,
+            167
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              288,
+              128,
+              330,
+              179
+            ],
+            [
+              552,
+              114,
+              597,
+              173
+            ]
+          ]
+        },
+        {
+          "index": 53,
+          "asset_sha256": "46dbdd976b2c77b08db46b6eb6b75e47f8fc6950cdb007ad3e754c56fceb1035",
+          "head_rect": [
+            432,
+            119,
+            474,
+            168
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              288,
+              128,
+              330,
+              179
+            ],
+            [
+              552,
+              116,
+              598,
+              177
+            ]
+          ]
+        },
+        {
+          "index": 54,
+          "asset_sha256": "0891b752dbb468e0596a51b48ea7efca834688e2120c1884bf9869e7e204d826",
+          "head_rect": [
+            432,
+            119,
+            474,
+            170
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              288,
+              128,
+              330,
+              179
+            ],
+            [
+              552,
+              118,
+              600,
+              181
+            ]
+          ]
+        },
+        {
+          "index": 55,
+          "asset_sha256": "a410a2a0aee662a4994981845099fd980972036a0bbc507976a8fdf57640ee5f",
+          "head_rect": [
+            432,
+            120,
+            474,
+            170
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              288,
+              128,
+              330,
+              179
+            ],
+            [
+              555,
+              122,
+              603,
+              181
+            ]
+          ]
+        },
+        {
+          "index": 56,
+          "asset_sha256": "9e4e1dbd690cb8708c68bad2f1ce18a29ebde27d449f44032de465e936df52f9",
+          "head_rect": [
+            433,
+            119,
+            475,
+            171
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              289,
+              126,
+              331,
+              179
+            ],
+            [
+              556,
+              123,
+              605,
+              183
+            ]
+          ]
+        },
+        {
+          "index": 57,
+          "asset_sha256": "dd3054892d32a0d5153ca87e2687ab4432dd8d09e221ed1adcdcd2db304400c1",
+          "head_rect": [
+            433,
+            119,
+            475,
+            171
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              288,
+              126,
+              330,
+              180
+            ],
+            [
+              556,
+              125,
+              606,
+              183
+            ]
+          ]
+        },
+        {
+          "index": 58,
+          "asset_sha256": "6c758fd823bc602d25ecb6735f9768ed99d6f19a132c07b8a05b390661127717",
+          "head_rect": [
+            433,
+            116,
+            476,
+            168
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              285,
+              128,
+              328,
+              181
+            ],
+            [
+              557,
+              125,
+              607,
+              183
+            ]
+          ]
+        },
+        {
+          "index": 59,
+          "asset_sha256": "00fb15c4082d74e1ebbddaa8160b18a9137b2b6852e277a9ca528224578f1bf8",
+          "head_rect": [
+            434,
+            112,
+            477,
+            165
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              284,
+              130,
+              327,
+              181
+            ],
+            [
+              557,
+              126,
+              607,
+              183
+            ]
+          ]
+        },
+        {
+          "index": 60,
+          "asset_sha256": "a05f238d01ad13928a23ec0e1d52c8339a7ad2e6baee53cfb169480058cea345",
+          "head_rect": [
+            434,
+            109,
+            477,
+            163
+          ],
+          "torso_probe": [
+            453,
+            205
+          ],
+          "neighbor_rects": [
+            [
+              284,
+              130,
+              327,
+              181
+            ],
+            [
+              557,
+              126,
+              607,
+              183
+            ]
+          ]
+        }
+      ]
+    }
+  }
+}

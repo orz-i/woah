@@ -35,9 +35,29 @@ GrayView = struct("GrayView", [("width", U), ("height", U), ("stride", U), ("sou
 PixelMotion = struct("PixelMotion", [(key,F) for key in ("dx","dy","correlation","uniqueness")])
 PixelBridge = struct("PixelBridge", [("motion",PixelMotion),("measurement",Ellipse),("required",Ellipse)])
 HeadSticker = struct("HeadSticker", [("bounds",Rect),("square",Ellipse),("topology",U),("rows",U)])
+RecoveryAnchor = struct("RecoveryAnchor", [("root_body",Rect),("root_face",Ellipse),("predicted_body",Rect),("age_us",I64)])
+RecoveryPrevious = struct("RecoveryPrevious", [("body",Rect),("face",Ellipse),("root_age_us",I64)])
 
 
 def pixel_bind(lib):
+    if hasattr(lib,"frame_kernel_face_recovery_probe"):
+        fn=lib.frame_kernel_face_recovery_probe
+        fn.argtypes=[RecoveryAnchor,P,S,P,S,P]
+        fn.restype=C.c_int32
+        lib.recovery_probe=fn
+        fn=lib.frame_kernel_face_recovery_finish
+        fn.argtypes=[RecoveryAnchor,P,S,P,S,U,P,S,MaskSpec,Ellipse,P]
+        fn.restype=C.c_int32
+        lib.recovery_finish=fn
+        if hasattr(lib,"frame_kernel_face_recovery_continuation_probe"):
+            fn=lib.frame_kernel_face_recovery_continuation_probe
+            fn.argtypes=[RecoveryAnchor,RecoveryPrevious,P,S,P,S,P]
+            fn.restype=C.c_int32
+            lib.recovery_continuation_probe=fn
+            fn=lib.frame_kernel_face_recovery_continuation_finish
+            fn.argtypes=[RecoveryAnchor,RecoveryPrevious,P,S,GrayView,P,S,GrayView,P,S,P,S,U,P,S,MaskSpec,Ellipse,P]
+            fn.restype=C.c_int32
+            lib.recovery_continuation_finish=fn
     if hasattr(lib,"frame_kernel_head_sticker"):
         fn=lib.frame_kernel_head_sticker
         fn.argtypes=[P,S,MaskSpec,Ellipse,Ellipse,U,P]
@@ -163,6 +183,69 @@ class Tracking:
         check(self.lib.tracking_destroy(self.handle))
 
 
+def recover_current(lib,face,image,transform,detections,masks,snapshot,track,trusted,time,target,row,previous_recovery):
+    # The prior direct clock and canonical tracker remain immutable. In
+    # particular no recovery result is ever cached as a directly owned face.
+    if not hasattr(lib,"recovery_probe") or trusted is None or track["observed"]:
+        return None
+    anchor=RecoveryAnchor(trusted[0],trusted[1],track["bounds"],time-trusted[2])
+    bodies=(Rect*len(detections))(*(d.box for d in detections))
+    foreign=[]
+    for other in snapshot["tracks"]:
+        if other["id"]==target or other["dormant"]:
+            continue
+        foreign.append(other["bounds"])
+        if not other["observed"] and vals(other["canonical"])!=vals(other["bounds"]):
+            foreign.append(other["canonical"])
+    competitors=(Rect*len(foreign))(*foreign)
+    index=U()
+    foreign_ptr=competitors if len(competitors) else None
+    continuation=(anchor.age_us>800_000 and previous_recovery is not None
+                  and hasattr(lib,"recovery_continuation_probe"))
+    if continuation:
+        previous,previous_gray,previous_view=previous_recovery
+        status=lib.recovery_continuation_probe(anchor,previous,bodies if len(bodies) else None,len(bodies),
+                                               foreign_ptr,len(competitors),C.byref(index))
+    else:
+        status=lib.recovery_probe(anchor,bodies if len(bodies) else None,len(bodies),
+                                  foreign_ptr,len(competitors),C.byref(index))
+    row["recovery_attempt"]={"age_us":anchor.age_us,"probe_status":status,"continuation":continuation}
+    if status<0:
+        # A historical face centered outside its body is not a valid root;
+        # report the rejected recovery, do not change old rendering.
+        return None
+    if status!=0:
+        return None
+    j=index.value
+    spec=MaskSpec(160,160,transform,detections[j].box)
+    mask=masks[j]
+    measured=detect_face(lib,face,image,spec,mask)
+    row["recovery_attempt"].update(candidate_index=j,current_detector=measured is not None)
+    if measured is None:
+        return None
+    placement=HeadSticker()
+    if continuation:
+        gray,view=gray_view(image)
+        status=lib.recovery_continuation_finish(anchor,previous,ptr(previous_gray),previous_gray.size,previous_view,
+                                                ptr(gray),gray.size,view,bodies,len(bodies),foreign_ptr,len(competitors),
+                                                j,ptr(mask),mask.size,spec,measured,C.byref(placement))
+    else:
+        status=lib.recovery_finish(anchor,bodies,len(bodies),foreign_ptr,len(competitors),
+                                   j,ptr(mask),mask.size,spec,measured,C.byref(placement))
+    row["recovery_attempt"]["finish_status"]=status
+    if status!=0:
+        return None
+    required=Ellipse()
+    check(lib.current_face_region(ptr(mask),mask.size,spec,measured,C.byref(required)))
+    # Only an immediately preceding root-only success can serve as a
+    # continuation seed. A terminal continuation is never reusable.
+    next_previous=None
+    if not continuation:
+        gray,view=gray_view(image)
+        next_previous=(RecoveryPrevious(spec.person,measured,anchor.age_us),gray,view)
+    return measured,required,placement,next_previous
+
+
 def summarize(rows):
     usable = [r for r in rows if r["render"] is not None]
     sample = [r for r in usable if r["index"] % 3 == 0 or r["index"] == rows[-1]["index"]]
@@ -173,6 +256,8 @@ def summarize(rows):
                 body_observed=sum(r["track"] is not None and r["track"]["observed"] for r in rows),
                 direct_face=sum(r["kind"]==0 for r in rows), projected_face=sum(r["kind"]==1 for r in rows),
                 estimated_face=sum(r["kind"]==2 for r in rows),
+                coverage_only_recovered=sum(r["kind"]==3 for r in rows),
+                terminal_current_continuations=sum(r["kind"]==3 and r.get("recovery_attempt",{}).get("continuation",False) for r in rows),
                 rendered=len(usable), missing=[r["index"] for r in rows if r["render"] is None],
                 pixel_bridged=sum(r.get("pixel_motion") is not None for r in rows),
                 topology_frames=sum(r.get("topology") in (1,2) for r in rows),
@@ -195,11 +280,14 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
     sticker_seed = None
+    recovery_previous = None
     first_head = None
     report = []
     try:
         for frame, image, transform, detections, masks in evidence:
             time, index = frame["time_us"], frame["index"]
+            prior_recovery = recovery_previous
+            recovery_previous = None  # no history across any other lane, rejected frame, or gap
             snapshot = tracking.step(transform,detections,masks,time,index==0)
             track = next((t for t in snapshot["tracks"] if t["id"]==target),None)
             row = dict(index=index,time_us=time,detected_persons=len(detections),
@@ -261,6 +349,26 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 check(lib.current_head_region(ptr(mask),mask.size,spec,None,C.byref(fallback)))
                 raw,kind=fallback.region,2
             else:
+                recovery=recover_current(lib,face,image,transform,detections,masks,snapshot,track,trusted,time,target,row,prior_recovery) if index not in drops else None
+                if recovery is None:
+                    continue
+                raw,required,placement,recovery_previous=recovery
+                sticker=placement.square
+                half=max(8,1.02*max(sticker.rx,sticker.ry))
+                row.update(kind=3,raw=vals(raw),required=vals(required),render=vals(required),
+                           sticker=vals(sticker),topology=placement.topology,topology_rows=placement.rows,
+                           sticker_required_bounds=vals(placement.bounds),
+                           width=min(transform.width,sticker.x+half)-max(0,sticker.x-half),
+                           height=min(transform.height,sticker.y+half)-max(0,sticker.y-half),
+                           head_covered=None)
+                if "head_x" in frame:
+                    dx,dy=frame["head_x"]-sticker.x,frame["head_y"]-sticker.y
+                    row["head_covered"]=max(abs(dx),abs(dy))<=half
+                    row["head_mask_covered"]=((frame["head_x"]-required.x)/required.rx)**2+((frame["head_y"]-required.y)/required.ry)**2<=1
+                    if first_head is None:
+                        first_head=(sticker.x,sticker.y,frame["head_x"],frame["head_y"])
+                    x0,y0,hx0,hy0=first_head
+                    row["relative_motion_error"]=[sticker.x-x0-(frame["head_x"]-hx0),sticker.y-y0-(frame["head_y"]-hy0)]
                 continue
             out=Ellipse()
             flags=int(track["observed"]) | (16 if kind==0 else 0)

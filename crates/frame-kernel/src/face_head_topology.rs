@@ -264,20 +264,21 @@ pub fn sticker(
     // raw fallback as well, because it can contain a current edge envelope.
     let preserve_raw = kind == 0 || spec.person.top <= cell_y;
     let mut local = stabilized;
-    if kind == 2 && !preserve_raw {
-        if let Some(c) = topology {
-            // A full current head cap supplies a localization anchor for a
-            // bbox-based estimate, but not a new identity or a smaller
-            // measured size. Only correct a weak center that lies below the
-            // cap and whose existing radius reaches its lower central band.
-            // A disconnected or far-away cap cannot pull the region away.
-            let cy = c.bounds.top + (c.bounds.bottom - c.bounds.top) * 0.75;
-            let cx = stabilized.center_x.clamp(c.bounds.left, c.bounds.right);
-            let dx = (cx - stabilized.center_x) / stabilized.radius_x;
-            let dy = (cy - stabilized.center_y) / stabilized.radius_y;
-            if stabilized.center_y > c.bounds.bottom && dx * dx + dy * dy <= 1.0 {
-                local.center_y = cy;
-            }
+    if kind == 2
+        && !preserve_raw
+        && let Some(c) = topology
+    {
+        // A full current head cap supplies a localization anchor for a
+        // bbox-based estimate, but not a new identity or a smaller
+        // measured size. Only correct a weak center that lies below the
+        // cap and whose existing radius reaches its lower central band.
+        // A disconnected or far-away cap cannot pull the region away.
+        let cy = c.bounds.top + (c.bounds.bottom - c.bounds.top) * 0.75;
+        let cx = stabilized.center_x.clamp(c.bounds.left, c.bounds.right);
+        let dx = (cx - stabilized.center_x) / stabilized.radius_x;
+        let dy = (cy - stabilized.center_y) / stabilized.radius_y;
+        if stabilized.center_y > c.bounds.bottom && dx * dx + dy * dy <= 1.0 {
+            local.center_y = cy;
         }
     }
     let mut b = Rect {
