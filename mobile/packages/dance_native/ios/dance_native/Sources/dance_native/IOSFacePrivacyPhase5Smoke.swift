@@ -35,6 +35,15 @@ enum IOSFacePrivacyPhase5Smoke {
           grownSize == large, seekSize == small else {
       throw smokeFailure("Shared final sticker-size transport lost current coverage or lifecycle")
     }
+    let axisState = IOSFrameKernel.FaceRenderSizeState()
+    let circle = SIMD4<Float>(100, 80, 50, 50)
+    let narrow = SIMD4<Float>(123, 90, 35, 50)
+    let axisInitial = try axisState.step(required: circle, timestampUs: 0, kind: 0, preserveAxes: true)
+    let axisWeak = try axisState.step(required: narrow, timestampUs: 33_333, kind: 1, preserveAxes: true)
+    let axisExpired = try axisState.step(required: narrow, timestampUs: 250_001, kind: 2, preserveAxes: true)
+    guard axisInitial == circle, axisWeak == SIMD4<Float>(123, 90, 50, 50), axisExpired == narrow else {
+      throw smokeFailure("Shared ellipse-axis continuity transport failed")
+    }
     let width = 64
     let height = 64
     let source = try makeSolidImage(width: width, height: height, rgba: (0, 0, 255, 255))

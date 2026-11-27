@@ -99,6 +99,67 @@ impl FaceRenderSizeState {
     }
 }
 
+/// Final ellipse continuity. The original major-axis guard remains the
+/// minimum output; each axis additionally retains its own actual rendered
+/// radius and direct observation clock. This prevents an aspect-ratio
+/// transition from instantly contracting the short axis while the major
+/// radius is held. All history is render-only.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct FaceRenderAxesState {
+    pub major: FaceRenderSizeState,
+    pub horizontal: FaceRenderSizeState,
+    pub vertical: FaceRenderSizeState,
+}
+
+impl FaceRenderAxesState {
+    pub fn step(&mut self, required: Ellipse, timestamp_us: i64, kind: u32) -> Option<Ellipse> {
+        // Work on a copy: a failure in any of the axes is atomic.
+        let mut next = *self;
+        let baseline = next.major.step(required, timestamp_us, kind)?;
+        let x = next
+            .horizontal
+            .step(
+                Ellipse {
+                    radius_y: required.radius_x,
+                    ..required
+                },
+                timestamp_us,
+                kind,
+            )?
+            .radius_x;
+        let y = next
+            .vertical
+            .step(
+                Ellipse {
+                    radius_x: required.radius_y,
+                    ..required
+                },
+                timestamp_us,
+                kind,
+            )?
+            .radius_y;
+        let output = Ellipse {
+            radius_x: baseline.radius_x.max(x),
+            radius_y: baseline.radius_y.max(y),
+            ..required
+        };
+        if !valid_seed(output) {
+            return None;
+        }
+        // Smooth from the radii actually rendered, not smaller hidden
+        // axis proposals. Weak frames cannot renew either direct clock.
+        next.horizontal.major_radius = output.radius_x;
+        next.vertical.major_radius = output.radius_y;
+        if kind == 0 {
+            next.horizontal.observed_major = output.radius_x;
+            next.vertical.observed_major = output.radius_y;
+        }
+        *self = next;
+        Some(output)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,6 +170,85 @@ mod tests {
             radius_x: radius * 0.8,
             radius_y: radius,
         }
+    }
+
+    #[test]
+    fn axis_continuity_keeps_short_axis_during_weak_shape_transition() {
+        let mut state = FaceRenderAxesState::default();
+        let circle = Ellipse {
+            center_x: 100.0,
+            center_y: 100.0,
+            radius_x: 60.0,
+            radius_y: 60.0,
+        };
+        assert_eq!(state.step(circle, 0, 0), Some(circle));
+        let narrow = Ellipse {
+            center_x: 112.0,
+            radius_x: 42.0,
+            ..circle
+        };
+        let weak = state.step(narrow, 33_333, 1).unwrap();
+        assert_eq!(
+            weak,
+            Ellipse {
+                radius_x: 60.0,
+                ..narrow
+            }
+        );
+        assert_eq!(state.horizontal.observed_us, 0);
+        let direct = state.step(narrow, 66_666, 0).unwrap();
+        assert!(direct.radius_x > narrow.radius_x && direct.radius_x < 60.0);
+        assert_eq!(direct.center_x, narrow.center_x);
+        let grown = Ellipse {
+            radius_x: 80.0,
+            ..narrow
+        };
+        assert!(state.step(grown, 99_999, 0).unwrap().radius_x >= 80.0);
+        assert_eq!(state.step(narrow, 300_000, 1), Some(narrow));
+        assert_eq!(state.step(circle, 0, 0), Some(circle));
+    }
+
+    #[test]
+    fn per_axis_guard_contains_original_major_guard_on_every_frame() {
+        let mut baseline = FaceRenderSizeState::default();
+        let mut axes = FaceRenderAxesState::default();
+        for (i, (rx, ry, kind)) in [
+            (45.0, 60.0, 0),
+            (60.0, 60.0, 0),
+            (39.0, 62.0, 1),
+            (58.0, 49.0, 2),
+            (40.0, 54.0, 0),
+            (30.0, 30.0, 1),
+            (62.0, 65.0, 0),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let required = Ellipse {
+                center_x: i as f32 * 5.0,
+                center_y: 100.0,
+                radius_x: rx,
+                radius_y: ry,
+            };
+            let t = i as i64 * 33_333;
+            let old = baseline.step(required, t, kind).unwrap();
+            let new = axes.step(required, t, kind).unwrap();
+            assert!(new.radius_x >= old.radius_x && new.radius_y >= old.radius_y);
+            assert_eq!(new.center_x, required.center_x);
+        }
+        let prior = axes;
+        assert!(
+            axes.step(
+                Ellipse {
+                    radius_x: f32::NAN,
+                    ..region(0.0, 30.0)
+                },
+                300_000,
+                0
+            )
+            .is_none()
+        );
+        assert_eq!(axes, prior);
     }
 
     #[test]

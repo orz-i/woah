@@ -9,6 +9,62 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// Readable current mask, disjoint writable decision. No write on invalid.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_head_prefer_local(
+    pixels: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    primary: Ellipse,
+    local: Ellipse,
+    output: *mut u32,
+) -> i32 {
+    if len > 1024 * 1024 || output.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies a live readable range.
+    let Some(pixels) = (unsafe { crate::ffi_tracking::borrowed(pixels, len) }) else {
+        return REGION_INVALID;
+    };
+    let Some(result) = crate::face_head_topology::prefer_local_face(pixels, spec, primary, local)
+    else {
+        return REGION_INVALID;
+    };
+    // SAFETY: disjoint writable output by contract.
+    unsafe { output.write(u32::from(result)) };
+    REGION_OK
+}
+
+/// # Safety
+/// Readable current mask, output disjoint and writable. Invalid leaves it unchanged.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_head_ellipse(
+    pixels: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    measured: Ellipse,
+    stabilized: Ellipse,
+    kind: u32,
+    output: *mut Ellipse,
+) -> i32 {
+    if len > 1024 * 1024 || output.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies a live readable input range.
+    let Some(pixels) = (unsafe { crate::ffi_tracking::borrowed(pixels, len) }) else {
+        return REGION_INVALID;
+    };
+    let Some(result) =
+        crate::face_head_topology::ellipse_region(pixels, spec, measured, stabilized, kind)
+    else {
+        return REGION_INVALID;
+    };
+    // SAFETY: caller supplies a disjoint aligned writable output.
+    unsafe { output.write(result) };
+    REGION_OK
+}
+
+/// # Safety
 /// Pixels are readable for len bytes, output is disjoint, writable and aligned.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_head_sticker(
@@ -94,6 +150,32 @@ pub unsafe extern "C" fn frame_kernel_face_pixel_bridge(
         Err(MotionError::NoEvidence) => REGION_NONE,
         Err(MotionError::Invalid) => REGION_INVALID,
     }
+}
+
+/// # Safety
+/// Caller owns disjoint writable aligned state and output. No write on failure.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_render_axes_step(
+    state: *mut crate::face_render_size::FaceRenderAxesState,
+    required: Ellipse,
+    timestamp_us: i64,
+    kind: u32,
+    output: *mut Ellipse,
+) -> i32 {
+    if state.is_null() || output.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller owns a live writable aligned state.
+    let mut next = unsafe { state.read() };
+    let Some(result) = next.step(required, timestamp_us, kind) else {
+        return REGION_INVALID;
+    };
+    // SAFETY: caller owns disjoint writable aligned outputs.
+    unsafe {
+        state.write(next);
+        output.write(result);
+    }
+    REGION_OK
 }
 
 /// # Safety

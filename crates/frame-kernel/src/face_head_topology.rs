@@ -56,7 +56,13 @@ struct Cap {
     partial: bool,
 }
 
-fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option<Cap> {
+fn cap_trace(
+    pixels: &[u8],
+    spec: HeadMaskSpec,
+    seed: Ellipse,
+    direct: bool,
+    crown_join: bool,
+) -> Option<(Cap, Vec<(usize, Run)>)> {
     let tr = spec.transform;
     let cell_x = tr.input_size as f32 / (spec.width as f32 * tr.scale);
     let cell_y = tr.input_size as f32 / (spec.height as f32 * tr.scale);
@@ -99,7 +105,9 @@ fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option
     let mut path: Vec<(usize, Run)> = Vec::new();
     let mut initial: Vec<usize> = Vec::new();
     let mut widened = 0;
+    let mut first_branch: Option<Run> = None;
     let mut stopped = false;
+    let refine = direct && crown_join;
     for y in top..bottom {
         let row = runs(pixels, w, y, left, right);
         if path.is_empty() {
@@ -107,9 +115,29 @@ fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option
                 break;
             }
             let mut near = row.iter().copied().filter(near_start);
-            let Some(run) = near.next() else { continue };
-            if near.next().is_some() {
-                return None;
+            let Some(mut run) = near.next() else { continue };
+            if let Some(other) = near.next() {
+                // A one-cell seam in the crown can merge in the following
+                // row. Require direct detector evidence, a compact combined
+                // width, and a real connecting next row; never join separate
+                // upper origins that remain distinct.
+                let joined = Run {
+                    left: run.left.min(other.left),
+                    right: run.right.max(other.right),
+                };
+                if !refine
+                    || near.next().is_some()
+                    || other.left.saturating_sub(run.right) > 1
+                    || joined.width() as f32 > (rx * 2.6).max(4.0)
+                    || y + 1 >= bottom
+                    || !runs(pixels, w, y + 1, left, right).iter().any(|next| {
+                        next.overlap(run) * 2 >= run.width()
+                            && next.overlap(other) * 2 >= other.width()
+                    })
+                {
+                    return None;
+                }
+                run = joined;
             }
             // Do not start midway along a pre-existing vertical limb or torso.
             if y > 0
@@ -135,7 +163,11 @@ fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option
         // A cap is allowed to taper and widen gradually. Estimate its early
         // scale from the upper lobe rather than the entire body bbox.
         if initial.len() < 4 {
-            if run.width() > prev.width() * 2 + 1 {
+            if run.width() > prev.width() * 2 + 1
+                && !(refine
+                    && run.width() as f32 <= (rx * 2.6).max(4.0)
+                    && (run.center() - cx).abs() <= (rx * 1.1).max(1.5))
+            {
                 return None;
             }
             initial.push(run.width());
@@ -147,7 +179,7 @@ fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option
         let center_jump = (run.center() - prev.center()).abs();
         let expanding = initial.len() >= 4
             && span >= 3
-            && (run.width() as f32 > reference * 1.55 + 0.5
+            && (run.width() as f32 > reference * (if refine { 1.40 } else { 1.55 }) + 0.5
                 || center_jump > reference * 0.60 + 0.5);
         // At low mask resolution the first connected branch may recede by
         // a cell on the next row. Confirm sustained widening relative to
@@ -157,6 +189,9 @@ fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option
             && run.overlap(prev) * 2 >= prev.width();
         if expanding || confirms {
             widened += 1;
+            if widened == 1 {
+                first_branch = Some(run);
+            }
             // The first broadened row is withheld; a second consecutive
             // widened row confirms a neck/shoulder or arm junction.
             if widened >= 2 {
@@ -166,7 +201,24 @@ fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option
             continue;
         }
         if widened > 0 {
-            // A one-row widened branch is ambiguous, not a reliable neck.
+            // A transient lateral branch is distinguishable only after a
+            // stable upper lobe, on/under the detector center. The branch
+            // must protrude >=2 cells beyond the preceding run and retract
+            // on the same side, while the current row still overlaps the
+            // prior lobe. The direct face ellipse remains required.
+            if refine
+                && path.len() >= 4
+                && y as f32 >= cy
+                && let Some(branch) = first_branch
+                && run.overlap(prev) * 2 >= prev.width()
+                && ((prev.left.saturating_sub(branch.left) >= 2
+                    && run.left.saturating_sub(branch.left) >= 2)
+                    || (branch.right.saturating_sub(prev.right) >= 2
+                        && branch.right.saturating_sub(run.right) >= 2))
+            {
+                stopped = true;
+                break;
+            }
             return None;
         }
         if (run.center() - cx).abs() > rx * 1.55 + 1.0 {
@@ -203,11 +255,18 @@ fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option
         right: from_x(r),
         bottom: from_y(last + 1),
     };
-    bounds.valid().then_some(Cap {
-        bounds,
-        rows: path.len() as u32,
-        partial,
-    })
+    bounds.valid().then_some((
+        Cap {
+            bounds,
+            rows: path.len() as u32,
+            partial,
+        },
+        path,
+    ))
+}
+
+fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option<Cap> {
+    cap_trace(pixels, spec, seed, direct, false).map(|(cap, _)| cap)
 }
 
 /// This square is a placement requirement, not an ellipse-shaped privacy mask.
@@ -350,6 +409,206 @@ pub fn sticker(
         topology: topology.map_or(0, |c| if c.partial { 2 } else { 1 }),
         rows: topology.map_or(0, |c| c.rows),
     })
+}
+
+/// Enclose an actual connected head silhouette, not the four corners of its
+/// bounding rectangle. Preserve the complete measured/stabilized face
+/// ellipses for direct evidence. In the weak lane the current full cap may
+/// correct the projected center only if it overlaps the previous estimate.
+/// This is render-only, and cannot renew a face or identity observation.
+pub fn ellipse_region(
+    pixels: &[u8],
+    spec: HeadMaskSpec,
+    measured: Ellipse,
+    stabilized: Ellipse,
+    kind: u32,
+) -> Option<Ellipse> {
+    if !spec.valid(pixels) || !valid_seed(measured) || !valid_seed(stabilized) || kind > 2 {
+        return None;
+    }
+    let tr = spec.transform;
+    let cell_x = tr.input_size as f32 / (spec.width as f32 * tr.scale);
+    let cell_y = tr.input_size as f32 / (spec.height as f32 * tr.scale);
+    if !cell_x.is_finite() || !cell_y.is_finite() || cell_x <= 0.0 || cell_y <= 0.0 {
+        return None;
+    }
+    let qualified = cap_trace(pixels, spec, measured, kind == 0, false).or_else(|| {
+        (kind == 0)
+            .then(|| cap_trace(pixels, spec, measured, true, true))
+            .flatten()
+    });
+    let mut base = stabilized;
+    let clipped = spec.person.top <= cell_y;
+    // Direct measurement must never disappear even if a caller supplied
+    // a smaller stabilizer output. Both direct centers normally coincide.
+    if kind == 0 || clipped {
+        if measured.center_x == base.center_x && measured.center_y == base.center_y {
+            base.radius_x = base.radius_x.max(measured.radius_x);
+            base.radius_y = base.radius_y.max(measured.radius_y);
+        } else {
+            let shift =
+                (measured.center_x - base.center_x).hypot(measured.center_y - base.center_y);
+            let extent = shift + measured.radius_x.max(measured.radius_y);
+            base.radius_x = base.radius_x.max(extent);
+            base.radius_y = base.radius_y.max(extent);
+        }
+    }
+    let Some((cap, path)) = qualified else {
+        // If the upper lobe is ambiguous, do not discard old support. Use
+        // the actual detector for the mask search, not temporally enlarged
+        // radii that would mistake progressively wider arms for the head.
+        return if kind == 0 {
+            let support = legacy_face_support(pixels, spec, measured);
+            let region = support.map_or(base, |bounds| {
+                crate::face_geometry::cover_rect(base, bounds)
+            });
+            crate::face_geometry::sampled_face_region(region, tr, spec.width, spec.height)
+        } else {
+            Some(base)
+        };
+    };
+    if kind != 0 && !clipped {
+        // A current head-like cap within the weak region may correct a
+        // downward translation caused by changing body bounds. Keep the
+        // existing radii; never move a confirmed detector.
+        let cy = cap.bounds.top + (cap.bounds.bottom - cap.bounds.top) * 0.75;
+        let cx = base.center_x.clamp(cap.bounds.left, cap.bounds.right);
+        let dx = (cx - base.center_x) / base.radius_x;
+        let dy = (cy - base.center_y) / base.radius_y;
+        if base.center_y > cap.bounds.bottom && dx * dx + dy * dy <= 1.0 {
+            base.center_y = cy;
+        }
+    }
+    let sx = |v: usize| {
+        (v as f64 * f64::from(cell_x) - f64::from(tr.pad_left / tr.scale))
+            .clamp(0.0, f64::from(tr.source_width))
+    };
+    let sy = |v: usize| {
+        (v as f64 * f64::from(cell_y) - f64::from(tr.pad_top / tr.scale))
+            .clamp(0.0, f64::from(tr.source_height))
+    };
+    // Each row contributes the four corners of its own foreground cells,
+    // rather than invented corners combining different silhouette rows.
+    let points: Vec<[f64; 2]> = path
+        .iter()
+        .flat_map(|&(y, run)| {
+            let (l, r, t, b) = (sx(run.left), sx(run.right), sy(y), sy(y + 1));
+            [[l, t], [r, t], [l, b], [r, b]]
+        })
+        .collect();
+    let cx = f64::from(base.center_x);
+    let cy = f64::from(base.center_y);
+    let rx = f64::from(base.radius_x);
+    let ry = f64::from(base.radius_y);
+    let covers = |a: f64, b: f64| {
+        points
+            .iter()
+            .all(|p| ((p[0] - cx) / a).hypot((p[1] - cy) / b) <= 1.0)
+    };
+    let major = rx.max(ry);
+    let required = if covers(rx, ry) {
+        base
+    } else if covers(major, major) {
+        let (mut lo, mut hi) = (0.0, 1.0);
+        for _ in 0..24 {
+            let t = (lo + hi) * 0.5;
+            if covers(rx + (major - rx) * t, ry + (major - ry) * t) {
+                hi = t;
+            } else {
+                lo = t;
+            }
+        }
+        Ellipse {
+            radius_x: ((rx + (major - rx) * hi) as f32).next_up(),
+            radius_y: ((ry + (major - ry) * hi) as f32).next_up(),
+            ..base
+        }
+    } else {
+        // Preserve the seed's circumscribed disk when translating. Optimize
+        // the maximum of the disk constraint and actual row support along
+        // the direction toward the connected cap's center.
+        let dx = (f64::from(cap.bounds.left) + f64::from(cap.bounds.right)) * 0.5 - cx;
+        let dy = (f64::from(cap.bounds.top) + f64::from(cap.bounds.bottom)) * 0.5 - cy;
+        let distance = dx.hypot(dy);
+        let (ux, uy) = if distance > 0.0 {
+            (dx / distance, dy / distance)
+        } else {
+            (0.0, 0.0)
+        };
+        let farthest = |x: f64, y: f64| {
+            points
+                .iter()
+                .map(|p| (p[0] - x).hypot(p[1] - y))
+                .fold(0.0, f64::max)
+        };
+        let objective = |t: f64| (major + t).max(farthest(cx + ux * t, cy + uy * t));
+        // Convex maximum of distances: ternary minimization is safe even
+        // when the farthest point changes. Include the unshifted solution.
+        let (mut lo, mut hi) = (0.0, distance.min((objective(0.0) - major).max(0.0)));
+        for _ in 0..24 {
+            let a = (2.0 * lo + hi) / 3.0;
+            let b = (lo + 2.0 * hi) / 3.0;
+            if objective(a) <= objective(b) {
+                hi = b;
+            } else {
+                lo = a;
+            }
+        }
+        let shift = (lo + hi) * 0.5;
+        let shift = if objective(shift) < objective(0.0) {
+            shift
+        } else {
+            0.0
+        };
+        let x = (cx + ux * shift) as f32;
+        let y = (cy + uy * shift) as f32;
+        let actual_x = f64::from(x);
+        let actual_y = f64::from(y);
+        let rad = ((major + (actual_x - cx).hypot(actual_y - cy)).max(farthest(actual_x, actual_y))
+            as f32)
+            .next_up();
+        Ellipse {
+            center_x: x,
+            center_y: y,
+            radius_x: rad,
+            radius_y: rad,
+        }
+    };
+    crate::face_geometry::sampled_face_region(required, tr, spec.width, spec.height)
+}
+
+/// Both detector observations must already have the same unique current owner.
+/// A conflicting full-frame detection can be rejected as torso only when the
+/// local detector is inside a full current head cap and the coarse center is
+/// clearly below that cap. No confidence-only or size-only override.
+pub fn prefer_local_face(
+    pixels: &[u8],
+    spec: HeadMaskSpec,
+    primary: Ellipse,
+    local: Ellipse,
+) -> Option<bool> {
+    if !spec.valid(pixels) || !valid_seed(primary) || !valid_seed(local) {
+        return None;
+    }
+    let Some((c, _)) = cap_trace(pixels, spec, local, true, false)
+        .or_else(|| cap_trace(pixels, spec, local, true, true))
+    else {
+        return Some(false);
+    };
+    let cell = spec.transform.input_size as f32 / (spec.height as f32 * spec.transform.scale);
+    if !cell.is_finite() || cell <= 0.0 {
+        return None;
+    }
+    Some(
+        !c.partial
+            && local.center_x >= c.bounds.left
+            && local.center_x <= c.bounds.right
+            && local.center_y >= c.bounds.top
+            && local.center_y <= c.bounds.bottom
+            && primary.center_y > c.bounds.bottom + cell
+            && (primary.center_x - local.center_x).abs() <= primary.radius_x.max(local.radius_x)
+            && primary.radius_y >= local.radius_y,
+    )
 }
 
 #[cfg(test)]

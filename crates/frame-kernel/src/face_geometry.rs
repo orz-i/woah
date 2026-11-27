@@ -128,7 +128,7 @@ pub fn standalone_face_region(region: Ellipse, transform: Transform) -> Option<E
     )
 }
 
-fn sampled_face_region(
+pub(crate) fn sampled_face_region(
     region: Ellipse,
     transform: Transform,
     width: u32,
@@ -156,7 +156,7 @@ fn sampled_face_region(
 /// outside its circumscribed circle, find a compact enclosing circle along
 /// the line to the support center. This is a conservative disk+rectangle
 /// envelope, not an estimate of identity or a cap on genuinely large faces.
-fn cover_rect(region: Ellipse, bounds: Rect) -> Ellipse {
+pub(crate) fn cover_rect(region: Ellipse, bounds: Rect) -> Ellipse {
     let cx = f64::from(region.center_x);
     let cy = f64::from(region.center_y);
     let left = f64::from(bounds.left);

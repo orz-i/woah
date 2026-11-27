@@ -167,12 +167,23 @@ enum IOSFrameKernel {
 
   final class FaceRenderSizeState {
     private var state = FrameKernelFaceRenderSizeState()
-    func step(required: SIMD4<Float>, timestampUs: Int64, kind: UInt32) throws -> SIMD4<Float> {
+    private var axes = FrameKernelFaceRenderAxesState()
+    private var axisMode: Bool?
+    func step(required: SIMD4<Float>, timestampUs: Int64, kind: UInt32,
+      preserveAxes: Bool = false) throws -> SIMD4<Float> {
       _ = IOSFrameKernel.checkedABI
+      if axisMode != preserveAxes {
+        state = FrameKernelFaceRenderSizeState()
+        axes = FrameKernelFaceRenderAxesState()
+        axisMode = preserveAxes
+      }
       let input = FrameKernelEllipse(center_x: required.x, center_y: required.y,
         radius_x: required.z, radius_y: required.w)
       var output = FrameKernelEllipse()
-      guard frame_kernel_face_render_size_step(&state, input, timestampUs, kind, &output) == 0 else {
+      let status = preserveAxes
+        ? frame_kernel_face_render_axes_step(&axes, input, timestampUs, kind, &output)
+        : frame_kernel_face_render_size_step(&state, input, timestampUs, kind, &output)
+      guard status == 0 else {
         throw IOSFrameKernel.pixelError()
       }
       return SIMD4(output.center_x, output.center_y, output.radius_x, output.radius_y)

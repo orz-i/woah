@@ -286,6 +286,45 @@ final class IOSFacePrivacyTemporalResolver {
       }
     }
 
+    // Explicit single FACE_ONLY sticker: use the same shared head ROI
+    // as Android to avoid coarse full-frame face quantization. Keep the
+    // existing full-frame observation unless the local current observation
+    // has a unique current-mask owner and agrees with any primary face.
+    if !coverUnownedFaces, stickerSizeIds.count == 1,
+       let selectedId = stickerSizeIds.first,
+       let person = selectedPersons.first(where: {
+         $0.id == selectedId && !$0.conservativePrivacyFallback && !$0.detection.mask.isEmpty
+       }),
+       let plan = IOSFrameKernel.faceHeadPlan(person.detection,
+         width: preprocess.sourceWidth, height: preprocess.sourceHeight) {
+      let currentPeople = persons.filter { !$0.conservativePrivacyFallback }
+      do {
+        let detail = try locator.locateFaceDetails(in: image, regions: [plan.rect])
+        let localAssignments = associate(faces: detail, persons: currentPeople, preprocess: preprocess)
+        if let index = localAssignments[selectedId], detail.indices.contains(index) {
+          let local = detail[index]
+          if uniqueCurrentOwner(face: local, persons: currentPeople,
+             unmaskedPersonId: nil, preprocess: preprocess) == selectedId {
+            let duplicates = faces.indices.filter { i in
+              IOSFrameKernelFaceGeometry.merge([faces[i], local], primary: 1,
+                owners: [selectedId, selectedId])?.count == 1
+            }
+            if let primary = assignments[selectedId],
+               duplicates == [primary] || (duplicates.isEmpty &&
+                 IOSFrameKernelFaceGeometry.preferLocalFace(person.detection, primary: faces[primary],
+                   local: local, preprocess: preprocess)) {
+              faces[primary] = local
+            } else if assignments[selectedId] == nil, duplicates.isEmpty {
+              assignments[selectedId] = faces.count
+              faces.append(local)
+            }
+          }
+        }
+      } catch {
+        // The existing full-frame assignment/fallback still covers privacy.
+      }
+    }
+
     lock.lock()
     defer { lock.unlock() }
     stateByTrackId = stateByTrackId.filter { faceOnlyIds.contains($0.key) }
@@ -362,7 +401,18 @@ final class IOSFacePrivacyTemporalResolver {
       } else {
         uniformRegionContinuation.reset()
       }
-      if region.source == .detectedFace && !person.conservativePrivacyFallback {
+      // Single explicitly selected sticker: only current observed masks
+      // may refine the required ellipse, never the temporal identity cache.
+      if !coverUnownedFaces && selectedStickerIds.count == 1 && selectedStickerIds.contains(person.id)
+          && !person.conservativePrivacyFallback && !person.detection.mask.isEmpty,
+         let covered = IOSFrameKernelFaceGeometry.headEllipse(person.detection,
+           measured: SIMD4(raw.centerX,raw.centerY,raw.radiusX,raw.radiusY),
+           stabilized: SIMD4(region.centerX,region.centerY,region.radiusX,region.radiusY),
+           kind: region.source == .detectedFace ? 0 : (region.source == .predictedFace ? 1 : 2),
+           preprocess: preprocess) {
+        region = IOSFacePrivacyEllipse(centerX: covered.x, centerY: covered.y,
+          radiusX: covered.z, radiusY: covered.w, source: region.source)
+      } else if region.source == .detectedFace && !person.conservativePrivacyFallback {
         guard let covered=IOSFrameKernelFaceGeometry.coverCurrent(person.detection,
           region:SIMD4(region.centerX,region.centerY,region.radiusX,region.radiusY),preprocess:preprocess) else {
           throw NSError(domain:"FrameKernel",code:-1,
@@ -378,7 +428,8 @@ final class IOSFacePrivacyTemporalResolver {
           ? 0 : (region.source == .yoloHeadFallback ? 2 : 1)
         let sizeState = stickerSizeStates[person.id] ?? IOSFrameKernel.FaceRenderSizeState()
         let sized = try sizeState.step(required: SIMD4(region.centerX, region.centerY, region.radiusX, region.radiusY),
-          timestampUs: timestampUs, kind: kind)
+          timestampUs: timestampUs, kind: kind,
+          preserveAxes: !coverUnownedFaces && selectedStickerIds.count == 1)
         stickerSizeStates[person.id] = sizeState
         region = IOSFacePrivacyEllipse(centerX: sized.x, centerY: sized.y,
           radiusX: sized.z, radiusY: sized.w, source: region.source)

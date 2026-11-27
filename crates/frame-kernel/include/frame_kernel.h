@@ -382,6 +382,15 @@ typedef struct FrameKernelHeadSticker {
 } FrameKernelHeadSticker;
 int32_t frame_kernel_head_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
     FrameKernelEllipse measured,FrameKernelEllipse stabilized,uint32_t kind,FrameKernelHeadSticker *output);
+/* Current-mask ellipse from connected head rows (not the square API).
+   kind=0 direct, 1 projected, 2 estimated; only current owned masks.
+   Ambiguity retains conservative support; no identity or lease update. */
+int32_t frame_kernel_head_ellipse(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
+    FrameKernelEllipse measured,FrameKernelEllipse stabilized,uint32_t kind,FrameKernelEllipse *output);
+/* Both current observations already have the same unique owner. Prefer the
+   local face only with a qualified head cap and a primary center below it. */
+int32_t frame_kernel_head_prefer_local(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
+    FrameKernelEllipse primary,FrameKernelEllipse local,uint32_t *output);
 /* Experimental bounded translation from a DIRECT face observation to current
    source pixels (top-down gray). The immutable seed's lease is <=150ms.
    Foreign current person boxes veto a peak, never grant ownership.
@@ -416,6 +425,14 @@ typedef struct FrameKernelFaceRenderSizeState {
     uint32_t initialized;
 } FrameKernelFaceRenderSizeState;
 int32_t frame_kernel_face_render_size_step(FrameKernelFaceRenderSizeState *state,
+    FrameKernelEllipse required,int64_t timestamp_us,uint32_t kind,FrameKernelEllipse *output);
+/* Optional ellipse-axis continuity. Contains the original major-size
+   output and tracks the actual rendered radius on each axis independently.
+   Same lifecycle, direct-observation lease, and atomic failure contract. */
+typedef struct FrameKernelFaceRenderAxesState {
+    FrameKernelFaceRenderSizeState major,horizontal,vertical;
+} FrameKernelFaceRenderAxesState;
+int32_t frame_kernel_face_render_axes_step(FrameKernelFaceRenderAxesState *state,
     FrameKernelEllipse required,int64_t timestamp_us,uint32_t kind,FrameKernelEllipse *output);
 
 /* Current detected face with uncertain ownership. Apply render sampling margin
