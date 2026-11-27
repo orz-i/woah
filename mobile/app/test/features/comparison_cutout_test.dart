@@ -371,6 +371,23 @@ void main() {
       find.byKey(const ValueKey('comparison-cutout-timeline')),
       findsOneWidget,
     );
+    // Immediately reopen a repair while the previous success snackbar
+    // is still visible. It must not intercept the next cancel gesture.
+    expect(find.byType(SnackBar), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('comparison-cutout-repair')));
+    await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('comparison-repair-enter')));
+    await tester.pumpAndSettle();
+    expect(finder, findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('comparison-cutout-cancel')));
+    await tester.pumpAndSettle();
+    expect(gateway.repairCancels, 1);
+    expect(finder, findsNothing);
+    expect(
+      find.byKey(const ValueKey('comparison-cutout-timeline')),
+      findsOneWidget,
+    );
     await tester.tap(find.text('退出画布'));
     await tester.pumpAndSettle();
     expect(gateway.clears, 1);

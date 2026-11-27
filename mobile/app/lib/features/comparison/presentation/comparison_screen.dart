@@ -1083,6 +1083,9 @@ class _ComparisonScreenState extends State<ComparisonScreen>
 
   Future<void> _beginCutoutRepair() async {
     if (!controller.canEditCanvas) return;
+    // A previous repair confirmation must not cover the new selection's
+    // bottom cancel control while the dialog is dismissed.
+    ScaffoldMessenger.maybeOf(context)?.removeCurrentSnackBar();
     await controller.pause();
     if (!mounted || !controller.canEditCanvas) return;
     final position = controller.playback!.positionUs;
