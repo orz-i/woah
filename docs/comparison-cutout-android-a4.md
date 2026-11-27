@@ -169,3 +169,101 @@ algorithm changes and no claim of native 60s completion.
 Evidence: `/tmp/woah-cutout-a4-source` (reports, alpha files, logs,
 comparison.json, parity.json and scripts). Local only; no media
 or signing artifacts committed.
+
+## A4.3: bounded reverse ROI source blocks
+
+Code commit `5f234707` on
+`research/comparison-cutout-gpu-reverse-roi-20261127`, based on
+`b4f79874` only for the already-tested exact YUV source-copy primitive.
+No forward snapshot or forward serial option enabled in these trials.
+No experimental shared-decoder or tracker changes migrated to the
+product branch. The reverse-block flag defaults to false.
+
+Cleaned reproducible Flutter, Android and Rust build/intermediate
+directories in both worktrees and the scratch Cargo targets. 68
+directories, 7.811 GiB allocated size, available space 14.58 -> 21.28
+GiB (6.70 GiB actual free-space increase). Retained all branch refs,
+worktrees, canonical model assets, Pods, global dependency caches,
+research dynamic libraries, Python environments, and raw evidence.
+Cleanup inventory and before/after df in `/tmp/woah-a4-reverse`.
+
+### Implementation
+
+The reverse tracker still consumes its original descending exact PTS
+and uses the same full observations, selection, ROI geometry, detail
+budget and inference. On a reverse crop request, decode up to four
+ascending source samples ending at that request and copy only the
+original decoder YUV planes/strides and color/crop metadata. Do not
+resize full RGBA in this auxiliary path. Crop on demand from the owned
+block with the unchanged Rust converter. Drop expired slots, close
+at span end, and fall back to the ordinary exact-source decoder on
+oversize or a recoverable decode error. No extra inference and no
+raw source pixels persisted. Four slots of at most 6 MiB each bound
+source payload per active reverse block to 24 MiB (not whole-process
+peak). Actual maximum allocated slot capacity sum was 4,455,672 bytes
+in both clips. Direct buffers are managed by the JVM; memory sampling
+is not a leak or peak test. The dedicated candidate remains isolated.
+
+### Same-APK physical Android A/B
+
+OnePlus 8T, Android 14, effective GPU, current YOLO11n/LiteRT and
+unmodified identity thresholds. APK SHA-256
+`54cab525d3ad5f14c68faef11dd5bf583498b37d127083e1f1fa93516fdcf9b6`.
+Fresh process per arm, no observation dump/replay. C8.3 6s anchor
+(.46,.60)/(.422,.54), candidate then baseline. C5 independent source
+pair, 11s anchor (.55,.60)/(.37,.52) from existing source annotations,
+baseline then candidate. Both sets are two 12s 25fps sources with
+600 source records; C5 uses different source recordings, not newly
+acquired footage. Fixed four-frame block, no parameter search.
+
+| Metric | C8.3 original | C8.3 reverse | C5 original | C5 reverse |
+| --- | ---: | ---: | ---: | ---: |
+| Initial preview analysis s | 9.186 | 9.032 | 8.833 | 8.467 |
+| Full analysis s | 70.464 | 65.779 | 86.977 | 74.634 |
+| Total wall s | 74.487 | 69.796 | 90.245 | 78.053 |
+| ROI decode s | 10.016 | 6.374 | 20.403 | 8.692 |
+| Total auxiliary seeks | 31 | 12 | 57 | 19 |
+| Total auxiliary opens | 4 | 4 | 4 | 4 |
+| Detail attempts/accepted | 71/21 | 71/21 | 63/35 | 63/35 |
+| Reference visible | 300 | 300 | 267 | 267 |
+| Target visible | 245 | 245 | 300 | 300 |
+| Longest missing s | 1.20 | 1.20 | 0.96 | 0.96 |
+| Reverse block loads | 0 | 13 | 0 | 21 |
+| Reverse block hits | 0 | 19 | 0 | 38 |
+| Source samples copied | 0 | 48 | 0 | 84 |
+| Reverse fallback | 0 | 0 | 0 | 0 |
+
+Total seeks include the ordinary reader and the block reader; 1+11
+for C8.3 and 0+19 for C5. All four per-role output alpha files are
+byte-identical to the matching baseline (1200 records, 1112 visible,
+88 missing), not merely equivalent counts. Sparse selected-point
+checks unchanged: C8.3 20/24, C5 22/24, zero marked distractor hits.
+This does not prove dense identity correctness. Full analysis saves
+4.685s (6.65%) and 12.343s (14.19%); ROI decode saves 3.642s and
+11.711s. Temperature baseline/candidate order reversed between pairs:
+C8.3 27.5->28.0 C candidate, 28.0->28.3 C baseline;
+C5 28.2->28.4 C baseline, 28.4->28.6 C candidate. Thermal status 0
+throughout. Single paired run per source, not repeat statistics.
+
+Physical decoder parity passed: eight exact source-only capture
+crops across four rotations, after decoder closure; oversized slot
+fallback, expired crop rejection, fresh/inline/reverse-seek parity
+and existing borrowed-image cancellation check. Four real-dance
+instrumentation runs complete. Both native analysis targets still
+above 60s, initial preview above 8s. No actual new Release
+application build, block-active cancellation stress, high-resolution
+fallback in full pipeline, second device, or production GPU
+fallback validation performed.
+
+Disposition: reverse block is a higher-value candidate than the
+forward source snapshots; retain exact frozen implementation for
+selective isolated Release GPU integration next. Do not merge the
+whole experimental ancestor branch or enable it for CPU/privacy
+paths. No reason to tune block size now. Before promotion, verify
+actual Release cancel/retry/save/restore/export, high-res budget
+fallback and broader device performance. Production GPU policy and
+default preview opening remain unchanged.
+
+Evidence: `/tmp/woah-a4-reverse` (cleanup inventory, reports, alpha
+files, build/run logs, parity.json, comparison.json and
+c5-comparison.json, scripts). No footage or signing keys committed.
