@@ -1,0 +1,227 @@
+{
+  "baseline_commit": "173d80b1",
+  "scope": "host geometry experiment, not production privacy acceptance",
+  "rust_tests": {
+    "passed": 168,
+    "failed": 0,
+    "ignored": 1
+  },
+  "replays": {
+    "natural": {
+      "scope": "host geometry only; no production tracker, native AVC export, or privacy acceptance",
+      "fixture_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "dropped_detections": [],
+      "baseline": {
+        "summary": {
+          "frames": 18,
+          "resolved": 15,
+          "detected": 15,
+          "projected": 0,
+          "estimated": 0,
+          "head_point_covered": 15,
+          "head_point_checked": 15,
+          "unresolved": [
+            11,
+            12,
+            13
+          ],
+          "width_ratio": 1.327370075834408,
+          "height_ratio": 1.327370075834408,
+          "sampled_width_ratio": 1.1967676711870816,
+          "sampled_height_ratio": 1.1972984176478971,
+          "sampled_widths": [
+            461.74,
+            552.6,
+            517.9,
+            530.16,
+            null,
+            518.95,
+            492.47
+          ]
+        },
+        "render_size_state": false
+      },
+      "candidate": {
+        "summary": {
+          "frames": 18,
+          "resolved": 15,
+          "detected": 15,
+          "projected": 0,
+          "estimated": 0,
+          "head_point_covered": 15,
+          "head_point_checked": 15,
+          "unresolved": [
+            11,
+            12,
+            13
+          ],
+          "width_ratio": 1.2462821261704156,
+          "height_ratio": 1.2462821261704156,
+          "sampled_width_ratio": 1.2094668543193743,
+          "sampled_height_ratio": 1.2094668543193743,
+          "sampled_widths": [
+            377.57,
+            456.65,
+            451.53,
+            445.85,
+            null,
+            441.05,
+            433.23
+          ]
+        },
+        "render_size_state": true
+      }
+    },
+    "fault_injection": {
+      "scope": "host geometry only; no production tracker, native AVC export, or privacy acceptance",
+      "fixture_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "dropped_detections": [
+        6,
+        7,
+        8
+      ],
+      "baseline": {
+        "summary": {
+          "frames": 18,
+          "resolved": 15,
+          "detected": 12,
+          "projected": 3,
+          "estimated": 0,
+          "head_point_covered": 15,
+          "head_point_checked": 15,
+          "unresolved": [
+            11,
+            12,
+            13
+          ],
+          "width_ratio": 1.6635057378779248,
+          "height_ratio": 1.6635057378779248,
+          "sampled_width_ratio": 1.5459860522158417,
+          "sampled_height_ratio": 1.5466716711922215,
+          "sampled_widths": [
+            461.74,
+            552.6,
+            357.44,
+            538.62,
+            null,
+            518.95,
+            492.47
+          ]
+        },
+        "render_size_state": false
+      },
+      "candidate": {
+        "summary": {
+          "frames": 18,
+          "resolved": 15,
+          "detected": 12,
+          "projected": 3,
+          "estimated": 0,
+          "head_point_covered": 15,
+          "head_point_checked": 15,
+          "unresolved": [
+            11,
+            12,
+            13
+          ],
+          "width_ratio": 1.2606494380079818,
+          "height_ratio": 1.2606494380079818,
+          "sampled_width_ratio": 1.2094668543193743,
+          "sampled_height_ratio": 1.2094668543193743,
+          "sampled_widths": [
+            377.57,
+            456.65,
+            453.82,
+            452.36,
+            null,
+            441.05,
+            433.23
+          ]
+        },
+        "render_size_state": true
+      }
+    },
+    "independent": {
+      "scope": "host geometry only; no production tracker, native AVC export, or privacy acceptance",
+      "fixture_sha256": "d6a7fa68709d382425c6585e443b0d3d245d923e88dd85ffeae480358e66a546",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "dropped_detections": [],
+      "baseline": {
+        "summary": {
+          "frames": 24,
+          "resolved": 24,
+          "detected": 24,
+          "projected": 0,
+          "estimated": 0,
+          "head_point_covered": 0,
+          "head_point_checked": 0,
+          "unresolved": [],
+          "width_ratio": 1.1062222523603102,
+          "height_ratio": 1.1062222523603096,
+          "sampled_width_ratio": 1.0,
+          "sampled_height_ratio": 1.0,
+          "sampled_widths": [
+            114.07,
+            114.07,
+            114.07,
+            114.07,
+            114.07,
+            114.07,
+            114.07,
+            114.07,
+            114.07
+          ]
+        },
+        "render_size_state": false
+      },
+      "candidate": {
+        "summary": {
+          "frames": 24,
+          "resolved": 24,
+          "detected": 24,
+          "projected": 0,
+          "estimated": 0,
+          "head_point_covered": 0,
+          "head_point_checked": 0,
+          "unresolved": [],
+          "width_ratio": 1.1168126519539505,
+          "height_ratio": 1.1168126519539499,
+          "sampled_width_ratio": 1.1016646758091204,
+          "sampled_height_ratio": 1.1016646758091204,
+          "sampled_widths": [
+            102.82,
+            102.82,
+            102.82,
+            108.22,
+            107.52,
+            108.22,
+            108.22,
+            108.22,
+            113.27
+          ]
+        },
+        "render_size_state": true
+      }
+    }
+  },
+  "independent_source": {
+    "name": "real_reference.mp4",
+    "sha256": "8fdc019e205c1e18abe6177edb040228b28e387666d560acb4e9e9c17ffacf0e",
+    "reference": "testdata/comparison/core-matrix-v1.json",
+    "fps": 30,
+    "start_s": 0,
+    "frames": 24,
+    "identity_annotation": false
+  }
+}

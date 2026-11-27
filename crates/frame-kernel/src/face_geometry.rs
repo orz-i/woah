@@ -138,28 +138,99 @@ fn sampled_face_region(
     valid_seed(output).then_some(output)
 }
 
+/// Enlarge only as much as current support requires. The old circumscribed
+/// union treated the *bounding box* of the seed ellipse as required evidence:
+/// crossing an ellipse edge by even a subpixel could inflate both axes by
+/// at least sqrt(2), independently of the extent of the new evidence.
+///
+/// Prefer the original center and preserve the entire seed. If support extends
+/// outside its circumscribed circle, find a compact enclosing circle along
+/// the line to the support center. This is a conservative disk+rectangle
+/// envelope, not an estimate of identity or a cap on genuinely large faces.
 fn cover_rect(region: Ellipse, bounds: Rect) -> Ellipse {
-    let contained = [bounds.left, bounds.right].into_iter().all(|x| {
-        [bounds.top, bounds.bottom].into_iter().all(|y| {
-            ((x - region.center_x) / region.radius_x).powi(2)
-                + ((y - region.center_y) / region.radius_y).powi(2)
-                <= 1.0
-        })
-    });
-    if contained {
+    let cx = f64::from(region.center_x);
+    let cy = f64::from(region.center_y);
+    let left = f64::from(bounds.left);
+    let right = f64::from(bounds.right);
+    let top = f64::from(bounds.top);
+    let bottom = f64::from(bounds.bottom);
+    let extent = |cx: f64, cy: f64| {
+        (
+            (left - cx).abs().max((right - cx).abs()),
+            (top - cy).abs().max((bottom - cy).abs()),
+        )
+    };
+    let (x, y) = extent(cx, cy);
+    let rx = f64::from(region.radius_x);
+    let ry = f64::from(region.radius_y);
+    let covers = |a: f64, b: f64| (x / a).hypot(y / b) <= 1.0;
+    if covers(rx, ry) {
         return region;
     }
-    let left = bounds.left.min(region.center_x - region.radius_x);
-    let right = bounds.right.max(region.center_x + region.radius_x);
-    let top = bounds.top.min(region.center_y - region.radius_y);
-    let bottom = bounds.bottom.max(region.center_y + region.radius_y);
-    // One circumscribed ellipse contains the whole visible-support rectangle
-    // AND the complete original detector ellipse. This operation only adds cover.
+    let upper = |v: f64| {
+        let rounded = v as f32;
+        if f64::from(rounded) < v {
+            rounded.next_up()
+        } else {
+            rounded
+        }
+    };
+    let major = rx.max(ry);
+    let support = x.hypot(y);
+    if support <= major {
+        // The sticker's major radius can stay unchanged. Grow the minor
+        // axis continuously only as required by the rectangle's corners.
+        let mut low = 0.0;
+        let mut high = 1.0;
+        for _ in 0..24 {
+            let mid = (low + high) * 0.5;
+            if covers(rx + (major - rx) * mid, ry + (major - ry) * mid) {
+                high = mid;
+            } else {
+                low = mid;
+            }
+        }
+        return Ellipse {
+            radius_x: upper(rx + (major - rx) * high),
+            radius_y: upper(ry + (major - ry) * high),
+            ..region
+        };
+    }
+    // A translated circle of radius major + shift contains the original
+    // ellipse (even the original circumscribed disk). The radius required by
+    // the rectangle decreases monotonically along this segment. Minimize the
+    // larger constraint; at shift=0 the solution is always the centered circle.
+    let dx = (left + right) * 0.5 - cx;
+    let dy = (top + bottom) * 0.5 - cy;
+    let distance = dx.hypot(dy);
+    let (ux, uy) = if distance > 0.0 {
+        (dx / distance, dy / distance)
+    } else {
+        (0.0, 0.0)
+    };
+    let mut low = 0.0;
+    let mut high = distance.min(support - major);
+    for _ in 0..24 {
+        let mid = (low + high) * 0.5;
+        let (x, y) = extent(cx + ux * mid, cy + uy * mid);
+        if major + mid >= x.hypot(y) {
+            high = mid;
+        } else {
+            low = mid;
+        }
+    }
+    let shift = (low + high) * 0.5;
+    let center_x = (cx + ux * shift) as f32;
+    let center_y = (cy + uy * shift) as f32;
+    // Re-evaluate at the actual f32 center; round radius out, not in.
+    let (x, y) = extent(f64::from(center_x), f64::from(center_y));
+    let moved = (f64::from(center_x) - cx).hypot(f64::from(center_y) - cy);
+    let radius = upper((major + moved).max(x.hypot(y)));
     Ellipse {
-        center_x: (left + right) * 0.5,
-        center_y: (top + bottom) * 0.5,
-        radius_x: (right - left) * std::f32::consts::FRAC_1_SQRT_2,
-        radius_y: (bottom - top) * std::f32::consts::FRAC_1_SQRT_2,
+        center_x,
+        center_y,
+        radius_x: radius,
+        radius_y: radius,
     }
 }
 
@@ -623,6 +694,103 @@ pub fn project_trusted(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn covers_point(e: Ellipse, x: f32, y: f32) -> bool {
+        let x = (f64::from(x) - f64::from(e.center_x)) / f64::from(e.radius_x);
+        let y = (f64::from(y) - f64::from(e.center_y)) / f64::from(e.radius_y);
+        x.hypot(y) <= 1.000_001
+    }
+
+    #[test]
+    fn crossing_the_support_boundary_does_not_inflate_the_detector_bbox() {
+        let seed = Ellipse {
+            center_x: 100.0,
+            center_y: 100.0,
+            radius_x: 40.0,
+            radius_y: 50.0,
+        };
+        let mut previous = seed;
+        // The rectangle straddles the ellipse boundary at x=124,y=140.
+        // The old algorithm jumped from radius 50 to at least 70.71.
+        for right in [123.99, 124.0, 124.01, 124.25, 125.0] {
+            let rect = Rect {
+                left: 100.0,
+                top: 100.0,
+                right,
+                bottom: 140.0,
+            };
+            let out = cover_rect(seed, rect);
+            assert_eq!(out.center_x, seed.center_x);
+            assert_eq!(out.center_y, seed.center_y);
+            assert!(out.radius_x >= seed.radius_x && out.radius_y >= seed.radius_y);
+            assert!(covers_point(out, right, 140.0));
+            assert!(
+                out.radius_x.max(out.radius_y) / previous.radius_x.max(previous.radius_y) <= 1.02
+            );
+            previous = out;
+        }
+        assert_eq!(previous.radius_y, seed.radius_y);
+    }
+
+    #[test]
+    fn envelope_keeps_every_seed_and_support_point_without_a_scale_cap() {
+        let seed = Ellipse {
+            center_x: 100.0,
+            center_y: 100.0,
+            radius_x: 25.0,
+            radius_y: 45.0,
+        };
+        for rect in [
+            Rect {
+                left: 66.0,
+                top: 89.0,
+                right: 110.0,
+                bottom: 137.0,
+            },
+            Rect {
+                left: 90.0,
+                top: 89.0,
+                right: 134.0,
+                bottom: 137.0,
+            },
+            Rect {
+                left: 80.0,
+                top: 30.0,
+                right: 200.0,
+                bottom: 170.0,
+            },
+            Rect {
+                left: 97.0,
+                top: 99.0,
+                right: 103.0,
+                bottom: 101.0,
+            },
+        ] {
+            let out = cover_rect(seed, rect);
+            assert!(out.radius_x >= seed.radius_x && out.radius_y >= seed.radius_y);
+            for x in [rect.left, rect.right] {
+                for y in [rect.top, rect.bottom] {
+                    assert!(covers_point(out, x, y), "{out:?}, {rect:?}");
+                }
+            }
+            for degree in 0..360 {
+                let a = (degree as f32).to_radians();
+                assert!(covers_point(
+                    out,
+                    seed.center_x + seed.radius_x * a.cos(),
+                    seed.center_y + seed.radius_y * a.sin()
+                ));
+            }
+            let x = (rect.left - seed.center_x)
+                .abs()
+                .max((rect.right - seed.center_x).abs());
+            let y = (rect.top - seed.center_y)
+                .abs()
+                .max((rect.bottom - seed.center_y).abs());
+            let optimum = seed.radius_y.max(x.hypot(y));
+            assert!(out.radius_x.max(out.radius_y) <= optimum + 0.001);
+        }
+    }
+
     #[test]
     fn profile_extension_is_bounded_and_invalid_body_has_no_region() {
         let face = Candidate {

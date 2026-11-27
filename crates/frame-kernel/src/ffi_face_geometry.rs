@@ -9,6 +9,33 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// State and output must point to disjoint writable aligned values. Caller
+/// owns the per-identity lifetime; no face is created from size history alone.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_render_size_step(
+    state: *mut crate::face_render_size::FaceRenderSizeState,
+    required: Ellipse,
+    timestamp_us: i64,
+    kind: u32,
+    output: *mut Ellipse,
+) -> i32 {
+    if state.is_null() || output.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: nonnull aligned buffers are caller contracts.
+    let mut next = unsafe { state.read() };
+    let Some(region) = next.step(required, timestamp_us, kind) else {
+        return REGION_INVALID;
+    };
+    // SAFETY: writable disjoint values; invalid inputs never reach this write.
+    unsafe {
+        state.write(next);
+        output.write(region);
+    }
+    REGION_OK
+}
+
+/// # Safety
 /// A positive len requires readable pixels. Output is one disjoint writable ellipse.
 /// Current mask evidence adds coverage only, never identity or ownership.
 #[unsafe(no_mangle)]

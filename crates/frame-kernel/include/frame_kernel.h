@@ -367,6 +367,21 @@ int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRe
      the detected ellipse; it never removes detector coverage or grants identity.
      Positive len requires a valid mask/spec; invalid input leaves output intact. */
   int32_t frame_kernel_current_face_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse region,FrameKernelEllipse *output);
+/* Optional final per-owner render-size continuity. All-zero initialize.
+   Feed only current, already-resolved coverage, after current-mask expansion.
+   kind=0 observed, 1 projected, 2 estimated. Only observed renews the 150ms
+   size lease. Clear on identity/exemption changes; time reversal or >150ms
+   gap resets size. Current center and coverage never shrink; no identity
+   or region is inferred.
+   0 success, -1 invalid (state/output unchanged). Buffers must not alias. */
+typedef struct FrameKernelFaceRenderSizeState {
+    int64_t timestamp_us, observed_us;
+    float major_radius, observed_major;
+    uint32_t initialized;
+} FrameKernelFaceRenderSizeState;
+int32_t frame_kernel_face_render_size_step(FrameKernelFaceRenderSizeState *state,
+    FrameKernelEllipse required,int64_t timestamp_us,uint32_t kind,FrameKernelEllipse *output);
+
 /* Current detected face with uncertain ownership. Apply render sampling margin
    without a body mask or identity. Invalid inputs leave output unchanged. */
 int32_t frame_kernel_standalone_face_region(FrameKernelEllipse region,FrameKernelTransform transform,FrameKernelEllipse *output);
