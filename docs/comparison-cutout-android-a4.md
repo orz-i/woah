@@ -437,7 +437,7 @@ are ready for bounded final review, not unrestricted deployment.
 
 ## A4.6: final scope and paired regression review
 
-Base , candidate . No new algorithm or optimization
+Base `b8408c39`, candidate `5ee1d09b`. No new algorithm or optimization
 in this stage. Fifteen files changed versus the product base before
 this review, no Rust/model/lockfile/iOS-native or privacy strategy
 changes. Shared YUV conversion and model initialization cleanup were
@@ -464,7 +464,7 @@ The no-define Android Release config generates both opt-ins false.
   preview marker true, canonical model SHA-256 matches. Existing
   locked Pods reused. CocoaPods-generated Xcode phase edit reverted.
   No physical iPhone runtime evidence.
-- Evidence: , including both paired APK hashes,
+- Evidence: `/tmp/woah-a46-final`, including both paired APK hashes,
   regression and assertion logs, ordinary media/probes, iOS build log.
 
 Disposition: close incremental A4 performance research at its present
