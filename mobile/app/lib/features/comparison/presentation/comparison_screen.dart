@@ -1217,6 +1217,11 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                 : '仅分析当前 A/B 选段',
             style: const TextStyle(fontSize: 12),
           ),
+          if (!controller.cutoutRepairing)
+            const Text(
+              '实验功能：建议先用单人清晰、少遮挡的短选段。多人交叉可能错选，请检查结果。',
+              style: TextStyle(fontSize: 12),
+            ),
           Text(
             controller.cutoutRepairing
                 ? '${controller.cutoutRepairReference! ? '参考' : '目标'}：${(controller.cutoutRepairReference! ? reference : target) ? '已确认候选' : '未选择'}'
@@ -1854,7 +1859,7 @@ class _ComparisonScreenState extends State<ComparisonScreen>
                           : controller.cutoutArchived
                           ? '已缓存画布'
                           : '实验画布'} · 参考 ${result.referenceVisible}/${result.referenceFrames} · 目标 ${result.targetVisible}/${result.targetFrames}'
-                      '${missing > 0 ? ' · 缺失帧已隐藏，暂不能导出' : ''}',
+                      '${missing > 0 ? ' · 缺失帧已隐藏，暂不能导出；可局部纠错或退出后缩短 A/B 选段' : ''}',
             style: const TextStyle(fontSize: 12),
           ),
         ),

@@ -273,6 +273,7 @@ void main() {
     await tester.pumpAndSettle();
     final finder = find.byKey(const ValueKey('comparison-cutout-gesture'));
     expect(finder, findsOneWidget);
+    expect(find.textContaining('多人交叉可能错选'), findsOneWidget);
     // Default widget viewport is landscape: reference left, target right.
     for (final x in [.25, .84]) {
       final rect = tester.getRect(finder);
@@ -300,6 +301,15 @@ void main() {
     expect(gateway.inspections, [true, false]);
     expect(gateway.seeds.map((s) => s.sourcePtsUs), [1000000, 3000000]);
     expect(find.textContaining('缺失帧已隐藏'), findsOneWidget);
+    expect(find.textContaining('退出后缩短 A/B 选段'), findsOneWidget);
+    expect(
+      tester
+          .widget<IconButton>(
+            find.byKey(const ValueKey('comparison-cutout-export')),
+          )
+          .onPressed,
+      isNull,
+    );
     expect(
       find.byKey(const ValueKey('comparison-cutout-gesture')),
       findsNothing,

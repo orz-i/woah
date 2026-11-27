@@ -258,6 +258,14 @@ class _ComparisonExportDialogState extends State<ComparisonExportDialog> {
                       color: AppTheme.of(context).flowTextSecondary,
                     ),
                   ),
+                  if (widget.full!.cutout) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      '请先检查完整画布，确认两路人物始终正确。帧数完整不代表人物识别一定正确；若有错选，请取消并局部纠错。',
+                      key: ValueKey('comparison-cutout-export-review'),
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ],
                   if (_previous != null) ...[
                     const SizedBox(height: 12),
                     if (_previous!.state == 'completed' &&
