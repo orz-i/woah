@@ -489,16 +489,23 @@ class _QA {
     });
   }
 
-  EffectConfig effect(String fill, {String? stickerAssetId}) => EffectConfig(
+  EffectConfig effect(
+    String fill, {
+    String? stickerAssetId,
+    bool? faceStickerEnabled,
+  }) => EffectConfig(
     fillMode: FillMode.fromString(fill),
     fillColorArgb: 0xFFFF0000,
     borderColorArgb: 0xFFFFFFFF,
     opacity: 1.0,
     borderWidth: 0,
     blurStrength: 18,
-    faceStickerEnabled: fill == 'sticker',
+    faceStickerEnabled: faceStickerEnabled ?? (fill == 'sticker'),
     stickerAssetId:
-        stickerAssetId ?? (fill == 'sticker' ? 'builtin:sunglasses' : null),
+        stickerAssetId ??
+        ((faceStickerEnabled ?? (fill == 'sticker'))
+            ? 'builtin:sunglasses'
+            : null),
   );
 
   Future<Map<String, Object?>> runCase(Map<String, Object> c) async {
@@ -547,12 +554,31 @@ class _QA {
       if (stickerAsset != null) {
         row['custom_sticker_bytes'] = await File(stickerAsset).length();
       }
-      final selected = (c['select'] == 'first' ? ids.take(1).toList() : ids)
-          .where((id) => id != hero)
+      final explicitSelection = c['selectedIds'];
+      final selection = explicitSelection is List
+          ? explicitSelection.map((id) => id as int).toList()
+          : (c['select'] == 'first' ? ids.take(1).toList() : ids);
+      if (selection.isEmpty ||
+          selection.toSet().length != selection.length ||
+          !selection.every(ids.contains)) {
+        throw StateError('INVALID_QA_SELECTION:$selection in $ids');
+      }
+      final selected = selection.where((id) => id != hero).toList();
+      row['analysis_persons'] = a.persons
+          .map(
+            (p) => {
+              'id': p.id,
+              'bbox_normalized': [p.x1, p.y1, p.x2, p.y2],
+            },
+          )
           .toList();
       row['selected_ids'] = selected;
       row['hero_id'] = hero;
-      final qaEffects = effect(fill, stickerAssetId: stickerAsset);
+      final qaEffects = effect(
+        fill,
+        stickerAssetId: stickerAsset,
+        faceStickerEnabled: c['faceStickerEnabled'] as bool?,
+      );
       final qaFollow = FollowConfig(
         enabled: hero != null,
         targetPersonId: hero,
