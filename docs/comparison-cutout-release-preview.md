@@ -76,3 +76,45 @@ No signed installation or iPhone runtime validation was performed.
 
 Android also verified a live layout opacity change to 50%, then reset
 the control. This is separate from the original export measurement.
+
+## R2 product acceptance — full 12s and repair, Android Release / iOS simulator
+
+Release product branch only; no research algorithms enabled. Commits
+`d54234cd` and `e00f9740` add the supported-use/identity warning,
+actionable missing-frame guidance, full-width status feedback and repair
+completion guidance. Android normal app entry, actual device picker and
+long-press/drag gestures, isolated locally signed arm64 Release APK.
+
+- Full C8.3 pair, 960x540, 25 fps, 12 s, manual zero-offset alignment,
+  seed at 6 s: both subjects selected; partial preview played while export
+  disabled; final 300/300 reference and 253/300 target. First playable
+  was observed by 29 s, final by 103 s (manual observation bounds, not
+  instrumented exact timestamps). LiteRT effective CPU, four threads.
+  Analysis PSS sampled at 373388 KiB; after exiting 251507 KiB (not a
+  peak or a comprehensive leak test).
+- Missing-frame export button remained disabled. Target-only repair at
+  playhead 5.708 s in [4.71,6.71] s committed; reference count stayed 300,
+  target count changed 253 to 249. This is functional evidence, not a
+  quality improvement or dense identity validation. A subsequent repair
+  cancelled during processing retained 300/249 after settling. Re-entered
+  analysis, selected both subjects, cancelled, and returned to normal
+  playback without late canvas resurrection in the observed interval.
+- Final rebuilt APK: short 1.2 s at end anchor had reference 24/30,
+  target 30/30; missing guidance rendered on its own full-width line.
+  Retried at zero anchor and got 30/30 for both, archive saved, new
+  export review warning displayed; actual MediaStore export H.264/AAC,
+  1080x1550, 25 fps, 30 frames, exact 1.200 s container duration; full
+  FFmpeg decode passed. APK SHA-256
+  `d4d65b7156187e4b8dd796d4ad211201ec22deeae88798991d283d1153d9635e`;
+  output SHA-256
+  `a3b447e23cbee3c66bc712dd710c158c156c89d139c17ccba227efebc1f25b90`.
+- iPhone 15 Pro simulator, Debug smoke entry from `d54234cd`, same full
+  C8.3 fixtures at 6 s: first playable 4.744 s, complete 48.161 s,
+  300/300 and 257/300; incomplete archive and native export refused,
+  normal comparison restored. Not an iPhone Release runtime test.
+- Both Android rebuilds passed 45 Flutter comparison tests. No physical
+  iPhone available. Final UI-only change not rebuilt for iOS Release in
+  this round; prior arm64 Release compile is documented above.
+- Evidence: `/tmp/woah-cutout-release-r2` (screenshots, simulator report,
+  build logs, actual pulled MP4, meminfo). No media or local signing
+  overrides committed. Keep default production opt-in disabled.
