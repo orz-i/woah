@@ -265,6 +265,13 @@ class ComparisonCutoutTest {
                     }
                     assertNull(saved.reference.layer(pts[32]+1))
                 }
+                val gpuKey=key.copy(backend="GPU")
+                val fallback=archive.restoreMatching("project",listOf(gpuKey,key),{pts},{pts}){true}!!
+                assertEquals("CPU",fallback.backend);fallback.cache.close()
+                archive.save("project",gpuKey,selection,cache){true}
+                val gpu=archive.restoreMatching("project",listOf(key,gpuKey),{pts},{pts}){true}!!
+                assertEquals("GPU",gpu.backend);gpu.cache.close()
+                archive.save("project",key,selection,cache){true}
                 assertNull(archive.restore("project",key.copy(offset=1),{pts},{pts}){true})
                 assertEquals(false,java.io.File(root,"project.cutout").exists())
                 archive.save("project",key,selection,cache){true}

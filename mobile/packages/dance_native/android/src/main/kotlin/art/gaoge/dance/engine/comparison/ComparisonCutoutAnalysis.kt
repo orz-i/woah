@@ -273,7 +273,8 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
     }
 
     internal data class Inspection(val seed: ComparisonCutoutSeed, val observation: Observation,
-        val index: Int, val preview: ComparisonCutoutPreviewDto, val sourceDigest: ByteArray)
+        val index: Int, val preview: ComparisonCutoutPreviewDto, val sourceDigest: ByteArray,
+        val backend:art.gaoge.dance.engine.litert.LiteRtAccelerator)
 
     private fun resolveTouch(o:Observation,seed:ComparisonCutoutSeed,current:()->Boolean,
                              local:(IntArray)->Observation):Pair<Observation,Int> {
@@ -324,7 +325,7 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                 rgba.duplicate().apply{rewind();get(raw)}
                 val preview=observation.thumbnail(index,raw)
                 checkCurrent(current)
-                inspected=Inspection(seed,observation,index,preview,sourceDigest)
+                inspected=Inspection(seed,observation,index,preview,sourceDigest,segmenter.effectiveAccelerator)
             }
             requireNotNull(inspected)
         }
@@ -357,6 +358,10 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
         require((observationEvidence==null && onReverseCapture==null && reverseSlotBudget==6*1024*1024) ||
             context.packageName=="art.gaoge.dance.engine.cutoutqa.test")
         require(reverseSlotBudget in 1..6*1024*1024)
+        // A cached touch observation must come from exactly this accelerator.
+        // This check precedes any allocation or tracker work.
+        require(inspection==null || inspection.backend==segmenter.effectiveAccelerator){"Mixed cutout backend"}
+
         val measure=art.gaoge.dance.engine.BuildConfig.DEBUG ||
             (gpuReverseBlock && context.packageName.endsWith(".cutoutreleaseqa"))
         val wallStart=System.nanoTime()
@@ -496,7 +501,10 @@ internal class ComparisonCutoutAnalysis(private val context: Context) {
                     confidenceThreshold=.25f)}
                 o.withDetail(Observation(o.pts,local.persons,cropMapper,frame),roi)
             }catch(e:CancellationException){throw e}
-            catch(e:Exception){detailFailures++;o}
+            catch(e:Exception){
+                if(gpuReverseBlock && ComparisonCutoutBackend.isModelFailure(e))throw e
+                detailFailures++;o
+            }
             checkCurrent(current)
             val index=timed("track"){merged.finishDetail(session,o.bounds.size)}
             if(index>=o.bounds.size)detailAccepted++

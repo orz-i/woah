@@ -105,7 +105,7 @@ internal class ComparisonSession(
     // GPU QA keeps the idle runtime between selections to avoid compiling
     // the graph per selected role. CPU keeps its existing short lifetime.
     private var idleCutoutRuntime:YoloLiteRtSegmenter?=null
-    private val cutoutAccelerator=if(
+    private val configuredCutoutAccelerator=if(
         (art.gaoge.dance.engine.BuildConfig.DEBUG &&
             art.gaoge.dance.engine.BuildConfig.CUTOUT_QA_BACKEND=="gpu" &&
             context.packageName.endsWith(".cutoutqa")) ||
@@ -114,23 +114,47 @@ internal class ComparisonSession(
             art.gaoge.dance.engine.BuildConfig.CUTOUT_RELEASE_GPU_QA &&
             context.packageName.endsWith(".cutoutreleaseqa"))
     ) LiteRtAccelerator.GPU else LiteRtAccelerator.CPU
-    private val useGpuReverseBlock=!art.gaoge.dance.engine.BuildConfig.DEBUG &&
+    private val allowCutoutFallback=!art.gaoge.dance.engine.BuildConfig.DEBUG &&
         art.gaoge.dance.engine.BuildConfig.CUTOUT_PREVIEW_ENABLED &&
         art.gaoge.dance.engine.BuildConfig.CUTOUT_RELEASE_GPU_QA &&
         context.packageName.endsWith(".cutoutreleaseqa") &&
-        cutoutAccelerator==LiteRtAccelerator.GPU
-    private fun newCutoutRuntime()=YoloLiteRtSegmenter(context,requestedAccelerator=cutoutAccelerator,cpuNumThreads=4)
+        configuredCutoutAccelerator==LiteRtAccelerator.GPU
+    // Main-thread state only. A failed GPU is not retried during this
+    // ComparisonSession; a previously committed canvas keeps its backend.
+    private var preferredCutoutBackend=configuredCutoutAccelerator
+    private var canvasBackend:LiteRtAccelerator?=null
+    private fun selectionBackend():LiteRtAccelerator? {
+        val r=referenceInspection?.backend;val t=targetInspection?.backend
+        check(r==null || t==null || r==t)
+        return r ?: t
+    }
+    private fun reverseBlocks(backend:LiteRtAccelerator)=allowCutoutFallback && backend==LiteRtAccelerator.GPU
+    private fun newCutoutRuntime(backend:LiteRtAccelerator)=YoloLiteRtSegmenter(context,requestedAccelerator=backend,cpuNumThreads=4)
+    private fun rememberFallback(requested:LiteRtAccelerator,actual:LiteRtAccelerator,revision:Long){
+        if(allowCutoutFallback && requested==LiteRtAccelerator.GPU && actual==LiteRtAccelerator.CPU &&
+            !closed && cutoutRevision.get()==revision){
+            preferredCutoutBackend=LiteRtAccelerator.CPU
+            android.util.Log.i("WoahCutoutBackend","initial_fallback=CPU4")
+        }
+    }
+    private fun backendFailure(error:Exception,requested:LiteRtAccelerator,revision:Long):Exception {
+        if(!allowCutoutFallback || requested!=LiteRtAccelerator.GPU || closed ||
+            cutoutRevision.get()!=revision || !ComparisonCutoutBackend.isModelFailure(error))return error
+        preferredCutoutBackend=LiteRtAccelerator.CPU
+        clearCutoutInspections()
+        android.util.Log.i("WoahCutoutBackend","restart_required=CPU4")
+        return ComparisonCutoutBackend.restart()
+    }
     private fun takeCutoutRuntime()=idleCutoutRuntime.also{idleCutoutRuntime=null}
     private fun clearCutoutInspections(){
         referenceInspection=null;targetInspection=null
         takeCutoutRuntime()?.close()
     }
-    private suspend fun initializeCutoutRuntime(value:YoloLiteRtSegmenter){
+    private suspend fun initializeCutoutRuntime(value:YoloLiteRtSegmenter,requested:LiteRtAccelerator,
+                                                unbound:Boolean=false):LiteRtAccelerator {
         value.initialize()
-        // Never mix GPU and CPU observations within one selected identity
-        // session. In the opt-in GPU QA build a fallback is a failed trial,
-        // not a successful accelerated run.
-        check(value.effectiveAccelerator==cutoutAccelerator){"抠像推理后端不可用，请重新选择人物"}
+        return ComparisonCutoutBackend.resolve(requested,requireNotNull(value.runtimeInfo).effectiveAccelerator,
+            allowCutoutFallback && unbound)
     }
     val hasCutout: Boolean get() = cutoutCache!=null || cutoutPreparing
     private var pendingStep: CancellableContinuation<ComparisonPlaybackDto>?=null
@@ -395,26 +419,36 @@ internal class ComparisonSession(
         val seed=ComparisonCutoutSeed(value.sourcePtsUs,value.x.toFloat(),value.y.toFloat())
         val description=requireNotNull(if(reference)a else b)
         val uri=if(reference)teacherUri else learnerUri
+        val locked=canvasBackend ?: selectionBackend()
+        val requested=locked ?: preferredCutoutBackend
+        if(allowCutoutFallback && locked==LiteRtAccelerator.GPU && preferredCutoutBackend==LiteRtAccelerator.CPU)
+            throw ComparisonCutoutBackend.restart()
         val revision=cutoutRevision.incrementAndGet()
         cutoutPreparing=true
         val done=CompletableDeferred<Unit>();cutoutDone=done
         var runtime=takeCutoutRuntime()
+        var actual=requested
         try {
             val inspection=withContext(Dispatchers.Default) {
                 val scope=currentCoroutineContext()
                 val current={scope.isActive && cutoutRevision.get()==revision}
-                val segmenter=runtime ?: newCutoutRuntime().also{runtime=it}
-                initializeCutoutRuntime(segmenter)
+                val segmenter=runtime ?: newCutoutRuntime(requested).also{runtime=it}
+                actual=initializeCutoutRuntime(segmenter,requested,locked==null)
                 ComparisonCutoutAnalysis(context).inspect(uri,description,seed,segmenter,current)
             }
             check(!closed && foreground && cutoutRevision.get()==revision)
             val shown=requireNotNull(engine?.presentedFrame)
             require((if(reference)shown.first else shown.second)==seed.ptsUs)
+            check(inspection.backend==actual && (locked==null || actual==locked))
+            rememberFallback(requested,actual,revision)
             if(reference)referenceInspection=inspection else targetInspection=inspection
-            if(cutoutAccelerator==LiteRtAccelerator.GPU){
+            if(actual==LiteRtAccelerator.GPU || allowCutoutFallback){
                 idleCutoutRuntime=runtime;runtime=null
             }
             return inspection.preview
+        } catch(error:Exception){
+            rememberFallback(requested,actual,revision)
+            throw backendFailure(error,actual,revision)
         } finally {
             runtime?.close()
             if(cutoutDone===done){cutoutPreparing=false;cutoutDone=null}
@@ -439,6 +473,12 @@ internal class ComparisonSession(
             minOf(selectedWindow.endUs,anchorPosition+500_000L))
         val mirrorR=practice.mirrorTeacher;val mirrorT=practice.mirrorLearner
         val inspectedR=referenceInspection;val inspectedT=targetInspection
+        val requested=selectionBackend() ?: preferredCutoutBackend
+        if(allowCutoutFallback && (inspectedR?.seed!=ra || inspectedT?.seed!=ta ||
+            inspectedR.backend!=requested || inspectedT.backend!=requested)){
+            clearCutoutInspections()
+            throw ComparisonCutoutBackend.restart()
+        }
         val revision=cutoutRevision.incrementAndGet()
         cutoutPreparing=true
         val done=CompletableDeferred<Unit>();cutoutDone=done
@@ -449,15 +489,15 @@ internal class ComparisonSession(
             val cache=withContext(Dispatchers.Default) {
                 val scope=currentCoroutineContext()
                 val current={scope.isActive && cutoutRevision.get()==revision}
-                val segmenter=runtime ?: newCutoutRuntime().also{runtime=it}
+                val segmenter=runtime ?: newCutoutRuntime(requested).also{runtime=it}
                 try {
-                    initializeCutoutRuntime(segmenter)
+                    initializeCutoutRuntime(segmenter,requested)
                     val analysis=ComparisonCutoutAnalysis(context)
                     val r=analysis.begin(teacherUri,teacher,bounds.teacherTimeUs(first),bounds.teacherTimeUs(last),
-                        bounds.teacherTimeUs(initial.startUs),bounds.teacherTimeUs(initial.endUs-1),ra,true,mirrorR,segmenter,current,inspectedR,gpuReverseBlock=useGpuReverseBlock)
+                        bounds.teacherTimeUs(initial.startUs),bounds.teacherTimeUs(initial.endUs-1),ra,true,mirrorR,segmenter,current,inspectedR,gpuReverseBlock=reverseBlocks(requested))
                     r.use {
                         val t=analysis.begin(learnerUri,learner,bounds.learnerTimeUs(first),bounds.learnerTimeUs(last),
-                            bounds.learnerTimeUs(initial.startUs),bounds.learnerTimeUs(initial.endUs-1),ta,false,mirrorT,segmenter,current,inspectedT,gpuReverseBlock=useGpuReverseBlock)
+                            bounds.learnerTimeUs(initial.startUs),bounds.learnerTimeUs(initial.endUs-1),ta,false,mirrorT,segmenter,current,inspectedT,gpuReverseBlock=reverseBlocks(requested))
                         t.use {
                             if(initial!=selectedWindow)withContext(Dispatchers.Main.immediate){
                                 check(!closed && foreground && cutoutRevision.get()==revision && range==bounds)
@@ -482,13 +522,16 @@ internal class ComparisonSession(
             val position=positionUs()
             val wasPlaying=wantsPlay
             cache.setLayout(requestedLayout)
-            cutoutCache=cache;pendingCache=null;cutoutWindow=selectedWindow;partialWork=null
+            cutoutCache=cache;pendingCache=null;cutoutWindow=selectedWindow;partialWork=null;canvasBackend=requested
             cutoutSelection=ComparisonCutoutSelection(ra,ta);cutoutOrigin=bounds.teacherStartUs
+            if(allowCutoutFallback)android.util.Log.i("WoahCutoutBackend","canvas_committed="+requested.name)
             referenceInspection=null;targetInspection=null
             pendingUs=position;wantsPlay=wasPlaying
             try{buildEngine()}finally{partial?.close();partial=null}
             return ComparisonCutoutResultDto(state(),cache.reference.visibleCount.toLong(),cache.reference.frameCount.toLong(),
                 cache.target.visibleCount.toLong(),cache.target.frameCount.toLong())
+        } catch(error:Exception){
+            throw backendFailure(error,requested,revision)
         } finally {
             runtime?.close()
             pendingCache?.close()
@@ -529,6 +572,10 @@ internal class ComparisonSession(
         require(inspected.seed==seed)
         val bounds=requireNotNull(range)
         val original=requireNotNull(cutoutCache)
+        val requested=requireNotNull(canvasBackend)
+        check(inspected.backend==requested)
+        if(allowCutoutFallback && requested==LiteRtAccelerator.GPU && preferredCutoutBackend==LiteRtAccelerator.CPU)
+            throw ComparisonCutoutBackend.restart()
         val selection=requireNotNull(cutoutSelection)
         val description=requireNotNull(if(request.reference)a else b)
         val uri=if(request.reference)teacherUri else learnerUri
@@ -550,11 +597,11 @@ internal class ComparisonSession(
         try {
             val replacement=withContext(Dispatchers.Default){
                 val scope=currentCoroutineContext();val current={scope.isActive && cutoutRevision.get()==revision}
-                val segmenter=runtime ?: newCutoutRuntime().also{runtime=it}
+                val segmenter=runtime ?: newCutoutRuntime(requested).also{runtime=it}
                 try {
-                    initializeCutoutRuntime(segmenter)
+                    initializeCutoutRuntime(segmenter,requested)
                     ComparisonCutoutAnalysis(context).begin(uri,description,start,end,previewStart,previewEnd,
-                        seed,request.reference,mirror,segmenter,current,inspected,fixedGrid=grid,gpuReverseBlock=useGpuReverseBlock).use{work->
+                        seed,request.reference,mirror,segmenter,current,inspected,fixedGrid=grid,gpuReverseBlock=reverseBlocks(requested)).use{work->
                         work.finish().use{patch->
                             require(patch.layer(seed.ptsUs)!=null)
                             frozen.replacing(request.reference,context.cacheDir,patch,expected,anchor,current).also{pending=it}
@@ -578,6 +625,8 @@ internal class ComparisonSession(
             }
             original.close();clearCutoutInspections()
             return completedCutoutResult()
+        }catch(error:Exception){
+            throw backendFailure(error,requested,revision)
         }finally {
             runtime?.close();pending?.close();frozen.close()
             if(cutoutDone===done){cutoutDone=null;cutoutPreparing=false}
@@ -600,8 +649,8 @@ internal class ComparisonSession(
 
     private fun archive()=ComparisonCutoutArchive(java.io.File(context.cacheDir,"comparison-cutout-v1"),context.cacheDir)
     private fun archiveKey(origin:Long,offset:Long,scale:Double,window:ComparisonLoop,
-                           mirrorR:Boolean,mirrorT:Boolean,current:()->Boolean)=ComparisonCutoutArchiveKey(
-        origin,offset,scale,window.startUs,window.endUs,mirrorR,mirrorT,cutoutAccelerator.name,
+                           mirrorR:Boolean,mirrorT:Boolean,backend:LiteRtAccelerator,current:()->Boolean)=ComparisonCutoutArchiveKey(
+        origin,offset,scale,window.startUs,window.endUs,mirrorR,mirrorT,backend.name,
         ComparisonCutoutFingerprint.read(context,teacherUri,current),
         ComparisonCutoutFingerprint.read(context,learnerUri,current),
         ComparisonCutoutArchive.modelDigest(context,current))
@@ -614,13 +663,14 @@ internal class ComparisonSession(
         val selection=requireNotNull(cutoutSelection);val origin=requireNotNull(cutoutOrigin)
         val window=requireNotNull(cutoutWindow)
         val offset=offsetUs;val scale=timeScale;val mr=practice.mirrorTeacher;val mt=practice.mirrorLearner
+        val backend=requireNotNull(canvasBackend)
         val frozen=active.frozen()
         val revision=cutoutRevision.incrementAndGet()
         val done=CompletableDeferred<Unit>();cutoutDone=done;cutoutPreparing=true
         try {
             return withContext(Dispatchers.IO){
                 val scope=currentCoroutineContext();val current={scope.isActive && cutoutRevision.get()==revision}
-                val key=archiveKey(origin,offset,scale,window,mr,mt,current)
+                val key=archiveKey(origin,offset,scale,window,mr,mt,backend,current)
                 archive().save(projectId,key,selection,frozen,current)
             }
         } finally {
@@ -638,15 +688,18 @@ internal class ComparisonSession(
         val revision=cutoutRevision.incrementAndGet()
         val done=CompletableDeferred<Unit>();cutoutDone=done;cutoutPreparing=true
         var pending:ComparisonCutoutRestored?=null
+        val preferred=preferredCutoutBackend
         try {
             val restored=withContext(Dispatchers.IO){
                 val scope=currentCoroutineContext();val current={scope.isActive && cutoutRevision.get()==revision}
                 // Cheap existence check avoids hashing sources on first entry.
                 require(projectId.matches(Regex("[A-Za-z0-9_-]{1,80}")))
                 if(!java.io.File(context.cacheDir,"comparison-cutout-v1/$projectId.cutout").isFile)return@withContext null
-                val key=archiveKey(bounds.teacherStartUs,offset,scale,window,mr,mt,current)
+                val key=archiveKey(bounds.teacherStartUs,offset,scale,window,mr,mt,preferred,current)
+                val keys=if(allowCutoutFallback)listOf(key,key.copy(backend=
+                    if(preferred==LiteRtAccelerator.GPU)"CPU" else "GPU"))else listOf(key)
                 val analysis=ComparisonCutoutAnalysis(context)
-                archive().restore(projectId,key,{seed->
+                archive().restoreMatching(projectId,keys,{seed->
                     ComparisonCutoutAnalysis.window(analysis.timestamps(teacherUri,current),
                         bounds.teacherTimeUs(window.startUs),bounds.teacherTimeUs(window.endUs-1),seed.ptsUs)
                 },{seed->
@@ -663,11 +716,13 @@ internal class ComparisonSession(
             check(!closed && foreground && cutoutRevision.get()==revision && range==bounds)
             val position=positionUs().coerceIn(window.startUs,window.endUs-1)
             restored.cache.setLayout(requested)
+            canvasBackend=LiteRtAccelerator.valueOf(restored.backend)
+            if(allowCutoutFallback)android.util.Log.i("WoahCutoutBackend","canvas_restored="+restored.backend)
             cutoutCache=restored.cache;pending=null;cutoutSelection=restored.selection;cutoutOrigin=bounds.teacherStartUs
             cutoutWindow=window;pendingUs=position;wantsPlay=false
             clearCutoutInspections()
             try{buildEngine()}catch(error:Throwable){
-                cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null
+                cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;canvasBackend=null
                 try{buildEngine()}finally{restored.cache.close()}
                 throw error
             }
@@ -742,7 +797,7 @@ internal class ComparisonSession(
         clearCutoutInspections()
         if(cutoutCache!=null) {
             pendingUs=positionUs();wantsPlay=false;pauseClock()
-            val old=cutoutCache;cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;repair=null;cutoutExportSuspended=false
+            val old=cutoutCache;cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;canvasBackend=null;repair=null;cutoutExportSuspended=false
             try { buildEngine() } finally { old?.close() }
         }
         return state()
@@ -793,7 +848,7 @@ internal class ComparisonSession(
         if (closed) return
         pendingUs=positionUs();wantsPlay=false;pauseClock();closed=true
         val old=cutoutCache
-        cutoutRevision.incrementAndGet();cutoutPreparing=false;partialWork=null;cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;repair=null;clearCutoutInspections()
+        cutoutRevision.incrementAndGet();cutoutPreparing=false;partialWork=null;cutoutCache=null;cutoutWindow=null;cutoutSelection=null;cutoutOrigin=null;canvasBackend=null;repair=null;clearCutoutInspections()
         choreographer.removeFrameCallback(frames)
         try {releaseEngine();producer.setCallback(null);producer.release()} finally {old?.close()}
     }

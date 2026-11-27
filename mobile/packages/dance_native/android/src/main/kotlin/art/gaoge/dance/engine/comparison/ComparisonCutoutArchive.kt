@@ -22,7 +22,7 @@ internal data class ComparisonCutoutArchiveKey(
         referenceDigest,targetDigest,modelDigest).joinToString("|")
 }
 internal data class ComparisonCutoutSelection(val reference:ComparisonCutoutSeed,val target:ComparisonCutoutSeed)
-internal data class ComparisonCutoutRestored(val selection:ComparisonCutoutSelection,val cache:ComparisonCutoutCache)
+internal data class ComparisonCutoutRestored(val selection:ComparisonCutoutSelection,val cache:ComparisonCutoutCache,val backend:String)
 
 /** Only sealed, complete, selected-alpha tracks are persisted. The archive
  * lives in app-private, OS-evictable cache, never in the backup/project JSON.
@@ -130,7 +130,15 @@ internal class ComparisonCutoutArchive(private val root:File,private val scratch
     }
     fun restore(id:String,key:ComparisonCutoutArchiveKey,
                 referenceTimes:(ComparisonCutoutSeed)->List<Long>,targetTimes:(ComparisonCutoutSeed)->List<Long>,
+                current:()->Boolean):ComparisonCutoutRestored?=
+        restoreMatching(id,listOf(key),referenceTimes,targetTimes,current)
+    /** Match complete keys in one read. Never probe a wrong accelerator
+     * destructively and then try another; that would erase a valid archive. */
+    fun restoreMatching(id:String,keys:List<ComparisonCutoutArchiveKey>,
+                referenceTimes:(ComparisonCutoutSeed)->List<Long>,targetTimes:(ComparisonCutoutSeed)->List<Long>,
                 current:()->Boolean):ComparisonCutoutRestored?=synchronized(lock){
+        require(keys.isNotEmpty() && keys.size<=2)
+
         val source=file(id)
         maintain()
         if(!source.isFile)return@synchronized null
@@ -140,12 +148,14 @@ internal class ComparisonCutoutArchive(private val root:File,private val scratch
             val expected=RandomAccessFile(source,"r").use{it.seek(size-32);ByteArray(32).also(it::readFully)}
             require(MessageDigest.isEqual(expected,hash(source,size-32,current)))
             DataInputStream(BufferedInputStream(source.inputStream())).use{input->
-                require(input.readInt()==MAGIC && input.readUTF()==key.encoded())
+                require(input.readInt()==MAGIC)
+                val encoded=input.readUTF()
+                val key=requireNotNull(keys.singleOrNull{it.encoded()==encoded})
                 val seeds=ComparisonCutoutSelection(readSeed(input),readSeed(input))
                 val r=readTrack(input,referenceTimes(seeds.reference),seeds.reference,true,key.mirrorR,key.referenceDigest,current)
                 try{
                     val t=readTrack(input,targetTimes(seeds.target),seeds.target,false,key.mirrorT,key.targetDigest,current)
-                    result=ComparisonCutoutRestored(seeds,ComparisonCutoutCache(r,t))
+                    result=ComparisonCutoutRestored(seeds,ComparisonCutoutCache(r,t),key.backend)
                 }catch(e:Throwable){r.close();throw e}
                 val tail=ByteArray(32);input.readFully(tail);require(tail.contentEquals(expected) && input.read()==-1)
             }

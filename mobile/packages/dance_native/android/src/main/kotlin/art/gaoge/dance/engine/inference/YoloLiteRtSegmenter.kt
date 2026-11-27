@@ -63,7 +63,12 @@ class YoloLiteRtSegmenter(
                 )
             }
 
-            modelRunner.initialize()
+            try {
+                modelRunner.initialize()
+            } catch (error: Throwable) {
+                modelRunner.close()
+                throw error
+            }
             runner = modelRunner
 
             val inShapes = modelRunner.runtimeInfo?.inputShapes ?: emptyList()
