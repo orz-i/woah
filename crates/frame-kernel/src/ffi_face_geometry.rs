@@ -243,6 +243,56 @@ pub unsafe extern "C" fn frame_kernel_research_tracklet_detail_finish(
 }
 
 /// # Safety
+/// Readable current RGB, complete masks, 24 mapped pose floats, count faces;
+/// one disjoint writable sticker. No persistent data.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_tracklet_pixel_cap(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    poses: *const f32,
+    faces: *const Ellipse,
+    rgb: *const u8,
+    rgb_len: usize,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(2..=32).contains(&count)
+        || len > 32 * 1024 * 1024
+        || rgb_len > 128 * 1024 * 1024
+        || out.is_null()
+    {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable inputs.
+    let (Some(m), Some(p), Some(f), Some(rgb)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(poses, 24),
+            crate::ffi_tracking::borrowed(faces, count),
+            crate::ffi_tracking::borrowed(rgb, rgb_len),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::tracklet_pixel_cap(
+        m,
+        index as usize,
+        count,
+        spec,
+        [p[..12].try_into().unwrap(), p[12..].try_into().unwrap()],
+        f,
+        rgb,
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies disjoint writable output.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
+/// # Safety
 /// Twelve disjoint writable floats; no write on failure.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_offline_face_plans(

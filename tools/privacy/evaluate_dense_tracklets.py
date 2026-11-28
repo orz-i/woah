@@ -51,16 +51,69 @@ def votes(kernel,ref,query):
     return records
 
 
+def shared_trace(trace):
+    """Target-independent canonical evidence used by the dense producer."""
+    return {"fixture_sha256":trace["fixture_sha256"],"model_sha256":trace["model_sha256"],
+            "protected_roots":trace["identity_protected_roots"],
+            "frames":[{"index":r["index"],"time_us":r["time_us"],
+                       "raw_boxes":r["raw_boxes"],"tracks":r["tracks"],
+                       "body_merge_evidence":r.get("body_merge_evidence",[])}
+                      for r in trace["candidate"]["frames"]]}
+
+def reuse_dense(a,trace):
+    # Require the original canonical trace, not merely matching raw boxes or
+    # claimed hashes in a derived cache. No stored embeddings or image crops.
+    import copy
+    start=time.perf_counter()
+    original=json.loads(a.shared_reference.read_text())
+    dense=json.loads(a.shared_dense.read_text())
+    if (shared_trace(trace)!=shared_trace(original)
+            or dense["reference_replay_sha256"]!=sha(a.shared_reference)
+            or dense["fixture_sha256"]!=sha(a.fixture)
+            or dense["target_id"]!=original["target_id"]
+            or dense["protected_roots"]!=original["identity_protected_roots"]
+            or dense["detector_hashes"]!=trace["model_sha256"]
+            or dense["pose_sha256"]!=POSE_SHA
+            or dense["reid_weights_sha256"]!={k:v for k,v in MODEL_FILES.items() if "0287" in k}
+            or dense["library_sha256"]!=sha(a.library)):
+        raise ValueError("shared evidence does not match all-root canonical source")
+    for name,digest in MODEL_FILES.items():
+        if "0287" in name and sha(a.model_dir/name)!=digest:raise ValueError("shared ReID weight mismatch")
+    fixture=json.loads(a.fixture.read_text())
+    for item in fixture["frames"]:
+        if sha(a.fixture.parent/item["asset"])!=item["sha256"]:raise ValueError("shared frame hash mismatch")
+    rows=trace["candidate"]["frames"]
+    if len(dense["frames"])!=len(rows) or any(
+        d["index"]!=r["index"] or d["time_us"]!=r["time_us"] or d["boxes"]!=r["raw_boxes"]
+        for d,r in zip(dense["frames"],rows)):
+        raise ValueError("shared raw evidence mismatch")
+    if trace["target_id"] not in trace["identity_protected_roots"]:
+        raise ValueError("shared target is not a protected initial root")
+    out=copy.deepcopy(dense)
+    out.update(target_id=trace["target_id"],reference_replay_sha256=sha(a.reference_replay),
+               shared_from_dense_sha256=sha(a.shared_dense),
+               shared_from_reference_sha256=sha(a.shared_reference),
+               elapsed_s=time.perf_counter()-start,shared_model_inferences=0)
+    a.output.write_text(json.dumps(out,separators=(",",":"))+"\n")
+    print("reused all-root evidence",len(rows),"target",trace["target_id"],flush=True)
+
+
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     for n in ("library","fixture","reference-replay","model-dir","output"):
         ap.add_argument("--"+n,type=Path,required=True)
+    ap.add_argument("--shared-dense",type=Path)
+    ap.add_argument("--shared-reference",type=Path)
     a=ap.parse_args()
+    if (a.shared_dense is None)!=(a.shared_reference is None):ap.error("shared dense and reference must be supplied together")
     fixture=json.loads(a.fixture.read_text()); trace=json.loads(a.reference_replay.read_text())
     if trace["fixture_sha256"]!=sha(a.fixture) or trace["model_sha256"]!={"person":sha(PERSON_MODEL),"face":sha(FACE_MODEL)}:
         raise ValueError("source replay mismatch")
     if sha(a.model_dir/POSE_FILE)!=POSE_SHA:
         raise ValueError("pose hash mismatch")
+    if a.shared_dense is not None:
+        reuse_dense(a,trace)
+        return
     canonical=trace["candidate"]["frames"]; kernel=PoseKernel(a.library)
     detector=model(PERSON_MODEL); face=model(FACE_MODEL);pose=model(a.model_dir/POSE_FILE); reid=load_0287(a.model_dir)
     seed=[];seedfeat=[];recent=[];frames=[];start=time.perf_counter()

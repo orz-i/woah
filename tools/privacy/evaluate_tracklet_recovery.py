@@ -110,7 +110,9 @@ def main():
         ap.add_argument("--"+n,type=Path,required=True)
     ap.add_argument("--ear-cap",action="store_true",help="Candidate-only current ear-level cap with mapped pose flip corroboration")
     ap.add_argument("--detail-cap",action="store_true",help="Two current body detail views after all scene cap attempts fail")
+    ap.add_argument("--pixel-cap",action="store_true",help="Current RGB component corroboration after all existing cap paths fail")
     a=ap.parse_args()
+    if a.pixel_cap and not a.detail_cap:ap.error("--pixel-cap requires --detail-cap")
     if a.detail_cap and not a.ear_cap:ap.error("--detail-cap requires --ear-cap")
     fixture=json.loads(a.fixture.read_text());base=json.loads(a.reference_replay.read_text());dense=json.loads(a.dense.read_text())
     if base["fixture_sha256"]!=sha(a.fixture) or dense["fixture_sha256"]!=sha(a.fixture) or dense["reference_replay_sha256"]!=sha(a.reference_replay):
@@ -133,6 +135,9 @@ def main():
         ear=kernel.lib.frame_kernel_research_tracklet_ear_cap
         flip=kernel.lib.frame_kernel_research_tracklet_flip_ear_cap
         for fn in (ear,flip):fn.argtypes=head.argtypes;fn.restype=C.c_int32
+    if a.pixel_cap:
+        pixel=kernel.lib.frame_kernel_research_tracklet_pixel_cap
+        pixel.argtypes=[P,S,S,U,MaskSpec,P,P,P,S,P];pixel.restype=C.c_int32
     output=copy.deepcopy(prior);attempts=[]
     for i,j in selected.items():
         if prior[i]["render"] is not None or prior[i]["track"] is None or prior[i]["track"]["observed"]:
@@ -170,6 +175,13 @@ def main():
             local=detail_recovery(kernel,detector,face,pose,im,tr,ds,masks,j,fs,ear,detail)
             if local is not None:
                 placement=local;rc=0;detail.update(lane="detail_cap",status=0)
+        if a.pixel_cap and rc!=0:
+            # Both mapped current poses already computed by the flip path.
+            rgb=np.ascontiguousarray(im)
+            rc=pixel(ptr(masks),masks.size,len(ds),j,spec,ptr(both),(Ellipse*len(ds))(*fs),ptr(rgb),rgb.size,C.byref(placement))
+            if rc<0:raise RuntimeError("invalid current pixel cap")
+            detail["pixel_status"]=rc;detail["status"]=rc
+            if rc==0:detail["lane"]="pixel_cap"
         if rc==0:
             detail.update(sticker=vals(placement.square),bounds=vals(placement.bounds),rows=placement.rows)
             output[i].update(kind=7,render=vals(placement.square),sticker=vals(placement.square),
@@ -187,7 +199,7 @@ def main():
         raise RuntimeError("research pass changed existing coverage")
     out={"scope":__doc__,"fixture_sha256":sha(a.fixture),"target_id":target,
          "dense_sha256":sha(a.dense),"reference_replay_sha256":sha(a.reference_replay),
-         "library_sha256":sha(a.library),"ear_cap":a.ear_cap,"detail_cap":a.detail_cap,"spans":spans,"attempts":attempts,
+         "library_sha256":sha(a.library),"ear_cap":a.ear_cap,"detail_cap":a.detail_cap,"pixel_cap":a.pixel_cap,"spans":spans,"attempts":attempts,
          "baseline":{"frames":prior,"rendered":sum(r["render"] is not None for r in prior)},"candidate":{"frames":output,"rendered":sum(r["render"] is not None for r in output)}}
     a.output.write_text(json.dumps(out,separators=(",",":"))+"\n")
     print("spans",spans,"attempts",attempts,flush=True)
