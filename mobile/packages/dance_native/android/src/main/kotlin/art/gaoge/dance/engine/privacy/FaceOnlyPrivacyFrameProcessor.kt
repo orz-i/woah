@@ -1208,6 +1208,65 @@ class FaceOnlyPrivacyFrameProcessor(
                 }
             }
 
+            // A tight cached/pixel ROI can miss the actual face as a dancer
+            // raises their arms or turns. Re-probe the canonical CURRENT head
+            // plan at most once, only for the exact observed single sticker
+            // owner. No dormant or identity-recovery path enters this lane.
+            if (useConnectedEllipse && trackId in stickerSizeIds &&
+                normalDetectorDue && localDetectorTrackIds.contains(trackId) &&
+                region?.source != FacePrivacyRegionSource.DETECTED_FACE &&
+                renderMode == FaceOnlyRenderMode.DIRECT && !isDormantProbe &&
+                trackedPerson.observedThisFrame && person.observedThisFrame &&
+                person.state == TrackState.ACTIVE && person.mask != null) {
+                val headPlan = FaceHeadRoiPlanner.plan(person.bbox, mapper.srcWidth, mapper.srcHeight)
+                    ?.let { if (canonicalizeReferenceGeometry) FaceReferenceGeometryCanonicalizer.plan(it) else it }
+                if (headPlan != null && headPlan.sourceRect != plan?.sourceRect) {
+                    try {
+                        val roiStart = System.nanoTime()
+                        roiReadCount++
+                        val headPixels = readRoiPixels(frameTexture, texMatrix, textureType, headPlan,
+                            canonicalModelRgbaBottomUp, getPreparedCanonicalInput())
+                        roiReadbackMs += (System.nanoTime() - roiStart) / 1_000_000.0
+                        val started = System.nanoTime()
+                        val result = try {
+                            locator.detectRgbaTopDown(headPixels.rgba, FACE_ROI_SIZE, FACE_ROI_SIZE)
+                        } finally {
+                            detectorWallMs += (System.nanoTime() - started) / 1_000_000.0
+                        }
+                        detectorCallCount++
+                        detectorCalledTrackIds += trackId
+                        inferenceMs += result.inferenceMs
+                        detectorObservationCount += result.observations.size
+                        if (result.observations.isEmpty()) detectorZeroObservationCallCount++
+                        val rivals = persons.filter { it.id != trackId && it.observedThisFrame &&
+                            it.state != TrackState.REMOVED }.map { it.bbox to it.mask }
+                        val selected = FaceRoiCandidateSelector.selectCurrentHeadRetry(
+                            result.observations, headPlan, person.bbox, person.mask, rivals)
+                        val measured = selected?.let {
+                            FacePrivacyRegionResolver.resolve(person.bbox, headPlan, it)
+                        }
+                        emitRoiDiagnostic("CURRENT_HEAD_RETRY", trackId, ptsUs, headPlan, person.bbox,
+                            headPixels.rgba, result.observations.size, measured != null, pixelRejectReason,
+                            renderMode, headPixels.source)
+                        if (result.observations.isNotEmpty() && measured == null) {
+                            detectorRejectedCallCount++
+                            detectorRejectedTrackIds += trackId
+                        }
+                        if (measured != null) {
+                            // A current broad measurement is not the tight-ROI
+                            // scale feedback loop: retain its measured radius.
+                            // The normal temporal center gate still applies.
+                            region = measured
+                            trustedCurrentPixelCenter = false
+                            detectorSeedRgba = headPixels.rgba
+                            detectorSeedPlan = headPlan
+                        }
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "CURRENT_HEAD_RETRY_FAILED track=$trackId")
+                    }
+                }
+            }
+
             val needsExpandedOcclusionReacquire =
                 region == null &&
                     renderMode == FaceOnlyRenderMode.DORMANT &&

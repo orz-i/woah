@@ -7,6 +7,21 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class FaceRoiCandidateSelectorTest {
+    @Test fun currentHeadRetryRequiresExclusiveCurrentMaskOwner() {
+        val mapper = art.gaoge.dance.engine.geometry.ModelCoordinateMapper(640, 640)
+        val pixels = java.nio.ByteBuffer.allocateDirect(160*160)
+        for (y in 12 until 100) for (x in 12 until 100) pixels.put(y*160+x,255.toByte())
+        val mask = art.gaoge.dance.engine.inference.NativeMask(160,160,pixels,640,640,mapper=mapper)
+        val plan = FaceHeadRoiPlan(FloatRect(0f,0f,256f,256f),.5f,.5f)
+        val bbox = FloatRect(50f,50f,210f,400f)
+        val face = FaceObservation(FloatRect(110f,105f,146f,145f),.9f)
+        val rival = FloatRect(420f,50f,590f,400f)
+        assertNotNull(FaceRoiCandidateSelector.selectCurrentHeadRetry(listOf(face),plan,bbox,mask,listOf(rival to null)))
+        assertNull(FaceRoiCandidateSelector.selectCurrentHeadRetry(listOf(face),plan,bbox,null,emptyList()))
+        assertNull(FaceRoiCandidateSelector.selectCurrentHeadRetry(listOf(face),plan,bbox,mask,listOf(bbox to mask)))
+        val other = FaceObservation(FloatRect(112f,108f,148f,148f),.95f)
+        assertNull(FaceRoiCandidateSelector.selectCurrentHeadRetry(listOf(face,other),plan,bbox,mask,emptyList()))
+    }
     @Test
     fun `wide ROI cannot assign the adjacent person's face to the target`() {
         val plan = FaceHeadRoiPlan(FloatRect(0f, 0f, 400f, 400f), .5f, .5f, 400)

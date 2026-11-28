@@ -36,6 +36,22 @@ object FaceRoiCandidateSelector {
             floatArrayOf(personBbox.left,personBbox.top,personBbox.right,personBbox.bottom),
             pixels,currentMask?.width ?: 0,currentMask?.height ?: 0,transform).map { faces[it] }
     }
+    /** A wider retry must have a current selected mask and no competing
+     * current owner. Do not filter rivals before the anchor ambiguity gate. */
+    fun selectCurrentHeadRetry(
+        faces: List<FaceObservation>, plan: FaceHeadRoiPlan,
+        personBbox: FloatRect, currentMask: art.gaoge.dance.engine.inference.NativeMask?,
+        rivals: List<Pair<FloatRect, art.gaoge.dance.engine.inference.NativeMask?>>
+    ): FaceRoiCandidateSelection? {
+        currentMask ?: return null
+        val owned = ownedObservations(faces, plan, personBbox, currentMask)
+        val selected = select(owned, plan.outputSize, plan.outputSize, plan.anchorX, plan.anchorY)
+            ?: return null
+        if (rivals.any { (bbox, mask) ->
+                ownedObservations(listOf(selected.face), plan, bbox, mask).isNotEmpty()
+            }) return null
+        return selected
+    }
     fun select(faces: List<FaceObservation>,roiWidth: Int,roiHeight: Int,anchorX: Float,anchorY: Float,
         maxAnchorDistanceRatio: Float=0.22f,minAnchorSeparationRatio: Float=0.04f): FaceRoiCandidateSelection? {
         if(faces.isEmpty() || roiWidth<=1 || roiHeight<=1) return null
