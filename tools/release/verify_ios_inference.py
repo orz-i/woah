@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static checks for the Woah iOS Phase 1 YOLO inference spike.
+"""Static checks for the Woah iOS YOLO inference.
 
 This verifier is intentionally host-independent. It validates repository
 contracts, packaging intent, and the Android/iOS tensor agreement. It cannot
@@ -104,11 +104,11 @@ def verify_runtime_packaging() -> None:
     podspec = (ROOT / "mobile/packages/dance_native/ios/dance_native.podspec").read_text(encoding="utf-8")
     check(
         "s.dependency 'TensorFlowLiteSwift/CoreML', '2.17.0'" in podspec,
-        "Phase 1 must pin the Core ML TensorFlowLiteSwift pod",
+        "inference must pin the Core ML TensorFlowLiteSwift pod",
     )
     check(
         "s.dependency 'TensorFlowLiteSwift/Metal', '2.17.0'" in podspec,
-        "Phase 1 must pin the Metal TensorFlowLiteSwift pod",
+        "inference must pin the Metal TensorFlowLiteSwift pod",
     )
     check(
         "s.static_framework = true" in podspec,
@@ -121,11 +121,11 @@ def verify_runtime_packaging() -> None:
 
     # Flutter 3.44+ uses SwiftPM first. Google's general LiteRT Swift runtime is
     # only first-party distributed via CocoaPods/Bazel, so this plugin must be
-    # CocoaPods-only during Phase 1 to trigger Flutter's supported per-plugin
+    # CocoaPods-only during inference to trigger Flutter's supported per-plugin
     # fallback rather than silently compiling an inference-disabled SPM target.
     check(
         not (IOS_ROOT / "Package.swift").exists(),
-        "dance_native Package.swift must stay absent during the CocoaPods-only Phase 1 runtime bridge",
+        "dance_native Package.swift must stay absent during the CocoaPods-only inference runtime bridge",
     )
 
     gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
@@ -161,27 +161,23 @@ def verify_swift_runtime() -> None:
           "Reusable interpreter must strongly retain its active native delegate")
 
     check("dance_native_models" in resource, "Model resolver must support the CocoaPods resource bundle")
-    check("runIOSYoloPhase1Probe" in plugin, "Phase 1 MethodChannel diagnostic probe is missing")
-    check("IOSYoloPhase1Probe.run" in plugin, "Phase 1 probe must invoke the isolated YOLO runner")
+    check("runIOSYoloPhase1Probe" in plugin, "inference MethodChannel diagnostic probe is missing")
+    check("IOSYoloPhase1Probe.run" in plugin, "inference probe must invoke the isolated YOLO runner")
     check("requested_backend" in probe and "effective_backend" in probe and "fallback_reasons" in probe,
-          "Phase 1 probe must expose effective backend and fallback telemetry")
+          "inference probe must expose effective backend and fallback telemetry")
     check("mask_coverage" in probe and "detection_count" in probe,
-          "Phase 1 probe must expose comparison-friendly detection metrics")
+          "inference probe must expose comparison-friendly detection metrics")
     check("IOSYoloRuntimeSupport.candidateBackendNames()" in capabilities,
           "Capabilities must be derived from runtime/model availability")
     check("supportedProfiles: []" in capabilities,
-          "Product processing profiles must remain gated during the Phase 1 spike")
+          "Product processing profiles must remain gated during the inference")
 
     analyze_start = plugin.find("func analyzeVideo")
     analyze_end = plugin.find("func getPreviewFrame", analyze_start)
     analyze_block = plugin[analyze_start:analyze_end]
-    phase2_pipeline = SOURCES / "IOSAnalyzePipeline.swift"
-    if phase2_pipeline.is_file():
-        check("analyzePipeline.analyze(request: request)" in analyze_block,
-              "Phase 2 analyzeVideo must route through the isolated iOS analyze pipeline")
-    else:
-        check('code: "PLATFORM_NOT_SUPPORTED"' in analyze_block,
-              "Phase 1 must not connect unvalidated YOLO output to product analyzeVideo")
+    check((SOURCES / "IOSAnalyzePipeline.swift").is_file(), "Missing production IOSAnalyzePipeline.swift")
+    check("analyzePipeline.analyze(request: request)" in analyze_block,
+          "analysis analyzeVideo must route through the isolated iOS analyze pipeline")
 
 
 def verify_model_if_present(
@@ -204,7 +200,7 @@ def verify_model_if_present(
     if require_model and not allow_unpinned_hash:
         check(
             isinstance(expected_hash, str) and len(expected_hash) == 64,
-            "Phase 1 acceptance requires expected_sha256 to be pinned in the tracked YOLO contract",
+            "inference acceptance requires expected_sha256 to be pinned in the tracked YOLO contract",
         )
     check(source.stat().st_size == expected_size, "Repository-local YOLO model size violates the tracked contract")
     with source.open("rb") as stream:
@@ -251,11 +247,11 @@ def main() -> int:
     )
 
     if FAILURES:
-        print("iOS Phase 1 verification FAILED:")
+        print("iOS inference verification FAILED:")
         for failure in FAILURES:
             print(f" - {failure}")
         return 1
-    print("iOS Phase 1 static verification passed")
+    print("iOS inference static verification passed")
 
     # Apple compilation and simulator execution are explicit steps in
     # ios-cloud.yml. This verifier stays host-independent, as documented.

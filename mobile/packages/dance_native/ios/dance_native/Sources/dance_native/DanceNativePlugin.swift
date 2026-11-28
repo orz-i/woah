@@ -281,54 +281,54 @@ public class DanceNativePlugin: NSObject, FlutterPlugin, DanceNativeApi {
           await MainActor.run { result(flutterError) }
         }
       }
-    case "runIOSMetalPhase3Smoke":
+    case "runIOSMetalSmoke":
       Task {
         do {
-          let report = try IOSMetalPhase3Smoke.run()
+          let report = try IOSMetalSmoke.run()
           await MainActor.run { result(report) }
         } catch {
           let flutterError = Self.flutterError(
             from: error,
-            fallbackCode: "IOS_METAL_PHASE3_SMOKE_FAILED"
+            fallbackCode: "IOS_METAL_SMOKE_FAILED"
           )
           await MainActor.run { result(flutterError) }
         }
       }
-    case "runIOSExportPhase4Smoke":
+    case "runIOSExportSmoke":
       Task {
         do {
-          let report = try await IOSExportPhase4Smoke.run()
+          let report = try await IOSExportSmoke.run()
           await MainActor.run { result(report) }
         } catch {
           let flutterError = Self.flutterError(
             from: error,
-            fallbackCode: "IOS_EXPORT_PHASE4_SMOKE_FAILED"
+            fallbackCode: "IOS_EXPORT_SMOKE_FAILED"
           )
           await MainActor.run { result(flutterError) }
         }
       }
-    case "runIOSGoldenTracePhase5Smoke":
+    case "runIOSGoldenTraceSmoke":
       Task {
         do {
-          let report = try IOSGoldenTracePhase5Smoke.run()
+          let report = try IOSGoldenTraceSmoke.run()
           await MainActor.run { result(report) }
         } catch {
           let flutterError = Self.flutterError(
             from: error,
-            fallbackCode: "IOS_GOLDEN_TRACE_PHASE5_SMOKE_FAILED"
+            fallbackCode: "IOS_GOLDEN_TRACE_SMOKE_FAILED"
           )
           await MainActor.run { result(flutterError) }
         }
       }
-    case "runIOSPrivacyClassPhase6Smoke":
+    case "runIOSPrivacyClassSmoke":
       Task {
         do {
-          let report = try IOSPrivacyClassPhase6Smoke.run()
+          let report = try IOSPrivacyClassSmoke.run()
           await MainActor.run { result(report) }
         } catch {
           let flutterError = Self.flutterError(
             from: error,
-            fallbackCode: "IOS_PRIVACY_CLASS_PHASE6_SMOKE_FAILED"
+            fallbackCode: "IOS_PRIVACY_CLASS_SMOKE_FAILED"
           )
           await MainActor.run { result(flutterError) }
         }

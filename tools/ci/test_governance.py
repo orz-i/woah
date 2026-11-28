@@ -137,18 +137,19 @@ class WorkflowTests(unittest.TestCase):
             gradle = (ROOT / module / "build.gradle.kts").read_text()
             self.assertNotIn("abortOnError = false", gradle)
 
-    def test_phase6_is_explicit_and_runs_exactly_once(self):
+    def test_native_regression_is_explicit_and_runs_exactly_once(self):
         steps = self.ios["jobs"]["ios-build"]["steps"]
         script = "\n".join(step.get("run", "") for step in steps)
-        self.assertEqual(script.count("python tools/ios/run_phase6_macos_gate.py"), 1)
-        self.assertLess(script.index("python tools/ios/run_phase6_macos_gate.py"),
+        self.assertEqual(script.count("python tools/ios/run_native_regression.py"), 1)
+        self.assertLess(script.index("python tools/ios/run_native_regression.py"),
                         script.index("python tools/rust/run.py check"))
         self.assertNotIn("resolve_ios_dependencies.py", script)
         self.assertIn("flutter build ios --debug --no-codesign --target lib/main.dart --no-pub", script)
-        self.assertIn("python tools/release/verify_ios_phase1.py", script)
+        self.assertIn("python tools/release/verify_ios_inference.py", script)
         self.assertIn("flutter build ios --debug --no-codesign --target lib/main.dart", script)
-        self.assertIn("python tools/release/verify_ios_phase4.py", script)
-        verifier = (ROOT / "tools/release/verify_ios_phase1.py").read_text()
+        gate=(ROOT / "tools/ios/run_native_regression.py").read_text()
+        self.assertIn("tools/release/verify_ios_export.py", gate)
+        verifier = (ROOT / "tools/release/verify_ios_inference.py").read_text()
         self.assertNotIn("subprocess.run", verifier)
         self.assertNotIn("GITHUB_ACTIONS", verifier)
         self.assertTrue(any(step.get("uses", "").startswith("actions/upload-artifact@") for step in steps))
@@ -156,23 +157,23 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(flutter[0]["with"]["flutter-version"], "3.44.2")
 
 
-class AppleGateMigrationTests(unittest.TestCase):
-    def test_each_inherited_phase_rejects_missing_explicit_gate(self):
-        from tools.release import verify_ios_phase3 as phase3
-        from tools.release import verify_ios_phase4 as phase4
-        from tools.release import verify_ios_phase5 as phase5
-        from tools.release import verify_ios_phase6 as phase6
-        targets = ((phase3, phase3.verify_metal_validation_lanes),
-                   (phase4, phase4.verify_real_video_gate),
-                   (phase5, phase5.verify_cloud_gate),
-                   (phase6, phase6.verify_cloud_gate))
+class AppleRegressionWiringTests(unittest.TestCase):
+    def test_each_capability_rejects_missing_native_regression(self):
+        from tools.release import verify_ios_preview as preview
+        from tools.release import verify_ios_export as export
+        from tools.release import verify_ios_tracking as tracking
+        from tools.release import verify_ios_privacy_class as privacy_class
+        targets = ((preview, preview.verify_metal_validation_lanes),
+                   (export, export.verify_real_video_gate),
+                   (tracking, tracking.verify_cloud_gate),
+                   (privacy_class, privacy_class.verify_cloud_gate))
         original = Path.read_text
         workflow_path = ROOT / ".github/workflows/ios-cloud.yml"
 
         def without_gate(path, *args, **kwargs):
             content = original(path, *args, **kwargs)
             if path == workflow_path:
-                return content.replace("run: python tools/ios/run_phase6_macos_gate.py", "run: echo removed")
+                return content.replace("run: python tools/ios/run_native_regression.py", "run: echo removed")
             return content
 
         for module, verify in targets:

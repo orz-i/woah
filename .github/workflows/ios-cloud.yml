@@ -46,10 +46,10 @@ jobs:
           rustup target add --toolchain 1.97.1 aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
 
       # Resolve locked dependencies before lengthy host regressions. This
-      # gate also runs both Metal SDKs and the real simulator Phase 6 smoke.
+      # gate also runs both Metal SDKs and the real simulator native regression.
       # The later builds reuse the already-resolved Flutter/Pods graph.
-      - name: Run full iOS Phase 6 gate
-        run: python tools/ios/run_phase6_macos_gate.py
+      - name: Run native media and privacy regression
+        run: python tools/ios/run_native_regression.py
 
       - name: Verify shared Rust core and Apple targets
         run: |
@@ -87,14 +87,12 @@ jobs:
 
       - name: Verify repository iOS contracts
         run: |
-          python tools/release/verify_export_media_contract.py
           python -m unittest tools.release.test_verify_export_media_contract -q
-          python tools/release/verify_ios_phase0.py
+          python tools/release/verify_ios_platform.py
           python tools/ci/check_ios_privacy_archive.py
-          python tools/release/verify_ios_phase1.py
-          # Explicitly verify the supported protagonist leg-stretch contract.
-          python tools/release/verify_ios_phase4.py
-          python -m unittest tools.release.test_verify_ios_phase4 -q
+          python tools/release/verify_ios_inference.py
+          # Mutation regression for the supported protagonist leg-stretch contract.
+          python -m unittest tools.release.test_verify_ios_export -q
 
       - name: Build production entrypoint for iPhoneOS
         working-directory: mobile/app

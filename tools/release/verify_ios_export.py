@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Static contract gate for Woah iOS Phase 4 real-video export.
+"""Static contract gate for Woah iOS export real-video export.
 
 This verifier is host-independent. It proves repository intent and guards
 cross-platform privacy/media semantics. Apple compilation and the real MP4
-end-to-end export are validated by run_phase4_macos_gate.py on GitHub macOS.
+end-to-end export are validated by run_native_regression.py on GitHub macOS.
 Real iPhone visual/performance/thermal acceptance remains a separate gate.
 """
 
@@ -24,7 +24,7 @@ def check(condition: bool, message: str) -> None:
 
 
 def text(path: Path, label: str) -> str:
-    check(path.is_file(), f"Missing iOS Phase 4 asset: {label}")
+    check(path.is_file(), f"Missing iOS export asset: {label}")
     return path.read_text(encoding="utf-8") if path.is_file() else ""
 
 
@@ -67,7 +67,7 @@ def verify_media_pipeline() -> None:
         "fileManager.moveItem(at: temp, to: final)",
         "try? fileManager.removeItem(at: output.temp)",
     ):
-        check(token in pipeline, f"Phase 4 export pipeline missing: {token}")
+        check(token in pipeline, f"export export pipeline missing: {token}")
 
     check(
         "let targetFps = 30.0" not in pipeline
@@ -87,9 +87,9 @@ def verify_media_pipeline() -> None:
     ):
         check(
             supported_boundary in pipeline,
-            f"Phase 4 must preserve explicit validation and unsupported-effect rejection: {supported_boundary}",
+            f"export must preserve explicit validation and unsupported-effect rejection: {supported_boundary}",
         )
-    # The renderer added protagonist leg stretch after Phase 4. Reject only an
+    # The renderer added protagonist leg stretch after export. Reject only an
     # impossible leg-stretch request (no follow root); do not require the now
     # supported effect to be rejected on every export.
     for token in (
@@ -160,7 +160,7 @@ def verify_temporal_privacy() -> None:
         "conservativeFallbackDetection",
         "conservativePrivacyFallback: !region.observed",
     ):
-        check(token in tracker, f"Phase 4 temporal privacy tracker missing: {token}")
+        check(token in tracker, f"export temporal privacy tracker missing: {token}")
 
     for token in (
         "val maxMissedFrames: Int = 15",
@@ -169,7 +169,7 @@ def verify_temporal_privacy() -> None:
         "setIdentityProtectedTrackIds",
         "setPrivacySelectedTrackIds",
     ):
-        check(token in android, f"Android tracking contract drifted; revisit iOS Phase 4 parity: {token}")
+        check(token in android, f"Android tracking contract drifted; revisit iOS export parity: {token}")
 
     check(
         "conservativePrivacyFallback" in matcher,
@@ -182,7 +182,7 @@ def verify_temporal_privacy() -> None:
     )
     check(
         "ambiguous protected identities are not reassigned" in tracker,
-        "iOS Phase 4 must document ambiguity behavior for protected identities",
+        "iOS export must document ambiguity behavior for protected identities",
     )
 
 
@@ -202,7 +202,7 @@ def verify_job_contract() -> None:
         "hasActiveRuntime",
         "outputURL.absoluteString",
     ):
-        check(token in coordinator, f"Phase 4 job coordinator missing: {token}")
+        check(token in coordinator, f"export job coordinator missing: {token}")
 
     start = plugin.find("func startExport")
     cancel = plugin.find("func cancelJob", start)
@@ -217,7 +217,7 @@ def verify_job_contract() -> None:
     )
     check(
         'code: "PLATFORM_NOT_SUPPORTED"' not in start_block,
-        "iOS Phase 4 startExport must not remain a platform stub",
+        "iOS export startExport must not remain a platform stub",
     )
     check(
         "exportCoordinator.cancel(jobId: jobId)" in cancel_block,
@@ -230,15 +230,15 @@ def verify_job_contract() -> None:
     check(
         "DanceProcessingEvents(binaryMessenger:" in plugin
         and "processingEvents.onProgressUpdate(status: status)" in plugin,
-        "iOS Phase 4 must forward native progress through the existing Pigeon FlutterApi",
+        "iOS export must forward native progress through the existing Pigeon FlutterApi",
     )
 
 
 def verify_real_video_gate() -> None:
-    smoke = source("IOSExportPhase4Smoke.swift")
-    dart = text(ROOT / "mobile/app/lib/ios_phase4_smoke_main.dart", "combined iOS smoke entrypoint")
-    simulator = text(ROOT / "tools/ios/run_phase4_simulator_smoke.py", "Phase 4 Simulator runner")
-    macos_gate = text(ROOT / "tools/ios/run_phase4_macos_gate.py", "Phase 4 macOS gate")
+    smoke = source("IOSExportSmoke.swift")
+    dart = text(ROOT / "mobile/app/lib/ios_native_regression_main.dart", "combined iOS smoke entrypoint")
+    simulator = text(ROOT / "tools/ios/run_simulator_regression.py", "export Simulator runner")
+    macos_gate = text(ROOT / "tools/ios/run_native_regression.py", "export macOS gate")
     workflow = text(ROOT / ".github/workflows/ios-cloud.yml", "iOS Cloud CI")
 
     for token in (
@@ -271,34 +271,34 @@ def verify_real_video_gate() -> None:
         "CACHE_LEASE_NOT_RELEASED",
         "cancel_partial_clean",
     ):
-        check(token in smoke, f"Phase 4 real-video smoke missing: {token}")
+        check(token in smoke, f"export real-video smoke missing: {token}")
 
     check(
-        "WOAH_METAL_PHASE3_SMOKE=PASS" in dart
-        and "WOAH_EXPORT_PHASE4_SMOKE=PASS" in dart,
-        "Combined Simulator app must preserve Phase 3 and emit the Phase 4 export marker",
+        "WOAH_METAL_SMOKE=PASS" in dart
+        and "WOAH_EXPORT_SMOKE=PASS" in dart,
+        "Combined Simulator app must preserve preview and emit the export export marker",
     )
     check(
-        "WOAH_METAL_PHASE3_SMOKE=PASS" in simulator
-        and "WOAH_EXPORT_PHASE4_SMOKE=PASS" in simulator
+        "WOAH_METAL_SMOKE=PASS" in simulator
+        and "WOAH_EXPORT_SMOKE=PASS" in simulator
         and 'timeout=600' in simulator,
-        "Phase 4 Simulator runner must require both GPU and real-video export markers",
+        "export Simulator runner must require both GPU and real-video export markers",
     )
     for token in (
         "verify_export_media_contract.py",
-        "verify_ios_phase3.py",
-        "verify_ios_phase4.py",
-        "compile_phase3_metal.py",
+        "verify_ios_preview.py",
+        "verify_ios_export.py",
+        "compile_preview_metal.py",
         '"iphoneos"',
         '"iphonesimulator"',
         '"--simulator"',
-        "ios_phase4_smoke_main.dart",
-        "run_phase4_simulator_smoke.py",
+        "ios_native_regression_main.dart",
+        "run_simulator_regression.py",
     ):
-        check(token in macos_gate, f"Phase 4 macOS gate missing preserved/required lane: {token}")
+        check(token in macos_gate, f"export macOS gate missing preserved/required lane: {token}")
     check(
-        "run: python tools/ios/run_phase6_macos_gate.py" in workflow,
-        "iOS Cloud CI must explicitly invoke the Phase 6 gate preserving Phase 4",
+        "run: python tools/ios/run_native_regression.py" in workflow,
+        "iOS Cloud CI must explicitly invoke the privacy-class gate preserving export",
     )
 
 
@@ -308,11 +308,11 @@ def main() -> int:
     verify_job_contract()
     verify_real_video_gate()
     if FAILURES:
-        print("iOS Phase 4 verification FAILED:")
+        print("iOS export verification FAILED:")
         for failure in FAILURES:
             print(f" - {failure}")
         return 1
-    print("iOS Phase 4 static verification passed")
+    print("iOS export static verification passed")
     return 0
 
 

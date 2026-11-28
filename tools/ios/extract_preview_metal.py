@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract the exact Phase 3 runtime Metal kernel into a standalone .metal file.
+"""Extract the exact production preview runtime Metal kernel into a standalone .metal file.
 
 The production renderer intentionally keeps the kernel embedded in Swift so the
 plugin has no runtime shader-resource lookup dependency. CI uses this helper to
@@ -26,14 +26,14 @@ def extract() -> str:
     source = RENDERER.read_text(encoding="utf-8")
     start = source.find(START)
     if start < 0:
-        raise SystemExit("Phase 3 Metal kernel start marker was not found")
+        raise SystemExit("production preview Metal kernel start marker was not found")
     start += len(START)
     end = source.find(END, start)
     if end < 0:
-        raise SystemExit("Phase 3 Metal kernel end marker was not found")
+        raise SystemExit("production preview Metal kernel end marker was not found")
     shader = source[start:end]
     if "kernel void woahPreviewKernel" not in shader:
-        raise SystemExit("Phase 3 Metal entrypoint is missing from extracted source")
+        raise SystemExit("production preview Metal entrypoint is missing from extracted source")
     return shader.rstrip() + "\n"
 
 

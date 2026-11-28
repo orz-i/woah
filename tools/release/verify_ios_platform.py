@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static release checks for the Woah iOS Phase 0 bootstrap.
+"""Static release checks for the Woah iOS platform bootstrap.
 
 This verifier is intentionally runnable on non-macOS hosts. It does not replace
 Xcode compilation or device tests; it protects the repository contracts that can
@@ -49,7 +49,7 @@ def verify_runner_configuration() -> None:
     )
     check(
         "NSPhotoLibraryUsageDescription" not in info,
-        "Runner should not request broad Photos read access in Phase 0",
+        "Runner should not request broad Photos read access in platform",
     )
     check(
         info.get("CFBundleShortVersionString") == "$(FLUTTER_BUILD_NAME)",
@@ -134,9 +134,9 @@ def verify_native_plugin_contract() -> None:
         and "PrivacyInfo.xcprivacy" in podspec,
         "dance_native Pod must package its privacy manifest",
     )
-    # Phase 1 temporarily makes dance_native CocoaPods-only because Google's
+    # inference temporarily makes dance_native CocoaPods-only because Google's
     # general LiteRT/TensorFlowLite Swift runtime has no first-party SwiftPM
-    # package. If a SwiftPM manifest is restored later, keep the Phase 0 privacy
+    # package. If a SwiftPM manifest is restored later, keep the platform privacy
     # and deployment contracts intact.
     if package_path.is_file():
         package = package_path.read_text(encoding="utf-8")
@@ -172,17 +172,11 @@ def verify_native_plugin_contract() -> None:
         'case "getVideoFrameThumbnails"',
     ):
         check(method in plugin, f"Missing iOS MethodChannel surface: {method}")
-    phase4_pipeline = sources / "IOSExportPipeline.swift"
-    if phase4_pipeline.is_file():
-        check(
-            "exportCoordinator.start(request: request)" in plugin,
-            "Once Phase 4 exists, iOS export must route through the real coordinator",
-        )
-    else:
-        check(
-            'code: "PLATFORM_NOT_SUPPORTED"' in plugin,
-            "Unimplemented AI/export pipeline must remain explicit",
-        )
+    check((sources / "IOSExportPipeline.swift").is_file(), "Missing production IOSExportPipeline.swift")
+    check(
+        "exportCoordinator.start(request: request)" in plugin,
+        " iOS export must route through the real coordinator",
+    )
     check(
         "VTCopyVideoEncoderList" in capabilities
         and "kVTVideoEncoderList_IsHardwareAccelerated" in capabilities
@@ -200,7 +194,7 @@ def verify_native_plugin_contract() -> None:
     )
     check(
         "IOSYoloRuntimeSupport.candidateBackendNames()" in capabilities,
-        "iOS inference capability reporting must be derived from the Phase 1 runtime/model availability",
+        "iOS inference capability reporting must be derived from the inference runtime/model availability",
     )
     check(
         "formatDescriptions" in probe and "video/hevc" in probe and "audio/mp4a-latm" in probe,
@@ -223,12 +217,12 @@ def main() -> int:
     verify_native_plugin_contract()
 
     if FAILURES:
-        print("iOS Phase 0 verification FAILED:")
+        print("iOS platform verification FAILED:")
         for failure in FAILURES:
             print(f" - {failure}")
         return 1
 
-    print("iOS Phase 0 static verification passed")
+    print("iOS platform static verification passed")
     return 0
 
 

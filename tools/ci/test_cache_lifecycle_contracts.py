@@ -34,13 +34,13 @@ class CacheLifecycleContracts(unittest.TestCase):
         self.assertIn('cacheRegistry.requestRelease', release)
         self.assertNotIn('clearAnalysisCache', release)
 
-    def test_synthetic_ios_lifecycle_smoke_is_required_by_real_phase6_lane(self):
-        dart = (ROOT / 'mobile/app/lib/ios_phase6_smoke_main.dart').read_text()
-        runner = (ROOT / 'tools/ios/run_phase4_simulator_smoke.py').read_text()
+    def test_synthetic_ios_lifecycle_smoke_is_required_by_native_regression(self):
+        dart = (ROOT / 'mobile/app/lib/ios_native_regression_main.dart').read_text()
+        runner = (ROOT / 'tools/ios/run_simulator_regression.py').read_text()
         self.assertIn("'runIOSCacheLifecycleSmoke'", dart)
         self.assertIn('WOAH_CACHE_LIFECYCLE_SMOKE=PASS', dart)
         self.assertIn('"WOAH_CACHE_LIFECYCLE_SMOKE=PASS"', runner)
-        actual_export = (IOS / 'IOSExportPhase4Smoke.swift').read_text()
+        actual_export = (IOS / 'IOSExportSmoke.swift').read_text()
         self.assertIn('CACHE_LEASE_RELEASED_EARLY', actual_export)
         self.assertIn('CACHE_LEASE_NOT_RELEASED', actual_export)
 

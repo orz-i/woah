@@ -3,7 +3,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from tools.release import verify_ios_phase2 as gate
+from tools.release import verify_ios_analysis as gate
 
 
 class IOSCacheVerifierTests(unittest.TestCase):

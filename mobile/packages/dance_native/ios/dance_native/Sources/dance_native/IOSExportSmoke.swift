@@ -6,7 +6,7 @@ import CoreVideo
 import Foundation
 import ImageIO
 
-enum IOSExportPhase4Smoke {
+enum IOSExportSmoke {
   private static let sourceWidth = 320
   private static let sourceHeight = 180
   private static let sourceFps: Int32 = 60
@@ -19,7 +19,7 @@ enum IOSExportPhase4Smoke {
     let fileManager = FileManager.default
     let root = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
       ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-    let directory = root.appendingPathComponent("phase4_export_smoke", isDirectory: true)
+    let directory = root.appendingPathComponent("export_smoke", isDirectory: true)
     try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
     let nonce = UUID().uuidString.lowercased()
     let sourceURL = directory.appendingPathComponent("source_\(nonce).mp4")
@@ -368,7 +368,7 @@ enum IOSExportPhase4Smoke {
       "queued_cancel_state": cancelCoordinator.status(jobId: queuedCancelJobId)?.state ?? "missing",
       "active_export_busy_guard": busyGuard,
       "failed_admission_releases_reservation": true,
-      "phase5_face_only_e2e": faceOnlyReport,
+      "face_only_e2e": faceOnlyReport,
     ]
   }
 
@@ -699,7 +699,7 @@ enum IOSExportPhase4Smoke {
           effectiveBackend: .xnnpack,
           initializationMs: 0,
           inferenceMs: 0,
-          fallbackReasons: ["phase4_simulator_deterministic_fixture"],
+          fallbackReasons: ["simulator_deterministic_fixture"],
           inputShape: [1, 3, 640, 640],
           outputShapes: [[1, 116, 8400], [1, 32, 160, 160]]
         ),
@@ -741,14 +741,14 @@ enum IOSExportPhase4Smoke {
         let y1 = Float32(image.height) * 0.12
         let x2 = Float32(image.width) * 0.75 + shift
         let y2 = Float32(image.height) * 0.90
-        let headMask = IOSExportPhase4Smoke.detectionMask(
+        let headMask = IOSExportSmoke.detectionMask(
           x1: Float32(image.width) * 0.43 + shift,
           y1: Float32(image.height) * 0.18,
           x2: Float32(image.width) * 0.57 + shift,
           y2: Float32(image.height) * 0.34,
           preprocess: preprocess
         )
-        let torsoMask = IOSExportPhase4Smoke.detectionMask(
+        let torsoMask = IOSExportSmoke.detectionMask(
           x1: Float32(image.width) * 0.30 + shift,
           y1: Float32(image.height) * 0.36,
           x2: Float32(image.width) * 0.70 + shift,
@@ -773,7 +773,7 @@ enum IOSExportPhase4Smoke {
           effectiveBackend: .xnnpack,
           initializationMs: 0,
           inferenceMs: 0,
-          fallbackReasons: ["phase5_face_only_e2e_deterministic_fixture"],
+          fallbackReasons: ["face_only_e2e_deterministic_fixture"],
           inputShape: [1, 3, 640, 640],
           outputShapes: [[1, 116, 8400], [1, 32, 160, 160]]
         ),

@@ -49,7 +49,7 @@ def main() -> int:
         "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSDeviceCapabilities.swift"
     )
     smoke = read(
-        "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSExportPhase4Smoke.swift"
+        "mobile/packages/dance_native/ios/dance_native/Sources/dance_native/IOSExportSmoke.swift"
     )
 
     for token in (

@@ -2,6 +2,13 @@
 
 Status date: 2026-09-07
 
+> Historical implementation record. The milestone descriptions and command
+> examples below document the earlier implementation and are not the current
+> CI contract. Use the [engineering standard](governance/engineering-standard.md)
+> for current commands. The permanent macOS regression entrypoint is
+> `python tools/ios/run_native_regression.py`; it requires all six native
+> checks. Superseded milestone runners are available in Git history.
+
 This document is the implementation handoff for the iOS port. The product UI,
 domain model, and Pigeon API remain shared with Android. iOS work is scoped to a
 native execution engine under `mobile/packages/dance_native/ios` plus the small

@@ -81,8 +81,8 @@ class PrivacyFixtureParity(unittest.TestCase):
         wrong=self.fixture.replace(old,old.replace("    'select': 'first',",''),1)
         self.assertEqual(verify(wrong)['failed'],1)
 
-    def test_phase5_ci_gate_reads_corrected_android_parity(self):
-        from tools.release import verify_ios_phase5 as gate
+    def test_tracking_contract_reads_corrected_android_parity(self):
+        from tools.release import verify_ios_tracking as gate
         gate.FAILURES.clear()
         try:
             gate.verify_regression_fixture_mode_parity()
@@ -90,9 +90,9 @@ class PrivacyFixtureParity(unittest.TestCase):
         finally:
             gate.FAILURES.clear()
 
-    def test_phase5_ci_gate_rejects_legacy_full_body_named_face_only(self):
+    def test_tracking_contract_rejects_legacy_full_body_named_face_only(self):
         from unittest.mock import patch
-        from tools.release import verify_ios_phase5 as gate
+        from tools.release import verify_ios_tracking as gate
         original=gate.text
         def altered(path,label):
             contents=original(path,label)

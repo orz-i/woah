@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static contract gate for Woah iOS Phase 6 privacy-class prototype tracking."""
+"""Static contract gate for Woah iOS privacy-class prototype tracking."""
 
 from __future__ import annotations
 
@@ -20,33 +20,17 @@ def check(condition: bool, message: str) -> None:
 
 
 def text(path: Path, label: str) -> str:
-    check(path.is_file(), f"Missing iOS Phase 6 asset: {label}")
+    check(path.is_file(), f"Missing iOS privacy-class asset: {label}")
     return path.read_text(encoding="utf-8") if path.is_file() else ""
-
-
-def verify_phase_boundary() -> None:
-    phase5_smoke = text(SOURCES / "IOSGoldenTracePhase5Smoke.swift", "Phase 5 Golden Trace smoke")
-    phase5_verifier = text(ROOT / "tools/release/verify_ios_phase5.py", "Phase 5 verifier")
-    docs = text(ROOT / "docs/ios_implementation.md", "iOS implementation documentation")
-    check(
-        "IOSPrivacyClassPhase6Smoke" not in phase5_smoke and '"privacyClass"' not in phase5_smoke,
-        "Phase 5 Golden Trace smoke must remain frozen and must not execute Phase 6 privacy-class tracking",
-    )
-    check(
-        "IOSPrivacyClassTemporalTracker" not in phase5_verifier
-        and "IOSPrivacyClassPhase6Smoke" not in phase5_verifier,
-        "Phase 5 verifier must not expand with Phase 6 implementation requirements",
-    )
-    check("Phase 5 boundary" in docs and "### Phase 6:" in docs, "Docs must state the Phase 5/6 boundary explicitly")
 
 
 def verify_ios_surface() -> None:
     tracker = text(SOURCES / "IOSPrivacyClassTemporalTracker.swift", "IOSPrivacyClassTemporalTracker.swift")
-    smoke = text(SOURCES / "IOSPrivacyClassPhase6Smoke.swift", "IOSPrivacyClassPhase6Smoke.swift")
+    smoke = text(SOURCES / "IOSPrivacyClassSmoke.swift", "IOSPrivacyClassSmoke.swift")
     renderer = text(SOURCES / "IOSMetalPreviewRenderer.swift", "IOSMetalPreviewRenderer.swift")
     export = text(SOURCES / "IOSExportPipeline.swift", "IOSExportPipeline.swift")
     plugin = text(SOURCES / "DanceNativePlugin.swift", "DanceNativePlugin.swift")
-    dart = text(ROOT / "mobile/app/lib/ios_phase6_smoke_main.dart", "combined iOS smoke entrypoint")
+    dart = text(ROOT / "mobile/app/lib/ios_native_regression_main.dart", "combined iOS smoke entrypoint")
 
     for token in (
         "enum IOSPrivacySelectionClass: String", "struct IOSFreshPrivacyClassEvidence",
@@ -58,7 +42,7 @@ def verify_ios_surface() -> None:
     check("private final class Prototype" not in tracker, "iOS must not keep an independent class algorithm")
 
     for token in (
-        "enum IOSPrivacyClassPhase6Smoke",
+        "enum IOSPrivacyClassSmoke",
         "IOSPrivacyClassTemporalTracker()",
         "hardClassByDetectionIndex: [0: .selected, 1: .unselected]",
         "hardClassByDetectionIndex: [0: .unselected, 1: .selected]",
@@ -78,9 +62,9 @@ def verify_ios_surface() -> None:
         "FULL_BODY fresh-class compositor omitted an unresolved selected root's fail-closed mask",
         "full_body_unresolved_selected_fallback_pixel",
         "Mixed/FACE_ONLY composition consumed non-identity FULL_BODY class evidence",
-        "IOS_PHASE6_PRIVACY_CLASS_SMOKE_FAILED",
+        "IOS_PRIVACY_CLASS_SMOKE_FAILED",
     ):
-        check(token in smoke, f"Phase 6 deterministic smoke missing: {token}")
+        check(token in smoke, f"privacy-class deterministic smoke missing: {token}")
 
     for token in (
         "freshFullBodyPrivacyEvidence: [IOSFreshPrivacyClassEvidence] = []",
@@ -98,7 +82,7 @@ def verify_ios_surface() -> None:
         "let fallbackSelectedArray = unresolvedSelected + observedSupplement",
         "privacyPersons = freshPersons + fallbackSelectedArray",
     ):
-        check(token in renderer, f"Phase 6 FULL_BODY fresh-primary renderer missing: {token}")
+        check(token in renderer, f"privacy-class FULL_BODY fresh-primary renderer missing: {token}")
 
     for token in (
         "let privacyClassTracker = !freshSceneCoverage && !fullBodyIds.isEmpty && faceOnlyIds.isEmpty",
@@ -112,13 +96,13 @@ def verify_ios_surface() -> None:
         "freshFullBodyPrivacyEvidence: freshFullBodyPrivacyEvidence",
         "preferFreshFullBodyClassPrimary: privacyClassTracker != nil",
     ):
-        check(token in export, f"Phase 6 FULL_BODY-only export wiring missing: {token}")
+        check(token in export, f"privacy-class FULL_BODY-only export wiring missing: {token}")
 
-    check('case "runIOSPrivacyClassPhase6Smoke"' in plugin, "Phase 6 smoke MethodChannel hook is missing")
+    check('case "runIOSPrivacyClassSmoke"' in plugin, "privacy-class smoke MethodChannel hook is missing")
     check(
-        "WOAH_PRIVACY_CLASS_PHASE6_SMOKE=PASS" in dart
-        and "runIOSPrivacyClassPhase6Smoke" in dart,
-        "Combined Simulator app must execute and report the Phase 6 privacy-class smoke",
+        "WOAH_PRIVACY_CLASS_SMOKE=PASS" in dart
+        and "runIOSPrivacyClassSmoke" in dart,
+        "Combined Simulator app must execute and report the privacy-class smoke",
     )
 
 
@@ -171,47 +155,44 @@ def verify_android_reference_boundary() -> None:
 
 
 def verify_cloud_gate() -> None:
-    simulator = text(ROOT / "tools/ios/run_phase4_simulator_smoke.py", "Simulator smoke runner")
-    macos = text(ROOT / "tools/ios/run_phase6_macos_gate.py", "Phase 6 macOS gate")
+    simulator = text(ROOT / "tools/ios/run_simulator_regression.py", "Simulator smoke runner")
+    macos = text(ROOT / "tools/ios/run_native_regression.py", "privacy-class macOS gate")
     workflow = text(ROOT / ".github/workflows/ios-cloud.yml", "iOS Cloud CI")
     for token in (
-        "PRIVACY_CLASS_PHASE6_PASS_MARKER",
-        '"--require-phase6"',
-        "IOS_SIMULATOR_PHASE6_PRIVACY_CLASS_SMOKE=PASS",
+        "PRIVACY_CLASS_PASS_MARKER",
+        "IOS_SIMULATOR_PRIVACY_CLASS_SMOKE=PASS",
     ):
-        check(token in simulator, f"Phase 6 Simulator marker gate missing: {token}")
+        check(token in simulator, f"privacy-class Simulator marker gate missing: {token}")
     for token in (
-        "verify_ios_phase5.py",
-        "verify_ios_phase6.py",
-        "compile_phase3_metal.py",
+        "verify_ios_tracking.py",
+        "verify_ios_privacy_class.py",
+        "compile_preview_metal.py",
         '"iphoneos"',
         '"iphonesimulator"',
         "sync_ios_yolo_model.py",
         '"--verify-only"',
         "verify_ios_model(APP /",
-        "ios_phase6_smoke_main.dart",
-        "run_phase4_simulator_smoke.py",
-        '"--require-phase6"',
-        "IOS_PHASE6_MACOS_GATE=PASS",
+        "ios_native_regression_main.dart",
+        "run_simulator_regression.py",
+        "IOS_NATIVE_REGRESSION=PASS",
     ):
-        check(token in macos, f"Phase 6 macOS gate missing inherited/required lane: {token}")
+        check(token in macos, f"privacy-class macOS gate missing inherited/required lane: {token}")
     check(
-        "run: python tools/ios/run_phase6_macos_gate.py" in workflow,
-        "iOS Cloud CI must explicitly invoke the strongest Phase 6 Apple-only gate",
+        "run: python tools/ios/run_native_regression.py" in workflow,
+        "iOS Cloud CI must explicitly invoke the strongest privacy-class Apple-only gate",
     )
 
 
 def main() -> int:
-    verify_phase_boundary()
     verify_ios_surface()
     verify_android_reference_boundary()
     verify_cloud_gate()
     if FAILURES:
-        print("iOS Phase 6 verification FAILED:")
+        print("iOS privacy-class verification FAILED:")
         for failure in FAILURES:
             print(f" - {failure}")
         return 1
-    print("iOS Phase 6 static verification passed")
+    print("iOS privacy-class static verification passed")
     return 0
 
 
