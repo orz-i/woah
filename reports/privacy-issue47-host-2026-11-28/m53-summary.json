@@ -1,0 +1,1353 @@
+{
+  "base_commit": "9c61fde4",
+  "decision": "RESEARCH_ONLY_FIXED_HEAD_EXTENT_COMPETITION_IMPROVED_NOT_ACCEPTED",
+  "scope": "opt-in current rival extent minimax placement within the existing profile repair experiment; no canonical or native activation",
+  "library_sha256": "08d3af93b129a5e28729063fdc264f81e4ec18430eaa334542abfc2cfb569f3a",
+  "rust_tests": {
+    "passed": 231,
+    "ignored": 1,
+    "failed": 0,
+    "strict_clippy": "pass",
+    "fmt": "pass",
+    "abi_v1": "pass"
+  },
+  "profile_cases": {
+    "ensemble": {
+      "replay_sha256": "d5f13715c7d9c19a46407f72fb012735c8aa86658822cb571973762e25460bd4",
+      "control_sha256": "307b9bca6fe2548228eb77ed238c56edbf5861a0321425930371652a27fba6cf",
+      "fixture_sha256": "4259028a2ecd9a6371249a546f9440cdeefb3b223715f9f22375c5c44081da27",
+      "reference_replay_sha256": "130ce33d181d0cc2032704cd244f4abca962247f1c0ab7d059c5b403d697e035",
+      "canonical_identity_equal": true,
+      "required_extent_and_radius_unchanged": true,
+      "profile_changed": [
+        20,
+        21,
+        25,
+        27,
+        31,
+        191,
+        201,
+        203,
+        281
+      ],
+      "competition_changed": [
+        20,
+        21,
+        25
+      ],
+      "calls_before": {
+        "person": 95,
+        "face": 930,
+        "pose": 118
+      },
+      "calls_after": {
+        "person": 109,
+        "face": 960,
+        "pose": 127
+      },
+      "competition_attempts": [
+        {
+          "index": 20,
+          "raw": 4,
+          "repair": true,
+          "status": 0,
+          "bounds": [
+            372.709228515625,
+            141.1917724609375,
+            428.7507629394531,
+            214.23072814941406
+          ],
+          "sticker": [
+            400.72998046875,
+            177.71124267578125,
+            36.51948165893555,
+            36.51948165893555
+          ],
+          "rows": 16,
+          "competition": {
+            "scene": {
+              "square": [
+                400.72998046875,
+                177.71124267578125,
+                36.51948165893555,
+                36.51948165893555
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 9,
+              "cap_count": 3,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "local": {
+              "views": [
+                [
+                  251.0,
+                  90.0,
+                  467.0,
+                  367.0
+                ],
+                [
+                  197.0,
+                  90.0,
+                  521.0,
+                  367.0
+                ]
+              ],
+              "local_counts": [
+                4,
+                5
+              ],
+              "proposals": [
+                {
+                  "raw": 2,
+                  "cap_status": 1
+                },
+                {
+                  "raw": 3,
+                  "cap_status": 0,
+                  "bounds": [
+                    426.51873779296875,
+                    205.99374389648438,
+                    462.875,
+                    251.00624084472656
+                  ],
+                  "consensus_status": 0
+                }
+              ]
+            },
+            "local_bounds": [
+              [
+                426.51873779296875,
+                205.99374389648438,
+                462.875,
+                251.00624084472656
+              ]
+            ],
+            "final": {
+              "square": [
+                392.2312927246094,
+                177.71124267578125,
+                36.51948165893555,
+                36.51948165893555
+              ],
+              "required_overlap": 0.011234532110393047,
+              "centered_overlap": 0.06280287355184555,
+              "best_overlap": 0.01623304933309555,
+              "status": 0,
+              "face_count": 9,
+              "cap_count": 3,
+              "unknown_count": 0,
+              "local_count": 1
+            },
+            "applied": true
+          }
+        },
+        {
+          "index": 21,
+          "raw": 4,
+          "repair": true,
+          "status": 0,
+          "bounds": [
+            348.9914245605469,
+            129.46424865722656,
+            416.9888000488281,
+            212.81402587890625
+          ],
+          "sticker": [
+            382.9901123046875,
+            171.13912963867188,
+            41.67489242553711,
+            41.67489242553711
+          ],
+          "rows": 17,
+          "competition": {
+            "scene": {
+              "square": [
+                375.31390380859375,
+                171.13912963867188,
+                41.67489242553711,
+                41.67489242553711
+              ],
+              "required_overlap": 0.04421081766486168,
+              "centered_overlap": 0.09090740978717804,
+              "best_overlap": 0.05102839320898056,
+              "status": 0,
+              "face_count": 10,
+              "cap_count": 4,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "final": {
+              "square": [
+                375.31390380859375,
+                171.13912963867188,
+                41.67489242553711,
+                41.67489242553711
+              ],
+              "required_overlap": 0.04421081766486168,
+              "centered_overlap": 0.09090740978717804,
+              "best_overlap": 0.05102839320898056,
+              "status": 0,
+              "face_count": 10,
+              "cap_count": 4,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "applied": true
+          }
+        },
+        {
+          "index": 25,
+          "raw": 5,
+          "repair": true,
+          "status": 0,
+          "bounds": [
+            331.9933166503906,
+            105.0525894165039,
+            398.917724609375,
+            190.94981384277344
+          ],
+          "sticker": [
+            365.45550537109375,
+            148.00120544433594,
+            42.94861602783203,
+            42.94861602783203
+          ],
+          "rows": 19,
+          "competition": {
+            "scene": {
+              "square": [
+                355.9691162109375,
+                148.00120544433594,
+                42.94861602783203,
+                42.94861602783203
+              ],
+              "required_overlap": 0.04281190410256386,
+              "centered_overlap": 0.09716395288705826,
+              "best_overlap": 0.0493142306804657,
+              "status": 0,
+              "face_count": 9,
+              "cap_count": 3,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "final": {
+              "square": [
+                355.9691162109375,
+                148.00120544433594,
+                42.94861602783203,
+                42.94861602783203
+              ],
+              "required_overlap": 0.04281190410256386,
+              "centered_overlap": 0.09716395288705826,
+              "best_overlap": 0.0493142306804657,
+              "status": 0,
+              "face_count": 9,
+              "cap_count": 3,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "applied": true
+          }
+        },
+        {
+          "index": 27,
+          "raw": 4,
+          "repair": true,
+          "status": 0,
+          "bounds": [
+            326.27886962890625,
+            105.30782318115234,
+            410.8742980957031,
+            191.9779510498047
+          ],
+          "sticker": [
+            368.57659912109375,
+            148.64288330078125,
+            43.33506774902344,
+            43.33506774902344
+          ],
+          "rows": 23,
+          "competition": {
+            "scene": {
+              "square": [
+                368.57659912109375,
+                148.64288330078125,
+                43.33506774902344,
+                43.33506774902344
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 11,
+              "cap_count": 2,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "local": {
+              "views": [
+                [
+                  228.0,
+                  50.0,
+                  461.0,
+                  348.0
+                ],
+                [
+                  170.0,
+                  50.0,
+                  519.0,
+                  348.0
+                ]
+              ],
+              "local_counts": [
+                4,
+                6
+              ],
+              "proposals": [
+                {
+                  "raw": 1,
+                  "cap_status": 1
+                },
+                {
+                  "raw": 2,
+                  "cap_status": 0,
+                  "bounds": [
+                    398.51251220703125,
+                    182.2375030517578,
+                    437.625,
+                    228.8000030517578
+                  ],
+                  "consensus_status": 1
+                }
+              ]
+            },
+            "final": {
+              "square": [
+                368.57659912109375,
+                148.64288330078125,
+                43.33506774902344,
+                43.33506774902344
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 11,
+              "cap_count": 2,
+              "unknown_count": 0,
+              "local_count": 0
+            }
+          }
+        },
+        {
+          "index": 31,
+          "raw": 4,
+          "repair": true,
+          "status": 0,
+          "bounds": [
+            359.3843078613281,
+            93.06936645507812,
+            446.99639892578125,
+            181.45169067382812
+          ],
+          "sticker": [
+            403.19036865234375,
+            137.26052856445312,
+            44.191165924072266,
+            44.191165924072266
+          ],
+          "rows": 25,
+          "competition": {
+            "scene": {
+              "square": [
+                403.19036865234375,
+                137.26052856445312,
+                44.191165924072266,
+                44.191165924072266
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 8,
+              "cap_count": 3,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "local": {
+              "views": [
+                [
+                  242.0,
+                  38.0,
+                  482.0,
+                  346.0
+                ],
+                [
+                  182.0,
+                  38.0,
+                  542.0,
+                  346.0
+                ]
+              ],
+              "local_counts": [
+                3,
+                7
+              ],
+              "proposals": [
+                {
+                  "raw": 1,
+                  "cap_status": 1
+                }
+              ]
+            },
+            "final": {
+              "square": [
+                403.19036865234375,
+                137.26052856445312,
+                44.191165924072266,
+                44.191165924072266
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 8,
+              "cap_count": 3,
+              "unknown_count": 0,
+              "local_count": 0
+            }
+          }
+        },
+        {
+          "index": 191,
+          "raw": 4,
+          "repair": true,
+          "status": 0,
+          "bounds": [
+            383.1349182128906,
+            0.0,
+            458.66131591796875,
+            102.83409118652344
+          ],
+          "sticker": [
+            420.89813232421875,
+            51.41704559326172,
+            51.417049407958984,
+            51.417049407958984
+          ],
+          "rows": 31,
+          "competition": {
+            "scene": {
+              "square": [
+                420.89813232421875,
+                51.41704559326172,
+                51.417049407958984,
+                51.417049407958984
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 4,
+              "cap_count": 2,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "local": {
+              "views": [
+                [
+                  307.0,
+                  0.0,
+                  583.0,
+                  287.0
+                ],
+                [
+                  238.0,
+                  0.0,
+                  652.0,
+                  287.0
+                ]
+              ],
+              "local_counts": [
+                6,
+                6
+              ],
+              "proposals": [
+                {
+                  "raw": 2,
+                  "cap_status": 1
+                }
+              ]
+            },
+            "final": {
+              "square": [
+                420.89813232421875,
+                51.41704559326172,
+                51.417049407958984,
+                51.417049407958984
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 4,
+              "cap_count": 2,
+              "unknown_count": 0,
+              "local_count": 0
+            }
+          }
+        },
+        {
+          "index": 201,
+          "raw": 4,
+          "repair": true,
+          "status": 0,
+          "bounds": [
+            417.2597961425781,
+            15.40939712524414,
+            488.9696044921875,
+            107.84569549560547
+          ],
+          "sticker": [
+            453.11468505859375,
+            61.62754821777344,
+            46.2181510925293,
+            46.2181510925293
+          ],
+          "rows": 27,
+          "competition": {
+            "scene": {
+              "square": [
+                453.11468505859375,
+                61.62754821777344,
+                46.2181510925293,
+                46.2181510925293
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 5,
+              "cap_count": 1,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "local": {
+              "views": [
+                [
+                  324.0,
+                  0.0,
+                  604.0,
+                  314.0
+                ],
+                [
+                  254.0,
+                  0.0,
+                  674.0,
+                  314.0
+                ]
+              ],
+              "local_counts": [
+                5,
+                6
+              ],
+              "proposals": [
+                {
+                  "raw": 3,
+                  "cap_status": 1
+                }
+              ]
+            },
+            "final": {
+              "square": [
+                453.11468505859375,
+                61.62754821777344,
+                46.2181510925293,
+                46.2181510925293
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 5,
+              "cap_count": 1,
+              "unknown_count": 0,
+              "local_count": 0
+            }
+          }
+        },
+        {
+          "index": 203,
+          "raw": 4,
+          "repair": true,
+          "status": 0,
+          "bounds": [
+            425.1593933105469,
+            15.039196014404297,
+            494.8902893066406,
+            102.82320404052734
+          ],
+          "sticker": [
+            460.02484130859375,
+            58.93119812011719,
+            43.89200973510742,
+            43.89200973510742
+          ],
+          "rows": 26,
+          "competition": {
+            "scene": {
+              "square": [
+                460.02484130859375,
+                58.93119812011719,
+                43.89200973510742,
+                43.89200973510742
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 7,
+              "cap_count": 2,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "local": {
+              "views": [
+                [
+                  340.0,
+                  0.0,
+                  615.0,
+                  310.0
+                ],
+                [
+                  271.0,
+                  0.0,
+                  684.0,
+                  310.0
+                ]
+              ],
+              "local_counts": [
+                3,
+                6
+              ],
+              "proposals": [
+                {
+                  "raw": 1,
+                  "cap_status": 1
+                }
+              ]
+            },
+            "final": {
+              "square": [
+                460.02484130859375,
+                58.93119812011719,
+                43.89200973510742,
+                43.89200973510742
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 7,
+              "cap_count": 2,
+              "unknown_count": 0,
+              "local_count": 0
+            }
+          }
+        },
+        {
+          "index": 281,
+          "raw": 5,
+          "repair": true,
+          "status": 0,
+          "bounds": [
+            339.0750732421875,
+            0.0,
+            410.97332763671875,
+            75.62432861328125
+          ],
+          "sticker": [
+            375.0242004394531,
+            37.812164306640625,
+            37.81216812133789,
+            37.81216812133789
+          ],
+          "rows": 23,
+          "competition": {
+            "scene": {
+              "square": [
+                375.0242004394531,
+                37.812164306640625,
+                37.81216812133789,
+                37.81216812133789
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 8,
+              "cap_count": 1,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "local": {
+              "views": [
+                [
+                  256.0,
+                  0.0,
+                  552.0,
+                  309.0
+                ],
+                [
+                  182.0,
+                  0.0,
+                  625.0,
+                  309.0
+                ]
+              ],
+              "local_counts": [
+                5,
+                7
+              ],
+              "proposals": [
+                {
+                  "raw": 2,
+                  "cap_status": 1
+                }
+              ]
+            },
+            "final": {
+              "square": [
+                375.0242004394531,
+                37.812164306640625,
+                37.81216812133789,
+                37.81216812133789
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 8,
+              "cap_count": 1,
+              "unknown_count": 0,
+              "local_count": 0
+            }
+          }
+        }
+      ]
+    },
+    "danzon": {
+      "replay_sha256": "5dd47f197014c0820e151bf5e7c78206c039c7641011c0125d7fc8871cb7de87",
+      "control_sha256": "065b7dea99b562264e87cdc1ae4bec32fe226f5e21e9981a92c6dfd8d1f9e9d9",
+      "fixture_sha256": "de3b93f28308dfb629398ec0aeddd1db233ea1026dae9678ace7f5d0fe63067d",
+      "reference_replay_sha256": "b81fbd701d5b0d9ebc5f1242d33ab478426f9725648cb49534900de2c9dc82bb",
+      "canonical_identity_equal": true,
+      "required_extent_and_radius_unchanged": true,
+      "profile_changed": [
+        33
+      ],
+      "competition_changed": [],
+      "calls_before": {
+        "person": 33,
+        "face": 627,
+        "pose": 30
+      },
+      "calls_after": {
+        "person": 35,
+        "face": 636,
+        "pose": 34
+      },
+      "competition_attempts": [
+        {
+          "index": 33,
+          "raw": 6,
+          "repair": true,
+          "status": 0,
+          "bounds": [
+            339.12969970703125,
+            57.551673889160156,
+            410.86297607421875,
+            138.8590545654297
+          ],
+          "sticker": [
+            374.996337890625,
+            98.20536804199219,
+            40.65369415283203,
+            40.65369415283203
+          ],
+          "rows": 24,
+          "competition": {
+            "scene": {
+              "square": [
+                374.996337890625,
+                98.20536804199219,
+                40.65369415283203,
+                40.65369415283203
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 2,
+              "cap_count": 1,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "local": {
+              "views": [
+                [
+                  266.0,
+                  9.0,
+                  487.0,
+                  293.0
+                ],
+                [
+                  210.0,
+                  9.0,
+                  543.0,
+                  293.0
+                ]
+              ],
+              "local_counts": [
+                9,
+                11
+              ],
+              "proposals": [
+                {
+                  "raw": 0,
+                  "cap_status": 1
+                },
+                {
+                  "raw": 1,
+                  "cap_status": 1
+                },
+                {
+                  "raw": 2,
+                  "cap_status": 1
+                },
+                {
+                  "raw": 3,
+                  "cap_status": 1
+                }
+              ]
+            },
+            "final": {
+              "square": [
+                374.996337890625,
+                98.20536804199219,
+                40.65369415283203,
+                40.65369415283203
+              ],
+              "required_overlap": 0.0,
+              "centered_overlap": 0.0,
+              "best_overlap": 0.0,
+              "status": 0,
+              "face_count": 2,
+              "cap_count": 1,
+              "unknown_count": 0,
+              "local_count": 0
+            }
+          }
+        },
+        {
+          "index": 50,
+          "raw": 7,
+          "repair": false,
+          "status": 0,
+          "bounds": [
+            334.80535888671875,
+            51.11003494262695,
+            422.877197265625,
+            140.18087768554688
+          ],
+          "sticker": [
+            378.8412780761719,
+            95.64545440673828,
+            44.53542709350586,
+            44.53542709350586
+          ],
+          "rows": 26,
+          "competition": {
+            "scene": {
+              "square": [
+                379.3407897949219,
+                95.64545440673828,
+                44.53542709350586,
+                44.53542709350586
+              ],
+              "required_overlap": 0.011307153850793839,
+              "centered_overlap": 0.02471654675900936,
+              "best_overlap": 0.01994013413786888,
+              "status": 0,
+              "face_count": 4,
+              "cap_count": 2,
+              "unknown_count": 0,
+              "local_count": 0
+            },
+            "final": {
+              "square": [
+                379.3407897949219,
+                95.64545440673828,
+                44.53542709350586,
+                44.53542709350586
+              ],
+              "required_overlap": 0.011307153850793839,
+              "centered_overlap": 0.02471654675900936,
+              "best_overlap": 0.01994013413786888,
+              "status": 0,
+              "face_count": 4,
+              "cap_count": 2,
+              "unknown_count": 0,
+              "local_count": 0
+            }
+          }
+        },
+        {
+          "index": 75,
+          "raw": 6,
+          "repair": false,
+          "status": 1,
+          "rejected_extent": {
+            "bounds": [
+              342.3886413574219,
+              51.03597640991211,
+              422.8945617675781,
+              136.87353515625
+            ],
+            "competition": {
+              "scene": {
+                "square": [
+                  385.30743408203125,
+                  93.95475769042969,
+                  42.91878128051758,
+                  42.91878128051758
+                ],
+                "required_overlap": 0.43363890051841736,
+                "centered_overlap": 0.512850821018219,
+                "best_overlap": 0.4529320001602173,
+                "status": 1,
+                "face_count": 4,
+                "cap_count": 1,
+                "unknown_count": 0,
+                "local_count": 0
+              },
+              "final": {
+                "square": [
+                  385.30743408203125,
+                  93.95475769042969,
+                  42.91878128051758,
+                  42.91878128051758
+                ],
+                "required_overlap": 0.43363890051841736,
+                "centered_overlap": 0.512850821018219,
+                "best_overlap": 0.4529320001602173,
+                "status": 1,
+                "face_count": 4,
+                "cap_count": 1,
+                "unknown_count": 0,
+                "local_count": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "baganda": {
+      "replay_sha256": "0f2b154d3ecb7461b933a6d337e91207c6dd42ca4f6a7cbfa2f0e3563d5a526e",
+      "control_sha256": "4bc5e2a5ceeeb889f16027c6849096175614d9a816489c116af0cbc68420fd6a",
+      "fixture_sha256": "9d40826042be507a6e3c596d774dd2cd29350c03b3b4b73901f9e7cc93141dbf",
+      "reference_replay_sha256": "ef5bf8ecad6fddab4bd18065bab05d0dacf2515784a26f3d002940c985e3d827",
+      "canonical_identity_equal": true,
+      "required_extent_and_radius_unchanged": true,
+      "profile_changed": [],
+      "competition_changed": [],
+      "calls_before": {
+        "person": 19,
+        "face": 278,
+        "pose": 0
+      },
+      "calls_after": {
+        "person": 19,
+        "face": 278,
+        "pose": 0
+      },
+      "competition_attempts": []
+    },
+    "swing": {
+      "replay_sha256": "981c9a34cd5206fd2830449fbd78cb8fb53a9bb2b49f5715d47e78e5254bb0fe",
+      "control_sha256": "70f310c99ee7cdc2680d25ffdfc48b50658f82264f1babf40f009937c9fdb41c",
+      "fixture_sha256": "83e2892d421beb656e9d28dd4058d1b7f10d57babe334b7dd8470074c2d51b4e",
+      "reference_replay_sha256": "57ccc3df9696e7cb6f96b7cf207bc87d4bff83c2ccf745489cad5f92de38a689",
+      "canonical_identity_equal": true,
+      "required_extent_and_radius_unchanged": true,
+      "profile_changed": [],
+      "competition_changed": [],
+      "calls_before": {
+        "person": 24,
+        "face": 385,
+        "pose": 8
+      },
+      "calls_after": {
+        "person": 24,
+        "face": 385,
+        "pose": 8
+      },
+      "competition_attempts": []
+    }
+  },
+  "fragment_regression": {
+    "baganda": {
+      "replay_sha256": "76ee018567870c133787c1a1384285c60ed604b06bcde67805488ab12613b9df",
+      "control_sha256": "a1f748e80f004b1ad533c70206f2f660b80f1f98fdf4216b7056f6d5b49da6dd",
+      "exact": true
+    },
+    "basque-mirror": {
+      "replay_sha256": "e2337f55b0b43f15074c1d5432fe7f6a22d1e138e98be1c72a798ab7ce5176f3",
+      "control_sha256": "c30ac8b1f709667c4dc2366b4dd24355512a49cf23b3132bd1d82a3b1c76a005",
+      "exact": true
+    },
+    "basque": {
+      "replay_sha256": "32fc8f9e40ed3d1423f5beb7b34ffd9e8a61e3517641f2dc3419dfc91ee31cc7",
+      "control_sha256": "7b236cf06c58e32d049da434865a62a6a2e7c8014212ec84f13cd97964c999c4",
+      "exact": true
+    },
+    "danzon": {
+      "replay_sha256": "a4ba2ec7dba2370c374f3a8e3706b7ec27364a039b0d61e18cbb1e0a5fca9624",
+      "control_sha256": "51e7aa20923dc73232dbf60b060fb13d37b7abf24c45b04a9efa63527e30b7ba",
+      "exact": true
+    },
+    "ensemble": {
+      "replay_sha256": "f706942a9276fa049f93f67c440513bd61a9bcc601da3e40fbccdaba3ed21a74",
+      "control_sha256": "bdb4873543a0acc994ee287eafd77cc7e23dff12f0d3b9f3c3bf7e4c9ae39e71",
+      "exact": true
+    },
+    "group2": {
+      "replay_sha256": "5d6754d1c79254c0092e41b1dca6a2d6ffd17295e6c9c0b7276ecfb2ba789cba",
+      "control_sha256": "d21b851864c89db27b1c5386862a30e36ff90db348869fb0d3b11222b3330367",
+      "exact": true
+    },
+    "group3": {
+      "replay_sha256": "0293923c224e0d8dbc4b202aca65f688f74e9886027196184076a4c3a503782d",
+      "control_sha256": "5c1c43e5cf9ba5b5b3448f800a834d9cfee28165efd8f966cdd199354e987eda",
+      "exact": true
+    },
+    "group4": {
+      "replay_sha256": "c7442f4c06ad1db6760056b24ac1b81f20e9f363f34577f3c907efcbde4804eb",
+      "control_sha256": "5a19e0cce4f8af502dad01b129be33f54e78f184ed9536a62e0e21420461d99e",
+      "exact": true
+    },
+    "mirror5": {
+      "replay_sha256": "fbb9cd7c2c9b0edd7f4754db5fea80d24df985152117ff00d8f16280d3da62a7",
+      "control_sha256": "87f7529d0991bf7d671ab6bd1cee289531231097ea6a406419f1ae2f80f64e1b",
+      "exact": true
+    },
+    "salsa": {
+      "replay_sha256": "b2669f52137b972a5f9243814a5af7ecbea4b9715d7a083560de943b6979e46c",
+      "control_sha256": "f9d2391bb75280dfdd2f60881e52363d1251ce7a4dff30c410e41e1a44484cbb",
+      "exact": true
+    },
+    "salsa1": {
+      "replay_sha256": "f954238ae64a56a0ad1910b3ae264a5da039fca9aa9aad523a892a58f2a2b78b",
+      "control_sha256": "ae070b2af6a28f5a837836d591e49f712d9931de89c51c9b344f46f1340a1518",
+      "exact": true
+    },
+    "swing": {
+      "replay_sha256": "32df301e11e4b304f952dcde8be44ca17db1e2039a497655b356e0fd2aa11979",
+      "control_sha256": "cfc88bea3b2bc84ca058c9a05540f437e3d5d3d7682e09b14e815fd2ed87b459",
+      "exact": true
+    },
+    "swing7": {
+      "replay_sha256": "4c80931e2dcd0654c2558f0e66de2cd6ff908883a0fec8118b9e4bdbda24a389",
+      "control_sha256": "54d8b2658e01cbf04641cc3f0e393ec580c81e19685304a2565b5b994ffe1401",
+      "exact": true
+    }
+  },
+  "audits": {
+    "ensemble": {
+      "audit_sha256": "2ed283b58fe354da93b3fbfe737c88450b98c863d8eac10305774e8998687b68",
+      "comparison_sha256": "3a477984fc624da5b4aceecdeabb66259231f017c053191434ce273041a60a63",
+      "labels_sha256": "62a7bd1d5a1b154b3066aef7f73ea484f07b4ee5e5b306111499986670fd4d83",
+      "results": {
+        "baseline": {
+          "samples": 9,
+          "full_head_envelopes": 8,
+          "min_head_coverage": 0.9733333333333334,
+          "torso_probes_covered": 0,
+          "neighbor_rects_checked": 12,
+          "max_neighbor_rect_overlap": 0.23931623931623933,
+          "rows": [
+            {
+              "index": 20,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.23931623931623933
+              ]
+            },
+            {
+              "index": 21,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.22966507177033493
+              ]
+            },
+            {
+              "index": 25,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0,
+                0.05912162162162162
+              ]
+            },
+            {
+              "index": 27,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0375
+              ]
+            },
+            {
+              "index": 31,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            },
+            {
+              "index": 191,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "index": 201,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            },
+            {
+              "index": 203,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            },
+            {
+              "index": 281,
+              "head_coverage": 0.9733333333333334,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0,
+                0.0
+              ]
+            }
+          ]
+        },
+        "candidate": {
+          "samples": 9,
+          "full_head_envelopes": 8,
+          "min_head_coverage": 0.9733333333333334,
+          "torso_probes_covered": 0,
+          "neighbor_rects_checked": 12,
+          "max_neighbor_rect_overlap": 0.1414141414141414,
+          "rows": [
+            {
+              "index": 20,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.1414141414141414
+              ]
+            },
+            {
+              "index": 21,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.1291866028708134
+              ]
+            },
+            {
+              "index": 25,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0,
+                0.0059121621621621625
+              ]
+            },
+            {
+              "index": 27,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0375
+              ]
+            },
+            {
+              "index": 31,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            },
+            {
+              "index": 191,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "index": 201,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            },
+            {
+              "index": 203,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            },
+            {
+              "index": 281,
+              "head_coverage": 0.9733333333333334,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0,
+                0.0
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "danzon": {
+      "audit_sha256": "9b171f8880bfec17e98dd9f30b6bdb99af71cb5bd8a5dd09189269acfac0967a",
+      "comparison_sha256": "b24a459336a0e4f3f3e630581f6cb3a65960ded2b5e41ecce0c64584e8d47fed",
+      "labels_sha256": "176119eb39791cb17f74abb6fa95bc2ca21e4600d0b19c252d616358f7c69ba6",
+      "results": {
+        "baseline": {
+          "samples": 1,
+          "full_head_envelopes": 0,
+          "min_head_coverage": 0.972972972972973,
+          "torso_probes_covered": 0,
+          "neighbor_rects_checked": 1,
+          "max_neighbor_rect_overlap": 0.0,
+          "rows": [
+            {
+              "index": 33,
+              "head_coverage": 0.972972972972973,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            }
+          ]
+        },
+        "candidate": {
+          "samples": 1,
+          "full_head_envelopes": 0,
+          "min_head_coverage": 0.972972972972973,
+          "torso_probes_covered": 0,
+          "neighbor_rects_checked": 1,
+          "max_neighbor_rect_overlap": 0.0,
+          "rows": [
+            {
+              "index": 33,
+              "head_coverage": 0.972972972972973,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "baganda_fragment": {
+      "audit_sha256": "d5fb4feec996bd29e210e092dde7041d696da02f4ef55724496ab3623d60e914",
+      "labels_sha256": "e01353e7cd6c62874942e8abb850be96412b07a423b86b8b3ea547fb034d9021",
+      "results": {
+        "baseline": {
+          "samples": 3,
+          "full_head_envelopes": 0,
+          "min_head_coverage": 0.0,
+          "torso_probes_covered": 0,
+          "neighbor_rects_checked": 0,
+          "max_neighbor_rect_overlap": null,
+          "rows": [
+            {
+              "index": 43,
+              "head_coverage": 0.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": []
+            },
+            {
+              "index": 44,
+              "head_coverage": 0.6176470588235294,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": []
+            },
+            {
+              "index": 45,
+              "head_coverage": 0.24242424242424243,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": []
+            }
+          ]
+        },
+        "candidate": {
+          "samples": 3,
+          "full_head_envelopes": 3,
+          "min_head_coverage": 1.0,
+          "torso_probes_covered": 0,
+          "neighbor_rects_checked": 0,
+          "max_neighbor_rect_overlap": null,
+          "rows": [
+            {
+              "index": 43,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": []
+            },
+            {
+              "index": 44,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": []
+            },
+            {
+              "index": 45,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": []
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -187,6 +187,125 @@ pub unsafe extern "C" fn frame_kernel_research_profile_head_cap(
 }
 
 /// # Safety
+/// Readable packed current masks, count body boxes and faces; one disjoint
+/// diagnostic result. No output geometry is a tracker or native render update.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_head_competition(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    required: Rect,
+    boxes: *const Rect,
+    faces: *const Ellipse,
+    extra: *const Rect,
+    extra_count: usize,
+    out: *mut crate::face_head_topology::HeadCompetition,
+) -> i32 {
+    if !(2..=32).contains(&count) || len > 32 * 1024 * 1024 || extra_count > 2 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable arrays.
+    let (Some(m), Some(b), Some(f), Some(extra)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(boxes, count),
+            crate::ffi_tracking::borrowed(faces, count),
+            crate::ffi_tracking::borrowed(extra, extra_count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::current_head_competition(
+        m,
+        index as usize,
+        spec,
+        required,
+        b,
+        f,
+        extra,
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies one disjoint writable result.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
+/// # Safety
+/// Two disjoint writable current view rectangles.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_competition_views(
+    spec: HeadMaskSpec,
+    out: *mut Rect,
+) -> i32 {
+    if out.is_null() {
+        return REGION_INVALID;
+    }
+    let Some(v) = crate::face_head_topology::competition_views(spec) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller provides two writable Rects.
+    unsafe { std::ptr::copy_nonoverlapping(v.as_ptr(), out, 2) };
+    REGION_OK
+}
+/// # Safety
+/// Packed scene masks, current first projected mask, independently
+/// projected second pool and second confidences; disjoint result.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_competition_local_rival(
+    scene: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    cap: crate::face_head_topology::HeadSticker,
+    first: *const u8,
+    first_len: usize,
+    second: *const u8,
+    second_len: usize,
+    confidence: *const f32,
+    second_count: usize,
+    out: *mut Rect,
+) -> i32 {
+    if count > 32
+        || second_count > 32
+        || len > 32 * 1024 * 1024
+        || first_len > 1024 * 1024
+        || second_len > 32 * 1024 * 1024
+        || out.is_null()
+    {
+        return REGION_INVALID;
+    }
+    // SAFETY: bounded readable arrays.
+    let (Some(s), Some(a), Some(b), Some(c)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(scene, len),
+            crate::ffi_tracking::borrowed(first, first_len),
+            crate::ffi_tracking::borrowed(second, second_len),
+            crate::ffi_tracking::borrowed(confidence, second_count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::competition_local_rival(
+        s,
+        count,
+        index as usize,
+        spec,
+        cap,
+        a,
+        (b, c),
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller owns disjoint result.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
+/// # Safety
 /// Readable masks and 42 pose floats, output has twelve disjoint floats.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_research_pose_face_views(

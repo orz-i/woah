@@ -18,7 +18,7 @@ from PIL import Image
 
 from evaluate_body_reid import PERSON_MODEL, FACE_MODEL, I64, sha
 from evaluate_pose_parts import PoseKernel, POSE_FILE, POSE_SHA, pose_points
-from replay_face_geometry import P,S,U,MaskSpec,Ellipse,detect_instances,detect_face,model,ptr,vals
+from replay_face_geometry import P,S,U,F,Rect,Transform,struct,MaskSpec,Ellipse,detect_instances,detect_face,model,ptr,vals
 from replay_face_tracking import HeadSticker
 
 
@@ -145,6 +145,103 @@ def fragment_recovery(kernel,person,face,pose,fixture,fixture_path,prior,out,tar
     return attempts,sorted(used)
 
 
+Competition=struct("HeadCompetition",[("square",Ellipse),("required_overlap",F),
+    ("centered_overlap",F),("best_overlap",F),("status",U),("face_count",U),
+    ("cap_count",U),("unknown_count",U),("local_count",U)])
+
+
+def local_negative_heads(kernel,person,face,pose,im,tr,ds,masks,j,cap,counts):
+    """Current negative-only local proposals; no identity match or render here."""
+    lib=kernel.lib
+    views=lib.frame_kernel_research_competition_views
+    views.argtypes=[MaskSpec,P];views.restype=C.c_int32
+    certify=lib.frame_kernel_research_competition_local_rival
+    certify.argtypes=[P,S,S,U,MaskSpec,HeadSticker,P,S,P,S,P,S,P];certify.restype=C.c_int32
+    project=lib.frame_kernel_reproject_mask
+    project.argtypes=[P,S,Transform,Transform,Rect,P,S];project.restype=C.c_int32
+    ear=lib.frame_kernel_research_tracklet_ear_cap
+    ear.argtypes=[P,S,S,U,MaskSpec,P,P,P];ear.restype=C.c_int32
+    spec=MaskSpec(tr.proto,tr.proto,tr,ds[j].box)
+    v=(Rect*2)();rc=views(spec,v)
+    if rc<0:raise RuntimeError("invalid competition views")
+    if rc:return [],{"view_status":rc}
+    data=[]
+    for view in v:
+        ci=im.crop(tuple(int(q) for q in vals(view)))
+        lt,ld,lm=detect_instances(lib,person,ci);counts["person"]+=1
+        if not ld:return [],{"view_status":0,"local_counts":[len(ld)]}
+        projected=np.zeros((len(ld),tr.proto,tr.proto),np.uint8)
+        for q,m in enumerate(lm):
+            if project(ptr(m),m.size,lt,tr,view,ptr(projected[q]),projected[q].size)!=0:
+                raise RuntimeError("local negative projection failed")
+        data.append((view,ci,lt,ld,lm,projected))
+    view,ci,lt,ld,lm,projected=data[0];second=data[1]
+    sf=np.ascontiguousarray([d.confidence for d in second[3]],np.float32)
+    placement=square(vals(cap.square));extras=[];trace={"views":[vals(q) for q in v],
+        "local_counts":[len(q[3]) for q in data],"proposals":[]}
+    # First schedule nearby upper-body boxes; evaluate all local faces once.
+    nearby=[]
+    for q,d in enumerate(ld):
+        if d.confidence<.35:continue
+        b=d.box;top=[b.left+view.left,b.top+view.top,b.right+view.left,b.top+view.top+.35*(b.bottom-b.top)]
+        if intersects(placement,top):nearby.append(q)
+    if not nearby:return [],trace
+    fs=[detect_face(lib,face,ci,MaskSpec(lt.proto,lt.proto,lt,d.box),lm[q]) or Ellipse() for q,d in enumerate(ld)]
+    counts["face"]+=len(ld)
+    for q in nearby:
+        d=ld[q];sp=MaskSpec(lt.proto,lt.proto,lt,d.box)
+        kp=np.ascontiguousarray(pose_points(pose,ci,lt,d,lm,q)[3:7],np.float32);counts["pose"]+=1
+        local=HeadSticker();rc=ear(ptr(lm),lm.size,len(ld),q,sp,ptr(kp),(Ellipse*len(fs))(*fs),C.byref(local))
+        record={"raw":q,"cap_status":rc};trace["proposals"].append(record)
+        if rc<0:raise RuntimeError("invalid local negative cap")
+        if rc:continue
+        b=local.bounds;local.bounds=Rect(b.left+view.left,b.top+view.top,b.right+view.left,b.bottom+view.top)
+        f=local.square;local.square=Ellipse(f.x+view.left,f.y+view.top,f.rx,f.ry)
+        record["bounds"]=vals(local.bounds)
+        if not intersects(placement,vals(local.bounds)):continue
+        result=Rect();rc=certify(ptr(masks),masks.size,len(ds),j,spec,local,
+            ptr(projected[q]),projected[q].size,ptr(second[5]),second[5].size,
+            ptr(sf),len(sf),C.byref(result))
+        record["consensus_status"]=rc
+        if rc<0:raise RuntimeError("invalid local negative evidence")
+        if rc==0:extras.append(result)
+    # A surplus of competing witnesses is not truncated into a false pass.
+    if len(extras)>2:trace["too_many"]=True;return [],trace
+    return extras,trace
+
+
+def competition(kernel,person,face,pose,im,tr,ds,masks,j,fs,cap,counts,local_retry):
+    fn=kernel.lib.frame_kernel_research_head_competition
+    fn.argtypes=[P,S,S,U,MaskSpec,Rect,P,P,P,S,P];fn.restype=C.c_int32
+    spec=MaskSpec(tr.proto,tr.proto,tr,ds[j].box);boxes=(Rect*len(ds))(*[d.box for d in ds])
+    faces=(Ellipse*len(fs))(*fs)
+    def run(extras):
+        result=Competition()
+        rc=fn(ptr(masks),masks.size,len(ds),j,spec,cap.bounds,boxes,faces,
+              (Rect*len(extras))(*extras),len(extras),C.byref(result))
+        if rc<0:raise RuntimeError("invalid head competition")
+        return result if rc==0 else None
+    def row(q):
+        return {"square":vals(q.square),"required_overlap":q.required_overlap,
+                "centered_overlap":q.centered_overlap,"best_overlap":q.best_overlap,"status":q.status,
+                "face_count":q.face_count,"cap_count":q.cap_count,"unknown_count":q.unknown_count,"local_count":q.local_count}
+    result=run([])
+    if result is None:return None,{"status":"invalid_extent"}
+    trace={"scene":row(result)}
+    # A repair triggered by old competing faces may have no confirmed current
+    # rival at its smaller cap. Look for missed head evidence in two views.
+    if local_retry and (result.centered_overlap<.0001 or result.unknown_count):
+        extras,detail=local_negative_heads(kernel,person,face,pose,im,tr,ds,masks,j,cap,counts)
+        trace["local"]=detail
+        if extras:
+            trace["local_bounds"]=[vals(q) for q in extras]
+            proposed=run(extras)
+            if proposed is None:return None,trace
+            result=proposed
+    trace["final"]=row(result)
+    return result,trace
+
+
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     for name in ("library","fixture","reference-replay","model-dir","output"):
@@ -152,6 +249,7 @@ def main():
     ap.add_argument("--diagnostic-indices",default="",help="Explicit geometry audit samples; never override direct placements")
     ap.add_argument("--fragment-window",action="store_true",help="Use bounded weak full-body evidence for current fragment head geometry")
     ap.add_argument("--fragment-only",action="store_true",help="Evaluate the fragment window without the existing profile repair experiment")
+    ap.add_argument("--head-competition",action="store_true",help="Research: minimize fixed required square against current rival head extents")
     a=ap.parse_args()
     if a.fragment_only and not a.fragment_window:ap.error("--fragment-only requires --fragment-window")
     fixture=json.loads(a.fixture.read_text());ref=json.loads(a.reference_replay.read_text())
@@ -204,8 +302,23 @@ def main():
         rc=fn(ptr(ms),ms.size,len(ds),j,sp,ptr(kp),(Ellipse*len(fs))(*fs),Ellipse(*r["sticker"]),int(repair),C.byref(cap))
         if rc<0:raise RuntimeError("invalid profile geometry")
         detail={"index":i,"raw":j,"repair":bool(repair),"status":rc}
+        if a.head_competition and rc!=0 and i in diagnostic:
+            # Measure the required extent independently of face competition,
+            # retaining all raw-mask vetoes. Diagnostic only: no placement.
+            target_only=(Ellipse*len(fs))(*[f if u==j else Ellipse() for u,f in enumerate(fs)])
+            tentative=HeadSticker()
+            rr=fn(ptr(ms),ms.size,len(ds),j,sp,ptr(kp),target_only,Ellipse(),0,C.byref(tentative))
+            if rr==0:
+                _,trace=competition(kernel,person,face,pose,im,tr,ds,ms,j,fs,tentative,counts,False)
+                detail["rejected_extent"]={"bounds":vals(tentative.bounds),"competition":trace}
         if rc==0:
             detail.update(bounds=vals(cap.bounds),sticker=vals(cap.square),rows=cap.rows)
+            if a.head_competition:
+                result,trace=competition(kernel,person,face,pose,im,tr,ds,ms,j,fs,cap,counts,repair)
+                detail["competition"]=trace
+                if repair and result is not None and result.status==0 and result.unknown_count==0 and (result.cap_count or result.local_count) and result.best_overlap+1e-4<result.centered_overlap:
+                    cap.square=result.square
+                    detail["competition"]["applied"]=True
             if repair:
                 v=square(vals(cap.square))
                 out[i].update(sticker=vals(cap.square),sticker_required_bounds=vals(cap.bounds),
@@ -218,7 +331,7 @@ def main():
         raise RuntimeError("profile geometry changed a canonical identity")
     result={"scope":__doc__,"library_sha256":sha(a.library),"fixture_sha256":sha(a.fixture),
             "reference_replay_sha256":sha(a.reference_replay),"target_id":target,"model_calls":counts,
-            "attempts":attempts,"changed":changed,"fragment_attempts":fragment_attempts,"fragment_changed":fragment_changed,"baseline":{"frames":prior},"candidate":{"frames":out}}
+            "head_competition":a.head_competition,"attempts":attempts,"changed":changed,"fragment_attempts":fragment_attempts,"fragment_changed":fragment_changed,"baseline":{"frames":prior},"candidate":{"frames":out}}
     a.output.write_text(json.dumps(result,separators=(",",":"))+"\n")
     print("changed",changed,"calls",counts,"attempts",attempts,"fragment_attempts",fragment_attempts,flush=True)
 

@@ -537,6 +537,403 @@ fn rival_face_conflict(square: Ellipse, index: usize, faces: &[Ellipse]) -> bool
         })
 }
 
+/// Diagnostic of a fixed current target extent against current rival
+/// head envelopes. Square geometry is never clipped to improve overlap.
+/// status: 0 clear within supplied evidence; 1 competing extent remains;
+/// 2 no current rival measurement. The best square is diagnostic even on 1.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HeadCompetition {
+    pub square: Ellipse,
+    pub required_overlap: f32,
+    pub centered_overlap: f32,
+    pub best_overlap: f32,
+    pub status: u32,
+    pub face_count: u32,
+    pub cap_count: u32,
+    pub unknown_count: u32,
+    pub local_count: u32,
+}
+
+fn overlap_fraction(a: Rect, b: Rect) -> f64 {
+    let w = f64::from(a.right.min(b.right) - a.left.max(b.left)).max(0.);
+    let h = f64::from(a.bottom.min(b.bottom) - a.top.max(b.top)).max(0.);
+    w * h / (f64::from(b.right - b.left) * f64::from(b.bottom - b.top))
+}
+
+/// For the minimum enclosing square, only the shorter axis has slack.
+/// On that interval each rival rectangle overlap is piecewise linear.
+/// Evaluate all knots and pairwise intersections of those linear segments:
+/// this minimizes the worst supplied rival overlap, without shrinking the
+/// necessary rectangle. Tie-break by total overlap and distance to center.
+fn minimize_head_square(required: Rect, rivals: &[Rect]) -> Option<(Ellipse, f32, f32, f32)> {
+    if !required.valid() || rivals.iter().any(|r| !r.valid()) || rivals.len() > 64 {
+        return None;
+    }
+    let (cx, cy) = rect_center(required);
+    let w = required.right - required.left;
+    let h = required.bottom - required.top;
+    let half = (w.max(h) * 0.5).next_up();
+    if !half.is_finite() || !cx.is_finite() || !cy.is_finite() {
+        return None;
+    }
+    let horizontal = h >= w;
+    let center = if horizontal { cx } else { cy };
+    let (lo, hi) = if horizontal {
+        (required.right - half, required.left + half)
+    } else {
+        (required.bottom - half, required.top + half)
+    };
+    let lo = f64::from(lo.min(center));
+    let hi = f64::from(hi.max(center));
+    let center = f64::from(center);
+    let radius = f64::from((1.02 * half).max(8.0));
+    let interval = |b: Rect| {
+        if horizontal {
+            (
+                f64::from(b.left),
+                f64::from(b.right),
+                f64::from(b.top),
+                f64::from(b.bottom),
+            )
+        } else {
+            (
+                f64::from(b.top),
+                f64::from(b.bottom),
+                f64::from(b.left),
+                f64::from(b.right),
+            )
+        }
+    };
+    let fixed = f64::from(if horizontal { cy } else { cx });
+    let value = |b: Rect, x: f64| {
+        let (a, z, t, d) = interval(b);
+        let v = (d.min(fixed + radius) - t.max(fixed - radius)).max(0.0);
+        (z.min(x + radius) - a.max(x - radius)).max(0.0) * v / ((z - a) * (d - t))
+    };
+    let metric = |x: f64| {
+        let (mut worst, mut sum) = (0.0f64, 0.0f64);
+        for &r in rivals {
+            let q = value(r, x);
+            worst = worst.max(q);
+            sum += q;
+        }
+        (worst, sum, (x - center).abs())
+    };
+    let mut knots = vec![lo, hi, center.clamp(lo, hi)];
+    for &b in rivals {
+        let (a, z, _, _) = interval(b);
+        knots.extend(
+            [a - radius, a + radius, z - radius, z + radius]
+                .into_iter()
+                .map(|q| q.clamp(lo, hi)),
+        );
+    }
+    knots.sort_by(f64::total_cmp);
+    knots.dedup();
+    let mut options = knots.clone();
+    for pair in knots.windows(2) {
+        let (a, b) = (pair[0], pair[1]);
+        if b - a < 1e-9 {
+            continue;
+        }
+        let values = rivals
+            .iter()
+            .map(|&r| (value(r, a), value(r, b)))
+            .collect::<Vec<_>>();
+        for (i, &(u, v)) in values.iter().enumerate() {
+            for &(s, t) in &values[i + 1..] {
+                let d0 = u - s;
+                let d1 = v - t;
+                if d0 * d1 < 0.0 {
+                    options.push(a + (b - a) * d0 / (d0 - d1));
+                }
+            }
+        }
+    }
+    let cmp = |a: f64, b: f64| {
+        let x = metric(a);
+        let y = metric(b);
+        for (l, r) in [(x.0, y.0), (x.1, y.1), (x.2, y.2)] {
+            if (l - r).abs() > 1e-10 {
+                return l.total_cmp(&r);
+            }
+        }
+        a.total_cmp(&b)
+    };
+    let best = options.into_iter().min_by(|&a, &b| cmp(a, b))?;
+    let square = Ellipse {
+        center_x: if horizontal { best as f32 } else { cx },
+        center_y: if horizontal { cy } else { best as f32 },
+        radius_x: half,
+        radius_y: half,
+    };
+    let floor = rivals
+        .iter()
+        .map(|&b| overlap_fraction(required, b))
+        .fold(0., f64::max);
+    let actual = f64::from(if horizontal {
+        square.center_x
+    } else {
+        square.center_y
+    });
+    Some((
+        square,
+        floor as f32,
+        metric(center).0 as f32,
+        metric(actual).0 as f32,
+    ))
+}
+
+/// Two upper-body context views for negative evidence only. Different
+/// lateral context helps distinguish a missed adjacent head from the target.
+pub(crate) fn competition_views(spec: HeadMaskSpec) -> Option<[Rect; 2]> {
+    let b = spec.person;
+    let t = spec.transform;
+    if !b.valid() || !t.valid() {
+        return None;
+    }
+    let h = b.bottom - b.top;
+    let cx = (b.left + b.right) * 0.5;
+    let half = ((b.right - b.left) * 0.5).max(0.30 * h);
+    let view = |scale: f32| {
+        let r = Rect {
+            left: (cx - half * scale).floor().max(0.),
+            right: (cx + half * scale).floor().min(t.source_width as f32),
+            top: (b.top - 0.15 * h).floor().max(0.),
+            bottom: (b.top + 0.62 * h).floor().min(t.source_height as f32),
+        };
+        (r.valid() && r.right - r.left >= 64. && r.bottom - r.top >= 64.).then_some(r)
+    };
+    let v = [view(1.)?, view(1.5)?];
+    (v[0] != v[1]).then_some(v)
+}
+
+/// Certify a locally observed rival cap, corroborated by an independently
+/// segmented second current view. The first cap must be a complete local
+/// head, not a box estimate. No scene proposal may already own its core.
+/// These are negative geometry witnesses; no identity is assigned.
+pub(crate) fn competition_local_rival(
+    scene: &[u8],
+    count: usize,
+    index: usize,
+    spec: HeadMaskSpec,
+    cap: HeadSticker,
+    first: &[u8],
+    second_view: (&[u8], &[f32]),
+) -> Option<Rect> {
+    let (second, confidence) = second_view;
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if !(2..=32).contains(&count)
+        || index >= count
+        || scene.len() != n.checked_mul(count)?
+        || first.len() != n
+        || confidence.is_empty()
+        || confidence.len() > 32
+        || second.len() != n.checked_mul(confidence.len())?
+        || confidence
+            .iter()
+            .any(|&v| !v.is_finite() || !(0.0..=1.0).contains(&v))
+        || cap.topology != 1
+        || cap.rows < 6
+        || !cap.bounds.valid()
+        || !valid_seed(cap.square)
+        || spec.width != spec.transform.proto_size
+        || spec.height != spec.transform.proto_size
+        || !spec.valid(&scene[index * n..(index + 1) * n])
+    {
+        return None;
+    }
+    let views = competition_views(spec)?;
+    let b = cap.bounds;
+    let t = spec.transform;
+    if views.iter().any(|v| {
+        b.left < v.left + 2.
+            || b.right > v.right - 2.
+            || b.top < v.top + 2.
+            || b.bottom > v.bottom - 2.
+    }) {
+        return None;
+    }
+    let w = spec.width as usize;
+    let h = spec.height as usize;
+    let mut common = vec![];
+    let mut head = vec![];
+    for y in 0..h {
+        for x in 0..w {
+            let sx = ((x as f32 + 0.5) * t.input_size as f32 / t.proto_size as f32 - t.pad_left)
+                / t.scale;
+            let sy = ((y as f32 + 0.5) * t.input_size as f32 / t.proto_size as f32 - t.pad_top)
+                / t.scale;
+            if views
+                .iter()
+                .all(|v| sx >= v.left && sx < v.right && sy >= v.top && sy < v.bottom)
+            {
+                let k = y * w + x;
+                common.push(k);
+                if sx >= b.left && sx < b.right && sy >= b.top && sy < b.bottom && first[k] >= 128 {
+                    head.push(k);
+                }
+            }
+        }
+    }
+    if head.len() < 20
+        || scene
+            .chunks_exact(n)
+            .any(|m| head.iter().filter(|&&k| m[k] >= 128).count() * 10 > head.len())
+    {
+        return None;
+    }
+    let score = |m: &[u8]| {
+        let (mut a, mut u) = (0usize, 0usize);
+        for &k in &common {
+            a += usize::from(first[k] >= 128 && m[k] >= 128);
+            u += usize::from(first[k] >= 128 || m[k] >= 128);
+        }
+        if u == 0 { 0.0 } else { a as f32 / u as f32 }
+    };
+    let scores = second.chunks_exact(n).map(score).collect::<Vec<_>>();
+    let (j, &best) = scores
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.total_cmp(b.1))?;
+    if best < 0.60
+        || confidence[j] < 0.45
+        || scores
+            .iter()
+            .enumerate()
+            .any(|(k, &s)| k != j && best - s < 0.20)
+    {
+        return None;
+    }
+    let m = &second[j * n..(j + 1) * n];
+    if head.iter().filter(|&&k| m[k] >= 128).count() * 10 < head.len() * 9 {
+        return None;
+    }
+    Some(b)
+}
+
+/// Use current detected rival faces as negative evidence, plus complete
+/// current rival caps only if independently mask-owned. A missing rival
+/// face is reported separately; no missing observation certifies safety.
+pub(crate) fn current_head_competition(
+    masks: &[u8],
+    index: usize,
+    spec: HeadMaskSpec,
+    required: Rect,
+    boxes: &[Rect],
+    faces: &[Ellipse],
+    extra: &[Rect],
+) -> Option<HeadCompetition> {
+    use crate::face_observations::mask_support;
+    let count = boxes.len();
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if !(2..=32).contains(&count)
+        || index >= count
+        || faces.len() != count
+        || n.checked_mul(count)? != masks.len()
+        || boxes.iter().any(|b| !b.valid())
+        || faces
+            .iter()
+            .any(|&f| !valid_seed(f) && f != Ellipse::default())
+        || !spec.valid(&masks[index * n..(index + 1) * n])
+        || boxes[index] != spec.person
+        || !required.valid()
+        || spec.width != spec.transform.proto_size
+        || spec.height != spec.transform.proto_size
+    {
+        return None;
+    }
+    let t = spec.transform;
+    let clip = |b: Rect| Rect {
+        left: b.left.max(0.),
+        top: b.top.max(0.),
+        right: b.right.min(t.source_width as f32),
+        bottom: b.bottom.min(t.source_height as f32),
+    };
+    if clip(required) != required {
+        return None;
+    }
+    let (cx, cy) = rect_center(required);
+    let r = (1.02 * ((required.right - required.left).max(required.bottom - required.top) * 0.5))
+        .max(8.);
+    let nearby = Rect {
+        left: cx - r,
+        top: cy - r,
+        right: cx + r,
+        bottom: cy + r,
+    };
+    let mut rivals = Vec::new();
+    let (mut face_count, mut cap_count, mut unknown_count) = (0, 0, 0);
+    for (j, &f) in faces.iter().enumerate() {
+        if j == index {
+            continue;
+        }
+        let b = boxes[j];
+        let sp = HeadMaskSpec { person: b, ..spec };
+        let possible = Rect {
+            bottom: b.top + (b.bottom - b.top) * 0.35,
+            ..b
+        };
+        if !valid_seed(f) {
+            if crate::geometry::overlap_iou(nearby, possible) > 0. {
+                unknown_count += 1;
+            }
+            continue;
+        }
+        let face = clip(Rect {
+            left: f.center_x - f.radius_x,
+            top: f.center_y - f.radius_y,
+            right: f.center_x + f.radius_x,
+            bottom: f.center_y + f.radius_y,
+        });
+        if !face.valid() {
+            continue;
+        }
+        // Keep direct rival detector as negative evidence even if its
+        // ownership is uncertain. Admit its larger head only on current proof.
+        rivals.push(face);
+        face_count += 1;
+        let m = &masks[j * n..(j + 1) * n];
+        if mask_support(m, sp, f).is_some_and(|v| v[0] >= 4 && v[1] >= 12)
+            && masks
+                .chunks_exact(n)
+                .enumerate()
+                .all(|(k, q)| k == j || mask_support(q, sp, f).is_some_and(|v| v[1] <= 4))
+            && let Some(cap) = sticker(m, sp, f, f, 0)
+            && cap.topology == 1
+        {
+            let b = clip(cap.bounds);
+            if b.valid() {
+                rivals.push(b);
+                cap_count += 1;
+            }
+        }
+    }
+    if extra.len() > 2 || extra.iter().any(|&b| !b.valid() || clip(b) != b) {
+        return None;
+    }
+    rivals.extend_from_slice(extra);
+    let (square, floor, center, best) = minimize_head_square(required, &rivals)?;
+    Some(HeadCompetition {
+        square,
+        required_overlap: floor,
+        centered_overlap: center,
+        best_overlap: best,
+        status: if rivals.is_empty() {
+            2
+        } else if best > 0.10 {
+            1
+        } else {
+            0
+        },
+        face_count,
+        cap_count,
+        unknown_count,
+        local_count: extra.len() as u32,
+    })
+}
+
 /// A complete current crown recovered from a stable ear-level run rather
 /// than its tiny first rows. Geometry only; identity must be independently
 /// proven. A wide/branched run at ear level is not accepted as a head.
@@ -2285,6 +2682,129 @@ mod tests {
             ],
         )
     }
+    #[test]
+    fn required_head_square_shifts_only_in_slack_and_reports_unavoidable_overlap() {
+        let target = Rect {
+            left: 100.,
+            top: 40.,
+            right: 150.,
+            bottom: 120.,
+        };
+        let rival = Rect {
+            left: 150.,
+            top: 80.,
+            right: 180.,
+            bottom: 130.,
+        };
+        let (best, floor, centered, remaining) = minimize_head_square(target, &[rival]).unwrap();
+        assert_eq!(floor, 0.);
+        assert!(remaining < centered && remaining < 0.10);
+        assert!((best.center_x - 110.).abs() < 1e-4);
+        assert_eq!(best.center_y, 80.);
+        assert!(
+            best.center_x - best.radius_x <= target.left
+                && best.center_x + best.radius_x >= target.right
+        );
+        let reflect = |b: Rect| Rect {
+            left: 256. - b.right,
+            right: 256. - b.left,
+            ..b
+        };
+        let (other, _, _, after) =
+            minimize_head_square(reflect(target), &[reflect(rival)]).unwrap();
+        assert!((256. - best.center_x - other.center_x).abs() < 1e-4);
+        assert!((remaining - after).abs() < 1e-5);
+        let inside = Rect {
+            left: 110.,
+            top: 70.,
+            right: 130.,
+            bottom: 90.,
+        };
+        let (_, floor, _, after) = minimize_head_square(target, &[inside]).unwrap();
+        assert_eq!(floor, 1.);
+        assert_eq!(after, 1.);
+        let opposite = Rect {
+            left: 70.,
+            top: 80.,
+            right: 100.,
+            bottom: 130.,
+        };
+        let (balanced, _, _, _) = minimize_head_square(target, &[rival, opposite]).unwrap();
+        assert!((balanced.center_x - 125.).abs() < 1e-4);
+        assert_eq!(minimize_head_square(target, &[]).unwrap().0.center_x, 125.);
+    }
+
+    #[test]
+    fn local_rival_needs_independent_current_head_support_and_no_scene_owner() {
+        let (mut sp, _, _) = ear_cap_fixture();
+        sp.person = Rect {
+            left: 64.,
+            top: 20.,
+            right: 160.,
+            bottom: 220.,
+        };
+        let views = competition_views(sp).unwrap();
+        let b = Rect {
+            left: 140.,
+            top: 64.,
+            right: 168.,
+            bottom: 96.,
+        };
+        assert!(
+            views.iter().all(|v| v.left < b.left
+                && v.right > b.right
+                && v.top < b.top
+                && v.bottom > b.bottom)
+        );
+        let cap = HeadSticker {
+            bounds: b,
+            square: Ellipse {
+                center_x: 154.,
+                center_y: 80.,
+                radius_x: 16.,
+                radius_y: 16.,
+            },
+            topology: 1,
+            rows: 8,
+        };
+        let mut first = vec![0; 4096];
+        paint(&mut first, 16..24, 35, 42);
+        paint(&mut first, 24..31, 34, 43);
+        let mut second = vec![0; 8192];
+        second[..4096].copy_from_slice(&first);
+        paint(&mut second[4096..], 10..20, 20, 28);
+        let mut scene = vec![0; 8192];
+        paint(&mut scene[..4096], 10..36, 16, 30);
+        assert_eq!(
+            competition_local_rival(&scene, 2, 0, sp, cap, &first, (&second, &[0.8, 0.8])),
+            Some(b)
+        );
+        let mut duplicate = second.clone();
+        duplicate[4096..].copy_from_slice(&first);
+        assert!(
+            competition_local_rival(&scene, 2, 0, sp, cap, &first, (&duplicate, &[0.8, 0.8]))
+                .is_none()
+        );
+        let mut partial = cap;
+        partial.topology = 0;
+        assert!(
+            competition_local_rival(&scene, 2, 0, sp, partial, &first, (&second, &[0.8, 0.8]))
+                .is_none()
+        );
+        let mut missing = second.clone();
+        paint(&mut missing[..4096], 16..24, 35, 42);
+        missing[..4096].fill(0);
+        assert!(
+            competition_local_rival(&scene, 2, 0, sp, cap, &first, (&missing, &[0.8, 0.8]))
+                .is_none()
+        );
+        scene[4096..].copy_from_slice(&first);
+        assert!(
+            competition_local_rival(&scene, 2, 0, sp, cap, &first, (&second, &[0.8, 0.8]))
+                .is_none()
+        );
+    }
+
     #[test]
     fn pose_face_views_and_finish_require_current_dual_owned_faces() {
         let (sp, mut m, _) = ear_cap_fixture();

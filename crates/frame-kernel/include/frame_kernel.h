@@ -457,6 +457,13 @@ int32_t frame_kernel_research_tracklet_ear_cap(const uint8_t *masks,size_t len,s
 int32_t frame_kernel_research_tracklet_flip_ear_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses24,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
 /* Current dual-pose profile-axis head geometry; poses42 = two nose/eyes/ears/shoulders x,y,confidence arrays. */
 int32_t frame_kernel_research_profile_head_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,const FrameKernelEllipse *faces,FrameKernelEllipse previous,uint32_t repair,FrameKernelHeadSticker *output);
+/* Research-only fixed extent and rival head competition diagnostic.
+   Status 0 clear within supplied evidence, 1 residual conflict, 2 no rival face. */
+typedef struct FrameKernelHeadCompetition { FrameKernelEllipse square; float required_overlap,centered_overlap,best_overlap; uint32_t status,face_count,cap_count,unknown_count,local_count; } FrameKernelHeadCompetition;
+int32_t frame_kernel_research_head_competition(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelRect required,const FrameKernelRect *boxes,const FrameKernelEllipse *faces,const FrameKernelRect *extra,size_t extra_count,FrameKernelHeadCompetition *output);
+/* Current local negative head corroboration from two independent views. */
+int32_t frame_kernel_research_competition_views(FrameKernelHeadMaskSpec spec,FrameKernelRect *out2);
+int32_t frame_kernel_research_competition_local_rival(const uint8_t *scene,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelHeadSticker cap,const uint8_t *first,size_t first_len,const uint8_t *second,size_t second_len,const float *confidence,size_t second_count,FrameKernelRect *output);
 /* Current mapped pose views and two fresh owned-face measurements. */
 int32_t frame_kernel_research_pose_face_views(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,float *output12);
 int32_t frame_kernel_research_pose_face_finish(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const FrameKernelEllipse *local2,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
