@@ -196,11 +196,15 @@ use std::{collections::BTreeMap, sync::Arc};
 pub(crate) struct ClothingRoot {
     feature: Clothing,
     bounds: Rect,
+    recent: Option<(i64, Clothing)>,
+    bank: Vec<Clothing>,
+    initial_ambiguous: bool,
 }
 #[derive(Clone, Default)]
 pub(crate) struct CrowdClothing {
     roots: Arc<BTreeMap<i64, ClothingRoot>>,
     current: Arc<Vec<Option<Clothing>>>,
+    adaptive: bool,
 }
 fn clothing_features(d: &[Detection], rgb: &[u8], tr: Transform) -> Option<Vec<Option<Clothing>>> {
     let w = tr.source_width as usize;
@@ -306,6 +310,9 @@ impl CrowdClothing {
                         ClothingRoot {
                             feature,
                             bounds: d.bounds,
+                            recent: None,
+                            bank: vec![],
+                            initial_ambiguous: false,
                         },
                     )
                 })
@@ -314,7 +321,178 @@ impl CrowdClothing {
         Some(Self {
             roots: Arc::new(roots),
             current: Arc::new(vec![]),
+            adaptive: false,
         })
+    }
+    pub(crate) fn enable_adaptive(&mut self, at: i64, protected: &std::collections::BTreeSet<i64>) {
+        self.adaptive = true;
+        // Adapt only initial similar-clothing protected roots. Distinctive
+        // roots retain the M4 association profile, and both kinds remain
+        // competitors under the same reciprocal association constraints.
+        let ambiguous = self
+            .roots
+            .iter()
+            .filter_map(|(&id, a)| {
+                if !protected.contains(&id) {
+                    return None;
+                }
+                self.roots
+                    .iter()
+                    .any(|(&other, b)| {
+                        other != id
+                            && protected.contains(&other)
+                            && Self::height(a.bounds).min(Self::height(b.bounds))
+                                / Self::height(a.bounds).max(Self::height(b.bounds))
+                                >= 0.65
+                            && a.feature.score(&b.feature) >= 0.70
+                    })
+                    .then_some(id)
+            })
+            .collect::<Vec<_>>();
+        for (id, root) in Arc::make_mut(&mut self.roots).iter_mut() {
+            root.recent = Some((at, root.feature.clone()));
+            root.initial_ambiguous = ambiguous.contains(id);
+        }
+    }
+    pub(crate) fn is_adaptive(&self) -> bool {
+        self.adaptive
+    }
+    // Update only from an exact canonical commit that was independently
+    // supported by recent raw-mask continuity against every rival. Neither
+    // a predicted mask, a recovery across a long gap, nor a new ID can learn.
+    pub(crate) fn learn_current(
+        &mut self,
+        before: &Tracker,
+        after: &Tracker,
+        d: &[Detection],
+        at: i64,
+    ) {
+        if !self.adaptive {
+            return;
+        }
+        let mut updates = Vec::new();
+        for t in &after.tracks {
+            let Some(root) = self.roots.get(&t.id) else {
+                continue;
+            };
+            if !root.initial_ambiguous {
+                continue;
+            }
+            let Some(old) = before.tracks.iter().find(|q| q.id == t.id) else {
+                continue;
+            };
+            if !t.observed_this_frame
+                || t.observed_mask_at_us != Some(at)
+                || !old.observed_this_frame
+                || t.confidence < 0.5
+                || !old
+                    .observed_mask_at_us
+                    .is_some_and(|v| (1..=100_000).contains(&at.saturating_sub(v)))
+            {
+                continue;
+            }
+            let Some(mask) = t.observed_mask.as_ref() else {
+                continue;
+            };
+            let Some(prev) = old.observed_mask.as_ref() else {
+                continue;
+            };
+            let mut matches = d.iter().enumerate().filter(|(_, q)| {
+                q.bounds == t.observed_bounds
+                    && q.mask
+                        .as_ref()
+                        .is_some_and(|m| m.transform == mask.transform && m.pixels == mask.pixels)
+            });
+            let Some((j, q)) = matches.next() else {
+                continue;
+            };
+            if matches.next().is_some()
+                || !Self::plausible(root, old, q, at)
+                || overlap_iou(old.observed_bounds, q.bounds) < 0.65
+            {
+                continue;
+            }
+            let mi = crate::tracking_mask::raw_mask_iou(prev, mask);
+            if mi < 0.70
+                || d.iter().enumerate().any(|(k, q)| {
+                    k != j
+                        && q.mask.as_ref().is_some_and(|m| {
+                            crate::tracking_mask::raw_mask_iou(prev, m) + 0.20 > mi
+                        })
+                })
+                || before.tracks.iter().any(|q| {
+                    q.id != old.id
+                        && q.observed_mask_at_us
+                            .is_some_and(|v| (1..=150_000).contains(&at.saturating_sub(v)))
+                        && q.observed_mask.as_ref().is_some_and(|m| {
+                            crate::tracking_mask::raw_mask_iou(m, mask) + 0.20 > mi
+                        })
+                })
+            {
+                continue;
+            }
+            let Some(Some(f)) = self.current.get(j) else {
+                continue;
+            };
+            let seed = root.feature.score(f);
+            let last = root
+                .recent
+                .as_ref()
+                .filter(|(ts, _)| (1..=150_000).contains(&at.saturating_sub(*ts)))
+                .map_or(0.0, |(_, v)| v.score(f));
+            if seed < 0.62 && last < 0.72 {
+                continue;
+            }
+            let add_bank =
+                seed >= 0.65 && last >= 0.75 && root.bank.iter().all(|g| g.score(f) < 0.93);
+            updates.push((t.id, f.clone(), add_bank));
+        }
+        if updates.is_empty() {
+            return;
+        }
+        let roots = Arc::make_mut(&mut self.roots);
+        for (id, f, add_bank) in updates {
+            let root = roots.get_mut(&id).unwrap();
+            if add_bank {
+                if root.bank.len() == 4 {
+                    root.bank.remove(0);
+                }
+                root.bank.push(f.clone());
+            }
+            root.recent = Some((at, f));
+        }
+    }
+    fn appearance_score(
+        &self,
+        root: &ClothingRoot,
+        t: &Track,
+        d: &Detection,
+        f: &Clothing,
+        at: i64,
+    ) -> f32 {
+        let initial = root.feature.score(f);
+        if !self.adaptive || !root.initial_ambiguous {
+            return initial;
+        }
+        let mut best = initial;
+        // A verified diverse bank can corroborate a changed viewpoint. It
+        // is never a substitute for the immutable root on its own.
+        if initial >= 0.52 && root.bank.len() >= 2 {
+            let mut scores = root.bank.iter().map(|g| g.score(f)).collect::<Vec<_>>();
+            scores.sort_by(|a, b| b.total_cmp(a));
+            best = best.max((scores[0] * 0.6 + scores[1] * 0.4) * 0.97);
+        }
+        if let Some((ts, old)) = &root.recent
+            && (1..=150_000).contains(&at.saturating_sub(*ts))
+            && t.observed_mask
+                .as_ref()
+                .zip(d.mask.as_ref())
+                .is_some_and(|(a, b)| crate::tracking_mask::raw_mask_iou(a, b) >= 0.55)
+            && overlap_iou(t.observed_bounds, d.bounds) >= 0.55
+        {
+            best = best.max(old.score(f));
+        }
+        best
     }
     pub(crate) fn observe(&mut self, d: &[Detection], rgb: &[u8], tr: Transform) -> Option<()> {
         self.current = Arc::new(clothing_features(d, rgb, tr)?);
@@ -364,7 +542,7 @@ impl CrowdClothing {
         if d.confidence < 0.50 || !Self::plausible(root, t, d, at) {
             return 0.0;
         }
-        let app = root.feature.score(f);
+        let app = self.appearance_score(root, t, d, f, at);
         if app < 0.76 {
             return 0.0;
         }
@@ -401,7 +579,7 @@ impl CrowdClothing {
         let Some(Some(f)) = self.current.get(j) else {
             return age <= 150_000;
         };
-        let own = root.feature.score(f);
+        let own = self.appearance_score(root, t, d, f, at);
         own >= if age <= 150_000 { 0.64 } else { 0.76 }
     }
     /// Reserve only reciprocal, current, clothing-supported matches. Every
@@ -510,6 +688,71 @@ mod tests {
             }
         }
         rgb
+    }
+    #[test]
+    fn adaptive_learning_requires_exact_unique_consecutive_current_commit() {
+        let a = crowd_test_detection(8, 8, 24, 100);
+        let b = crowd_test_detection(75, 8, 24, 100);
+        let tr = a.mask.as_ref().unwrap().transform;
+        let ds = [a.clone(), b.clone()];
+        let rgb = crowd_test_rgb(&ds, &[[24, 24, 24], [24, 24, 24]]);
+        let mut model = CrowdClothing::seed(&ds, &[0, 1], &rgb, tr).unwrap();
+        let mut before = Tracker::new(crate::tracking::TrackingConfig::default());
+        before.protected_ids.extend([0, 1]);
+        before.initialize(ds.to_vec(), &[]).unwrap();
+        for t in &mut before.tracks {
+            t.observed_mask_at_us = Some(0);
+        }
+        model.enable_adaptive(0, &before.protected_ids);
+        assert!(model.roots.values().all(|r| r.initial_ambiguous));
+        let current = [crowd_test_detection(9, 8, 24, 100), b.clone()];
+        let rgb = crowd_test_rgb(&current, &[[24, 24, 24], [24, 24, 24]]);
+        model.observe(&current, &rgb, tr).unwrap();
+        let mut after = before.clone();
+        commit(&mut after.tracks[0], &current[0], 40_000);
+        commit(&mut after.tracks[1], &current[1], 40_000);
+        model.learn_current(&before, &after, &current, 40_000);
+        assert_eq!(model.roots[&0].recent.as_ref().unwrap().0, 40_000);
+        assert_eq!(model.roots[&0].bank.len(), 1);
+        let immutable = model.roots[&0].feature.clone();
+        // A duplicate raw proposal, an unobserved previous track, a stale
+        // timestamp, or an unchanged prediction must not renew memory.
+        let mut stale = after.clone();
+        commit(&mut stale.tracks[0], &current[0], 240_000);
+        model.learn_current(&after, &stale, &current, 240_000);
+        assert_eq!(model.roots[&0].recent.as_ref().unwrap().0, 40_000);
+        let duplicates = [current[0].clone(), current[0].clone(), b];
+        let rgb = crowd_test_rgb(&duplicates, &[[24, 24, 24]; 3]);
+        model.observe(&duplicates, &rgb, tr).unwrap();
+        let mut next = after.clone();
+        commit(&mut next.tracks[0], &duplicates[0], 80_000);
+        model.learn_current(&after, &next, &duplicates, 80_000);
+        assert_eq!(model.roots[&0].recent.as_ref().unwrap().0, 40_000);
+        assert!(model.roots[&0].feature.score(&immutable) > 0.999);
+        assert_eq!(model.roots[&0].bank.len(), 1);
+    }
+    #[test]
+    fn distinctive_root_keeps_immutable_profile_under_adaptive_mode() {
+        let a = crowd_test_detection(8, 8, 24, 100);
+        let b = crowd_test_detection(75, 8, 24, 100);
+        let tr = a.mask.as_ref().unwrap().transform;
+        let ds = [a.clone(), b];
+        let rgb = crowd_test_rgb(&ds, &[[180, 40, 60], [24, 24, 24]]);
+        let mut model = CrowdClothing::seed(&ds, &[0, 1], &rgb, tr).unwrap();
+        let mut before = Tracker::new(crate::tracking::TrackingConfig::default());
+        before.protected_ids.extend([0, 1]);
+        before.initialize(ds.to_vec(), &[]).unwrap();
+        for t in &mut before.tracks {
+            t.observed_mask_at_us = Some(0);
+        }
+        model.enable_adaptive(0, &before.protected_ids);
+        assert!(model.roots.values().all(|r| !r.initial_ambiguous));
+        model.observe(&ds, &rgb, tr).unwrap();
+        let mut after = before.clone();
+        commit(&mut after.tracks[0], &a, 40_000);
+        model.learn_current(&before, &after, &ds, 40_000);
+        assert_eq!(model.roots[&0].recent.as_ref().unwrap().0, 0);
+        assert!(model.roots[&0].bank.is_empty());
     }
     #[test]
     fn clothing_excludes_competing_masks_and_top_body_band() {

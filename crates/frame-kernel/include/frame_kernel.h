@@ -258,7 +258,8 @@ int32_t frame_kernel_class_update(uint64_t id, const FrameKernelTrackingObservat
     FrameKernelClassDecision *output, size_t capacity, uint32_t *evaluations);
 uint64_t frame_kernel_tracking_create(FrameKernelTrackingOptions options);
 /* Experimental, default off. Must be called before initialization. */
-/* Experimental host current RGB clothing evidence; no face descriptors. */
+/* Experimental host current RGB clothing evidence; no face descriptors.
+   Actions 0/1 immutable seed/observe, 4/5 adaptive seed/observe. */
 int32_t frame_kernel_tracking_clothing_step(uint64_t id,uint32_t action,int64_t at,const FrameKernelTrackingObservation *observations,size_t count,const uint8_t *pixels,size_t pixels_len,const uint8_t *rgb,size_t rgb_len,FrameKernelTransform transform);
 int32_t frame_kernel_tracking_pair_continuity(uint64_t id,uint32_t enabled);
 int32_t frame_kernel_tracking_destroy(uint64_t session);

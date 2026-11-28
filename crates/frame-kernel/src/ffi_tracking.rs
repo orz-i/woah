@@ -588,7 +588,7 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
     rgb_len: usize,
     transform: Transform,
 ) -> i32 {
-    if action > 1
+    if !matches!(action, 0 | 1 | 4 | 5)
         || count == 0
         || count > 64
         || pixels_len > 64 * 1024 * 1024
@@ -624,15 +624,19 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
         return -1;
     }
     let mut t = s.tracker.clone();
-    if action == 0 {
+    let adaptive = action >= 4;
+    if matches!(action, 0 | 4) {
         if t.initialized || t.initialize(d.clone(), &[]).is_err() {
             return -1;
         }
         let ids = t.tracks.iter().map(|q| q.id).collect::<Vec<_>>();
-        let Some(clothing) = crate::appearance::CrowdClothing::seed(&d, &ids, rgb, transform)
+        let Some(mut clothing) = crate::appearance::CrowdClothing::seed(&d, &ids, rgb, transform)
         else {
             return -1;
         };
+        if adaptive {
+            clothing.enable_adaptive(at, &t.protected_ids);
+        }
         t.crowd_clothing = Some(clothing);
         for q in &mut t.tracks {
             q.observed_mask_at_us = q.observed_mask.as_ref().map(|_| at);
@@ -641,10 +645,24 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
         let Some(clothing) = t.crowd_clothing.as_mut() else {
             return -1;
         };
-        if clothing.observe(&d, rgb, transform).is_none() || t.update(d, at).is_err() {
+        if clothing.is_adaptive() != adaptive || clothing.observe(&d, rgb, transform).is_none() {
             return -1;
         }
-        t.crowd_clothing.as_mut().unwrap().clear();
+        if adaptive {
+            let before = t.clone();
+            if t.update(d.clone(), at).is_err() {
+                return -1;
+            }
+            let mut clothing = t.crowd_clothing.take().unwrap();
+            clothing.learn_current(&before, &t, &d, at);
+            clothing.clear();
+            t.crowd_clothing = Some(clothing);
+        } else {
+            if t.update(d, at).is_err() {
+                return -1;
+            }
+            t.crowd_clothing.as_mut().unwrap().clear();
+        }
     }
     s.tracker = t;
     s.snapshot = encode(&s.tracker);

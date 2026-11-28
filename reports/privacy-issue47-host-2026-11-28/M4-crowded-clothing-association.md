@@ -2,6 +2,9 @@
 
 Base `81f4b82c` (M3.3). Explicit host-only `--crowd-clothing`. **Generalization not proven; do not enable in native consumers.**
 
+**M4.1 audit correction:** Basque C7.3 distractor points are non-target exclusion points, not a persistent second identity. The original 20-checkpoint combined figures below are preserved as historical output, not valid pair identity ground truth. Use selected ID0 only: M3.3 6/10 correct (1 wrong, 2 ambiguous, 1 unconfirmed) → M4 3/10 correct (0 wrong, 7 unconfirmed). See [M4.1](M4.1-adaptive-clothing-memory.md).
+
+
 ## Failure and shared algorithm
 
 In Swing, a passing foreground camera operator occludes the pair. The dark-suit dancer's canonical body shrinks from about 305 px high to 173 px, then to a 58 px head/upper-body fragment. The shrunken reference cannot reliably reacquire the full dancer. The shape-only ablation prevents collapse but exchanges the partners: seven wrong source landmarks, so it is rejected.

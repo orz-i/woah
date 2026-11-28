@@ -26,11 +26,15 @@ def main():
     ap.add_argument('--labels', type=Path, required=True)
     ap.add_argument('--replay', type=Path, required=True)
     ap.add_argument('--selected-id', type=int, required=True)
-    ap.add_argument('--distractor-id', type=int, required=True)
+    ap.add_argument('--distractor-id', type=int)
+    ap.add_argument('--selected-only', action='store_true', help='Audit selected identity only; distractor points may refer to different non-target people at different times')
     ap.add_argument('--output', type=Path, required=True)
     a = ap.parse_args()
-    if a.selected_id == a.distractor_id:
-        ap.error('identity IDs must differ')
+    if a.selected_only and a.distractor_id is not None:
+        ap.error('--selected-only does not accept a fixed distractor ID')
+    if not a.selected_only and (a.distractor_id is None or a.selected_id == a.distractor_id):
+        ap.error('pair audit requires distinct selected and distractor IDs')
+    identity_ids=(a.selected_id,) if a.selected_only else (a.selected_id,a.distractor_id)
     labels = json.loads(a.labels.read_text())
     manifest = json.loads(a.fixture.read_text())
     replay = json.loads(a.replay.read_text())
@@ -66,7 +70,7 @@ def main():
             if record['raw_boxes'] != [vals(d.box) for d in ds]:
                 raise ValueError('detector evidence mismatch')
             mode_rows = []
-            for i, ident in enumerate((a.selected_id, a.distractor_id)):
+            for i, ident in enumerate(identity_ids):
                 track = next((t for t in record['tracks'] if t['id'] == ident), None)
                 matched = [j for j, d in enumerate(ds) if track and track['observed']
                            and iou(d.box, Rect(*track['bounds'])) > .99999]
@@ -84,8 +88,8 @@ def main():
     summary = {mode: {str(ident): {status: sum(
         x['id'] == ident and x['outcome'] == status for r in rows for x in r[mode])
         for status in ('correct', 'wrong', 'ambiguous', 'unobserved_or_ambiguous')}
-        for ident in (a.selected_id, a.distractor_id)} for mode in ('baseline', 'candidate')}
-    out = dict(scope=__doc__, labels_sha256=sha(a.labels), fixture_sha256=sha(a.fixture),
+        for ident in identity_ids} for mode in ('baseline', 'candidate')}
+    out = dict(scope=(__doc__ + '\nSelected-only: negative points are not assumed to be a persistent identity.' if a.selected_only else __doc__), labels_sha256=sha(a.labels), fixture_sha256=sha(a.fixture),
                replay_sha256=sha(a.replay), summary=summary, rows=rows)
     a.output.write_text(json.dumps(out, indent=2)+'\n')
     print(json.dumps(summary))
