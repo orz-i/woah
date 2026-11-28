@@ -62,6 +62,13 @@ def main() -> int:
     if sys.platform != "darwin":
         raise SystemExit("Phase 6 macOS gate must run on macOS")
 
+    # CocoaPods expands resource inputs during dependency resolution. Stage the
+    # pinned YOLO and face binaries before that graph is generated on clean CI.
+    run([sys.executable, "tools/release/sync_ios_yolo_model.py"])
+    run([sys.executable, "tools/release/sync_ios_yolo_model.py", "--verify-only"])
+    run(["flutter", "config", "--enable-swift-package-manager"], cwd=APP)
+    run([sys.executable, "tools/ci/resolve_ios_dependencies.py"])
+
     for verifier in (
         "tools/release/verify_ios_phase2.py",
         "tools/release/verify_ios_phase3.py",
@@ -81,18 +88,13 @@ def main() -> int:
             str(METAL_ROOT / sdk),
         ])
 
-    # CocoaPods expands resource inputs during dependency resolution. Stage the
-    # pinned YOLO and face binaries before that graph is generated on clean CI.
-    run([sys.executable, "tools/release/sync_ios_yolo_model.py"])
-    run([sys.executable, "tools/release/sync_ios_yolo_model.py", "--verify-only"])
-    run(["flutter", "config", "--enable-swift-package-manager"], cwd=APP)
-    run([sys.executable, "tools/ci/resolve_ios_dependencies.py"])
     run([
         "flutter",
         "build",
         "ios",
         "--simulator",
         "--debug",
+        "--no-pub",
         "--target",
         "lib/ios_phase6_smoke_main.dart",
     ], cwd=APP, timeout=1800)
