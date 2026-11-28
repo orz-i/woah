@@ -47,3 +47,28 @@ Same re-encoded Salsa derivative, same two explicit selected IDs, same requested
 Android end-to-end case duration including previews: 58.444 s / 56.342 s; recorded export throughput 3.37 / 3.38 fps. No same-device master performance comparison. Android output SHA-256: rear `dbe11dc6acc7fc334de0f51f96c5774d047e4be9915bf4610422bee5cc02df4d`, front `7b24ff6d51828fa38e9d61de3f796bab4b57ab365f4f51ec30951bc5f7846549`. Source-only labels and original source provenance remain archived. Actual source/Android/iOS crop review confirms the front-target sticker covers a neighboring head at ~0.4 s; on Android at ~2.0 s it is displaced toward the other dancer and the selected head is partially exposed. These are observed native coverage failures, not inferred from region count. The sparse ellipse and pixel-delta measurements are diagnostic, not dense segmentation truth; no claim that this patch introduced the coverage failures versus master without a native master comparison.
 
 **Disposition:** the bounded identity fix has now been verified on both platforms (32/32 observed-mask identity checkpoints across four exports). Do not merge or close Issue #47 on that evidence alone: actual Android target coverage failure and bilateral neighbor over-coverage remain. Keep the narrowed PR draft. If proceeding, compare the same failing intervals against master on the device and limit any additional repair to the existing face-observation/render path; do not restore the archived M6 model/identity experiments. Android source, APK, run results, eight captured observation files, full decoded audit, review sheet and old QA backup remain local under `delivery47/native/`. Capture control was removed and isolated QA app stopped after validation.
+
+## Native master comparison and bounded clipped-head correction
+
+Fresh master (`dd940184`), identity-only (`2b15676b`), and clipped-head correction (`f6bf0f33`) native runs use the same derivative video, selections, preview times, devices and existing person/face models. Master Android exports completed; the initial capture collection via ADB shell cat failed, then the same eight original captures were pulled and job-bound successfully (no export rerun needed). Both master iOS exports completed. Each movie independently decodes 80 frames at 960x540, 25 fps; all selected-ID region traces contain 80 frames, including master (region counts alone do not measure correctness).
+
+| Source identity checks | Master | Identity-only | Clipped-head correction |
+|---|---:|---:|---:|
+| Android, two exports | 10/16 | 16/16 | 16/16 |
+| iOS, two exports | 6/16 | 16/16 | 16/16 |
+
+Master body observations rear/front: Android 65/43, iOS 31/64 of 80. Identity-only and final: Android 78/80, iOS 79/80 respectively. The identity-only patch did not introduce the original severe neighbor overlap; front target on master already has 100% maximum labeled neighbor overlap and zero minimum target overlap on both platforms.
+
+At Android 2.0 s, captured tracked masks show the target body is correctly observed but the weak projected face region is displaced. Re-evaluating the existing independent current-mask head estimate with the existing ellipse routine restores coverage. The bounded correction adds 44 implementation lines in the existing shared ellipse function, plus one synthetic regression. Only a weak projected region at the top edge can be reanchored, when a complete connected current-mask cap (existing strong-support and geometry checks) contradicts the center of the conservative projected ellipse. No new model, FFI, platform policy, direct-face or identity-clock update. This shared geometry path is not restricted by body count; it is gated on the current clipped-mask proof. Direct, agreeing, missing and non-edge cases are exercised by the regression. Full suite 193 passed, 1 ignored, plus separately compiled new focused regression passed; strict Clippy, fmt, Release and ABI v1 passed. Android and iOS rebuilt from identical source fingerprint `bcdfdf50d2890742485b39cd917c7d46e9abd5f83f053e503547944ec0cba566`.
+
+| Android front target | Identity-only | Final |
+|---|---:|---:|
+| 1.6 s labeled target ellipse coverage | 85.90% | 100% |
+| 1.6 s labeled neighbor ellipse overlap | 62.20% | 23.70% |
+| 2.0 s labeled target ellipse coverage | 48.42% | 100% |
+| 2.0 s labeled neighbor ellipse overlap | 16.30% | 2.70% |
+| Minimum target coverage, eight samples | 48.42% | 99.83% |
+
+All 320 native body observation rows match the identity-only version exactly. Both rear-target region traces are exactly equal. Front region traces change on 36 Android and 28 iOS frames (including subsequent render-size history), with no decline on any of the existing labeled target samples, and no increase in the labeled neighbor ellipse overlap. iOS front minimum target coverage remains 100%; rear minimum stays 98.76% iOS and 100% Android. Decoded source/output review at 1.6 and 2.0 s confirms the Android sticker now covers the intended front head instead of drifting left. Both platforms still have 100% neighbor ellipse overlap on the front-target sample at 0.4 s, present already on master. No dense privacy ground truth or full matrix acceptance is claimed.
+
+Retain both verified incremental fixes; keep the PR draft for review, do not close Issue #47. Do not resume M6 research. Remaining overlap is a distinct existing face-localization/geometry problem. Local comparison `delivery47/native/edge-fix/comparison.json` (SHA-256 `84bf6b5f7c7554512d00399a49f5c4ae7cb78a169075e961b92e6fbafb38f781`), movie audits and review sheet preserve actual results. Both QA apps built and ran successfully; Android capture control removed, isolated app stopped; no production installation changed.
