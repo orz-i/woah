@@ -314,6 +314,197 @@ pub struct HeadSticker {
     pub rows: u32,
 }
 
+/// Research-only current head geometry for a separately proven body
+/// tracklet. Shoulder observations locate/validate the cap; they are never
+/// identity features. No historical pose or head rectangle enters placement.
+pub(crate) fn tracklet_current_head(
+    masks: &[u8],
+    index: usize,
+    count: usize,
+    spec: HeadMaskSpec,
+    shoulders: [f32; 6],
+    faces: &[Ellipse],
+) -> Option<HeadSticker> {
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if !(2..=32).contains(&count)
+        || index >= count
+        || n.checked_mul(count)? != masks.len()
+        || faces.len() != count
+        || faces
+            .iter()
+            .any(|&f| !valid_seed(f) && f != Ellipse::default())
+        || shoulders.iter().any(|v| !v.is_finite())
+        || ![shoulders[2], shoulders[5]]
+            .into_iter()
+            .all(|v| (0.40..=1.0).contains(&v))
+    {
+        return None;
+    }
+    let own = &masks[index * n..(index + 1) * n];
+    if !spec.valid(own)
+        || spec.width != spec.transform.proto_size
+        || spec.height != spec.transform.proto_size
+    {
+        return None;
+    }
+    let tr = spec.transform;
+    let cell = tr.input_size as f32 / (tr.proto_size as f32 * tr.scale);
+    if !cell.is_finite() || cell <= 0.0 {
+        return None;
+    }
+    let (lx, ly, rx, ry) = (shoulders[0], shoulders[1], shoulders[3], shoulders[4]);
+    let sx = (lx + rx) * 0.5;
+    let sy = (ly + ry) * 0.5;
+    let sw = (lx - rx).hypot(ly - ry);
+    let bh = spec.person.bottom - spec.person.top;
+    if sw < 4.0 * cell || !(0.10..=0.45).contains(&(sw / bh)) || (ly - ry).abs() > sw * 0.40 {
+        return None;
+    }
+    for (x, y) in [(lx, ly), (rx, ry)] {
+        if x < spec.person.left
+            || x > spec.person.right
+            || y < spec.person.top
+            || y > spec.person.bottom
+            || x < 0.0
+            || x >= tr.source_width as f32
+            || y < 0.0
+            || y >= tr.source_height as f32
+        {
+            return None;
+        }
+        let gx = ((x * tr.scale + tr.pad_left) / tr.input_size as f32 * spec.width as f32).floor();
+        let gy = ((y * tr.scale + tr.pad_top) / tr.input_size as f32 * spec.height as f32).floor();
+        if !gx.is_finite()
+            || !gy.is_finite()
+            || gx < 0.0
+            || gy < 0.0
+            || gx >= spec.width as f32
+            || gy >= spec.height as f32
+        {
+            return None;
+        }
+        let (gx, gy) = (gx as i32, gy as i32);
+        let mut support = 0;
+        for yy in gy - 1..=gy + 1 {
+            for xx in gx - 1..=gx + 1 {
+                if xx < 0 || yy < 0 || xx >= spec.width as i32 || yy >= spec.height as i32 {
+                    continue;
+                }
+                let k = yy as usize * spec.width as usize + xx as usize;
+                if own[k] >= 128
+                    && masks
+                        .chunks_exact(n)
+                        .enumerate()
+                        .all(|(j, m)| j == index || m[k] < 128)
+                {
+                    support += 1;
+                }
+            }
+        }
+        if support < 2 {
+            return None;
+        }
+    }
+    let seed = crate::face_geometry::current_head_region(Some(own), spec, None)?.region;
+    let (cap, path) = cap_trace(own, spec, seed, false, false, false)?;
+    let b = cap.bounds;
+    let (w, h) = (b.right - b.left, b.bottom - b.top);
+    if cap.partial
+        || cap.rows < 6
+        || !(0.35..=1.20).contains(&(w / sw))
+        || !(0.40..=1.50).contains(&(h / sw))
+        || ((b.left + b.right) * 0.5 - sx).abs() > 0.45 * sw
+        || b.bottom > sy + 0.12 * sw
+        || b.top > sy - 0.40 * sw
+    {
+        return None;
+    }
+    let (mut total, mut strong, mut rival) = (0usize, 0usize, 0usize);
+    for (y, run) in path {
+        for x in run.left..run.right {
+            let k = y * spec.width as usize + x;
+            total += 1;
+            strong += usize::from(own[k] >= 128);
+            rival += usize::from(
+                masks
+                    .chunks_exact(n)
+                    .enumerate()
+                    .any(|(j, m)| j != index && m[k] >= 128),
+            );
+        }
+    }
+    if total == 0 || strong * 10 < total * 9 || rival * 20 > total {
+        return None;
+    }
+    let mut b = Rect {
+        left: (b.left - cell).max(0.0),
+        top: (b.top - cell).max(0.0),
+        right: (b.right + cell).min(tr.source_width as f32),
+        bottom: (b.bottom + cell).min(tr.source_height as f32),
+    };
+    // An actual selected-face measurement may not be discarded to make
+    // the new cap smaller. It must be inside the connected cap, supported
+    // by the current owner, and free of strong competing face-core support.
+    let direct = faces[index];
+    if valid_seed(direct) {
+        use crate::face_observations::mask_support;
+        if direct.center_x < b.left
+            || direct.center_x > b.right
+            || direct.center_y < b.top
+            || direct.center_y > b.bottom
+            || !mask_support(own, spec, direct).is_some_and(|s| s[0] >= 4 && s[1] >= 12)
+            || masks
+                .chunks_exact(n)
+                .enumerate()
+                .any(|(j, m)| j != index && mask_support(m, spec, direct).is_none_or(|s| s[1] > 4))
+        {
+            return None;
+        }
+        b.left = b.left.min((direct.center_x - direct.radius_x).max(0.0));
+        b.right = b
+            .right
+            .max((direct.center_x + direct.radius_x).min(tr.source_width as f32));
+        b.top = b.top.min((direct.center_y - direct.radius_y).max(0.0));
+        b.bottom = b
+            .bottom
+            .max((direct.center_y + direct.radius_y).min(tr.source_height as f32));
+    }
+    let half = ((b.right - b.left).max(b.bottom - b.top) * 0.5).next_up();
+    let square = Ellipse {
+        center_x: (b.left + b.right) * 0.5,
+        center_y: (b.top + b.bottom) * 0.5,
+        radius_x: half,
+        radius_y: half,
+    };
+    if !b.valid() || !valid_seed(square) {
+        return None;
+    }
+    // Competing current detector faces remain negative evidence even when
+    // their raw segmentation has no support on the target cap.
+    for (j, &f) in faces.iter().enumerate() {
+        if !valid_seed(f) {
+            continue;
+        }
+        if j == index {
+            continue;
+        }
+        let render_half = (1.02 * half).max(8.0);
+        let iw = (square.center_x + render_half).min(f.center_x + f.radius_x)
+            - (square.center_x - render_half).max(f.center_x - f.radius_x);
+        let ih = (square.center_y + render_half).min(f.center_y + f.radius_y)
+            - (square.center_y - render_half).max(f.center_y - f.radius_y);
+        if iw.max(0.0) * ih.max(0.0) > 0.10 * 4.0 * f.radius_x * f.radius_y {
+            return None;
+        }
+    }
+    Some(HeadSticker {
+        bounds: b,
+        square,
+        topology: 1,
+        rows: cap.rows,
+    })
+}
+
 /// Current visible head cap at a clipped top edge. Both raw masks must be
 /// supplied, in current detection order; no predicted mask is admissible.
 /// The body-box estimate only locates the search, never sizes the result.
@@ -1149,6 +1340,42 @@ mod tests {
         paint(&mut m[..4096], 20..60, 23, 41);
         paint(&mut m[4096..], 6..54, 48, 60);
         (sp, m)
+    }
+    #[test]
+    fn tracklet_current_head_requires_exclusive_cap_and_current_shoulders() {
+        let (sp, m) = edge_pair();
+        let shoulders = [92., 56., 0.9, 164., 56., 0.9];
+        let faces = [Ellipse::default(); 2];
+        let r = tracklet_current_head(&m, 0, 2, sp, shoulders, &faces)
+            .expect("complete cap with shoulders");
+        assert_eq!(r.topology, 1);
+        assert!(r.bounds.left <= 104. && r.bounds.right >= 152. && r.bounds.bottom >= 48.);
+        let mut weak = shoulders;
+        weak[2] = 0.1;
+        assert!(tracklet_current_head(&m, 0, 2, sp, weak, &faces).is_none());
+        let mut conflict = m.clone();
+        paint(&mut conflict[4096..], 0..12, 26, 38);
+        assert!(tracklet_current_head(&conflict, 0, 2, sp, shoulders, &faces).is_none());
+        let mut rival = faces;
+        rival[1] = Ellipse {
+            center_x: 128.,
+            center_y: 28.,
+            radius_x: 14.,
+            radius_y: 16.,
+        };
+        assert!(tracklet_current_head(&m, 0, 2, sp, shoulders, &rival).is_none());
+        let mut direct = faces;
+        direct[0] = Ellipse {
+            center_x: 128.,
+            center_y: 30.,
+            radius_x: 18.,
+            radius_y: 26.,
+        };
+        let r = tracklet_current_head(&m, 0, 2, sp, shoulders, &direct)
+            .expect("direct face agrees with cap");
+        assert!(r.bounds.bottom >= 56. && r.bounds.top <= 4.);
+        direct[0].center_x = 220.;
+        assert!(tracklet_current_head(&m, 0, 2, sp, shoulders, &direct).is_none());
     }
     #[test]
     fn visible_pair_cap_preserves_current_rows_without_offscreen_weak_prior() {

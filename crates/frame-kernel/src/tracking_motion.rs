@@ -516,6 +516,122 @@ pub(crate) fn research_triplet_paths(
     Some(out)
 }
 
+/// A research node in a consecutive raw-mask triplet graph. Previous and
+/// next are frame-local indices, or u32::MAX for no qualified triplet.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct ResearchTrackletNode {
+    pub previous: u32,
+    pub next: u32,
+    // bit 0: pooled dual-cue vote, bit 1: unpooled dual-cue vote,
+    // bit 2: conflicting owner/vote/known merge.
+    pub flags: u32,
+}
+
+/// Recover only continuous runs of dual-cue votes with mutually agreeing
+/// raw-mask triplets. At least three unpooled witnesses three sample steps
+/// apart prevent a single overlapping triplet from authorizing the run.
+/// No positive output across missing votes; no identity/coverage mutation.
+pub(crate) fn research_tracklet_consensus(
+    counts: &[u32],
+    times: &[i64],
+    nodes: &[ResearchTrackletNode],
+) -> Option<Vec<u32>> {
+    if counts.is_empty()
+        || counts.len() > 100_000
+        || times.len() != counts.len()
+        || counts.iter().any(|&n| n > 64)
+        || times.windows(2).any(|w| w[1] <= w[0])
+        || nodes.iter().any(|n| n.flags > 7)
+    {
+        return None;
+    }
+    let mut offsets = vec![0usize];
+    for &n in counts {
+        offsets.push(offsets.last()?.checked_add(n as usize)?);
+    }
+    if *offsets.last()? != nodes.len() || nodes.len() > 1_000_000 {
+        return None;
+    }
+    let none = u32::MAX;
+    for i in 0..counts.len() {
+        for n in &nodes[offsets[i]..offsets[i + 1]] {
+            if (n.previous == none) != (n.next == none) {
+                return None;
+            }
+            if n.previous != none
+                && (i == 0
+                    || i + 1 == counts.len()
+                    || n.previous >= counts[i - 1]
+                    || n.next >= counts[i + 1])
+            {
+                return None;
+            }
+        }
+    }
+    let mut chosen = vec![0u32; nodes.len()];
+    let qualifies =
+        |n: &ResearchTrackletNode| n.previous != none && n.flags & 1 != 0 && n.flags & 4 == 0;
+    let mut used = vec![false; nodes.len()];
+    for i in 0..counts.len() {
+        for j in 0..counts[i] as usize {
+            let k = offsets[i] + j;
+            if used[k] || !qualifies(&nodes[k]) {
+                continue;
+            }
+            let mut path = vec![(i, k)];
+            used[k] = true;
+            let (mut frame, mut index) = (i, k);
+            while frame + 1 < counts.len() {
+                if times[frame + 1]
+                    .checked_sub(times[frame])
+                    .is_none_or(|dt| dt > 100_000)
+                {
+                    break;
+                }
+                let n = nodes[index];
+                if n.next == none {
+                    break;
+                }
+                let next = offsets[frame + 1] + n.next as usize;
+                let q = nodes[next];
+                if used[next] || !qualifies(&q) || q.previous as usize != index - offsets[frame] {
+                    break;
+                }
+                frame += 1;
+                index = next;
+                used[index] = true;
+                path.push((frame, index));
+            }
+            let mut witnesses = 0usize;
+            let mut last = None;
+            for &(f, k) in &path {
+                if nodes[k].flags & 2 != 0 && last.is_none_or(|previous| f - previous >= 3) {
+                    witnesses += 1;
+                    last = Some(f);
+                }
+            }
+            if path.len() >= 7 && witnesses >= 3 {
+                for (_, k) in path {
+                    chosen[k] = 1;
+                }
+            }
+        }
+    }
+    // At most one candidate for the selected root on any frame. Reject the
+    // full conflicting result rather than breaking a validated span.
+    if (0..counts.len()).any(|i| {
+        chosen[offsets[i]..offsets[i + 1]]
+            .iter()
+            .filter(|&&v| v != 0)
+            .count()
+            > 1
+    }) {
+        return Some(vec![0; nodes.len()]);
+    }
+    Some(chosen)
+}
+
 fn offline_path(frames: &[&[Detection]], times: &[i64], left: usize) -> Option<Option<Vec<usize>>> {
     use crate::geometry::overlap_iou;
     use crate::tracking_mask::raw_mask_iou;
@@ -646,6 +762,51 @@ mod tests {
                 transform: tr,
             }),
         }
+    }
+    #[test]
+    fn research_consensus_needs_consecutive_links_and_separated_unpooled_votes() {
+        let counts = [1; 9];
+        let times = (0..9).map(|i| i * 40_000).collect::<Vec<_>>();
+        let mut nodes = vec![
+            ResearchTrackletNode {
+                previous: 0,
+                next: 0,
+                flags: 3
+            };
+            9
+        ];
+        nodes[0].previous = u32::MAX;
+        nodes[0].next = u32::MAX;
+        nodes[8].previous = u32::MAX;
+        nodes[8].next = u32::MAX;
+        assert_eq!(
+            research_tracklet_consensus(&counts, &times, &nodes),
+            Some(vec![0, 1, 1, 1, 1, 1, 1, 1, 0])
+        );
+        let mut conflict = nodes.clone();
+        conflict[4].flags |= 4;
+        assert_eq!(
+            research_tracklet_consensus(&counts, &times, &conflict),
+            Some(vec![0; 9])
+        );
+        let mut pooled = nodes.clone();
+        for n in &mut pooled {
+            n.flags = 1;
+        }
+        assert_eq!(
+            research_tracklet_consensus(&counts, &times, &pooled),
+            Some(vec![0; 9])
+        );
+        let mut broken = nodes.clone();
+        broken[4].previous = u32::MAX;
+        broken[4].next = u32::MAX;
+        assert_eq!(
+            research_tracklet_consensus(&counts, &times, &broken),
+            Some(vec![0; 9])
+        );
+        let mut bad = nodes;
+        bad[2].next = 1;
+        assert!(research_tracklet_consensus(&counts, &times, &bad).is_none());
     }
     #[test]
     fn offline_window_requires_both_anchors_and_every_reciprocal_current_mask() {

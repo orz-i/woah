@@ -1797,6 +1797,39 @@ pub unsafe extern "C" fn frame_kernel_research_rank(
     0
 }
 
+/// Stateless continuous research consensus; output has one u32 per node.
+/// # Safety
+/// Inputs and disjoint output are readable/writable for specified lengths.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_tracklet_consensus(
+    counts: *const u32,
+    times: *const i64,
+    frame_count: usize,
+    nodes: *const crate::tracking_motion::ResearchTrackletNode,
+    node_count: usize,
+    out: *mut u32,
+) -> i32 {
+    if frame_count > 100_000 || node_count > 1_000_000 || out.is_null() {
+        return -1;
+    }
+    // SAFETY: caller supplies bounded readable arrays.
+    let (Some(counts), Some(times), Some(nodes)) = (unsafe {
+        (
+            borrowed(counts, frame_count),
+            borrowed(times, frame_count),
+            borrowed(nodes, node_count),
+        )
+    }) else {
+        return -1;
+    };
+    let Some(v) = crate::tracking_motion::research_tracklet_consensus(counts, times, nodes) else {
+        return -1;
+    };
+    // SAFETY: caller supplies disjoint output with node_count writable u32s.
+    unsafe { std::ptr::copy_nonoverlapping(v.as_ptr(), out, v.len()) };
+    0
+}
+
 /// Anonymous three-sample raw paths for research pooling, no track state.
 /// # Safety
 /// Inputs readable; output contains 2*middle_count disjoint u32 elements.

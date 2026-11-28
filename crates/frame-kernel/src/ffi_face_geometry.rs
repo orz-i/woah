@@ -8,6 +8,49 @@ pub const REGION_OK: i32 = 0;
 pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
+/// Research-only current complete cap. No historical face/pose is accepted.
+/// # Safety
+/// Packed masks, six shoulder floats, and count ellipses are readable.
+/// Output is disjoint and writable. Nonzero leaves output unchanged.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_tracklet_head(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    shoulders: *const f32,
+    faces: *const Ellipse,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(2..=32).contains(&count) || len > 32 * 1024 * 1024 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable arrays.
+    let (Some(m), Some(p), Some(f)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(shoulders, 6),
+            crate::ffi_tracking::borrowed(faces, count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::tracklet_current_head(
+        m,
+        index as usize,
+        count,
+        spec,
+        p.try_into().unwrap(),
+        f,
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies disjoint writable output.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
 /// # Safety
 /// Twelve disjoint writable floats; no write on failure.
 #[unsafe(no_mangle)]

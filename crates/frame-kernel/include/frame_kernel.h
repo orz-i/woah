@@ -235,6 +235,10 @@ int32_t frame_kernel_research_pose_parts(const FrameKernelTrackingObservation *o
 int32_t frame_kernel_research_clothing_vectors(const FrameKernelTrackingObservation *obs,size_t count,const uint8_t *pixels,size_t len,const uint8_t *rgb,size_t rgb_len,FrameKernelTransform transform,float *out,size_t out_len);
 int32_t frame_kernel_research_similarity(const float *a,size_t a_len,const float *b,size_t b_len,size_t rows,size_t cols,size_t dim,size_t blocks,float *output);
 int32_t frame_kernel_research_rank(const float *scores,size_t len,size_t rows,size_t cols,float minimum,float margin,FrameKernelResearchRank *output);
+/* Research-only consecutive dual-cue consensus. Node flags: pooled=1,
+   unpooled=2, conflict=4; UINT32_MAX endpoints are unavailable. */
+typedef struct FrameKernelResearchTrackletNode {uint32_t previous,next,flags;} FrameKernelResearchTrackletNode;
+int32_t frame_kernel_research_tracklet_consensus(const uint32_t *counts,const int64_t *times,size_t frame_count,const FrameKernelResearchTrackletNode *nodes,size_t node_count,uint32_t *out);
 /* Anonymous raw three-frame paths for model evaluation. Output: two endpoint
    indices per middle raw proposal, UINT32_MAX for no reciprocal triplet. */
 int32_t frame_kernel_research_triplet_paths(const FrameKernelTrackingObservation *obs,size_t count,const uint8_t *pixels,size_t len,const uint32_t *counts,const int64_t *times,uint32_t *out,size_t out_len);
@@ -447,6 +451,8 @@ int32_t frame_kernel_face_reappearance_sticker(const uint8_t *pixels,size_t len,
    required; anchor is a consistency check only. */
 int32_t frame_kernel_offline_face_plans(FrameKernelEllipse face,FrameKernelTransform transform,float *output12);
 int32_t frame_kernel_offline_face_coverage(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const FrameKernelEllipse *current3,FrameKernelEllipse anchor,FrameKernelRect anchor_body,int64_t gap,FrameKernelEllipse *required,FrameKernelHeadSticker *sticker);
+/* Research-only current complete cap; shoulders6 are x,y,confidence triples. */
+int32_t frame_kernel_research_tracklet_head(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *shoulders6,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
 /* Experimental current crowded direct face validation. 0 success, 1 no retry/rejected/no conflict respectively, -1 invalid. */
 int32_t frame_kernel_crowded_face_views(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,float *output12);
 int32_t frame_kernel_crowded_face_accept(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,const FrameKernelEllipse *local2);
