@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import Metal
 
-enum IOSMetalPhase3Smoke {
+enum IOSMetalSmoke {
   static func run() throws -> [String: Any] {
     guard let device = MTLCreateSystemDefaultDevice() else {
       throw PigeonError(

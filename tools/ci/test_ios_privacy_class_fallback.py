@@ -7,10 +7,10 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from tools.release import verify_ios_phase6 as gate
+from tools.release import verify_ios_privacy_class as gate
 
 
-class IOSPhase6MissingRootFallbackVerifierTests(unittest.TestCase):
+class IOSPrivacyClassMissingRootFallbackVerifierTests(unittest.TestCase):
     def setUp(self):
         gate.FAILURES.clear()
 
@@ -54,7 +54,7 @@ class IOSPhase6MissingRootFallbackVerifierTests(unittest.TestCase):
 
     def test_missing_root_mask_pixel_guard_fails(self):
         self.assert_mutation_fails(
-            'IOSPrivacyClassPhase6Smoke.swift',
+            'IOSPrivacyClassSmoke.swift',
             "FULL_BODY fresh-class compositor omitted an unresolved selected root's fail-closed mask",
             'removed safety assertion',
         )

@@ -1,38 +1,38 @@
 import Foundation
 
-private struct IOSPhase5GoldenSuite: Decodable {
+private struct IOSGoldenSuite: Decodable {
   let schemaVersion: Int
   let frameIntervalUs: Int64
   let description: String
-  let cases: [IOSPhase5GoldenCase]
+  let cases: [IOSGoldenCase]
 }
 
-private struct IOSPhase5GoldenCase: Decodable {
+private struct IOSGoldenCase: Decodable {
   let name: String
-  let androidReferences: [IOSPhase5AndroidReference]
+  let androidReferences: [IOSGoldenAndroidReference]
   let frameWidth: Int
   let frameHeight: Int
   let fullBodyIds: [Int]
   let faceOnlyIds: [Int]
-  let analysisPersons: [IOSPhase5AnalysisPerson]
-  let steps: [IOSPhase5GoldenStep]
+  let analysisPersons: [IOSGoldenAnalysisPerson]
+  let steps: [IOSGoldenStep]
 }
 
-private struct IOSPhase5AndroidReference: Decodable {
+private struct IOSGoldenAndroidReference: Decodable {
   let path: String
   let testName: String
 }
 
-private struct IOSPhase5AnalysisPerson: Decodable {
+private struct IOSGoldenAnalysisPerson: Decodable {
   let id: Int
   let bbox: [Double]
   let confidence: Double
 }
 
-private struct IOSPhase5GoldenStep: Decodable {
+private struct IOSGoldenStep: Decodable {
   let repeatCount: Int
-  let detections: [IOSPhase5GoldenDetection]
-  let expect: [IOSPhase5TrackExpectation]?
+  let detections: [IOSGoldenDetection]
+  let expect: [IOSGoldenTrackExpectation]?
   let expectedErrorCode: String?
 
   private enum CodingKeys: String, CodingKey {
@@ -43,13 +43,13 @@ private struct IOSPhase5GoldenStep: Decodable {
   }
 }
 
-private struct IOSPhase5GoldenDetection: Decodable {
+private struct IOSGoldenDetection: Decodable {
   let bbox: [Double]
   let confidence: Double
   let maskRect: [Double]
 }
 
-private struct IOSPhase5TrackExpectation: Decodable {
+private struct IOSGoldenTrackExpectation: Decodable {
   let id: Int
   let state: String
   let missedFrames: Int
@@ -63,41 +63,41 @@ private struct IOSPhase5TrackExpectation: Decodable {
   let maxPredictionTravelRatio: Double?
 }
 
-enum IOSGoldenTracePhase5Smoke {
+enum IOSGoldenTraceSmoke {
   private static let maskSize = IOSYoloPostprocessor.protoSize
 
   static func run() throws -> [String: Any] {
-    guard let traceURL = IOSGoldenTraceResources.phase5TrackingURL() else {
+    guard let traceURL = IOSGoldenTraceResources.trackingURL() else {
       throw PigeonError(
-        code: "IOS_PHASE5_GOLDEN_TRACE_MISSING",
-        message: "The Phase 5 tracking Golden Trace resource was not bundled.",
+        code: "IOS_GOLDEN_TRACE_MISSING",
+        message: "The tracking Golden Trace resource was not bundled.",
         details: nil
       )
     }
 
     let data = try Data(contentsOf: traceURL)
-    let suite: IOSPhase5GoldenSuite
+    let suite: IOSGoldenSuite
     do {
-      suite = try JSONDecoder().decode(IOSPhase5GoldenSuite.self, from: data)
+      suite = try JSONDecoder().decode(IOSGoldenSuite.self, from: data)
     } catch {
       throw PigeonError(
-        code: "IOS_PHASE5_GOLDEN_TRACE_INVALID",
-        message: "Unable to decode the Phase 5 tracking Golden Trace.",
+        code: "IOS_GOLDEN_TRACE_INVALID",
+        message: "Unable to decode the tracking Golden Trace.",
         details: String(describing: error)
       )
     }
 
     guard suite.schemaVersion == 1 else {
       throw PigeonError(
-        code: "IOS_PHASE5_GOLDEN_TRACE_SCHEMA_UNSUPPORTED",
-        message: "Unsupported Phase 5 Golden Trace schema.",
+        code: "IOS_GOLDEN_TRACE_SCHEMA_UNSUPPORTED",
+        message: "Unsupported Golden Trace schema.",
         details: suite.schemaVersion
       )
     }
     guard suite.frameIntervalUs > 0, !suite.cases.isEmpty else {
       throw PigeonError(
-        code: "IOS_PHASE5_GOLDEN_TRACE_INVALID",
-        message: "Phase 5 Golden Trace requires a positive frame interval and at least one case.",
+        code: "IOS_GOLDEN_TRACE_INVALID",
+        message: "Golden Trace requires a positive frame interval and at least one case.",
         details: nil
       )
     }
@@ -117,7 +117,7 @@ enum IOSGoldenTracePhase5Smoke {
       ])
     }
 
-    let facePrivacyReport = try IOSFacePrivacyPhase5Smoke.run()
+    let facePrivacyReport = try IOSFacePrivacySmoke.run()
     return [
       "schemaVersion": suite.schemaVersion,
       "caseCount": suite.cases.count,
@@ -135,7 +135,7 @@ enum IOSGoldenTracePhase5Smoke {
   }
 
   private static func runCase(
-    _ traceCase: IOSPhase5GoldenCase,
+    _ traceCase: IOSGoldenCase,
     frameIntervalUs: Int64
   ) throws -> CaseRunReport {
     guard traceCase.frameWidth > 0, traceCase.frameHeight > 0 else {
@@ -216,7 +216,7 @@ enum IOSGoldenTracePhase5Smoke {
   }
 
   private static func makeMetadata(
-    _ traceCase: IOSPhase5GoldenCase
+    _ traceCase: IOSGoldenCase
   ) throws -> IOSAnalysisMetadata {
     let persons = try traceCase.analysisPersons.map { person -> IOSCachedPerson in
       let bbox = try checkedRect(
@@ -238,7 +238,7 @@ enum IOSGoldenTracePhase5Smoke {
     }
     return IOSAnalysisMetadata(
       schemaVersion: 1,
-      sourceUri: "woah-phase5://\(traceCase.name)",
+      sourceUri: "woah-golden://\(traceCase.name)",
       persons: persons
     )
   }
@@ -266,7 +266,7 @@ enum IOSGoldenTracePhase5Smoke {
   }
 
   private static func makeDetection(
-    _ detection: IOSPhase5GoldenDetection,
+    _ detection: IOSGoldenDetection,
     caseName: String,
     frame: Int
   ) throws -> IOSYoloDetection {
@@ -311,7 +311,7 @@ enum IOSGoldenTracePhase5Smoke {
   private static func validate(
     tracker: IOSTemporalIdentityTracker,
     output: [IOSPreviewPerson],
-    expectations: [IOSPhase5TrackExpectation],
+    expectations: [IOSGoldenTrackExpectation],
     caseName: String,
     frame: Int
   ) throws {
@@ -436,8 +436,8 @@ enum IOSGoldenTracePhase5Smoke {
     _ message: String
   ) -> PigeonError {
     PigeonError(
-      code: "IOS_PHASE5_GOLDEN_TRACE_MISMATCH",
-      message: "Phase 5 Golden Trace mismatch in \(caseName) at frame \(frame): \(message)",
+      code: "IOS_GOLDEN_TRACE_MISMATCH",
+      message: "Golden Trace mismatch in \(caseName) at frame \(frame): \(message)",
       details: ["case": caseName, "frame": frame]
     )
   }

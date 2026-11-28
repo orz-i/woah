@@ -79,13 +79,13 @@
 | 层级 | 触发与内容 | 合并或发布要求 |
 | --- | --- | --- |
 | 每个 PR 的快速层 | 变更分类、手写 Dart format、四包 analyze/test、Python 契约测试、Pigeon 再生成无差异、模型 manifest/hash 规则 | 固定名称汇总；不允许新增告警或生成漂移 |
-| 受影响平台层 | Android native unit + lint + Release Kotlin compile + Debug APK；iOS 静态契约 + Metal + Phase 6 simulator smoke + main.dart no-codesign build | 路径匹配完整依赖图；shared/native/workflow 变更覆盖应受影响平台 |
+| 受影响平台层 | Android native unit + lint + Release Kotlin compile + Debug APK；iOS 静态契约 + Metal + 原生模拟器回归 + main.dart no-codesign build | 路径匹配完整依赖图；shared/native/workflow 变更覆盖应受影响平台 |
 | 隐私 模型与发布层 | 权限/manifest/archive、模型字节与预处理、取消/失败/恢复、磁盘与内存资源、实际媒体输出、Face / Full Body 对应设备 golden | 不用 mock 单测或静态 token 检查替代真实运行证据 |
 | 里程碑层 | 按既有性能流程扩展设备/有效 accelerator 矩阵、长时导出、升级/恢复、baseline 晋级 | 由冻结基线与已有质量契约验收，不臆造统一覆盖率或性能百分比 |
 
-第二批 `governance / required` 汇总 job 使用 always-run 语义，显式检查所有依赖结果；必要 job 失败、取消或意外跳过都失败。当前每个 PR 保守运行双平台，不设 not applicable 路径。以后只有经测试的变更分类明确认定无关的平台才可优化，不能把任意 skipped 当成功。required workflow 本身不使用会让其完全不产生 check 的 path skip。
+第二批 `governance / required` 汇总 job 使用 always-run 语义，显式检查所有依赖结果；必要 job 失败、取消或意外跳过都失败。当前 Ready PR、主分支 push 和手动调度保守运行双平台，不设 not applicable 路径。Draft PR 只报告待评审（汇总仍拒绝 skipped）；转为 Ready 时显式触发完整 CI。以后只有经测试的变更分类明确认定无关的平台才可优化，不能把任意 skipped 当成功。required workflow 本身不使用会让其完全不产生 check 的 path skip。
 
-iOS 依赖至少覆盖 app、全部相关 package（含 dance_ui）、`tools/ios/**`、实际调用和读取的 `tools/release/**`、模型/Metal 输入及契约所读文档。第二批选择每个 PR 完整双平台覆盖，后续可按目录级保守分类优化。Phase 6 已从 phase1 的隐式调用迁移到工作流显式步骤，原 gate 内容不变；回归确保只执行一次、移除调用会失败，远端验收状态见第二批记录。
+iOS 依赖至少覆盖 app、全部相关 package（含 dance_ui）、`tools/ios/**`、实际调用和读取的 `tools/release/**`、模型/Metal 输入及契约所读文档。第二批选择完整双平台覆盖；Draft 迭代延后完整构建，Ready PR 不按路径跳过。iOS 常驻原生回归入口为 `tools/ios/run_native_regression.py`，执行 Metal 双 SDK 编译、真实模拟器导出、身份 Golden Trace、隐私分类、缓存生命周期及诊断脱敏检查。历史阶段包装已删除；回归确保入口只执行一次、六项运行标记缺一不可。
 
 ### 已有入口和拟议验收命令
 
@@ -104,13 +104,13 @@ flutter test --no-pub ../packages/dance_native/test
 # 从仓库根目录，先按现有流程完成依赖与模型准备
 python tools/release/verify_export_media_contract.py
 python -m unittest tools.release.test_verify_export_media_contract -q
-python tools/release/verify_ios_phase0.py
-python tools/release/verify_ios_phase1.py
-python tools/release/verify_ios_phase4.py
-python -m unittest tools.release.test_verify_ios_phase4 -q
+python tools/release/verify_ios_platform.py
+python tools/release/verify_ios_inference.py
+python tools/release/verify_ios_export.py
+python -m unittest tools.release.test_verify_ios_export -q
 
 # macOS + 完整 Xcode / simulator / Flutter 环境；会构建、运行并写构建产物
-python tools/ios/run_phase6_macos_gate.py
+python tools/ios/run_native_regression.py
 (cd mobile/app && flutter build ios --debug --no-codesign --target lib/main.dart)
 
 # Android：已有任务

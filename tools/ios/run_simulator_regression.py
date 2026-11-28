@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Boot an iPhone simulator and execute the combined Phase 3/4 media smoke app."""
+"""Run all native media, privacy and lifecycle regression checks on a simulator."""
 
 from __future__ import annotations
 
@@ -12,10 +12,20 @@ from pathlib import Path
 
 
 BUNDLE_ID = "art.gaoge.dance"
-METAL_PASS_MARKER = "WOAH_METAL_PHASE3_SMOKE=PASS"
-EXPORT_PASS_MARKER = "WOAH_EXPORT_PHASE4_SMOKE=PASS"
-GOLDEN_TRACE_PASS_MARKER = "WOAH_GOLDEN_TRACE_PHASE5_SMOKE=PASS"
-PRIVACY_CLASS_PHASE6_PASS_MARKER = "WOAH_PRIVACY_CLASS_PHASE6_SMOKE=PASS"
+METAL_PASS_MARKER = "WOAH_METAL_SMOKE=PASS"
+EXPORT_PASS_MARKER = "WOAH_EXPORT_SMOKE=PASS"
+GOLDEN_TRACE_PASS_MARKER = "WOAH_GOLDEN_TRACE_SMOKE=PASS"
+PRIVACY_CLASS_PASS_MARKER = "WOAH_PRIVACY_CLASS_SMOKE=PASS"
+
+
+REQUIRED_MARKERS = (
+    METAL_PASS_MARKER,
+    EXPORT_PASS_MARKER,
+    GOLDEN_TRACE_PASS_MARKER,
+    PRIVACY_CLASS_PASS_MARKER,
+    "WOAH_CACHE_LIFECYCLE_SMOKE=PASS",
+    "WOAH_DIAGNOSTIC_PRIVACY_SMOKE=PASS",
+)
 
 
 def run(
@@ -51,7 +61,7 @@ def choose_iphones() -> list[tuple[str, str, str]]:
     if not candidates:
         raise SystemExit("No available iPhone simulator was found on the runner")
     # Prefer the newest runtime, then conventional Pro/standard devices before
-    # Air. Phase 3 CI showed that a single hosted-runner device can occasionally
+    # Air. Hosted CI showed that a single hosted-runner device can occasionally
     # wedge in CoreSimulator boot; trying another compatible iPhone is a gate
     # robustness measure, not a relaxation of the media/GPU assertions.
     def rank(candidate: tuple[str, str, str]) -> tuple[str, int, str]:
@@ -112,7 +122,7 @@ def install_probe(udid: str, app: Path, *, attempts: int = 5) -> bool:
     minutes in CoreSimulator migration plugins even when the device is already
     capable of installing and launching an app. The operation we actually need
     is therefore the readiness probe. This does not waive the gate because the
-    real launch plus all Phase 3/4/5 smoke markers still run after this function
+    real launch plus all native regression markers still run after this function
     returns true.
     """
     for attempt in range(1, attempts + 1):
@@ -180,8 +190,6 @@ def boot_iphone(app: Path) -> tuple[str, str, str]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--app", type=Path, required=True)
-    parser.add_argument("--require-phase5", action="store_true")
-    parser.add_argument("--require-phase6", action="store_true")
     args = parser.parse_args()
     app = args.app.resolve()
     if not app.is_dir():
@@ -199,35 +207,24 @@ def main() -> int:
         )
         output = launched.stdout + launched.stderr
         print(output, end="")
-        required_markers = [METAL_PASS_MARKER, EXPORT_PASS_MARKER]
-        if args.require_phase5 or args.require_phase6:
-            required_markers.append(GOLDEN_TRACE_PASS_MARKER)
-        if args.require_phase6:
-            required_markers.extend([
-                PRIVACY_CLASS_PHASE6_PASS_MARKER,
-                "WOAH_CACHE_LIFECYCLE_SMOKE=PASS",
-                "WOAH_DIAGNOSTIC_PRIVACY_SMOKE=PASS",
-            ])
         missing = [
             marker
-            for marker in required_markers
+            for marker in REQUIRED_MARKERS
             if marker not in output
         ]
-        if missing:
+        if missing or launched.returncode != 0:
             raise SystemExit(
-                "Phase 4 simulator smoke did not emit required markers "
+                "Native simulator regression did not emit required markers "
                 f"{missing}; launch_exit={launched.returncode}"
             )
-        print("IOS_SIMULATOR_PHASE4_EXPORT_SMOKE=PASS")
-        if args.require_phase5 or args.require_phase6:
-            print("IOS_SIMULATOR_PHASE5_GOLDEN_TRACE_SMOKE=PASS")
-        if args.require_phase6:
-            print("IOS_SIMULATOR_PHASE6_PRIVACY_CLASS_SMOKE=PASS")
-            print("IOS_SIMULATOR_CACHE_LIFECYCLE_SMOKE=PASS")
-            print("IOS_SIMULATOR_DIAGNOSTIC_PRIVACY_SMOKE=PASS")
+        print("IOS_SIMULATOR_EXPORT_SMOKE=PASS")
+        print("IOS_SIMULATOR_GOLDEN_TRACE_SMOKE=PASS")
+        print("IOS_SIMULATOR_PRIVACY_CLASS_SMOKE=PASS")
+        print("IOS_SIMULATOR_CACHE_LIFECYCLE_SMOKE=PASS")
+        print("IOS_SIMULATOR_DIAGNOSTIC_PRIVACY_SMOKE=PASS")
         return 0
     finally:
-        # Teardown is deliberately best-effort. Phase 3 CI demonstrated that a
+        # Teardown is deliberately best-effort. Hosted CI demonstrated that a
         # wedged CoreSimulator can also wedge `terminate`; cleanup must never
         # replace the actual export/Metal failure with a secondary exception.
         safe_run(["xcrun", "simctl", "terminate", udid, BUNDLE_ID], timeout=20)

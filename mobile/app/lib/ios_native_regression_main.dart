@@ -5,17 +5,17 @@ import 'package:flutter/services.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const _Phase6SmokeApp());
+  runApp(const _NativeRegressionApp());
 }
 
-class _Phase6SmokeApp extends StatefulWidget {
-  const _Phase6SmokeApp();
+class _NativeRegressionApp extends StatefulWidget {
+  const _NativeRegressionApp();
 
   @override
-  State<_Phase6SmokeApp> createState() => _Phase6SmokeAppState();
+  State<_NativeRegressionApp> createState() => _NativeRegressionAppState();
 }
 
-class _Phase6SmokeAppState extends State<_Phase6SmokeApp> {
+class _NativeRegressionAppState extends State<_NativeRegressionApp> {
   static const _channel = MethodChannel('dance_native');
 
   @override
@@ -27,25 +27,24 @@ class _Phase6SmokeAppState extends State<_Phase6SmokeApp> {
   Future<void> _run() async {
     try {
       final metalReport = await _channel.invokeMapMethod<String, dynamic>(
-        'runIOSMetalPhase3Smoke',
+        'runIOSMetalSmoke',
       );
-      stdout.writeln('WOAH_METAL_PHASE3_SMOKE=PASS');
-      stdout.writeln('WOAH_METAL_PHASE3_REPORT=$metalReport');
+      stdout.writeln('WOAH_METAL_SMOKE=PASS');
+      stdout.writeln('WOAH_METAL_REPORT=$metalReport');
       final exportReport = await _channel.invokeMapMethod<String, dynamic>(
-        'runIOSExportPhase4Smoke',
+        'runIOSExportSmoke',
       );
-      stdout.writeln('WOAH_EXPORT_PHASE4_SMOKE=PASS');
-      stdout.writeln('WOAH_EXPORT_PHASE4_REPORT=$exportReport');
-      final phase5Report = await _channel.invokeMapMethod<String, dynamic>(
-        'runIOSGoldenTracePhase5Smoke',
+      stdout.writeln('WOAH_EXPORT_SMOKE=PASS');
+      stdout.writeln('WOAH_EXPORT_REPORT=$exportReport');
+      final trackingReport = await _channel.invokeMapMethod<String, dynamic>(
+        'runIOSGoldenTraceSmoke',
       );
-      stdout.writeln('WOAH_GOLDEN_TRACE_PHASE5_SMOKE=PASS');
-      stdout.writeln('WOAH_GOLDEN_TRACE_PHASE5_REPORT=$phase5Report');
-      final phase6Report = await _channel.invokeMapMethod<String, dynamic>(
-        'runIOSPrivacyClassPhase6Smoke',
-      );
-      stdout.writeln('WOAH_PRIVACY_CLASS_PHASE6_SMOKE=PASS');
-      stdout.writeln('WOAH_PRIVACY_CLASS_PHASE6_REPORT=$phase6Report');
+      stdout.writeln('WOAH_GOLDEN_TRACE_SMOKE=PASS');
+      stdout.writeln('WOAH_GOLDEN_TRACE_REPORT=$trackingReport');
+      final privacyClassReport = await _channel
+          .invokeMapMethod<String, dynamic>('runIOSPrivacyClassSmoke');
+      stdout.writeln('WOAH_PRIVACY_CLASS_SMOKE=PASS');
+      stdout.writeln('WOAH_PRIVACY_CLASS_REPORT=$privacyClassReport');
       final cacheReport = await _channel.invokeMapMethod<String, dynamic>(
         'runIOSCacheLifecycleSmoke',
       );
@@ -59,7 +58,7 @@ class _Phase6SmokeAppState extends State<_Phase6SmokeApp> {
       await stdout.flush();
       exit(0);
     } catch (error, stackTrace) {
-      stderr.writeln('WOAH_PHASE6_SMOKE=FAIL');
+      stderr.writeln('WOAH_NATIVE_REGRESSION=FAIL');
       stderr.writeln(error);
       stderr.writeln(stackTrace);
       await stderr.flush();
@@ -70,7 +69,7 @@ class _Phase6SmokeAppState extends State<_Phase6SmokeApp> {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Woah iOS Phase 6 smoke'))),
+      home: Scaffold(body: Center(child: Text('Woah iOS native regression'))),
     );
   }
 }

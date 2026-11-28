@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static contract gate for Woah iOS Phase 5 Golden Trace tracking parity."""
+"""Static contract gate for Woah iOS Golden Trace tracking parity."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCES = ROOT / "mobile/packages/dance_native/ios/dance_native/Sources/dance_native"
-TRACE = SOURCES / "Resources/GoldenTraces/phase5_tracking_golden.json"
+TRACE = SOURCES / "Resources/GoldenTraces/tracking_golden_v1.json"
 FAILURES: list[str] = []
 
 
@@ -21,7 +21,7 @@ def check(condition: bool, message: str) -> None:
 
 
 def text(path: Path, label: str) -> str:
-    check(path.is_file(), f"Missing iOS Phase 5 asset: {label}")
+    check(path.is_file(), f"Missing iOS tracking asset: {label}")
     return path.read_text(encoding="utf-8") if path.is_file() else ""
 
 
@@ -31,13 +31,13 @@ def verify_trace_contract() -> None:
         try:
             payload = json.loads(TRACE.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            FAILURES.append(f"Phase 5 Golden Trace is not valid JSON: {exc}")
+            FAILURES.append(f"Golden Trace is not valid JSON: {exc}")
             return
     else:
-        FAILURES.append("Missing Phase 5 Golden Trace JSON")
+        FAILURES.append("Missing Golden Trace JSON")
         return
 
-    check(payload.get("schemaVersion") == 1, "Phase 5 Golden Trace schemaVersion must be 1")
+    check(payload.get("schemaVersion") == 1, "Golden Trace schemaVersion must be 1")
     frame_interval = payload.get("frameIntervalUs")
     check(isinstance(frame_interval, int) and frame_interval > 0, "Golden Trace frameIntervalUs must be positive")
     cases = payload.get("cases")
@@ -160,18 +160,18 @@ def verify_trace_contract() -> None:
 
 def verify_ios_replay_surface() -> None:
     tracker = text(SOURCES / "IOSTemporalIdentityTracker.swift", "IOSTemporalIdentityTracker.swift")
-    smoke = text(SOURCES / "IOSGoldenTracePhase5Smoke.swift", "IOSGoldenTracePhase5Smoke.swift")
+    smoke = text(SOURCES / "IOSGoldenTraceSmoke.swift", "IOSGoldenTraceSmoke.swift")
     face_pipeline = text(SOURCES / "IOSFacePrivacyPipeline.swift", "IOSFacePrivacyPipeline.swift")
-    face_smoke = text(SOURCES / "IOSFacePrivacyPhase5Smoke.swift", "IOSFacePrivacyPhase5Smoke.swift")
+    face_smoke = text(SOURCES / "IOSFacePrivacySmoke.swift", "IOSFacePrivacySmoke.swift")
     renderer = text(SOURCES / "IOSMetalPreviewRenderer.swift", "IOSMetalPreviewRenderer.swift")
     export = text(SOURCES / "IOSExportPipeline.swift", "IOSExportPipeline.swift")
     coordinator = text(SOURCES / "IOSExportCoordinator.swift", "IOSExportCoordinator.swift")
-    export_smoke = text(SOURCES / "IOSExportPhase4Smoke.swift", "IOSExportPhase4Smoke.swift")
+    export_smoke = text(SOURCES / "IOSExportSmoke.swift", "IOSExportSmoke.swift")
     preview = text(SOURCES / "IOSPreviewPipeline.swift", "IOSPreviewPipeline.swift")
     resources = text(SOURCES / "IOSGoldenTraceResources.swift", "IOSGoldenTraceResources.swift")
     plugin = text(SOURCES / "DanceNativePlugin.swift", "DanceNativePlugin.swift")
     podspec = text(ROOT / "mobile/packages/dance_native/ios/dance_native.podspec", "dance_native.podspec")
-    dart = text(ROOT / "mobile/app/lib/ios_phase5_smoke_main.dart", "combined iOS smoke entrypoint")
+    dart = text(ROOT / "mobile/app/lib/ios_native_regression_main.dart", "combined iOS smoke entrypoint")
 
     adapter=text(SOURCES/"IOSSharedTrackingSession.swift","Swift tracking C ABI transport")
     check("frame_kernel_tracking_step(" in adapter,"Swift identity transport must call Rust")
@@ -189,8 +189,8 @@ def verify_ios_replay_surface() -> None:
         check(token in shared,f"Shared tracking policy missing: {token}")
 
     for token in (
-        "IOSGoldenTraceResources.phase5TrackingURL()",
-        "JSONDecoder().decode(IOSPhase5GoldenSuite.self",
+        "IOSGoldenTraceResources.trackingURL()",
+        "JSONDecoder().decode(IOSGoldenSuite.self",
         "IOSTemporalIdentityTracker(",
         "tracker.paritySnapshots()",
         "actualIds == expectedIds",
@@ -204,7 +204,7 @@ def verify_ios_replay_surface() -> None:
         "maxPredictionTravelRatio",
         "protected prediction escaped anchor bound",
     ):
-        check(token in smoke, f"Phase 5 Golden Trace replay missing: {token}")
+        check(token in smoke, f"Golden Trace replay missing: {token}")
 
     for token in (
         "protocol IOSFaceLocating",
@@ -236,7 +236,7 @@ def verify_ios_replay_surface() -> None:
         "classFallbackContinuity.retain(ownerIds: activeUniqueClassOwners)",
         "region = try classFallbackContinuity.stabilize(",
     ):
-        check(token in face_pipeline, f"Phase 5C-H FACE_ONLY pipeline missing: {token}")
+        check(token in face_pipeline, f"tracking-H FACE_ONLY pipeline missing: {token}")
     trusted_start = face_pipeline.find("private struct TrustedFaceGeometry")
     mask_fallback_start = face_pipeline.find("func maskGuidedFallback(")
     state_start = face_pipeline.find("private struct State", trusted_start + 1)
@@ -244,7 +244,7 @@ def verify_ios_replay_surface() -> None:
         trusted_start >= 0
         and mask_fallback_start > trusted_start
         and state_start > mask_fallback_start,
-        "Phase 5E maskGuidedFallback must remain scoped inside TrustedFaceGeometry",
+        "tracking maskGuidedFallback must remain scoped inside TrustedFaceGeometry",
     )
     observation_core = text(ROOT / "crates/frame-kernel/src/face_observations.rs", "shared current face observations")
     for token in ("containment < 0.80", "cy > person.top + ph * 0.62", "pixels[index] >= 128",
@@ -282,7 +282,7 @@ def verify_ios_replay_surface() -> None:
           "Production face pipeline must use the shared pinned face model")
 
     for token in (
-        "IOSPhase5SequenceFaceLocator",
+        "IOSSequenceFaceLocator",
         "IOSGridFaceLocator().locateFaces(in: faceProbeSource)",
         "Shared FACE_ONLY runtime probe failed",
         "detectedRegion.source == .detectedFace",
@@ -329,18 +329,18 @@ def verify_ios_replay_surface() -> None:
         "FACE_ONLY privacy regressed to a rectangular mask",
         '"shared_face_runtime_face_count"',
     ):
-        check(token in face_smoke, f"Phase 5C deterministic FACE_ONLY smoke missing: {token}")
+        check(token in face_smoke, f"tracking deterministic FACE_ONLY smoke missing: {token}")
     preprocess_decl = face_smoke.find("let preprocess = IOSYoloPreprocessResult(")
     first_face_resolve = face_smoke.find("resolver.resolve(")
     check(
         preprocess_decl >= 0
         and first_face_resolve >= 0
         and preprocess_decl < first_face_resolve,
-        "Phase 5 FACE_ONLY smoke must declare preprocess before the first resolver call",
+        "tracking FACE_ONLY smoke must declare preprocess before the first resolver call",
     )
     check(
         face_smoke.count("let preprocess = IOSYoloPreprocessResult(") == 1,
-        "Phase 5 FACE_ONLY smoke must keep exactly one deterministic preprocess fixture",
+        "tracking FACE_ONLY smoke must keep exactly one deterministic preprocess fixture",
     )
 
     for token in (
@@ -352,7 +352,7 @@ def verify_ios_replay_surface() -> None:
         "faceRegions.keys.filter({ $0 < 0 && !renderedFaceIds.contains($0) }).sorted()",
         "regionsToRender.append(region)",
     ):
-        check(token in renderer, f"Phase 5C-G Metal FACE_ONLY rendering missing: {token}")
+        check(token in renderer, f"tracking-G Metal FACE_ONLY rendering missing: {token}")
 
     for token in (
         "IOSFacePrivacyTemporalResolver()",
@@ -367,15 +367,15 @@ def verify_ios_replay_surface() -> None:
         "faceOnlyIds: IOSFrameKernel.faceProtectionIds(body: renderFullBodyIds, face: renderFaceOnlyIds)",
         "faceRegions: faceRegions",
     ):
-        check(token in export, f"Phase 5C-G export FACE_ONLY wiring missing: {token}")
+        check(token in export, f"tracking-G export FACE_ONLY wiring missing: {token}")
     check(
         "faceLocatorProvider: IOSExportPipeline.FaceLocatorProvider? = nil" in coordinator
         and "faceLocatorProvider: faceLocatorProvider" in coordinator,
-        "Phase 5F coordinator must forward the optional face-locator test seam",
+        "tracking coordinator must forward the optional face-locator test seam",
     )
     for token in (
         "runFaceOnlyExportSmoke(",
-        '"phase5_face_only_e2e": faceOnlyReport',
+        '"face_only_e2e": faceOnlyReport',
         "faceOnlyExportRequest(",
         "selectedPersonIds: []",
         "faceOnlyPersonIds: [0]",
@@ -393,10 +393,10 @@ def verify_ios_replay_surface() -> None:
         "outputInfo.presentationFrameCount == expectedOutputFrames",
         "outputInfo.hasAudio",
     ):
-        check(token in export_smoke, f"Phase 5F FACE_ONLY real-MP4 gate missing: {token}")
+        check(token in export_smoke, f"tracking FACE_ONLY real-MP4 gate missing: {token}")
     check(
         "faceLocatorProvider" not in text(SOURCES / "DanceNativePlugin.swift", "DanceNativePlugin.swift"),
-        "Production plugin must not inject the Phase 5F deterministic face locator",
+        "Production plugin must not inject the tracking deterministic face locator",
     )
     for token in (
         "facePrivacyResolvers: [String: IOSFacePrivacyTemporalResolver]",
@@ -409,19 +409,19 @@ def verify_ios_replay_surface() -> None:
         "facePrivacyResolvers.removeValue(forKey: cacheId)?.reset()",
         "faceRegions: faceRegions",
     ):
-        check(token in preview, f"Phase 5C preview FACE_ONLY wiring missing: {token}")
+        check(token in preview, f"tracking preview FACE_ONLY wiring missing: {token}")
     check(
-        "IOSFacePrivacyPhase5Smoke.run()" in smoke and '"facePrivacy": facePrivacyReport' in smoke,
-        "Phase 5 Golden Trace Simulator gate must include deterministic Phase 5C FACE_ONLY coverage",
+        "IOSFacePrivacySmoke.run()" in smoke and '"facePrivacy": facePrivacyReport' in smoke,
+        "Golden Trace Simulator gate must include deterministic tracking FACE_ONLY coverage",
     )
 
-    check("dance_native_phase5" in resources, "Phase 5 resource locator must resolve the dedicated bundle")
-    check("dance_native_phase5" in podspec and "Resources/GoldenTraces/**/*" in podspec, "Phase 5 Golden Trace must be bundled by CocoaPods")
-    check('case "runIOSGoldenTracePhase5Smoke"' in plugin, "Phase 5 smoke MethodChannel hook is missing")
+    check("dance_native_golden_traces" in resources, "tracking resource locator must resolve the dedicated bundle")
+    check("dance_native_golden_traces" in podspec and "Resources/GoldenTraces/**/*" in podspec, "Golden Trace must be bundled by CocoaPods")
+    check('case "runIOSGoldenTraceSmoke"' in plugin, "tracking smoke MethodChannel hook is missing")
     check(
-        "WOAH_GOLDEN_TRACE_PHASE5_SMOKE=PASS" in dart
-        and "runIOSGoldenTracePhase5Smoke" in dart,
-        "Combined Simulator app must execute and report the Phase 5 Golden Trace smoke",
+        "WOAH_GOLDEN_TRACE_SMOKE=PASS" in dart
+        and "runIOSGoldenTraceSmoke" in dart,
+        "Combined Simulator app must execute and report the Golden Trace smoke",
     )
 
 
@@ -449,7 +449,7 @@ def verify_android_reference_boundary() -> None:
         "FreshPrivacyClassEvidence(",
         "selectionClass = PrivacySelectionClass.SELECTED",
     ):
-        check(token in android, f"Android tracking reference drifted; revisit Phase 5 Golden Trace: {token}")
+        check(token in android, f"Android tracking reference drifted; revisit Golden Trace: {token}")
 
     face_geometry = text(
         ROOT / "mobile/packages/dance_native/android/src/main/kotlin/art/gaoge/dance/engine/privacy/FacePrivacyRegionResolver.kt",
@@ -617,29 +617,27 @@ def verify_android_reference_boundary() -> None:
         check(test_name in class_continuity_test, f"Android FACE_ONLY class-continuity regression test missing: {test_name}")
 
 def verify_cloud_gate() -> None:
-    simulator = text(ROOT / "tools/ios/run_phase4_simulator_smoke.py", "hardened Simulator runner")
-    macos = text(ROOT / "tools/ios/run_phase5_macos_gate.py", "Phase 5 macOS gate")
+    simulator = text(ROOT / "tools/ios/run_simulator_regression.py", "hardened Simulator runner")
+    macos = text(ROOT / "tools/ios/run_native_regression.py", "tracking macOS gate")
     workflow = text(ROOT / ".github/workflows/ios-cloud.yml", "iOS Cloud CI")
     for token in (
         "GOLDEN_TRACE_PASS_MARKER",
-        '"--require-phase5"',
-        "IOS_SIMULATOR_PHASE5_GOLDEN_TRACE_SMOKE=PASS",
+        "IOS_SIMULATOR_GOLDEN_TRACE_SMOKE=PASS",
     ):
-        check(token in simulator, f"Phase 5 Simulator marker gate missing: {token}")
+        check(token in simulator, f"tracking Simulator marker gate missing: {token}")
     for token in (
-        "verify_ios_phase4.py",
-        "verify_ios_phase5.py",
-        "compile_phase3_metal.py",
+        "verify_ios_export.py",
+        "verify_ios_tracking.py",
+        "compile_preview_metal.py",
         '"iphoneos"',
         '"iphonesimulator"',
-        "ios_phase5_smoke_main.dart",
-        "run_phase4_simulator_smoke.py",
-        '"--require-phase5"',
+        "ios_native_regression_main.dart",
+        "run_simulator_regression.py",
     ):
-        check(token in macos, f"Phase 5 macOS gate missing inherited/required lane: {token}")
+        check(token in macos, f"tracking macOS gate missing inherited/required lane: {token}")
     check(
-        "run: python tools/ios/run_phase6_macos_gate.py" in workflow,
-        "iOS Cloud CI must explicitly invoke the Phase 6 gate preserving Phase 5",
+        "run: python tools/ios/run_native_regression.py" in workflow,
+        "iOS Cloud CI must explicitly invoke the privacy-class gate preserving tracking",
     )
 
 
@@ -672,11 +670,11 @@ def main() -> int:
     verify_android_reference_boundary()
     verify_cloud_gate()
     if FAILURES:
-        print("iOS Phase 5 verification FAILED:")
+        print("iOS tracking verification FAILED:")
         for failure in FAILURES:
             print(f" - {failure}")
         return 1
-    print("iOS Phase 5 static verification passed")
+    print("iOS tracking static verification passed")
     return 0
 
 

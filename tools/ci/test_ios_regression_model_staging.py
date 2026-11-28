@@ -2,9 +2,9 @@
 from pathlib import Path
 import unittest
 from unittest.mock import patch
-from tools.ios import run_phase6_macos_gate as gate
+from tools.ios import run_native_regression as gate
 
-class IOSPhase6ModelStagingTests(unittest.TestCase):
+class IOSRegressionModelStagingTests(unittest.TestCase):
     def test_pinned_models_are_staged_before_pods_and_verified_in_the_built_app(self):
         events=[]
         def run(command,**kwargs):events.append(command)
@@ -17,10 +17,13 @@ class IOSPhase6ModelStagingTests(unittest.TestCase):
         dependencies=index("resolve_ios_dependencies.py")
         app_build=next(i for i,c in enumerate(events) if c[:3]==["flutter","build","ios"])
         bundle=index("verify_built_models")
-        smoke=index("run_phase4_simulator_smoke.py")
+        smoke=index("run_simulator_regression.py")
         self.assertLess(staged,checked)
         self.assertLess(checked,dependencies)
+        self.assertLess(dependencies,index("verify_ios_analysis.py"))
+        self.assertLess(dependencies,index("compile_preview_metal.py"))
         self.assertLess(dependencies,app_build)
+        self.assertIn("--no-pub", events[app_build])
         self.assertLess(app_build,bundle)
         self.assertLess(bundle,smoke)
         bundled=Path(events[bundle][1])

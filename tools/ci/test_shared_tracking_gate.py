@@ -1,7 +1,7 @@
 import json,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
-from tools.release import verify_ios_phase5 as gate
+from tools.release import verify_ios_tracking as gate
 
 class SharedTrackingGateTests(unittest.TestCase):
     def tearDown(self):gate.FAILURES.clear()

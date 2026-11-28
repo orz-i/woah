@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline-compile the exact Phase 3 runtime Metal source with Xcode tools."""
+"""Offline-compile the exact production runtime Metal source with Xcode tools."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import argparse
 import subprocess
 from pathlib import Path
 
-from extract_phase3_metal import extract
+from extract_preview_metal import extract
 
 
 def run(command: list[str]) -> None:
@@ -22,9 +22,9 @@ def main() -> int:
     args = parser.parse_args()
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    metal = args.output_dir / "WoahPhase3Preview.metal"
-    air = args.output_dir / "WoahPhase3Preview.air"
-    metallib = args.output_dir / "WoahPhase3Preview.metallib"
+    metal = args.output_dir / "WoahPreview.metal"
+    air = args.output_dir / "WoahPreview.air"
+    metallib = args.output_dir / "WoahPreview.metallib"
     with metal.open("w", encoding="utf-8", newline="\n") as handle:
         handle.write(extract())
 

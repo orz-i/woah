@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-enum IOSPrivacyClassPhase6Smoke {
+enum IOSPrivacyClassSmoke {
   static func run() throws -> [String: Any] {
     let preprocess = makePreprocess(width: 640, height: 640)
 
@@ -470,7 +470,7 @@ enum IOSPrivacyClassPhase6Smoke {
 
   private static func failure(_ message: String) -> PigeonError {
     PigeonError(
-      code: "IOS_PHASE6_PRIVACY_CLASS_SMOKE_FAILED",
+      code: "IOS_PRIVACY_CLASS_SMOKE_FAILED",
       message: message,
       details: nil
     )

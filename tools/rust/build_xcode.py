@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Build only the Rust slices needed by the current Xcode target."""
+import filecmp
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT=Path(__file__).resolve().parents[2]
 CORE=ROOT/'crates/frame-kernel'
@@ -23,8 +25,20 @@ def main():
         slices.append(CORE/'target'/target/'release/libframe_kernel.a')
     output=Path(os.environ['BUILT_PRODUCTS_DIR'])/'FrameKernel/libframe_kernel.a'
     output.parent.mkdir(parents=True,exist_ok=True)
-    if len(slices)==1: shutil.copyfile(slices[0],output)
-    else: subprocess.run(['xcrun','lipo','-create',*[str(p) for p in slices],'-output',str(output)],check=True)
+    # Cargo already checked every Rust source and manifest for freshness.
+    # Don't advance the Xcode archive mtime (and force a relink) if its bytes
+    # are unchanged. Publish changed archives atomically, including fat slices.
+    with tempfile.TemporaryDirectory(prefix='frame-kernel-', dir=output.parent) as directory:
+        candidate=Path(directory)/output.name
+        if len(slices)==1:
+            if output.is_file() and filecmp.cmp(slices[0],output,shallow=False):
+                return
+            shutil.copyfile(slices[0],candidate)
+        else:
+            subprocess.run(['xcrun','lipo','-create',*[str(p) for p in slices],
+                            '-output',str(candidate)],check=True)
+        if not output.is_file() or not filecmp.cmp(candidate,output,shallow=False):
+            os.replace(candidate,output)
 
 
 if __name__=='__main__': main()

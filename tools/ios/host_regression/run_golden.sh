@@ -10,22 +10,22 @@ trap 'rm -rf "$TEMP"' EXIT
 N=mobile/packages/dance_native/ios/dance_native/Sources/dance_native
 CORE=crates/frame-kernel
 python3 tools/rust/run.py build
-python3 - "$N/IOSGoldenTracePhase5Smoke.swift" "$N/Resources/GoldenTraces/phase5_tracking_golden.json" "$TEMP" <<'GOLDEN_PY'
+python3 - "$N/IOSGoldenTraceSmoke.swift" "$N/Resources/GoldenTraces/tracking_golden_v1.json" "$TEMP" <<'GOLDEN_PY'
 import pathlib,sys,json
 source=pathlib.Path(sys.argv[1]).read_text()
-needle='IOSGoldenTraceResources.phase5TrackingURL()'
+needle='IOSGoldenTraceResources.trackingURL()'
 assert source.count(needle)==1
 source=source.replace(needle,'Optional(URL(fileURLWithPath: '+json.dumps(str(pathlib.Path(sys.argv[2]).resolve()))+'))',1)
-pathlib.Path(sys.argv[3],'IOSGoldenTracePhase5Smoke.swift').write_text(source)
+pathlib.Path(sys.argv[3],'IOSGoldenTraceSmoke.swift').write_text(source)
 GOLDEN_PY
 cat > "$TEMP/main.swift" <<'SWIFT'
 import Foundation
 enum IOSYoloPreprocessor { static let inputSize = 640 }
-enum IOSFacePrivacyPhase5Smoke {
+enum IOSFacePrivacySmoke {
   static func run() throws -> [String: Any] { ["status": "FACE_SCOPE_REQUIRES_IOS_RUNTIME"] }
 }
 do {
-  let result = try IOSGoldenTracePhase5Smoke.run()
+  let result = try IOSGoldenTraceSmoke.run()
   if let cases = result["cases"] as? [[String: Any]] {
     for row in cases { print("CASE_PASS " + (row["name"] as? String ?? "")) }
   }
@@ -42,6 +42,6 @@ SWIFT
  "$N/IOSOcclusionProxyStabilizer.swift" \
  "$N/IOSPreviewIdentityMatcher.swift" \
  "$N/IOSTemporalIdentityTracker.swift" \
- "$TEMP/IOSGoldenTracePhase5Smoke.swift" \
+ "$TEMP/IOSGoldenTraceSmoke.swift" \
  "$TEMP/main.swift" "$CORE/target/release/libframe_kernel.a" -liconv
 "$TEMP/GoldenHost"

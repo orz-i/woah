@@ -88,7 +88,7 @@ jobs:
 
       - name: Verify Phase 1 model bytes
         run: |
-          python tools/release/verify_ios_phase1.py --require-model --allow-unpinned-hash
+          python tools/release/verify_ios_inference.py --require-model --allow-unpinned-hash
 
       - name: Upload canonical model for macOS build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -122,8 +122,8 @@ jobs:
       - name: Stage and verify iOS model resource
         run: |
           python tools/release/sync_ios_yolo_model.py
-          python tools/release/verify_ios_phase0.py
-          python tools/release/verify_ios_phase1.py --require-model --allow-unpinned-hash
+          python tools/release/verify_ios_platform.py
+          python tools/release/verify_ios_inference.py --require-model --allow-unpinned-hash
 
       - name: Set up Flutter 3.44.2
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2

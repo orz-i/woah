@@ -40,10 +40,19 @@ jobs:
           pod --version
           flutter --version
 
-      - name: Verify shared Rust core and Apple targets
+      - name: Install pinned Apple Rust toolchain
         run: |
           rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
           rustup target add --toolchain 1.97.1 aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
+
+      # Resolve locked dependencies before lengthy host regressions. This
+      # gate also runs both Metal SDKs and the real simulator native regression.
+      # The later builds reuse the already-resolved Flutter/Pods graph.
+      - name: Run native media and privacy regression
+        run: python tools/ios/run_native_regression.py
+
+      - name: Verify shared Rust core and Apple targets
+        run: |
           python tools/rust/run.py check
           python tools/rust/run.py build
           python tools/rust/abi_smoke.py crates/frame-kernel/target/release/libframe_kernel.dylib
@@ -70,7 +79,7 @@ jobs:
           bash tools/ios/host_regression/run_face_geometry.sh
           bash tools/ios/host_regression/run_golden.sh
           bash tools/ios/host_regression/run_tracker.sh
-            bash tools/ios/host_regression/run_observation_replay.sh
+          bash tools/ios/host_regression/run_observation_replay.sh
           python tools/rust/run.py build --target aarch64-apple-ios
           python tools/rust/run.py build --target aarch64-apple-ios-sim
           python tools/rust/run.py build --target x86_64-apple-ios
@@ -78,30 +87,17 @@ jobs:
 
       - name: Verify repository iOS contracts
         run: |
-          python tools/release/verify_export_media_contract.py
           python -m unittest tools.release.test_verify_export_media_contract -q
-          python tools/release/verify_ios_phase0.py
+          python tools/release/verify_ios_platform.py
           python tools/ci/check_ios_privacy_archive.py
-          python tools/release/verify_ios_phase1.py
-          # Explicitly verify the supported protagonist leg-stretch contract.
-          python tools/release/verify_ios_phase4.py
-          python -m unittest tools.release.test_verify_ios_phase4 -q
-
-      # Strongest Apple-only lane: model provisioning, both Metal SDKs,
-      # simulator build and Phase 6 runtime smoke. Do not replace with static checks.
-      - name: Run full iOS Phase 6 gate
-        run: python tools/ios/run_phase6_macos_gate.py
-
-      - name: Resolve Flutter and native dependencies
-        working-directory: mobile/app
-        run: |
-          flutter config --enable-swift-package-manager
-          python ../../tools/ci/resolve_ios_dependencies.py
+          python tools/release/verify_ios_inference.py
+          # Mutation regression for the supported protagonist leg-stretch contract.
+          python -m unittest tools.release.test_verify_ios_export -q
 
       - name: Build production entrypoint for iPhoneOS
         working-directory: mobile/app
         run: |
-          flutter build ios --debug --no-codesign --target lib/main.dart
+          flutter build ios --debug --no-codesign --target lib/main.dart --no-pub
 
       - name: Archive no-codesign app
         working-directory: mobile/app

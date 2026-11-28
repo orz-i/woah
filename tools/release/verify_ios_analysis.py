@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static checks for the Woah iOS Phase 2 first-frame analyze pipeline.
+"""Static checks for the Woah iOS analysis first-frame analyze pipeline.
 
 This gate is host-independent. The GitHub macOS lane remains authoritative for
 Swift/Xcode compilation, while a real iPhone is still required for runtime
@@ -80,15 +80,15 @@ def verify_analyze_pipeline() -> None:
         "analysisCacheId: cacheId",
         "id: Int64(index)",
     ):
-        check(token in pipeline, f"iOS Phase 2 analyze pipeline missing: {token}")
+        check(token in pipeline, f"iOS analysis analyze pipeline missing: {token}")
     check(
         "Double(detection.x1) / Double(frameWidth)" in pipeline
         and "Double(detection.y1) / Double(frameHeight)" in pipeline,
-        "Phase 2 detections must be normalized in the transformed display frame",
+        "analysis detections must be normalized in the transformed display frame",
     )
     check(
         "preferredBackend: .xnnpack" in pipeline,
-        "Phase 2 selection analysis must stay on deterministic CPU/XNNPACK like Android",
+        "analysis selection analysis must stay on deterministic CPU/XNNPACK like Android",
     )
     check(
         "if !committed { registry.requestRelease(cacheId: cacheId, owner: owner) }" in pipeline
@@ -96,7 +96,7 @@ def verify_analyze_pipeline() -> None:
         and "defer {" in pipeline
         and "lease.close()" in pipeline
         and pipeline.find("registry.beginAnalysis") < pipeline.find("cache.saveVideoUri"),
-        "Failed Phase 2 analysis must request cleanup and close its real write lease",
+        "Failed analysis analysis must request cleanup and close its real write lease",
     )
 
 
@@ -120,31 +120,19 @@ def verify_plugin_gating() -> None:
     )
     check(
         'code: "PLATFORM_NOT_SUPPORTED"' not in analyze_block,
-        "Phase 2 analyzeVideo must no longer be a platform stub",
+        "analysis analyzeVideo must no longer be a platform stub",
     )
-    phase3_pipeline = SOURCES / "IOSPreviewPipeline.swift"
-    if phase3_pipeline.is_file():
-        check(
-            "previewPipeline.render(request: request)" in preview_block,
-            "Phase 3 getPreviewFrame must route through IOSPreviewPipeline",
-        )
-    else:
-        check(
-            'code: "PLATFORM_NOT_SUPPORTED"' in preview_block,
-            "getPreviewFrame must remain gated until Phase 3",
-        )
-    phase4_pipeline = SOURCES / "IOSExportPipeline.swift"
-    if phase4_pipeline.is_file():
-        check(
-            "exportCoordinator.start(request: request)" in export_block
-            and 'code: "PLATFORM_NOT_SUPPORTED"' not in export_block,
-            "Once Phase 4 exists, startExport must route through the real iOS export coordinator",
-        )
-    else:
-        check(
-            'code: "PLATFORM_NOT_SUPPORTED"' in export_block,
-            "startExport must remain gated until Phase 4",
-        )
+    check((SOURCES / "IOSPreviewPipeline.swift").is_file(), "Missing production IOSPreviewPipeline.swift")
+    check(
+        "previewPipeline.render(request: request)" in preview_block,
+        "preview getPreviewFrame must route through IOSPreviewPipeline",
+    )
+    check((SOURCES / "IOSExportPipeline.swift").is_file(), "Missing production IOSExportPipeline.swift")
+    check(
+        "exportCoordinator.start(request: request)" in export_block
+        and 'code: "PLATFORM_NOT_SUPPORTED"' not in export_block,
+        " startExport must route through the real iOS export coordinator",
+    )
     registry = (SOURCES / "IOSRegenerableCacheRegistry.swift").read_text(encoding="utf-8")
     check(
         "cacheRegistry.requestRelease(cacheId: projectId, owner: cacheOwner)" in release_block
@@ -184,11 +172,11 @@ def main() -> int:
     verify_plugin_gating()
     verify_cross_platform_selection_contract()
     if FAILURES:
-        print("iOS Phase 2 verification FAILED:")
+        print("iOS analysis verification FAILED:")
         for failure in FAILURES:
             print(f" - {failure}")
         return 1
-    print("iOS Phase 2 static verification passed")
+    print("iOS analysis static verification passed")
     return 0
 
 

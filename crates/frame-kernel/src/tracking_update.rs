@@ -62,6 +62,7 @@ pub(super) fn commit(t: &mut Track, d: &Detection, at: i64) {
     t.state = TrackState::Active;
     t.offscreen_dormant = false;
     t.observed_this_frame = true;
+    t.observed_mask_at_us = d.mask.as_ref().map(|_| at);
     t.frames_since_observation = 0;
     t.current_foot_y = Some(d.foot_y);
     t.observed_foot_y = d.foot_y;

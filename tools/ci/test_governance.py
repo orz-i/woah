@@ -33,6 +33,14 @@ class RequiredResultsTests(unittest.TestCase):
                 needs = {"validate-and-test": {"result": left}, "ios": {"result": right}}
                 self.assertEqual(not validate_results(needs), left == right == "success")
 
+    def test_draft_does_not_forge_required_success(self):
+        script = ROOT / "tools/ci/check_required_jobs.py"
+        env = dict(os.environ, CI_DRAFT_PR="true",
+                   CI_NEEDS_JSON=json.dumps({name: {"result": "skipped"} for name in REQUIRED_JOBS}))
+        result = subprocess.run([sys.executable, str(script)], env=env, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Ready for review", result.stderr)
+
     def test_missing_unknown_or_malformed_dependency_is_rejected(self):
         good = {name: {"result": "success"} for name in REQUIRED_JOBS}
         for needs in (None, [], {}, {"ios": {"result": "success"}},
@@ -64,13 +72,18 @@ class WorkflowTests(unittest.TestCase):
 
     def test_all_pull_requests_and_pushes_report(self):
         self.assertEqual(set(self.ci["on"]), {"push", "pull_request", "workflow_dispatch"})
+        self.assertEqual(set(self.ci["on"]["push"]), {"branches"})
+        self.assertEqual(set(self.ci["on"]["pull_request"]), {"branches", "types"})
         for event in ("push", "pull_request"):
-            self.assertEqual(set(self.ci["on"][event]), {"branches"})
             self.assertEqual(set(self.ci["on"][event]["branches"]), {"main", "master"})
-        # No path filters means dance_ui, tools/ios, phase4, models, Metal and
-        # documentation-only changes all receive the same two platform gates.
-        self.assertNotIn("if", self.ci["jobs"]["validate-and-test"])
-        self.assertNotIn("if", self.ci["jobs"]["ios"])
+        self.assertEqual(set(self.ci["on"]["pull_request"]["types"]),
+                         {"opened", "synchronize", "reopened", "ready_for_review", "converted_to_draft"})
+        # No path-based bypass. Both gates are deferred only for drafts,
+        # and become mandatory on ready, push, or dispatch.
+        expected = "${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}"
+        for job in ("validate-and-test", "ios"):
+            self.assertEqual(self.ci["jobs"][job]["if"], expected)
+        self.assertNotIn("if", self.ios["jobs"]["ios-build"])
 
     def test_aggregate_needs_every_job_and_always_runs(self):
         jobs = self.ci["jobs"]
@@ -81,6 +94,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(set(aggregate["needs"]), REQUIRED_JOBS)
         step = aggregate["steps"][-1]
         self.assertEqual(step["env"]["CI_NEEDS_JSON"], "${{ toJSON(needs) }}")
+        self.assertEqual(step["env"]["CI_DRAFT_PR"], "${{ github.event_name == 'pull_request' && github.event.pull_request.draft }}")
         self.assertEqual(step["run"], "python3 tools/ci/check_required_jobs.py")
 
     def test_ios_reuse_is_same_revision_without_duplicate_events(self):
@@ -97,7 +111,8 @@ class WorkflowTests(unittest.TestCase):
             self.assertNotIn("pull_request_target", document["on"])
             for job in document["jobs"].values():
                 self.assertNotIn("continue-on-error", job)
-                if "uses" not in job and job.get("name") != "governance / required":
+                # The two caller-level draft guards are verified above.
+                if document is self.ios:
                     self.assertNotIn("if", job)
                 for step in job.get("steps", []):
                     self.assertNotIn("continue-on-error", step)
@@ -122,14 +137,19 @@ class WorkflowTests(unittest.TestCase):
             gradle = (ROOT / module / "build.gradle.kts").read_text()
             self.assertNotIn("abortOnError = false", gradle)
 
-    def test_phase6_is_explicit_and_runs_exactly_once(self):
+    def test_native_regression_is_explicit_and_runs_exactly_once(self):
         steps = self.ios["jobs"]["ios-build"]["steps"]
         script = "\n".join(step.get("run", "") for step in steps)
-        self.assertEqual(script.count("python tools/ios/run_phase6_macos_gate.py"), 1)
-        self.assertIn("python tools/release/verify_ios_phase1.py", script)
+        self.assertEqual(script.count("python tools/ios/run_native_regression.py"), 1)
+        self.assertLess(script.index("python tools/ios/run_native_regression.py"),
+                        script.index("python tools/rust/run.py check"))
+        self.assertNotIn("resolve_ios_dependencies.py", script)
+        self.assertIn("flutter build ios --debug --no-codesign --target lib/main.dart --no-pub", script)
+        self.assertIn("python tools/release/verify_ios_inference.py", script)
         self.assertIn("flutter build ios --debug --no-codesign --target lib/main.dart", script)
-        self.assertIn("python tools/release/verify_ios_phase4.py", script)
-        verifier = (ROOT / "tools/release/verify_ios_phase1.py").read_text()
+        gate=(ROOT / "tools/ios/run_native_regression.py").read_text()
+        self.assertIn("tools/release/verify_ios_export.py", gate)
+        verifier = (ROOT / "tools/release/verify_ios_inference.py").read_text()
         self.assertNotIn("subprocess.run", verifier)
         self.assertNotIn("GITHUB_ACTIONS", verifier)
         self.assertTrue(any(step.get("uses", "").startswith("actions/upload-artifact@") for step in steps))
@@ -137,23 +157,23 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(flutter[0]["with"]["flutter-version"], "3.44.2")
 
 
-class AppleGateMigrationTests(unittest.TestCase):
-    def test_each_inherited_phase_rejects_missing_explicit_gate(self):
-        from tools.release import verify_ios_phase3 as phase3
-        from tools.release import verify_ios_phase4 as phase4
-        from tools.release import verify_ios_phase5 as phase5
-        from tools.release import verify_ios_phase6 as phase6
-        targets = ((phase3, phase3.verify_metal_validation_lanes),
-                   (phase4, phase4.verify_real_video_gate),
-                   (phase5, phase5.verify_cloud_gate),
-                   (phase6, phase6.verify_cloud_gate))
+class AppleRegressionWiringTests(unittest.TestCase):
+    def test_each_capability_rejects_missing_native_regression(self):
+        from tools.release import verify_ios_preview as preview
+        from tools.release import verify_ios_export as export
+        from tools.release import verify_ios_tracking as tracking
+        from tools.release import verify_ios_privacy_class as privacy_class
+        targets = ((preview, preview.verify_metal_validation_lanes),
+                   (export, export.verify_real_video_gate),
+                   (tracking, tracking.verify_cloud_gate),
+                   (privacy_class, privacy_class.verify_cloud_gate))
         original = Path.read_text
         workflow_path = ROOT / ".github/workflows/ios-cloud.yml"
 
         def without_gate(path, *args, **kwargs):
             content = original(path, *args, **kwargs)
             if path == workflow_path:
-                return content.replace("run: python tools/ios/run_phase6_macos_gate.py", "run: echo removed")
+                return content.replace("run: python tools/ios/run_native_regression.py", "run: echo removed")
             return content
 
         for module, verify in targets:

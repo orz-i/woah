@@ -37,9 +37,8 @@ class DependencyLockTests(unittest.TestCase):
         self.assertIn('lock.read_bytes() != before', script)
         self.assertIn("version != '1.17.0'", script)
         self.assertIn('--enforce-lockfile', script)
-        for phase in range(3, 7):
-            gate = (ROOT / f'tools/ios/run_phase{phase}_macos_gate.py').read_text()
-            self.assertIn('tools/ci/resolve_ios_dependencies.py', gate)
+        gate = (ROOT / 'tools/ios/run_native_regression.py').read_text()
+        self.assertIn('tools/ci/resolve_ios_dependencies.py', gate)
 
     def test_gradle_distribution_checksum_is_pinned(self):
         properties = (ROOT / 'mobile/app/android/gradle/wrapper/gradle-wrapper.properties').read_text()
@@ -51,8 +50,14 @@ class DependencyLockTests(unittest.TestCase):
         self.assertIn('(cd example && flutter pub get --enforce-lockfile --no-example)', ci)
         self.assertIn('check_dependency_locks.py --fresh-dart', ci)
         self.assertIn(':app:verifyWoahDependencyLocks :dance_native:verifyWoahDependencyLocks', ci)
-        for name in ('ios-cloud.yml', 'ios-browserstack.yml'):
-            self.assertIn('tools/ci/resolve_ios_dependencies.py', (ROOT / '.github/workflows' / name).read_text())
+        # Phase 6 owns the one locked iOS resolve; cloud production builds
+        # reuse that graph. BrowserStack dispatch is independent.
+        apple = (ROOT / '.github/workflows/ios-cloud.yml').read_text()
+        self.assertIn('run: python tools/ios/run_native_regression.py', apple)
+        self.assertNotIn('tools/ci/resolve_ios_dependencies.py', apple)
+        phase6 = (ROOT / 'tools/ios/run_native_regression.py').read_text()
+        self.assertEqual(phase6.count('tools/ci/resolve_ios_dependencies.py'), 1)
+        self.assertIn('tools/ci/resolve_ios_dependencies.py', (ROOT / '.github/workflows/ios-browserstack.yml').read_text())
 
 
 if __name__ == '__main__':

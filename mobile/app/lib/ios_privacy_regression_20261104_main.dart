@@ -306,10 +306,10 @@ class _QA {
         final checks = <String, Object?>{};
         try {
           for (final method in const [
-            'runIOSMetalPhase3Smoke',
-            'runIOSExportPhase4Smoke',
-            'runIOSGoldenTracePhase5Smoke',
-            'runIOSPrivacyClassPhase6Smoke',
+            'runIOSMetalSmoke',
+            'runIOSExportSmoke',
+            'runIOSGoldenTraceSmoke',
+            'runIOSPrivacyClassSmoke',
             'runIOSCacheLifecycleSmoke',
             'runIOSDiagnosticPrivacySmoke',
           ]) {

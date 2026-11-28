@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-private final class IOSPhase5SequenceFaceLocator: IOSFaceLocating {
+private final class IOSSequenceFaceLocator: IOSFaceLocating {
   private let batches: [[IOSFaceCandidate]]
   private var index = 0
 
@@ -17,7 +17,7 @@ private final class IOSPhase5SequenceFaceLocator: IOSFaceLocating {
   }
 }
 
-enum IOSFacePrivacyPhase5Smoke {
+enum IOSFacePrivacySmoke {
   static func run() throws -> [String: Any] {
     // Transport smoke: exercise the same post-coverage Rust size state
     // through Swift as the Android JNI contract, including seek/reset.
@@ -74,7 +74,7 @@ enum IOSFacePrivacyPhase5Smoke {
     )
 
     let resolver = IOSFacePrivacyTemporalResolver(
-      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
+      locator: IOSSequenceFaceLocator(batches: [[trustedFace], []])
     )
     let detected = try resolver.resolve(
       image: source,
@@ -152,7 +152,7 @@ enum IOSFacePrivacyPhase5Smoke {
     )
 
     let maskGuidedResolver = IOSFacePrivacyTemporalResolver(
-      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], [], []])
+      locator: IOSSequenceFaceLocator(batches: [[trustedFace], [], []])
     )
     _ = try maskGuidedResolver.resolve(
       image: source,
@@ -205,7 +205,7 @@ enum IOSFacePrivacyPhase5Smoke {
     // head at the independently painted rectangle's midpoint (35 + 43) / 2.
     // A cold resolver must reach the same center without any trusted history.
     let coldMaskResolver = IOSFacePrivacyTemporalResolver(
-      locator: IOSPhase5SequenceFaceLocator(batches: [[]])
+      locator: IOSSequenceFaceLocator(batches: [[]])
     )
     let coldMaskRegions = try coldMaskResolver.resolve(
       image: source,
@@ -232,7 +232,7 @@ enum IOSFacePrivacyPhase5Smoke {
     )
 
     let unsupportedMaskResolver = IOSFacePrivacyTemporalResolver(
-      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
+      locator: IOSSequenceFaceLocator(batches: [[trustedFace], []])
     )
     _ = try unsupportedMaskResolver.resolve(
       image: source,
@@ -273,7 +273,7 @@ enum IOSFacePrivacyPhase5Smoke {
     )
 
     let ambiguousResolver = IOSFacePrivacyTemporalResolver(
-      locator: IOSPhase5SequenceFaceLocator(batches: [[
+      locator: IOSSequenceFaceLocator(batches: [[
         IOSFaceCandidate(x1: 20, y1: 8, x2: 30, y2: 20, confidence: 0.99),
         IOSFaceCandidate(x1: 34, y1: 8, x2: 44, y2: 20, confidence: 0.99),
       ]])
@@ -290,7 +290,7 @@ enum IOSFacePrivacyPhase5Smoke {
     }
 
     let neighborResolver = IOSFacePrivacyTemporalResolver(
-      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace]])
+      locator: IOSSequenceFaceLocator(batches: [[trustedFace]])
     )
     let selectedOverlap = IOSPreviewPerson(
       id: 0,
@@ -312,7 +312,7 @@ enum IOSFacePrivacyPhase5Smoke {
     }
 
     let predictedResolver = IOSFacePrivacyTemporalResolver(
-      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace]])
+      locator: IOSSequenceFaceLocator(batches: [[trustedFace]])
     )
     let predictedPerson = IOSPreviewPerson(
       id: 0,
@@ -331,7 +331,7 @@ enum IOSFacePrivacyPhase5Smoke {
     }
 
     let cachedPredictedResolver = IOSFacePrivacyTemporalResolver(
-      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
+      locator: IOSSequenceFaceLocator(batches: [[trustedFace], []])
     )
     _ = try cachedPredictedResolver.resolve(
       image: source,
@@ -378,7 +378,7 @@ enum IOSFacePrivacyPhase5Smoke {
 
     let classMetadata = IOSAnalysisMetadata(
       schemaVersion: 1,
-      sourceUri: "woah-phase5://face-class-selected",
+      sourceUri: "woah-golden://face-class-selected",
       persons: [
         IOSCachedPerson(
           id: 0,
@@ -439,7 +439,7 @@ enum IOSFacePrivacyPhase5Smoke {
       throw smokeFailure("FACE_ONLY class-evidence reservation created a real synthetic identity.")
     }
     let classResolver = IOSFacePrivacyTemporalResolver(
-      locator: IOSPhase5SequenceFaceLocator(batches: [[]])
+      locator: IOSSequenceFaceLocator(batches: [[]])
     )
     let classRegions = try classResolver.resolve(
       image: source,
@@ -495,7 +495,7 @@ enum IOSFacePrivacyPhase5Smoke {
     }
 
     let uniqueClassResolver = IOSFacePrivacyTemporalResolver(
-      locator: IOSPhase5SequenceFaceLocator(batches: [[trustedFace], []])
+      locator: IOSSequenceFaceLocator(batches: [[trustedFace], []])
     )
     _ = try uniqueClassResolver.resolve(
       image: source,
@@ -903,10 +903,10 @@ enum IOSFacePrivacyPhase5Smoke {
     #if DEBUG
     // This test-only entry point must keep actionable CI assertions in the
     // native console; product channel errors retain their sanitized envelope.
-    NSLog("WOAH_PHASE5_FACE_SMOKE_ASSERTION: %@", message)
+    NSLog("WOAH_FACE_SMOKE_ASSERTION: %@", message)
     #endif
     return     PigeonError(
-      code: "IOS_PHASE5_FACE_PRIVACY_SMOKE_FAILED",
+      code: "IOS_FACE_PRIVACY_SMOKE_FAILED",
       message: message,
       details: nil
     )

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GitHub macOS Phase 6 gate: inherit Phase 5, then require Phase 6 privacy-class smoke."""
+"""Permanent Apple native regression: locked models, contracts, Metal and simulator."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "mobile/app"
-METAL_ROOT = Path(os.environ.get("RUNNER_TEMP", ROOT / "tmp")) / "woah-phase6-metal"
+METAL_ROOT = Path(os.environ.get("RUNNER_TEMP", ROOT / "tmp")) / "woah-preview-metal"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from tools.privacy.build_qa import verify_ios_model
@@ -37,9 +37,11 @@ def run(command: list[str], *, cwd: Path = ROOT, timeout: int = 1200) -> None:
         )
     except subprocess.TimeoutExpired as exc:
         tail = (exc.stdout or "")[-8000:]
+        if isinstance(tail, bytes):
+            tail = tail.decode("utf-8", errors="replace")
         print(tail, end="" if tail.endswith("\n") else "\n")
         print(
-            "::error title=Woah Phase 6 macOS gate timeout::"
+            "::error title=Woah iOS native regression timeout::"
             + annotation_escape(f"{rendered} timed out after {timeout}s\n{tail}")
         )
         raise
@@ -50,7 +52,7 @@ def run(command: list[str], *, cwd: Path = ROOT, timeout: int = 1200) -> None:
     if completed.returncode != 0:
         tail = output[-8000:]
         print(
-            "::error title=Woah Phase 6 macOS gate failed::"
+            "::error title=Woah iOS native regression failed::"
             + annotation_escape(
                 f"command={rendered}\nexit={completed.returncode}\n{tail}"
             )
@@ -60,26 +62,7 @@ def run(command: list[str], *, cwd: Path = ROOT, timeout: int = 1200) -> None:
 
 def main() -> int:
     if sys.platform != "darwin":
-        raise SystemExit("Phase 6 macOS gate must run on macOS")
-
-    for verifier in (
-        "tools/release/verify_ios_phase2.py",
-        "tools/release/verify_ios_phase3.py",
-        "tools/release/verify_ios_phase4.py",
-        "tools/release/verify_ios_phase5.py",
-        "tools/release/verify_ios_phase6.py",
-    ):
-        run([sys.executable, verifier])
-
-    for sdk in ("iphoneos", "iphonesimulator"):
-        run([
-            sys.executable,
-            "tools/ios/compile_phase3_metal.py",
-            "--sdk",
-            sdk,
-            "--output-dir",
-            str(METAL_ROOT / sdk),
-        ])
+        raise SystemExit("iOS native regression must run on macOS")
 
     # CocoaPods expands resource inputs during dependency resolution. Stage the
     # pinned YOLO and face binaries before that graph is generated on clean CI.
@@ -87,26 +70,47 @@ def main() -> int:
     run([sys.executable, "tools/release/sync_ios_yolo_model.py", "--verify-only"])
     run(["flutter", "config", "--enable-swift-package-manager"], cwd=APP)
     run([sys.executable, "tools/ci/resolve_ios_dependencies.py"])
+
+    for verifier in (
+        "tools/release/verify_export_media_contract.py",
+        "tools/release/verify_ios_analysis.py",
+        "tools/release/verify_ios_preview.py",
+        "tools/release/verify_ios_export.py",
+        "tools/release/verify_ios_tracking.py",
+        "tools/release/verify_ios_privacy_class.py",
+    ):
+        run([sys.executable, verifier])
+
+    for sdk in ("iphoneos", "iphonesimulator"):
+        run([
+            sys.executable,
+            "tools/ios/compile_preview_metal.py",
+            "--sdk",
+            sdk,
+            "--output-dir",
+            str(METAL_ROOT / sdk),
+        ])
+
     run([
         "flutter",
         "build",
         "ios",
         "--simulator",
         "--debug",
+        "--no-pub",
         "--target",
-        "lib/ios_phase6_smoke_main.dart",
+        "lib/ios_native_regression_main.dart",
     ], cwd=APP, timeout=1800)
     # Use the same byte/size verifier as the device regression builder. The
     # compiled app, not only the source asset directory, must contain both models.
     verify_ios_model(APP / "build/ios/iphonesimulator/Runner.app/dance_native_models.bundle")
     run([
         sys.executable,
-        "tools/ios/run_phase4_simulator_smoke.py",
+        "tools/ios/run_simulator_regression.py",
         "--app",
         "mobile/app/build/ios/iphonesimulator/Runner.app",
-        "--require-phase6",
     ], timeout=1200)
-    print("IOS_PHASE6_MACOS_GATE=PASS")
+    print("IOS_NATIVE_REGRESSION=PASS")
     return 0
 
 

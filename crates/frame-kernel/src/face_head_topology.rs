@@ -595,6 +595,50 @@ pub fn ellipse_region(
             base.radius_y = base.radius_y.max(extent);
         }
     }
+    // A weak projection can drift sideways while the selected body's
+    // current, top-clipped silhouette remains observed. Use the existing
+    // independent current-mask head estimate only if a complete supported
+    // edge cap contradicts the *entire* previous required ellipse.
+    // This changes rendering only; direct observations keep their extent.
+    if kind == 1
+        && clipped
+        && let Some(fresh) = crate::face_geometry::current_head_region(Some(pixels), spec, None)
+        && fresh.current_mask_guided == 1
+        && let Some((head, path)) = cap_trace(pixels, spec, fresh.region, false, false, false)
+        && !head.partial
+        && head.rows >= 6
+        && head.bounds.top <= cell_y
+        && head.bounds.bottom - head.bounds.top <= (spec.person.bottom - spec.person.top) * 0.32
+        && fresh.region.center_x >= head.bounds.left
+        && fresh.region.center_x <= head.bounds.right
+        && fresh.region.center_y >= head.bounds.top
+        && fresh.region.center_y <= head.bounds.bottom
+    {
+        let edge = (tr.pad_top / tr.scale / cell_y).floor();
+        let mut cells = 0usize;
+        let mut strong = 0usize;
+        for &(y, run) in &path {
+            for x in run.left..run.right {
+                cells += 1;
+                strong += usize::from(pixels[y * spec.width as usize + x] >= 128);
+            }
+        }
+        let cx = (head.bounds.left + head.bounds.right) * 0.5;
+        let cy = (head.bounds.top + head.bounds.bottom) * 0.5;
+        let outside = ((cx - base.center_x) / base.radius_x)
+            .hypot((cy - base.center_y) / base.radius_y)
+            > 1.0;
+        if outside
+            && cells > 0
+            && strong * 10 >= cells * 9
+            && edge >= 0.0
+            && path.iter().any(|(y, _)| *y == edge as usize)
+        {
+            // The estimate is a current render requirement, never a
+            // synthetic detector observation. Reuse the same ellipse path.
+            return ellipse_region(pixels, spec, fresh.region, fresh.region, 2);
+        }
+    }
     let Some((mut cap, mut path)) = qualified else {
         // If the upper lobe is ambiguous, do not discard old support. Use
         // the actual detector for the mask search, not temporally enlarged
@@ -819,6 +863,74 @@ mod tests {
             right: e.center_x + e.radius_x,
             bottom: e.center_y + e.radius_y,
         }
+    }
+
+    #[test]
+    fn complete_clipped_current_head_reanchors_only_a_disjoint_weak_projection() {
+        let spec = HeadMaskSpec {
+            width: 160,
+            height: 160,
+            transform: Transform {
+                scale: 2.0 / 3.0,
+                pad_left: 0.0,
+                pad_top: 140.0,
+                source_width: 960,
+                source_height: 540,
+                input_size: 640,
+                proto_size: 160,
+            },
+            person: Rect {
+                left: 582.0,
+                top: 0.5,
+                right: 838.0,
+                bottom: 536.5,
+            },
+        };
+        let mut mask = vec![0; 160 * 160];
+        // A connected clipped crown followed by sustained shoulder widening.
+        for y in 35..50 {
+            let half = if y < 48 { 9 } else { 11 };
+            mask[y * 160 + 121 - half..y * 160 + 121 + half].fill(255);
+        }
+        for y in 50..63 {
+            mask[y * 160 + 100..y * 160 + 139].fill(255);
+        }
+        for y in 63..124 {
+            mask[y * 160 + 105..y * 160 + 134].fill(255);
+        }
+        let wrong = Ellipse {
+            center_x: 664.6,
+            center_y: 25.4,
+            radius_x: 51.5,
+            radius_y: 55.0,
+        };
+        let fresh = crate::face_geometry::current_head_region(Some(&mask), spec, None)
+            .unwrap()
+            .region;
+        let current = ellipse_region(&mask, spec, fresh, fresh, 2).unwrap();
+        assert_eq!(ellipse_region(&mask, spec, wrong, wrong, 1), Some(current));
+        // Agreeing projection, direct evidence, missing mask and non-edge
+        // cases must not be reanchored through this current-only path.
+        let direct = ellipse_region(&mask, spec, wrong, wrong, 0).unwrap();
+        assert_ne!(direct, current);
+        let agreeing = Ellipse {
+            center_x: fresh.center_x,
+            center_y: fresh.center_y,
+            radius_x: 120.0,
+            radius_y: 120.0,
+        };
+        let out = ellipse_region(&mask, spec, agreeing, agreeing, 1).unwrap();
+        assert!(out.radius_x >= agreeing.radius_x && out.radius_y >= agreeing.radius_y);
+        assert_eq!(
+            ellipse_region(&vec![0; 160 * 160], spec, wrong, wrong, 1),
+            Some(wrong)
+        );
+        let mut non_edge = spec;
+        non_edge.person.top = 20.0;
+        assert_ne!(
+            ellipse_region(&mask, non_edge, wrong, wrong, 1),
+            Some(current)
+        );
     }
 
     #[test]

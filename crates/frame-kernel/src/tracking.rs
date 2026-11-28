@@ -120,6 +120,8 @@ pub struct Track {
     pub age: u32,
     pub observed_this_frame: bool,
     pub observed_previous_frame: bool,
+    /// Timestamp of the actual canonical mask, never a prediction.
+    pub(crate) observed_mask_at_us: Option<i64>,
     pub fresh_motion: Option<[f32; 2]>,
     pub observed_foot_y: f32,
     pub current_foot_y: Option<f32>,
@@ -150,6 +152,7 @@ impl Track {
             age: 1,
             observed_this_frame: true,
             observed_previous_frame: false,
+            observed_mask_at_us: None,
             fresh_motion: None,
             observed_foot_y: d.foot_y,
             current_foot_y: Some(d.foot_y),

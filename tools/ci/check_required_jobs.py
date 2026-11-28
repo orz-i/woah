@@ -32,6 +32,8 @@ def main() -> int:
         return 1
     errors = validate_results(needs)
     if errors:
+        if os.environ.get("CI_DRAFT_PR") == "true":
+            print("Draft PR: full validation deferred until Ready for review; not a successful merge check.", file=sys.stderr)
         print("\n".join(errors), file=sys.stderr)
         return 1
     print("All required CI jobs succeeded.")

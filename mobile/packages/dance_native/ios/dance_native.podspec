@@ -45,15 +45,15 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
     :name => 'Build FrameKernel',
     :execution_position => :before_compile,
     :script => 'set -eu; python3 "${PODS_ROOT}/../../../../tools/rust/build_xcode.py"',
-    # Resolve Flutter's plugin symlink before globbing. Xcode normalizes input
-    # paths lexically, so its paths must start from the real Pods directory.
-    :input_files => Dir.glob('{src/**/*.rs,include/*,README.md}', :base => File.expand_path('../../../../crates/frame-kernel', File.realpath(__dir__))).sort.map { |path|
-      '$(PODS_ROOT)/../../../../crates/frame-kernel/' + path
-    } +
-      ['$(PODS_ROOT)/../../../../crates/frame-kernel/Cargo.toml', '$(PODS_ROOT)/../../../../crates/frame-kernel/Cargo.lock',
-       '$(PODS_ROOT)/../../../../rust-toolchain.toml',
-       '$(PODS_ROOT)/../../../../tools/rust/build_xcode.py',
-       '$(PODS_ROOT)/../../../../tools/rust/run.py'],
+    # Cargo owns Rust dependency tracking. Keep the pod specification stable
+    # when a Rust module is added/removed; the script always asks Cargo to
+    # check freshness, and build_xcode.py only replaces changed output bytes.
+    :always_out_of_date => '1',
+    :input_files => ['$(PODS_ROOT)/../../../../crates/frame-kernel/Cargo.toml',
+                     '$(PODS_ROOT)/../../../../crates/frame-kernel/Cargo.lock',
+                     '$(PODS_ROOT)/../../../../rust-toolchain.toml',
+                     '$(PODS_ROOT)/../../../../tools/rust/build_xcode.py',
+                     '$(PODS_ROOT)/../../../../tools/rust/run.py'],
     :output_files => ['$(BUILT_PRODUCTS_DIR)/FrameKernel/libframe_kernel.a']
   }
   s.swift_version = '5.0'
@@ -65,6 +65,6 @@ Native iOS media, rendering, and on-device inference bridge for Woah.
   s.resource_bundles = {
     'dance_native_privacy' => ['dance_native/Sources/dance_native/PrivacyInfo.xcprivacy'],
     'dance_native_models' => ['dance_native/Sources/dance_native/Resources/InferenceAssets/**/*'],
-    'dance_native_phase5' => ['dance_native/Sources/dance_native/Resources/GoldenTraces/**/*']
+    'dance_native_golden_traces' => ['dance_native/Sources/dance_native/Resources/GoldenTraces/**/*']
   }
 end

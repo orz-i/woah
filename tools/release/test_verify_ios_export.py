@@ -7,10 +7,10 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from tools.release import verify_ios_phase4 as phase4
+from tools.release import verify_ios_export as phase4
 
 
-class IOSPhase4LegStretchContractTest(unittest.TestCase):
+class IOSExportLegStretchContractTest(unittest.TestCase):
     def tearDown(self) -> None:
         phase4.FAILURES.clear()
 

@@ -1,18 +1,18 @@
 import Foundation
 
 enum IOSGoldenTraceResources {
-  static let phase5TrackingFileName = "phase5_tracking_golden"
+  static let trackingFileName = "tracking_golden_v1"
 
-  static func phase5TrackingURL() -> URL? {
+  static func trackingURL() -> URL? {
     for bundle in candidateBundles() {
       if let direct = bundle.url(
-        forResource: phase5TrackingFileName,
+        forResource: trackingFileName,
         withExtension: "json"
       ) {
         return direct
       }
       if let directNested = bundle.url(
-        forResource: phase5TrackingFileName,
+        forResource: trackingFileName,
         withExtension: "json",
         subdirectory: "GoldenTraces"
       ) {
@@ -20,18 +20,18 @@ enum IOSGoldenTraceResources {
       }
 
       if let nestedURL = bundle.url(
-        forResource: "dance_native_phase5",
+        forResource: "dance_native_golden_traces",
         withExtension: "bundle"
       ),
          let nested = Bundle(url: nestedURL) {
         if let traceURL = nested.url(
-          forResource: phase5TrackingFileName,
+          forResource: trackingFileName,
           withExtension: "json"
         ) {
           return traceURL
         }
         if let nestedTraceURL = nested.url(
-          forResource: phase5TrackingFileName,
+          forResource: trackingFileName,
           withExtension: "json",
           subdirectory: "GoldenTraces"
         ) {

@@ -161,7 +161,11 @@ class AndroidModelStagingTest(unittest.TestCase):
         ci = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         self.assertIn("python -m unittest tools.test_setup_models -v", ci)
         self.assertIn("python tools/setup_models.py --android", ci)
-        self.assertIn("./gradlew :dance_native:testDebugUnitTest", ci)
+        # Match a task in an actual Gradle invocation, including multiline
+        # commands that consolidate several checks into one build.
+        gradle_commands = re.findall(r"(?m)^\s*\./gradlew[^\n]+", ci.replace(chr(92) + "\n", " "))
+        self.assertTrue(any(":dance_native:testDebugUnitTest" in command.split()
+                            for command in gradle_commands))
         self.assertIn("flutter build apk --debug", ci)
         bootstrap = (root / "tools/setup_models.py").read_text(encoding="utf-8")
         self.assertNotIn("import onnx", bootstrap)
