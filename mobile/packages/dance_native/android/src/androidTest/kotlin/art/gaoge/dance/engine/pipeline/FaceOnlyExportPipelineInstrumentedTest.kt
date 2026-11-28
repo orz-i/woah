@@ -9,6 +9,7 @@ import android.opengl.GLES20
 import android.opengl.GLUtils
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import art.gaoge.dance.engine.bridge.EffectConfigDto
 import art.gaoge.dance.engine.bridge.ExportRequestDto
 import art.gaoge.dance.engine.bridge.FollowConfigDto
@@ -291,6 +292,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
     @Test
     fun faceOnlyPrivacyFollowsDeterministicAffineDanceMotion() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        val retainEvidence = InstrumentationRegistry.getArguments().getString("woahKeepIssue43Output") == "true"
         val meta = loadDynamicFrameMeta(context)
         assertEquals(DYNAMIC_FRAME_COUNT, meta.size)
 
@@ -366,6 +368,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                     )
                     try {
                         val privacy = changedStickerStats(inputFrame, outputFrame)
+                        android.util.Log.i("WoahIssue43", "frame=${frame.index} stats=$privacy")
                         assertTrue(
                             privacy.count >= 300,
                             "Dynamic frame ${frame.index} lost FACE_ONLY sticker: $privacy"
@@ -390,6 +393,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                             val actualDy = centerY - firstPrivacyCenterY!!
                             val expectedDx = frame.headX - firstExpectedX!!
                             val expectedDy = frame.headY - firstExpectedY!!
+                            android.util.Log.i("WoahIssue43", "frame=${frame.index} errorX=${abs(actualDx - expectedDx)} errorY=${abs(actualDy - expectedDy)}")
                             assertTrue(
                                 abs(actualDx - expectedDx) <= DYNAMIC_MOTION_TOLERANCE_PX,
                                 "Dynamic frame ${frame.index} privacy X motion diverged: actual=$actualDx expected=$expectedDx"
@@ -414,6 +418,7 @@ class FaceOnlyExportPipelineInstrumentedTest {
                     observedStickerWidths.minOrNull()!!.coerceAtLeast(1)
                 val heightRatio = observedStickerHeights.maxOrNull()!!.toDouble() /
                     observedStickerHeights.minOrNull()!!.coerceAtLeast(1)
+                android.util.Log.i("WoahIssue43", "widthRatio=$widthRatio heightRatio=$heightRatio spanX=$observedSpanX widths=$observedStickerWidths heights=$observedStickerHeights")
                 assertTrue(
                     widthRatio <= DYNAMIC_MAX_STICKER_SIZE_RATIO,
                     "FACE_ONLY sticker width still pumps across motion frames: ratio=$widthRatio widths=$observedStickerWidths"
@@ -428,8 +433,12 @@ class FaceOnlyExportPipelineInstrumentedTest {
             }
         } finally {
             frames.forEach { it.recycle() }
-            input.delete()
-            output.delete()
+            if (retainEvidence) {
+                android.util.Log.i("WoahIssue43", "retained input=${input.absolutePath} output=${output.absolutePath}")
+            } else {
+                input.delete()
+                output.delete()
+            }
         }
     }
 
