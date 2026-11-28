@@ -7801,5 +7801,37 @@
       }
     ]
   },
-  "decision": "Retain scheduling optimization. Right expanded sampled size ratio still exceeds comparison reference; exact device stages show current-mask envelope growth not detector radius change; qualified host cap can include an early shoulder-widening row. Full semantic coverage not proven."
+  "decision": "Retain scheduling optimization. Right expanded sampled size ratio still exceeds comparison reference; exact device stages show current-mask envelope growth not detector radius change; qualified host cap can include an early shoulder-widening row. Full semantic coverage not proven.",
+  "rejected_lower_junction_experiment": {
+    "scope": "host CPU masks plus exact device measured/temporal values; replay of current mask geometry, not native output or independent validation",
+    "candidate_status": "REJECTED_NOT_ADOPTED",
+    "changed_required_frames": 33,
+    "tests": {
+      "focused_rust": 11,
+      "failed": 0,
+      "clippy": "pass"
+    },
+    "rejected_local_patch_sha256": "633f52422a8c6ff9983ed73870268477eafd161f0d9705550f4c671605054f9f",
+    "replay_sha256": "b9bb38b771968e071f4a7dbcb0295997592757df26d6832ecdebcec2aaeb7f10",
+    "baseline": {
+      "major_ratio": 1.4055768318287576,
+      "min_major": 44.008583068847656,
+      "max_major": 61.857444763183594,
+      "min_approx_head_ellipse": 0.9994612068965517,
+      "reviewed_samples": 8
+    },
+    "candidate": {
+      "major_ratio": 1.4055763117442197,
+      "min_major": 44.008583068847656,
+      "max_major": 61.857421875,
+      "min_approx_head_ellipse": 0.9994612068965517,
+      "reviewed_samples": 8
+    },
+    "remaining_peak_frames": [
+      24,
+      25,
+      27
+    ],
+    "decision": "Candidate removed terminal bilateral shoulder expansion where the upper cap plateau and two further broad rows confirm it. It reduced some current required envelopes without changing reviewed approximate coverage, but maximum final radius remains and the full-clip ratio is unchanged. Revert experiment; do not relax row evidence to optimize this fixture."
+  }
 }
