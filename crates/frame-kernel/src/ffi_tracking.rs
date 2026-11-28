@@ -549,6 +549,11 @@ pub unsafe extern "C" fn frame_kernel_tracking_step(
     if s.cutout.is_some() || s.dance.is_some() {
         return -1;
     }
+    // A clothing-enabled observation must use its explicit RGB transport.
+    // Prediction/miss actions remain valid without current pixel evidence.
+    if s.tracker.crowd_clothing.is_some() && action <= 1 {
+        return -1;
+    }
     let result = match action {
         0 => s.tracker.initialize(detections, assigned),
         1 => s.tracker.update(detections, at).map(|_| ()),
@@ -566,6 +571,86 @@ pub unsafe extern "C" fn frame_kernel_tracking_step(
     s.snapshot = encode(&s.tracker);
     0
 }
+/// Host-only clothing-augmented privacy session. RGB is current source
+/// pixels, tightly packed; the algorithm stores only bounded histograms.
+/// # Safety
+/// All nonempty input buffers are readable for their specified lengths.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
+    id: u64,
+    action: u32,
+    at: i64,
+    observations: *const TrackingObservation,
+    count: usize,
+    pixels: *const u8,
+    pixels_len: usize,
+    rgb: *const u8,
+    rgb_len: usize,
+    transform: Transform,
+) -> i32 {
+    if action > 1
+        || count == 0
+        || count > 64
+        || pixels_len > 64 * 1024 * 1024
+        || rgb_len > 128 * 1024 * 1024
+    {
+        return -1;
+    }
+    // SAFETY: caller provides live readable arrays of checked lengths.
+    let (Some(o), Some(p), Some(rgb)) = (unsafe {
+        (
+            borrowed(observations, count),
+            borrowed(pixels, pixels_len),
+            borrowed(rgb, rgb_len),
+        )
+    }) else {
+        return -1;
+    };
+    let Some(d) = decode_observations(o, p) else {
+        return -1;
+    };
+    let Some(owner) = session(id) else {
+        return -1;
+    };
+    let Ok(mut s) = owner.lock() else {
+        return -1;
+    };
+    if s.cutout.is_some()
+        || s.dance.is_some()
+        || !s.tracker.selected_ids.is_empty()
+        || s.tracker.face_selected_ids.len() != 1
+        || s.tracker.protected_ids.len() < 3
+    {
+        return -1;
+    }
+    let mut t = s.tracker.clone();
+    if action == 0 {
+        if t.initialized || t.initialize(d.clone(), &[]).is_err() {
+            return -1;
+        }
+        let ids = t.tracks.iter().map(|q| q.id).collect::<Vec<_>>();
+        let Some(clothing) = crate::appearance::CrowdClothing::seed(&d, &ids, rgb, transform)
+        else {
+            return -1;
+        };
+        t.crowd_clothing = Some(clothing);
+        for q in &mut t.tracks {
+            q.observed_mask_at_us = q.observed_mask.as_ref().map(|_| at);
+        }
+    } else {
+        let Some(clothing) = t.crowd_clothing.as_mut() else {
+            return -1;
+        };
+        if clothing.observe(&d, rgb, transform).is_none() || t.update(d, at).is_err() {
+            return -1;
+        }
+        t.crowd_clothing.as_mut().unwrap().clear();
+    }
+    s.tracker = t;
+    s.snapshot = encode(&s.tracker);
+    0
+}
+
 /// # Safety
 /// A nonzero output capacity must point to writable bytes. Passing null/zero
 /// queries the needed size. Insufficient capacity does not mutate the session.

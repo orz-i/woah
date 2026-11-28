@@ -36,7 +36,7 @@ pub(super) fn offset(a: Rect, x: f32, y: f32) -> Rect {
         bottom: a.bottom + y,
     }
 }
-pub(super) fn center(a: Rect) -> [f32; 2] {
+pub(crate) fn center(a: Rect) -> [f32; 2] {
     [
         a.left + (a.right - a.left).max(0.0) / 2.0,
         a.top + (a.bottom - a.top).max(0.0) / 2.0,
@@ -45,7 +45,7 @@ pub(super) fn center(a: Rect) -> [f32; 2] {
 pub(super) fn max_dimension(a: Rect) -> f32 {
     (a.right - a.left).max(0.0).max((a.bottom - a.top).max(0.0))
 }
-pub(super) fn commit(t: &mut Track, d: &Detection, at: i64) {
+pub(crate) fn commit(t: &mut Track, d: &Detection, at: i64) {
     record_motion(t, d, at);
     t.observed_bounds = d.bounds;
     if d.mask.is_some() {
@@ -69,7 +69,7 @@ pub(super) fn commit(t: &mut Track, d: &Detection, at: i64) {
     t.filter.update(d.bounds, at);
 }
 #[derive(Default)]
-pub(super) struct Frame {
+pub(crate) struct Frame {
     pub matched_tracks: BTreeSet<usize>,
     pub matched_detections: BTreeSet<usize>,
     pub group_tracks: BTreeSet<usize>,
@@ -264,6 +264,9 @@ impl Tracker {
         }
         self.update_groups(at);
         let mut frame = Frame::default();
+        if let Some(clothing) = self.crowd_clothing.clone() {
+            clothing.associate(self, d, at, &mut frame);
+        }
         self.associate_groups(d, at, &mut frame)?;
         self.associate_global(d, at, &mut frame)?;
         self.update_misses(d, at, &mut frame)?;
@@ -502,6 +505,14 @@ impl Tracker {
             let candidate = &d[di];
             for &ti in &recoverable {
                 let t = &self.tracks[ti];
+                if self.protected_ids.contains(&t.id)
+                    && self
+                        .crowd_clothing
+                        .as_ref()
+                        .is_some_and(|c| !c.allowed(t, candidate, di, at))
+                {
+                    continue;
+                }
                 if reclaimed.contains(&t.id) {
                     continue;
                 }
