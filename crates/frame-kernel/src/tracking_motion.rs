@@ -477,7 +477,48 @@ pub(crate) fn offline_window(
         return None;
     }
     // Require independent canonical right-hand anchor for actual coverage.
-    Some(offline_path(frames, times, left)?.filter(|p| p.last().copied() == Some(right)))
+    Some(offline_path(frames, times, left, None)?.filter(|p| p.last().copied() == Some(right)))
+}
+
+/// A short offline geometry-only window with two independent observed
+/// full-body endpoints. Weak raw proposals need an additional consecutive
+/// upper-garment witness. Nothing is assigned or learned by this proof.
+pub(crate) fn offline_part_window(
+    frames: &[&[Detection]],
+    times: &[i64],
+    left: usize,
+    right: usize,
+    upper: &[f32],
+) -> Option<Option<Vec<usize>>> {
+    if right >= frames.last()?.len() {
+        return None;
+    }
+    let count = frames.iter().map(|d| d.len()).sum::<usize>();
+    if upper.len() != count.checked_mul(1024)?
+        || upper
+            .iter()
+            .any(|&v| !v.is_finite() || !(0.0..=1.0).contains(&v))
+    {
+        return None;
+    }
+    let Some(path) = offline_path(frames, times, left, Some(upper))? else {
+        return Some(None);
+    };
+    if path.last().copied() != Some(right) {
+        return Some(None);
+    }
+    let h = |d: &Detection| d.bounds.bottom - d.bounds.top;
+    let a = h(&frames[0][left]);
+    let b = h(&frames.last()?[right]);
+    if a.min(b) < 0.80 * a.max(b)
+        || path
+            .iter()
+            .enumerate()
+            .any(|(i, &j)| h(&frames[i][j]) < 0.85 * a.min(b) || h(&frames[i][j]) > 1.25 * a.max(b))
+    {
+        return Some(None);
+    }
+    Some(Some(path))
 }
 
 /// Anonymous raw triplets for research descriptor pooling only. This is not
@@ -502,7 +543,7 @@ pub(crate) fn research_triplet_paths(
         return Some(out);
     }
     for i in 0..frames[0].len() {
-        if let Some(path) = offline_path(frames, times, i)? {
+        if let Some(path) = offline_path(frames, times, i, None)? {
             let m = path[1];
             if ambiguous[m] {
                 continue;
@@ -632,7 +673,12 @@ pub(crate) fn research_tracklet_consensus(
     Some(chosen)
 }
 
-fn offline_path(frames: &[&[Detection]], times: &[i64], left: usize) -> Option<Option<Vec<usize>>> {
+fn offline_path(
+    frames: &[&[Detection]],
+    times: &[i64],
+    left: usize,
+    upper: Option<&[f32]>,
+) -> Option<Option<Vec<usize>>> {
     use crate::geometry::overlap_iou;
     use crate::tracking_mask::raw_mask_iou;
     if !(3..=8).contains(&frames.len())
@@ -663,6 +709,7 @@ fn offline_path(frames: &[&[Detection]], times: &[i64], left: usize) -> Option<O
         return None;
     }
     let mut path = vec![left];
+    let mut offset = 0usize;
     for pair in frames.windows(2) {
         let (a, b) = (pair[0], pair[1]);
         let k = *path.last()?;
@@ -676,17 +723,22 @@ fn offline_path(frames: &[&[Detection]], times: &[i64], left: usize) -> Option<O
             .enumerate()
             .max_by(|a, b| a.1.total_cmp(b.1))?;
         let bm = b[j].mask.as_ref()?;
-        if score < 0.55
-            || a[k].confidence < 0.50
-            || b[j].confidence < 0.50
+        let (minimum, confidence, margin) = if upper.is_some() {
+            (0.60, 0.35, 0.20)
+        } else {
+            (0.55, 0.50, 0.15)
+        };
+        if score < minimum
+            || a[k].confidence < confidence
+            || b[j].confidence < confidence
             || overlap_iou(a[k].bounds, b[j].bounds) < 0.45
             || scores
                 .iter()
                 .enumerate()
-                .any(|(q, &v)| q != j && score - v < 0.15)
+                .any(|(q, &v)| q != j && score - v < margin)
             || a.iter()
                 .enumerate()
-                .any(|(q, d)| q != k && score - raw_mask_iou(d.mask.as_ref().unwrap(), bm) < 0.15)
+                .any(|(q, d)| q != k && score - raw_mask_iou(d.mask.as_ref().unwrap(), bm) < margin)
         {
             return Some(None);
         }
@@ -696,7 +748,8 @@ fn offline_path(frames: &[&[Detection]], times: &[i64], left: usize) -> Option<O
             let included = other
                 .iter()
                 .filter(|q| {
-                    q.confidence >= 0.45 && containment(q.mask.as_ref().unwrap(), source) >= 0.70
+                    q.confidence >= if upper.is_some() { 0.35 } else { 0.45 }
+                        && containment(q.mask.as_ref().unwrap(), source) >= 0.70
                 })
                 .collect::<Vec<_>>();
             included.iter().enumerate().any(|(i, q)| {
@@ -708,6 +761,22 @@ fn offline_path(frames: &[&[Detection]], times: &[i64], left: usize) -> Option<O
         if split(am, b) || split(bm, a) {
             return Some(None);
         }
+        if let Some(v) = upper {
+            let start = (offset + k) * 1024;
+            let end = (offset + a.len() + j) * 1024;
+            let score = crate::appearance::research_similarity_matrix(
+                &v[start..start + 1024],
+                &v[end..end + 1024],
+                1,
+                1,
+                1024,
+                2,
+            )?;
+            if score[0] < 0.78 {
+                return Some(None);
+            }
+        }
+        offset += a.len();
         path.push(j);
     }
     Some(Some(path))
@@ -853,6 +922,61 @@ mod tests {
             .into();
         assert_eq!(
             offline_window(&[&first, &[merged], &last], &times, 0, 0),
+            Some(None)
+        );
+    }
+    #[test]
+    fn weak_part_window_requires_complete_reciprocal_body_and_upper_evidence() {
+        let a = pixel_detection(10, 10, 35, 95);
+        let b = pixel_detection(75, 10, 35, 95);
+        let mut c = pixel_detection(12, 11, 35, 95);
+        c.confidence = 0.40;
+        let d = pixel_detection(77, 11, 35, 95);
+        let e = pixel_detection(14, 12, 35, 95);
+        let f = pixel_detection(79, 12, 35, 95);
+        let first = [a, b];
+        let middle = [d.clone(), c.clone()];
+        let last = [e, f];
+        let times = [0, 40_000, 80_000];
+        let frames = [first.as_slice(), middle.as_slice(), last.as_slice()];
+        let feature = |count: usize| {
+            let mut v = vec![0.; count * 1024];
+            for q in v.chunks_exact_mut(1024) {
+                q[0] = 1.;
+                q[512] = 1.;
+            }
+            v
+        };
+        let upper = feature(6);
+        assert_eq!(offline_window(&frames, &times, 0, 0), Some(None));
+        assert_eq!(
+            offline_part_window(&frames, &times, 0, 0, &upper),
+            Some(Some(vec![0, 1, 0]))
+        );
+        assert_eq!(
+            offline_part_window(&frames, &times, 0, 1, &upper),
+            Some(None)
+        );
+        assert_eq!(
+            offline_part_window(&frames, &[0, 40_000, 150_001], 0, 0, &upper),
+            None
+        );
+        let mut wrong = upper.clone();
+        wrong[3 * 1024] = 0.;
+        wrong[3 * 1024 + 1] = 1.;
+        assert_eq!(
+            offline_part_window(&frames, &times, 0, 0, &wrong),
+            Some(None)
+        );
+        let duplicate = [d.clone(), c.clone(), c];
+        assert_eq!(
+            offline_part_window(&[&first, &duplicate, &last], &times, 0, 0, &feature(7)),
+            Some(None)
+        );
+        let mut fragment = pixel_detection(12, 33, 35, 72);
+        fragment.confidence = 0.4;
+        assert_eq!(
+            offline_part_window(&[&first, &[d, fragment], &last], &times, 0, 0, &upper),
             Some(None)
         );
     }

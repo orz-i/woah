@@ -187,6 +187,85 @@ pub unsafe extern "C" fn frame_kernel_research_profile_head_cap(
 }
 
 /// # Safety
+/// Readable masks and 42 pose floats, output has twelve disjoint floats.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_pose_face_views(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    poses: *const f32,
+    out: *mut f32,
+) -> i32 {
+    if !(3..=32).contains(&count) || len > 32 * 1024 * 1024 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: bounded readable inputs.
+    let (Some(m), Some(p)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(poses, 42),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::current_pose_face_views(
+        m,
+        index as usize,
+        count,
+        spec,
+        [p[..21].try_into().unwrap(), p[21..].try_into().unwrap()],
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller provides twelve disjoint writable floats.
+    unsafe { std::ptr::copy_nonoverlapping(v.as_ptr().cast::<f32>(), out, 12) };
+    REGION_OK
+}
+/// # Safety
+/// Readable complete masks, two current faces and count scene faces; one
+/// disjoint writable sticker output.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_pose_face_finish(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    local: *const Ellipse,
+    faces: *const Ellipse,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(3..=32).contains(&count) || len > 32 * 1024 * 1024 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable inputs.
+    let (Some(m), Some(l), Some(f)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(local, 2),
+            crate::ffi_tracking::borrowed(faces, count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::current_pose_face_finish(
+        m,
+        index as usize,
+        count,
+        spec,
+        [l[0], l[1]],
+        f,
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: one disjoint writable sticker.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
+/// # Safety
 /// Two writable disjoint Rect outputs; no writes on failure.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_research_tracklet_detail_views(

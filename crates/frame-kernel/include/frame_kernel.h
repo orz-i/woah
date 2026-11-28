@@ -245,6 +245,8 @@ int32_t frame_kernel_research_triplet_paths(const FrameKernelTrackingObservation
 /* Offline-only bounded reciprocal raw instance proof. 0 writes frame_count
    indices, 1 no evidence, -1 invalid. No identity session is changed. */
 int32_t frame_kernel_offline_tracklet_window(const FrameKernelTrackingObservation *observations,size_t count,const uint8_t *pixels,size_t len,const uint32_t *counts,const int64_t *times,size_t frame_count,uint32_t left,uint32_t right,uint32_t *out);
+/* Weak full-body path; one 1024-float upper clothing descriptor per observation. */
+int32_t frame_kernel_offline_part_window(const FrameKernelTrackingObservation *observations,size_t count,const uint8_t *pixels,size_t len,const uint32_t *counts,const int64_t *times,size_t frame_count,uint32_t left,uint32_t right,const float *upper,size_t upper_len,uint32_t *out);
 typedef struct FrameKernelReplayPlan {
  uint32_t required, reset;
  int64_t start_us, step_us;
@@ -455,6 +457,9 @@ int32_t frame_kernel_research_tracklet_ear_cap(const uint8_t *masks,size_t len,s
 int32_t frame_kernel_research_tracklet_flip_ear_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses24,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
 /* Current dual-pose profile-axis head geometry; poses42 = two nose/eyes/ears/shoulders x,y,confidence arrays. */
 int32_t frame_kernel_research_profile_head_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,const FrameKernelEllipse *faces,FrameKernelEllipse previous,uint32_t repair,FrameKernelHeadSticker *output);
+/* Current mapped pose views and two fresh owned-face measurements. */
+int32_t frame_kernel_research_pose_face_views(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,float *output12);
+int32_t frame_kernel_research_pose_face_finish(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const FrameKernelEllipse *local2,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
 /* Two current body detail views, local owner and source cap consensus. */
 int32_t frame_kernel_research_tracklet_detail_views(FrameKernelHeadMaskSpec spec,FrameKernelRect *output2);
 int32_t frame_kernel_research_tracklet_detail_owner(const uint8_t *projected,size_t projected_len,const uint8_t *locals,size_t local_len,size_t scene_count,size_t local_count,uint32_t index,size_t plane,const float *confidence,uint32_t *out);

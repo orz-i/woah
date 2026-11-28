@@ -1084,6 +1084,177 @@ pub(crate) fn profile_head_repair(
     Some(cap)
 }
 
+/// Current small-head face views driven by two mapped pose observations.
+/// Pose locates inference only; no pose radius is used as render evidence.
+pub(crate) fn current_pose_face_views(
+    masks: &[u8],
+    index: usize,
+    count: usize,
+    spec: HeadMaskSpec,
+    poses: [[f32; 21]; 2],
+) -> Option<[[f32; 6]; 2]> {
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if !(3..=32).contains(&count) || index >= count || n.checked_mul(count)? != masks.len() {
+        return None;
+    }
+    let own = &masks[index * n..(index + 1) * n];
+    let t = spec.transform;
+    if !spec.valid(own) || spec.width != t.proto_size || spec.height != t.proto_size {
+        return None;
+    }
+    let h = spec.person.bottom - spec.person.top;
+    let cell = t.input_size as f32 / (t.proto_size as f32 * t.scale);
+    if !cell.is_finite() || cell <= 0.0 {
+        return None;
+    }
+    let mut centers = [[0.; 2]; 2];
+    let mut out = [[0.; 6]; 2];
+    for (i, p) in poses.iter().enumerate() {
+        if p.iter().any(|v| !v.is_finite())
+            || [0, 3, 4]
+                .iter()
+                .any(|&j| !(0.35..=1.0).contains(&p[3 * j + 2]))
+        {
+            return None;
+        }
+        let e = [(p[9] + p[12]) * 0.5, (p[10] + p[13]) * 0.5];
+        if e[0] < spec.person.left
+            || e[0] > spec.person.right
+            || e[1] < spec.person.top
+            || e[1] > spec.person.top + 0.25 * h
+        {
+            return None;
+        }
+        let x = ((e[0] * t.scale + t.pad_left) * spec.width as f32 / t.input_size as f32).floor()
+            as i32;
+        let y = ((e[1] * t.scale + t.pad_top) * spec.height as f32 / t.input_size as f32).floor()
+            as i32;
+        let mut support = 0;
+        for yy in y - 1..=y + 1 {
+            for xx in x - 1..=x + 1 {
+                if xx < 0 || yy < 0 || xx >= spec.width as i32 || yy >= spec.height as i32 {
+                    continue;
+                }
+                let k = yy as usize * spec.width as usize + xx as usize;
+                if own[k] >= 128
+                    && masks
+                        .chunks_exact(n)
+                        .enumerate()
+                        .all(|(j, m)| j == index || m[k] < 128)
+                {
+                    support += 1;
+                }
+            }
+        }
+        if support < 2 {
+            return None;
+        }
+        centers[i] = e;
+        let side = (h * [0.23, 0.30][i]).min(t.source_width.min(t.source_height) as f32);
+        if side < 4.0 * cell {
+            return None;
+        }
+        let cx = e[0];
+        let cy = e[1] - 0.02 * h;
+        let l = (cx - side * 0.5).clamp(0., t.source_width as f32 - side);
+        let top = (cy - side * 0.5).clamp(0., t.source_height as f32 - side);
+        out[i] = [
+            l,
+            top,
+            l + side,
+            top + side,
+            (cx - l) / side,
+            (cy - top) / side,
+        ];
+    }
+    if (centers[0][0] - centers[1][0]).hypot(centers[0][1] - centers[1][1]) > cell.max(h * 0.04)
+        || out[0] == out[1]
+    {
+        return None;
+    }
+    Some(out)
+}
+
+/// Independently corroborated current direct faces, from current pose views.
+/// Reuse ordinary direct placement and the same final current rival veto.
+/// No projected ellipse or historical face extent is fed into this decision.
+pub(crate) fn current_pose_face_finish(
+    masks: &[u8],
+    index: usize,
+    count: usize,
+    spec: HeadMaskSpec,
+    local: [Ellipse; 2],
+    faces: &[Ellipse],
+) -> Option<HeadSticker> {
+    use crate::face_observations::mask_support;
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if !(3..=32).contains(&count)
+        || index >= count
+        || n.checked_mul(count)? != masks.len()
+        || faces.len() != count
+        || faces
+            .iter()
+            .any(|&f| !valid_seed(f) && f != Ellipse::default())
+        || local.iter().any(|&f| !valid_seed(f))
+    {
+        return None;
+    }
+    let own = &masks[index * n..(index + 1) * n];
+    if !spec.valid(own) {
+        return None;
+    }
+    let a = local[0];
+    let b = local[1];
+    let h = spec.person.bottom - spec.person.top;
+    if ((a.center_x - b.center_x) / a.radius_x).hypot((a.center_y - b.center_y) / a.radius_y) > 0.35
+        || !(0.70..=1.45).contains(&(b.radius_x / a.radius_x))
+        || !(0.70..=1.45).contains(&(b.radius_y / a.radius_y))
+    {
+        return None;
+    }
+    for f in local {
+        if f.center_y < spec.person.top
+            || f.center_y > spec.person.top + 0.25 * h
+            || !mask_support(own, spec, f).is_some_and(|s| s[0] >= 4 && s[1] >= 12)
+            || masks
+                .chunks_exact(n)
+                .enumerate()
+                .any(|(j, m)| j != index && mask_support(m, spec, f).is_none_or(|s| s[1] > 4))
+        {
+            return None;
+        }
+    }
+    let a = sticker(own, spec, a, a, 0)?;
+    let b = sticker(own, spec, b, b, 0)?;
+    if crate::geometry::overlap_iou(a.bounds, b.bounds) < 0.65 {
+        return None;
+    }
+    let bounds = Rect {
+        left: a.bounds.left.min(b.bounds.left).max(0.),
+        top: a.bounds.top.min(b.bounds.top).max(0.),
+        right: a
+            .bounds
+            .right
+            .max(b.bounds.right)
+            .min(spec.transform.source_width as f32),
+        bottom: a
+            .bounds
+            .bottom
+            .max(b.bounds.bottom)
+            .min(spec.transform.source_height as f32),
+    };
+    if bounds.right - bounds.left > 0.35 * h || bounds.bottom - bounds.top > 0.35 * h {
+        return None;
+    }
+    let mut result = finish_tracklet_bounds(masks, index, spec, bounds, a.rows.min(b.rows), faces)?;
+    result.topology = if a.topology == 1 && b.topology == 1 {
+        1
+    } else {
+        0
+    };
+    Some(result)
+}
+
 /// Two bounded current body-detail views. The current raw body box locates
 /// inference; no head labels, old pose or historical mask enter the plan.
 pub(crate) fn tracklet_detail_views(spec: HeadMaskSpec) -> Option<[Rect; 2]> {
@@ -2113,6 +2284,41 @@ mod tests {
                 110., 64., 0.9, 146., 64., 0.9, 92., 94., 0.9, 164., 94., 0.9,
             ],
         )
+    }
+    #[test]
+    fn pose_face_views_and_finish_require_current_dual_owned_faces() {
+        let (sp, mut m, _) = ear_cap_fixture();
+        m.extend(vec![0; 4096]);
+        let p = [
+            128., 62., 0.9, 120., 58., 0.9, 135., 58., 0.9, 110., 64., 0.9, 146., 64., 0.9, 92.,
+            94., 0.9, 164., 94., 0.9,
+        ];
+        let views = current_pose_face_views(&m, 0, 3, sp, [p, p]).expect("two current views");
+        assert_ne!(views[0], views[1]);
+        let fs = [Ellipse::default(); 3];
+        let f = Ellipse {
+            center_x: 128.,
+            center_y: 64.,
+            radius_x: 17.,
+            radius_y: 19.,
+        };
+        let result =
+            current_pose_face_finish(&m, 0, 3, sp, [f, f], &fs).expect("owned current faces");
+        assert!(result.bounds.left <= 111. && result.bounds.right >= 145.);
+        let mut bad = p;
+        bad[9] += 24.;
+        bad[12] += 24.;
+        assert!(current_pose_face_views(&m, 0, 3, sp, [p, bad]).is_none());
+        assert!(current_pose_face_finish(&m, 0, 3, sp, [f, Ellipse::default()], &fs).is_none());
+        let mut other = f;
+        other.center_x += 20.;
+        assert!(current_pose_face_finish(&m, 0, 3, sp, [f, other], &fs).is_none());
+        let mut rival = m.clone();
+        paint(&mut rival[8192..], 13..19, 29, 35);
+        assert!(current_pose_face_finish(&rival, 0, 3, sp, [f, f], &fs).is_none());
+        let mut foreign = fs;
+        foreign[2] = f;
+        assert!(current_pose_face_finish(&m, 0, 3, sp, [f, f], &foreign).is_none());
     }
     #[test]
     fn profile_axis_cap_requires_current_dual_pose_and_exclusive_crown() {

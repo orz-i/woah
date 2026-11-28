@@ -1,0 +1,56 @@
+{
+  "scope": "Targeted source-only head envelopes at automatically discovered fragment window; frame 45 from unchanged M5.1 labels. No nearby non-target heads in the reviewed source crop. Approximate rectangles, not semantic masks.",
+  "cases": {
+    "fragment_head": {
+      "target_id": 10,
+      "manifest_sha256": "9d40826042be507a6e3c596d774dd2cd29350c03b3b4b73901f9e7cc93141dbf",
+      "labels": [
+        {
+          "index": 43,
+          "asset_sha256": "81042f5da2efbc7e7eafef3fa4a597bdb9f337670f72a8f1629b08af9e69dec6",
+          "head_rect": [
+            534,
+            173,
+            565,
+            207
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            548,
+            253
+          ]
+        },
+        {
+          "index": 44,
+          "asset_sha256": "c25e677fe90e9963166169cc4865262bc53bc10929dea239500b0f632dcdfa63",
+          "head_rect": [
+            534,
+            173,
+            565,
+            207
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            548,
+            253
+          ]
+        },
+        {
+          "index": 45,
+          "asset_sha256": "ffd7191e8811a5edda837835c50490725e76cc9537b7abce9e678daffbcd7f91",
+          "head_rect": [
+            532,
+            174,
+            564,
+            207
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            548,
+            253
+          ]
+        }
+      ]
+    }
+  }
+}
