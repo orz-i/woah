@@ -1630,6 +1630,65 @@ pub unsafe extern "C" fn frame_kernel_replay_plan(
     0
 }
 
+/// Offline-only two-anchor proof over bounded consecutive raw observations.
+/// Output is frame_count raw indices; no writes on invalid/no evidence.
+/// # Safety
+/// All nonempty inputs are readable; output has frame_count disjoint u32 slots.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_offline_tracklet_window(
+    observations: *const TrackingObservation,
+    count: usize,
+    pixels: *const u8,
+    len: usize,
+    counts: *const u32,
+    times: *const i64,
+    frame_count: usize,
+    left: u32,
+    right: u32,
+    out: *mut u32,
+) -> i32 {
+    if !(3..=8).contains(&frame_count) || count > 512 || len > 128 * 1024 * 1024 || out.is_null() {
+        return -1;
+    }
+    // SAFETY: bounded live readable arrays supplied by caller.
+    let (Some(obs), Some(pix), Some(counts), Some(times)) = (unsafe {
+        (
+            borrowed(observations, count),
+            borrowed(pixels, len),
+            borrowed(counts, frame_count),
+            borrowed(times, frame_count),
+        )
+    }) else {
+        return -1;
+    };
+    if counts.iter().any(|&v| v > 64) || counts.iter().map(|&v| v as usize).sum::<usize>() != count
+    {
+        return -1;
+    }
+    let Some(d) = decode_observations(obs, pix) else {
+        return -1;
+    };
+    let mut frames = Vec::with_capacity(frame_count);
+    let mut at = 0;
+    for &n in counts {
+        let end = at + n as usize;
+        frames.push(&d[at..end]);
+        at = end;
+    }
+    match crate::tracking_motion::offline_window(&frames, times, left as usize, right as usize) {
+        None => -1,
+        Some(None) => 1,
+        Some(Some(path)) => {
+            // SAFETY: caller provides frame_count disjoint output elements.
+            for (i, &q) in path.iter().enumerate() {
+                // SAFETY: each index is within the caller-provided output.
+                unsafe { out.add(i).write(q as u32) };
+            }
+            0
+        }
+    }
+}
+
 /// Checked value conversion shared by the identity and privacy-class transports.
 pub(crate) fn decode_observations(
     observations: &[TrackingObservation],

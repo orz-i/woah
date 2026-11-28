@@ -226,6 +226,9 @@ typedef struct FrameKernelTrackingObservation {
  uint32_t mask_width, mask_height;
  FrameKernelTransform transform;
 } FrameKernelTrackingObservation;
+/* Offline-only bounded reciprocal raw instance proof. 0 writes frame_count
+   indices, 1 no evidence, -1 invalid. No identity session is changed. */
+int32_t frame_kernel_offline_tracklet_window(const FrameKernelTrackingObservation *observations,size_t count,const uint8_t *pixels,size_t len,const uint32_t *counts,const int64_t *times,size_t frame_count,uint32_t left,uint32_t right,uint32_t *out);
 typedef struct FrameKernelReplayPlan {
  uint32_t required, reset;
  int64_t start_us, step_us;
@@ -428,6 +431,10 @@ int32_t frame_kernel_face_reappearance_choose(FrameKernelRect root_body,FrameKer
     const FrameKernelFaceReappearanceCandidate *current,size_t count,FrameKernelFaceReappearanceDecision *output);
 int32_t frame_kernel_face_reappearance_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
     FrameKernelEllipse face,FrameKernelHeadSticker *output);
+/* Offline current three-scale face corroboration, both current local hits
+   required; anchor is a consistency check only. */
+int32_t frame_kernel_offline_face_plans(FrameKernelEllipse face,FrameKernelTransform transform,float *output12);
+int32_t frame_kernel_offline_face_coverage(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const FrameKernelEllipse *current3,FrameKernelEllipse anchor,FrameKernelRect anchor_body,int64_t gap,FrameKernelEllipse *required,FrameKernelHeadSticker *sticker);
 /* Experimental current crowded direct face validation. 0 success, 1 no retry/rejected/no conflict respectively, -1 invalid. */
 int32_t frame_kernel_crowded_face_views(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,float *output12);
 int32_t frame_kernel_crowded_face_accept(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,const FrameKernelEllipse *local2);

@@ -464,6 +464,101 @@ pub(crate) fn confirmed_body_merges(
     out
 }
 
+/// Bounded offline two-anchor tracklet proof. Every frame must have a real,
+/// unique, reciprocal raw instance link. No interpolation across absent
+/// observations, and no identity inference from an isolated end point.
+pub(crate) fn offline_window(
+    frames: &[&[Detection]],
+    times: &[i64],
+    left: usize,
+    right: usize,
+) -> Option<Option<Vec<usize>>> {
+    use crate::geometry::overlap_iou;
+    use crate::tracking_mask::raw_mask_iou;
+    if !(3..=8).contains(&frames.len())
+        || times.len() != frames.len()
+        || frames.iter().any(|d| {
+            d.len() > 64
+                || d.iter()
+                    .any(|q| !q.valid() || q.mask.as_ref().is_none_or(|m| !m.valid()))
+        })
+        || left >= frames[0].len()
+        || right >= frames.last()?.len()
+        || times.windows(2).any(|w| {
+            w[1].checked_sub(w[0])
+                .is_none_or(|v| !(1..=100_000).contains(&v))
+        })
+        || times.last()?.checked_sub(times[0])? > 250_000
+    {
+        return None;
+    }
+    if frames.iter().any(|d| d.is_empty()) {
+        return Some(None);
+    }
+    let base = frames[0][left].mask.as_ref()?;
+    if frames.iter().flat_map(|d| d.iter()).any(|q| {
+        q.mask.as_ref().is_none_or(|m| {
+            m.transform != base.transform || m.width != base.width || m.height != base.height
+        })
+    }) {
+        return None;
+    }
+    let mut path = vec![left];
+    for pair in frames.windows(2) {
+        let (a, b) = (pair[0], pair[1]);
+        let k = *path.last()?;
+        let am = a[k].mask.as_ref()?;
+        let scores = b
+            .iter()
+            .map(|q| raw_mask_iou(am, q.mask.as_ref().unwrap()))
+            .collect::<Vec<_>>();
+        let (j, &score) = scores
+            .iter()
+            .enumerate()
+            .max_by(|a, b| a.1.total_cmp(b.1))?;
+        let bm = b[j].mask.as_ref()?;
+        if score < 0.55
+            || a[k].confidence < 0.50
+            || b[j].confidence < 0.50
+            || overlap_iou(a[k].bounds, b[j].bounds) < 0.45
+            || scores
+                .iter()
+                .enumerate()
+                .any(|(q, &v)| q != j && score - v < 0.15)
+            || a.iter()
+                .enumerate()
+                .any(|(q, d)| q != k && score - raw_mask_iou(d.mask.as_ref().unwrap(), bm) < 0.15)
+        {
+            return Some(None);
+        }
+        // A merged/split proposal may have a high IoU with its larger owner.
+        // Test both directions against all raw competitors before accepting.
+        let split = |source: &crate::tracking::Mask, other: &[Detection]| {
+            let included = other
+                .iter()
+                .filter(|q| {
+                    q.confidence >= 0.45 && containment(q.mask.as_ref().unwrap(), source) >= 0.70
+                })
+                .collect::<Vec<_>>();
+            included.iter().enumerate().any(|(i, q)| {
+                included[i + 1..].iter().any(|r| {
+                    raw_mask_iou(q.mask.as_ref().unwrap(), r.mask.as_ref().unwrap()) <= 0.20
+                })
+            })
+        };
+        if split(am, b) || split(bm, a) {
+            return Some(None);
+        }
+        path.push(j);
+    }
+    // The independently selected right-hand canonical anchor must agree
+    // with the entire reciprocal path; never replace the future anchor.
+    if path.last().copied() != Some(right) {
+        return Some(None);
+    }
+    Some(Some(path))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -513,6 +608,50 @@ mod tests {
                 transform: tr,
             }),
         }
+    }
+    #[test]
+    fn offline_window_requires_both_anchors_and_every_reciprocal_current_mask() {
+        let a = pixel_detection(10, 10, 35, 95);
+        let b = pixel_detection(75, 10, 35, 95);
+        let c = pixel_detection(12, 11, 35, 95);
+        let d = pixel_detection(77, 11, 35, 95);
+        let e = pixel_detection(14, 12, 35, 95);
+        let f = pixel_detection(79, 12, 35, 95);
+        let first = [a, b];
+        let middle = [d.clone(), c.clone()];
+        let last = [e, f];
+        let times = [0, 40_000, 80_000];
+        let frames = [first.as_slice(), middle.as_slice(), last.as_slice()];
+        assert_eq!(
+            offline_window(&frames, &times, 0, 0),
+            Some(Some(vec![0, 1, 0]))
+        );
+        assert_eq!(offline_window(&frames, &times, 0, 1), Some(None));
+        assert_eq!(offline_window(&frames, &[0, 40_000, 150_001], 0, 0), None);
+        let duplicate = [d.clone(), c.clone(), c.clone()];
+        assert_eq!(
+            offline_window(&[&first, &duplicate, &last], &times, 0, 0),
+            Some(None)
+        );
+        assert_eq!(
+            offline_window(&[&first, &[], &last], &times, 0, 0),
+            Some(None)
+        );
+        let mut merged = pixel_detection(12, 11, 100, 95);
+        merged.mask.as_mut().unwrap().pixels = c
+            .mask
+            .as_ref()
+            .unwrap()
+            .pixels
+            .iter()
+            .zip(d.mask.as_ref().unwrap().pixels.iter())
+            .map(|(&a, &b)| a.max(b))
+            .collect::<Vec<_>>()
+            .into();
+        assert_eq!(
+            offline_window(&[&first, &[merged], &last], &times, 0, 0),
+            Some(None)
+        );
     }
     #[test]
     fn independent_body_texture_confirms_merge_but_not_separate_or_stale_masks() {

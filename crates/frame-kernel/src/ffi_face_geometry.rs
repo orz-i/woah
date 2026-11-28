@@ -9,6 +9,74 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// Twelve disjoint writable floats; no write on failure.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_offline_face_plans(
+    face: Ellipse,
+    t: Transform,
+    out: *mut f32,
+) -> i32 {
+    if out.is_null() {
+        return REGION_INVALID;
+    }
+    let Some(views) = crate::face_observations::offline_face_plans(face, t) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller provides twelve writable floats.
+    unsafe { std::ptr::copy_nonoverlapping(views.as_ptr().cast::<f32>(), out, 12) };
+    REGION_OK
+}
+/// # Safety
+/// Readable complete raw masks and three current face measurements.
+/// Required ellipse and sticker outputs are disjoint and writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_offline_face_coverage(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    current: *const Ellipse,
+    anchor: Ellipse,
+    anchor_body: Rect,
+    gap: i64,
+    required: *mut Ellipse,
+    sticker: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if len > 32 * 1024 * 1024 || required.is_null() || sticker.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable buffers.
+    let (Some(m), Some(f)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(current, 3),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    match crate::face_observations::offline_face_coverage(
+        m,
+        count,
+        index as usize,
+        spec,
+        [f[0], f[1], f[2]],
+        (anchor, anchor_body, gap),
+    ) {
+        None => REGION_INVALID,
+        Some(None) => REGION_NONE,
+        Some(Some((e, s))) => {
+            // SAFETY: caller owns two disjoint writable outputs.
+            unsafe {
+                required.write(e);
+                sticker.write(s)
+            };
+            REGION_OK
+        }
+    }
+}
+
+/// # Safety
 /// Readable packed raw masks and twelve writable disjoint floats. 0 means
 /// two current retry plans, 1 means no retry, -1 invalid transport.
 #[unsafe(no_mangle)]

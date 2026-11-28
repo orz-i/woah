@@ -1,0 +1,39 @@
+{
+  "scope": "Approximate source-reviewed target woman head and two visible non-target head portions at Swing frame 146; rectangles are conservative geometric probes, not pixel masks. Source crop x290..530 y65..225.",
+  "cases": {
+    "swing_offline_gap": {
+      "target_id": 6,
+      "manifest_sha256": "83e2892d421beb656e9d28dd4058d1b7f10d57babe334b7dd8470074c2d51b4e",
+      "labels": [
+        {
+          "index": 146,
+          "asset_sha256": "da24bb67d28fdc524fbcb24f64cba3f7ef769a0edf7bcfc329fae58165221299",
+          "head_rect": [
+            355,
+            131,
+            395,
+            180
+          ],
+          "neighbor_rects": [
+            [
+              333,
+              121,
+              359,
+              151
+            ],
+            [
+              386,
+              108,
+              415,
+              139
+            ]
+          ],
+          "torso_probe": [
+            384,
+            230
+          ]
+        }
+      ]
+    }
+  }
+}
