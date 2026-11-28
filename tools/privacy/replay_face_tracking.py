@@ -567,70 +567,6 @@ def merged_edge_current(lib,yolo,face,history,snapshot,track,entry,spec,target,r
     return output if status==0 else None
 
 
-def offline_tracklet_coverage(lib,face,evidence,report,ownership,target,drops):
-    """Retrospective coverage only. Both endpoints are frozen canonical
-    observations; intermediate raw proposals remain independent of tracking."""
-    window=lib.frame_kernel_offline_tracklet_window
-    window.argtypes=[P,S,P,S,P,P,S,U,U,P];window.restype=C.c_int32
-    plans_fn=lib.frame_kernel_offline_face_plans
-    plans_fn.argtypes=[Ellipse,Transform,P];plans_fn.restype=C.c_int32
-    finish=lib.frame_kernel_offline_face_coverage
-    finish.argtypes=[P,S,S,U,MaskSpec,P,Ellipse,Rect,I64,P,P];finish.restype=C.c_int32
-    anchors=[i for i,q in enumerate(ownership) if q[0] is not None]
-    for left,right in zip(anchors,anchors[1:]):
-        if not 3<=right-left+1<=8 or report[right]["time_us"]-report[left]["time_us"]>250_000:
-            continue
-        missing=[i for i in range(left+1,right) if report[i]["render"] is None and report[i]["track"] is not None and not report[i]["track"]["dormant"] and i not in drops]
-        if not missing:continue
-        rows=[];pools=[];counts=[];times=[];offset=0
-        for i in range(left,right+1):
-            frame,_,tr,ds,masks=evidence[i]
-            counts.append(len(ds));times.append(frame["time_us"])
-            for j,d in enumerate(ds):
-                rows.append(Observation(d.box,d.confidence,d.box.bottom,offset+j*masks[j].size,tr.proto,tr.proto,tr))
-            pools.append(masks.reshape(-1));offset+=masks.size
-        if not all(counts) or max(counts)>64:continue
-        obs=(Observation*len(rows))(*rows);pool=np.ascontiguousarray(np.concatenate(pools))
-        path=(U*len(counts))()
-        status=window(obs,len(rows),ptr(pool),pool.size,(U*len(counts))(*counts),(I64*len(times))(*times),len(counts),ownership[left][0],ownership[right][0],path)
-        if status<0:raise RuntimeError("invalid offline tracklet window")
-        if status!=0:continue
-        # Never take a raw observation committed to another current identity,
-        # nor any known merged proposal. A future anchor is not reassigned.
-        if any(path[i-left] in ownership[i][1] or path[i-left] in ownership[i][2] for i in range(left,right+1)):continue
-        for i in missing:
-            row=report[i]
-            anchor=next((a for a in sorted((left,right),key=lambda a:abs(report[a]["time_us"]-row["time_us"]))
-                         if report[a]["kind"]==0 and a not in drops and 0<abs(report[a]["time_us"]-row["time_us"])<=150_000),None)
-            if anchor is None:continue
-            _,image,tr,ds,masks=evidence[i];j=path[i-left]
-            if not 3<=len(ds)<=32:continue
-            spec=MaskSpec(tr.proto,tr.proto,tr,ds[j].box)
-            f=detect_face(lib,face,image,spec,masks[j])
-            attempt={"left":left,"right":right,"path":list(path),"raw_index":j,"anchor":anchor,"face_calls":1}
-            row["offline_tracklet_attempt"]=attempt
-            if f is None:continue
-            attempt["primary"]=vals(f)
-            plans=np.empty((2,6),np.float32)
-            status=plans_fn(f,tr,ptr(plans))
-            if status!=0:continue
-            local=[detect_face(lib,face,image,spec,masks[j],explicit_plan=plan) for plan in plans]
-            attempt["face_calls"]+=2
-            attempt["local"]=[vals(q) if q is not None else None for q in local]
-            if any(q is None for q in local):continue
-            raw=(Ellipse*3)(f,*local);required=Ellipse();placement=HeadSticker()
-            status=finish(ptr(masks),masks.size,len(ds),j,spec,raw,Ellipse(*report[anchor]["raw"]),Rect(*report[anchor]["track"]["bounds"]),abs(report[anchor]["time_us"]-row["time_us"]),C.byref(required),C.byref(placement))
-            attempt["finish_status"]=status
-            if status<0:raise RuntimeError("invalid offline current face evidence")
-            if status!=0:continue
-            # A render-only placement in the second pass cannot refresh
-            # the canonical tracker, direct-face clock, or subsequent output.
-            sticker=placement.square;half=max(8,1.02*max(sticker.rx,sticker.ry))
-            row.update(kind=6,raw=vals(f),required=vals(required),render=vals(required),sticker=vals(sticker),
-                topology=placement.topology,topology_rows=placement.rows,sticker_required_bounds=vals(placement.bounds),
-                width=min(tr.width,sticker.x+half)-max(0,sticker.x-half),height=min(tr.height,sticker.y+half)-max(0,sticker.y-half),head_covered=None)
-
-
 def summarize(rows):
     usable = [r for r in rows if r["render"] is not None]
     sample = [r for r in usable if r["index"] % 3 == 0 or r["index"] == rows[-1]["index"]]
@@ -641,7 +577,7 @@ def summarize(rows):
                 body_observed=sum(r["track"] is not None and r["track"]["observed"] for r in rows),
                 direct_face=sum(r["kind"]==0 for r in rows), projected_face=sum(r["kind"]==1 for r in rows),
                 estimated_face=sum(r["kind"]==2 for r in rows),
-                coverage_only_recovered=sum(r["kind"] in (3,4,5,6) for r in rows),
+                coverage_only_recovered=sum(r["kind"] in (3,4,5) for r in rows),
                 garment_reappearance=sum(r["kind"]==4 for r in rows),
                 terminal_current_continuations=sum(r["kind"]==3 and r.get("recovery_attempt",{}).get("continuation",False) for r in rows),
                 rendered=len(usable), missing=[r["index"] for r in rows if r["render"] is None],
@@ -661,7 +597,7 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None, crowded_recovery=False, crowded_consensus=False, crowd_clothing=False, adaptive_clothing=False, motion_clothing=False, offline_tracklet=False):
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None, crowded_recovery=False, crowded_consensus=False, crowd_clothing=False, adaptive_clothing=False, motion_clothing=False):
     tracking = Tracking(lib,target,protected_roots,pair_continuity,crowd_clothing,adaptive_clothing,motion_clothing)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
@@ -673,7 +609,6 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
     rejected_direct_at = None
     first_head = None
     report = []
-    ownership=[]
     try:
         for frame, image, transform, detections, masks in evidence:
             time, index = frame["time_us"], frame["index"]
@@ -683,17 +618,6 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
             recovery_previous = None  # no history across any other lane, rejected frame, or gap
             snapshot = tracking.step(transform,detections,masks,time,index==0,image)
             track = next((t for t in snapshot["tracks"] if t["id"]==target),None)
-            if offline_tracklet:
-                selected=None;foreign=set()
-                for t in snapshot["tracks"]:
-                    if not t["observed"] or t["dormant"] or t["mask"] is None:continue
-                    matches=[j for j,d in enumerate(detections) if vals(d.box)==vals(t["bounds"]) and np.array_equal(masks[j],t["mask"])]
-                    if t["id"]==target:
-                        if len(matches)==1:selected=matches[0]
-                    else:
-                        foreign.update(matches)
-                merged={q[0] for q in snapshot.get("body_merge_evidence",[])}
-                ownership.append((selected,foreign,merged))
             row = dict(index=index,time_us=time,detected_persons=len(detections),
                        raw_boxes=[vals(d.box) for d in detections],
                        tracks=[{k:(vals(v) if isinstance(v,Rect) else v) for k,v in t.items()
@@ -895,8 +819,6 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                                                sticker.y-y0-(frame["head_y"]-hy0)]
     finally:
         tracking.close()
-    if offline_tracklet and len(protected_roots or ())>=3:
-        offline_tracklet_coverage(lib,face,evidence,report,ownership,target,drops)
     return dict(summary=summarize(report),frames=report)
 
 
@@ -921,7 +843,6 @@ def main():
     parser.add_argument("--crowd-clothing",action="store_true",help="Candidate-only experimental clothing-supported crowded association")
     parser.add_argument("--adaptive-clothing",action="store_true",help="Candidate-only trusted adaptive appearance; M4 clothing baseline enabled")
     parser.add_argument("--motion-clothing",action="store_true",help="Candidate-only pixel merge quarantine; M4.1 adaptive baseline enabled")
-    parser.add_argument("--offline-tracklet",action="store_true",help="Candidate-only offline two-anchor current coverage; M4.2 policy in both arms")
     parser.add_argument("--same-base-policy",action="store_true",help="Apply enabled association and recovery flags to baseline too")
     parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args()
@@ -937,8 +858,6 @@ def main():
         parser.error("--adaptive-clothing requires --crowd-clothing")
     if args.motion_clothing and not args.adaptive_clothing:
         parser.error("--motion-clothing requires --adaptive-clothing")
-    if args.offline_tracklet and not args.motion_clothing:
-        parser.error("--offline-tracklet requires --motion-clothing")
     base, candidate=load(args.baseline),load(args.candidate)
     yolo=model(ROOT/"models/litert/yolo11n-seg-fp16.tflite")
     face=model(ROOT/"testdata/models/face/blaze_face_full_range.tflite")
@@ -975,7 +894,7 @@ def main():
             "experimental_cover_fallback":args.cover_fallback_experiment,
             "multiperson_recovery":args.multiperson_recovery,
             "pair_continuity":args.pair_continuity,
-            "pair_head":args.pair_head, "merged_edge":args.merged_edge, "crowded_recovery":args.crowded_recovery, "crowded_consensus":args.crowded_consensus,"crowd_clothing":args.crowd_clothing,"adaptive_clothing":args.adaptive_clothing,"motion_clothing":args.motion_clothing,"offline_tracklet":args.offline_tracklet, "same_base_policy":args.same_base_policy, "injected_pair_merges":sorted(injected_merges),
+            "pair_head":args.pair_head, "merged_edge":args.merged_edge, "crowded_recovery":args.crowded_recovery, "crowded_consensus":args.crowded_consensus,"crowd_clothing":args.crowd_clothing,"adaptive_clothing":args.adaptive_clothing,"motion_clothing":args.motion_clothing,"same_base_policy":args.same_base_policy, "injected_pair_merges":sorted(injected_merges),
             "model_sha256": {name:hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
                              for name,path in [("person","models/litert/yolo11n-seg-fp16.tflite"),("face","testdata/models/face/blaze_face_full_range.tflite")]}}
     libs=[("baseline",base)]
@@ -983,10 +902,10 @@ def main():
         libs.append(("size_only",load(args.size_only)))
     libs.append(("candidate",candidate))
     for name,lib in libs:
-        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and (name=="candidate" or args.merged_edge),merged_edge_yolo=yolo if args.merged_edge and (name=="candidate" or args.crowded_recovery) else None,crowded_recovery=args.crowded_recovery and (name=="candidate" or args.crowded_consensus),crowded_consensus=args.crowded_consensus and (name=="candidate" or args.crowd_clothing),crowd_clothing=args.crowd_clothing and (name=="candidate" or args.adaptive_clothing),adaptive_clothing=args.adaptive_clothing and (name=="candidate" or args.motion_clothing),motion_clothing=args.motion_clothing and (name=="candidate" or args.offline_tracklet),offline_tracklet=args.offline_tracklet and name=="candidate")
+        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and (name=="candidate" or args.merged_edge),merged_edge_yolo=yolo if args.merged_edge and (name=="candidate" or args.crowded_recovery) else None,crowded_recovery=args.crowded_recovery and (name=="candidate" or args.crowded_consensus),crowded_consensus=args.crowded_consensus and (name=="candidate" or args.crowd_clothing),crowd_clothing=args.crowd_clothing and (name=="candidate" or args.adaptive_clothing),adaptive_clothing=args.adaptive_clothing and (name=="candidate" or args.motion_clothing),motion_clothing=args.motion_clothing and name=="candidate")
         print(name,json.dumps(report[name]["summary"]),flush=True)
     for name in [n for n,_ in libs if n!="baseline"]:
-        if not args.offline_tracklet and (args.crowd_clothing or (args.pair_continuity and not args.same_base_policy)) and name=="candidate":
+        if (args.crowd_clothing or (args.pair_continuity and not args.same_base_policy)) and name=="candidate":
             continue  # explicitly testing a canonical association change
         for a,b in zip(report["baseline"]["frames"],report[name]["frames"],strict=True):
             if a["tracking_snapshot_sha256"]!=b["tracking_snapshot_sha256"] or any(a[k]!=b[k] for k in ("tracks","class_evidence","motion_evidence")):

@@ -447,10 +447,6 @@ int32_t frame_kernel_face_reappearance_choose(FrameKernelRect root_body,FrameKer
     const FrameKernelFaceReappearanceCandidate *current,size_t count,FrameKernelFaceReappearanceDecision *output);
 int32_t frame_kernel_face_reappearance_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
     FrameKernelEllipse face,FrameKernelHeadSticker *output);
-/* Offline current three-scale face corroboration, both current local hits
-   required; anchor is a consistency check only. */
-int32_t frame_kernel_offline_face_plans(FrameKernelEllipse face,FrameKernelTransform transform,float *output12);
-int32_t frame_kernel_offline_face_coverage(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const FrameKernelEllipse *current3,FrameKernelEllipse anchor,FrameKernelRect anchor_body,int64_t gap,FrameKernelEllipse *required,FrameKernelHeadSticker *sticker);
 /* Research-only current complete cap; shoulders6 are x,y,confidence triples. */
 int32_t frame_kernel_research_tracklet_head(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *shoulders6,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
 /* Research-only ear-level current cap, pose12 = ears then shoulders x,y,confidence. */
@@ -461,8 +457,6 @@ int32_t frame_kernel_research_tracklet_flip_ear_cap(const uint8_t *masks,size_t 
 int32_t frame_kernel_research_tracklet_detail_views(FrameKernelHeadMaskSpec spec,FrameKernelRect *output2);
 int32_t frame_kernel_research_tracklet_detail_owner(const uint8_t *projected,size_t projected_len,const uint8_t *locals,size_t local_len,size_t scene_count,size_t local_count,uint32_t index,size_t plane,const float *confidence,uint32_t *out);
 int32_t frame_kernel_research_tracklet_detail_finish(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const FrameKernelHeadSticker *caps2,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
-/* Current pixel component corroboration for already proven tracklet. */
-int32_t frame_kernel_research_tracklet_pixel_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses24,const FrameKernelEllipse *faces,const uint8_t *rgb,size_t rgb_len,FrameKernelHeadSticker *output);
 /* Experimental current crowded direct face validation. 0 success, 1 no retry/rejected/no conflict respectively, -1 invalid. */
 int32_t frame_kernel_crowded_face_views(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,float *output12);
 int32_t frame_kernel_crowded_face_accept(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,const FrameKernelEllipse *local2);

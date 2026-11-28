@@ -1,0 +1,55 @@
+{
+  "scope": "Targeted source-only approximate visible head and nearby head rectangles at gained body-identity checkpoints, chosen after body audit; not a blind or dense coverage holdout. Original 960x540 source coordinates.",
+  "cases": {
+    "new_identity_heads": {
+      "target_id": 4,
+      "manifest_sha256": "de3b93f28308dfb629398ec0aeddd1db233ea1026dae9678ace7f5d0fe63067d",
+      "labels": [
+        {
+          "index": 50,
+          "asset_sha256": "836ec87ee70677ff645c1468c9952977bf0e82750f8615e09475d25b1832f19d",
+          "head_rect": [
+            354,
+            62,
+            420,
+            126
+          ],
+          "neighbor_rects": [
+            [
+              263,
+              47,
+              320,
+              108
+            ]
+          ],
+          "torso_probe": [
+            387,
+            230
+          ]
+        },
+        {
+          "index": 75,
+          "asset_sha256": "d4362057f51cbf55ce6be29873a02fdcb158211ead9c79920505105d5f6a38e6",
+          "head_rect": [
+            353,
+            61,
+            420,
+            128
+          ],
+          "neighbor_rects": [
+            [
+              271,
+              49,
+              331,
+              110
+            ]
+          ],
+          "torso_probe": [
+            389,
+            232
+          ]
+        }
+      ]
+    }
+  }
+}

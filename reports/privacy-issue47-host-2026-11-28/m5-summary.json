@@ -1,0 +1,1157 @@
+{
+  "base_commit": "7417d9f1",
+  "decision": "RESEARCH_ONLY_PRUNED_CANDIDATE_INDEPENDENT_REGRESSIONS_REMAIN",
+  "scope": "M4.2 canonical reference + M4.6 consensus + M4.7 shoulder/ear/flip/detail caps; no native activation",
+  "retired": [
+    "M4.3 offline face coverage (not raw tracklet proof)",
+    "M4.8 RGB pixel cap"
+  ],
+  "historical_reproduction_commit": "7417d9f1",
+  "library_sha256": "d90c6de123177903a92d4cb3c01b4602a8d2181a1c0a4a0816c024f5436141f7",
+  "rust_tests": {
+    "passed": 225,
+    "ignored": 1,
+    "failed": 0,
+    "strict_clippy": "pass",
+    "fmt": "pass",
+    "abi_v1": "pass"
+  },
+  "cases": {
+    "basque": {
+      "canonical_sha256": "c9a06ff21ca6f96a49e4e15ce1e5e3ff63b215a54d545aa32b167484ef86520b",
+      "dense_sha256": "2bc89d1755717127f305b53603bfce1f0c1a1d12566fccc32383e60b436fa0ca",
+      "recovery_sha256": "13e6940af8bd474a3a452264b16b1c1b08cb81bd7576d6182afb4ed3ee372020",
+      "comparison_sha256": "72e2e51f9da7329a65e74d93bf44a09587dd9341f11c49d5e3c0a0a8dfbddac9",
+      "fixture_sha256": "411299f4d7140d043bd934977208fcd91c6f4305be3ed15dcd83678fe0d96591",
+      "before": 93,
+      "after": 92,
+      "changed_rows": [
+        192
+      ],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "basque-mirror": {
+      "canonical_sha256": "326c687e84c42980ba6e58afc71fa1d617f8471614978a667aa7b78c24625acc",
+      "dense_sha256": "727d8f47a72d3dbad01aa4d7f0287440a4bbe0b8ee2ab006a511cee15954b212",
+      "recovery_sha256": "244d4421e40c337bf0a609bc8d1d7a9e007f96e7e3c0d6305c71416ec6c92680",
+      "comparison_sha256": "60cf41f5f289c45618c5bf862e2083f9df1c22c999a95d51ae85d0eb6f5b02b3",
+      "fixture_sha256": "11e59645364bf40270ed6b57488c766bb084b3de41013bcdc90d0a81e052ebee",
+      "before": 78,
+      "after": 78,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "group2": {
+      "canonical_sha256": "6a0d72b5529bf22bf724c8ce99255f17f9e1a84b7e7a357bd1b6846cda549382",
+      "dense_sha256": "fb81a835756cad0239f12d4616af7615cfdd4ae94bdba2f169bfbb94a87bd236",
+      "recovery_sha256": "1d61a26cad71a168458849a73fd761f0e285f8133791b05a9e1972c2819dc2d8",
+      "comparison_sha256": "38a3b405c8de958e84bbe0a4cca5807c99e0be6758b2cd38d5c80dd579d76a46",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "before": 106,
+      "after": 106,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "group3": {
+      "canonical_sha256": "4efc590667fce46c66d069030f9f880e25b0a164ae7c68ce7ba57ac28716bfc4",
+      "dense_sha256": "05b2a2260d54cf5fb775f1af6df6c48f6430fcdd22f56c14d16d52b0ba58cdb3",
+      "recovery_sha256": "443cc3b849ecca690d9e5cc29564a5c009342ccad115c964f00b4dad2c12f8da",
+      "comparison_sha256": "07858e0b2e4a545723ea8a2254bf1bfb2f163b18115fcf3772568750163a532f",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "before": 106,
+      "after": 106,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "group4": {
+      "canonical_sha256": "a2f22a05b7ce41193d7d6817f46683d4f3deb4498e9edb788dba67f578922a64",
+      "dense_sha256": "6d035c39155d634b11d824b73262549dccef899b07c7322b8aa2dafd130446af",
+      "recovery_sha256": "2f72e3eceedf7c44fa04b7842e9bc3d6cef84cf2a08e2c6c0022a24cbcf43800",
+      "comparison_sha256": "3459a38127a088c2d974444359378656320689c6b12a2cf15f51c529e4cb11ad",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "before": 120,
+      "after": 120,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "mirror5": {
+      "canonical_sha256": "03df6215e30f74d4a2e2a06e2b38dbb983d0de3f70958a4e75345b207914075c",
+      "dense_sha256": "88d7c96cf3c082f1fc53bcd1d539e46f8d5a6e63ee3a65967b4b601ac8b6f8e0",
+      "recovery_sha256": "74fdaaa8b566b87e65e6c1fb38db17b171ba40217fc24aee222dbb93083e890d",
+      "comparison_sha256": "0b6abcad499fc3ebdf69c3b2d7f091c943b8818b87da4fa70f69a3038d4722f7",
+      "fixture_sha256": "bb44f58ce9df3b6206a1e9d4af587ec6e6fc108db5f0c07f98746cfd368ce489",
+      "before": 105,
+      "after": 105,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "swing": {
+      "canonical_sha256": "a615cceb7cf8b06d07be62ddfcdb7b7a07ed816a4373396582bd2d822e0a3760",
+      "dense_sha256": "3bf27ac0a7a49f9aceead135a663d7eaa089c8152e6694d98b1f04aac449551b",
+      "recovery_sha256": "604a4c486b978b73ca386752e8298d697a26806e3df80b3693193d7222ded2bd",
+      "comparison_sha256": "b75a68253a7c793bf11c19d5d9fa40dcfc6450831d20425fa8f07f530e90979e",
+      "fixture_sha256": "83e2892d421beb656e9d28dd4058d1b7f10d57babe334b7dd8470074c2d51b4e",
+      "before": 266,
+      "after": 265,
+      "changed_rows": [
+        146
+      ],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "swing7": {
+      "canonical_sha256": "1484e6821c5eb2b2ca3652655e79d013ae875343c3f17757a0c73840d2f2a76f",
+      "dense_sha256": "32b587c8ab4bbe125433646cf9b03519852ae2f111be775063a1f00abef6d898",
+      "recovery_sha256": "f0305130bb8cf228502ed4093e02febcc970d12c3cb835d143e3a1bdb92977ad",
+      "comparison_sha256": "ec592129e5f8bd96d130b5e076c451c6e9935c0e43a6052f7998b603acb23aa2",
+      "fixture_sha256": "83e2892d421beb656e9d28dd4058d1b7f10d57babe334b7dd8470074c2d51b4e",
+      "before": 265,
+      "after": 265,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "salsa": {
+      "canonical_sha256": "8617067ff918d1e89764eb42b6b93d97d95b88be8ff242adf6e56dfc377c796a",
+      "dense_sha256": "3c11c3594168e643d76150bf9ea371769abbb340cc16b720d2467473e66ae908",
+      "recovery_sha256": "7d6c89c5f73f51a5d4c9d64dfd7a3b8215865509fb3a59072cdbcb9ff4c92335",
+      "comparison_sha256": "6f00e7ab93d403e32b06d127d58750c0943b79e2ce18a40afb755635dff186b1",
+      "fixture_sha256": "47d98760f606e288c8e46dedb8aa2a1102c0220e0c62928f84c912a8364d8aff",
+      "before": 80,
+      "after": 80,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "salsa1": {
+      "canonical_sha256": "683f0933f6f00f25562ff7ef10d8b93e0ee8ca6f0d16f1858328d4708a90db1f",
+      "dense_sha256": "c447bf5815004fa0f0be8d2d13a52ce75dbeb7cd7c56a1aeb5fbc4be42fe4d4b",
+      "recovery_sha256": "e17f22056cb63c5afee35461ba6c94e805a58524f41637134d20341d30750227",
+      "comparison_sha256": "87d62e811ff91e92f6acea1708265702c50fce8a67e58a2421ef6c80d8a73983",
+      "fixture_sha256": "47d98760f606e288c8e46dedb8aa2a1102c0220e0c62928f84c912a8364d8aff",
+      "before": 80,
+      "after": 80,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "danzon": {
+      "canonical_sha256": "2792a2d66b7daf71db72fda9fdc469fda72b0b92beb399e7909a931e6b1eb9a8",
+      "dense_sha256": "0e83068d799e805db9a10469d9e49d79c3c0b1bb2cd3005fe9f4687fb1f590fb",
+      "recovery_sha256": "ded2fe6bbbd0841f8f375a05a20750d573a09905207d2d8a56130aae99f987b8",
+      "comparison_sha256": "b60d3adf10a52373760c3f2bc6c7031fb6279f2631016f839e3c0c541c6e1c0f",
+      "fixture_sha256": "de3b93f28308dfb629398ec0aeddd1db233ea1026dae9678ace7f5d0fe63067d",
+      "before": 300,
+      "after": 300,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "baganda": {
+      "canonical_sha256": "54e13da7dfeeb0354f3156e8efa4719c3df27f533b0b5ed84c4adc5f4a4bf2a1",
+      "dense_sha256": "4954a32a3e95c8f08d10aa7f320d2343150997ae211092e077994d1bf2dbfe64",
+      "recovery_sha256": "7a2d2654e42a6419add332169a8a6f0ab2b1427f4c17851d27a0ea4471fc300e",
+      "comparison_sha256": "28601916be31c1ce741da0583f873da04a573d6873cd13091a252ab99eb732b3",
+      "fixture_sha256": "9d40826042be507a6e3c596d774dd2cd29350c03b3b4b73901f9e7cc93141dbf",
+      "before": 37,
+      "after": 37,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    },
+    "ensemble": {
+      "canonical_sha256": "330b62019fef16287b8703a0377d4866bb2f2438ed7826dfb6339f15778b9318",
+      "dense_sha256": "effb7025d29a2349129fa37cdd0a6e3bf3dbb2bc639db143ecc4e60db27a4f57",
+      "recovery_sha256": "94446fad76cb5b75fc8191de0860cf400275be3f80c23d1879424634c12ad5a5",
+      "comparison_sha256": "81605eb856966ce06dfad044b2025a1f213341ea47f7b4e603fe80b7c8350020",
+      "fixture_sha256": "4259028a2ecd9a6371249a546f9440cdeefb3b223715f9f22375c5c44081da27",
+      "before": 294,
+      "after": 294,
+      "changed_rows": [],
+      "canonical_identity_equal": true,
+      "spans_equal": true
+    }
+  },
+  "independent_identity_ablation": {
+    "danzon": {
+      "fixture_sha256": "de3b93f28308dfb629398ec0aeddd1db233ea1026dae9678ace7f5d0fe63067d",
+      "labels_sha256": "d7f96a86e7cc135070a7fbc391593e2846ac8fb1e7a0900830f0d4908d343708",
+      "source_sha256": "3155123ac0f00a287fa8d432d7c0687fe2765e141bd73bba0e00452e6281ee11",
+      "source_start_frame": 0,
+      "target": 4,
+      "protected_roots": [
+        1,
+        2,
+        3,
+        4,
+        8,
+        13,
+        14,
+        16,
+        17,
+        20
+      ],
+      "replays": {
+        "m33": "3440710540e438978aab4ef46eb65195980434f74a1bbb5b5f4cc286b9e56af7",
+        "m4": "8a4880103c8a59cb2352e46541a6f429d3a3244ad1b3b611b27aa848e24de7c7",
+        "m42": "03ea74be8733326dd10effa7e58f3d6eafd181d90912b4cdf448f0c451d215b5"
+      },
+      "audit_hashes": {
+        "m33": "d197e74fbdabe5f3867c2c5d36f68cc804097f65db02a3eef164ae1249e3f371",
+        "m4": "44a668ccefbc4e2d91c9d9bc728579713e25b6dc6b1d9bdd24d5f9d616c25588",
+        "m42": "9ad620fef8530d0b6d570690dd4407b87cd7201bd78900be7752925fceed689a"
+      },
+      "profiles": {
+        "M33": {
+          "regions": 259,
+          "observed": 256,
+          "source_audit": {
+            "correct": 10,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 2
+          }
+        },
+        "M4": {
+          "regions": 300,
+          "observed": 299,
+          "source_audit": {
+            "correct": 12,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 0
+          }
+        },
+        "M41": {
+          "regions": 300,
+          "observed": 299,
+          "source_audit": {
+            "correct": 12,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 0
+          }
+        },
+        "M42": {
+          "regions": 300,
+          "observed": 299,
+          "source_audit": {
+            "correct": 12,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 0
+          }
+        }
+      }
+    },
+    "baganda": {
+      "fixture_sha256": "9d40826042be507a6e3c596d774dd2cd29350c03b3b4b73901f9e7cc93141dbf",
+      "labels_sha256": "724e6eb0a20c617284548e196841a8e86c01af9a6b29012b266191077efa466b",
+      "source_sha256": "1738234a99018ef9c3c93c64cb9011281621dac2b464f771e64a8138ed4164e3",
+      "source_start_frame": 25,
+      "target": 10,
+      "protected_roots": [
+        2,
+        10,
+        12,
+        14
+      ],
+      "replays": {
+        "m33": "66d084225c48dc48558db35282e4d9bd4693d0112cf868cbef97a225d74155fc",
+        "m4": "9df85b3be48ecccb0cd128be4cebc7d380d7181a92b8a4bf6c4464d22702ef48",
+        "m42": "1aee67a703acb83d1c8b3221e12a4613daf0340c5b7aeec0e0592d08a067ef96"
+      },
+      "audit_hashes": {
+        "m33": "8e089985af44eb0302e07d5c145ebc4768455114bb12967e22b22e21eca1da15",
+        "m4": "de34487da7a3ab5c84bc56d258074f2ada850f13907b7436c99026de9c149ea0",
+        "m42": "b522c4f875d7108591b959acf189ebe90f68c1a4e2ee630104404f318cc096c2"
+      },
+      "profiles": {
+        "M33": {
+          "regions": 92,
+          "observed": 92,
+          "source_audit": {
+            "correct": 4,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 7
+          }
+        },
+        "M4": {
+          "regions": 37,
+          "observed": 36,
+          "source_audit": {
+            "correct": 1,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 10
+          }
+        },
+        "M41": {
+          "regions": 37,
+          "observed": 36,
+          "source_audit": {
+            "correct": 1,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 10
+          }
+        },
+        "M42": {
+          "regions": 37,
+          "observed": 36,
+          "source_audit": {
+            "correct": 1,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 10
+          }
+        }
+      }
+    },
+    "ensemble": {
+      "fixture_sha256": "4259028a2ecd9a6371249a546f9440cdeefb3b223715f9f22375c5c44081da27",
+      "labels_sha256": "b5b6892397ce2cb00817e96bb4a7a121d96dac1fd4304577aa750a712abbe309",
+      "source_sha256": "dc1ac05616ab72553040711f02ab0b96a2880b0d8d8b4f34f086cb95f270b067",
+      "source_start_frame": 0,
+      "target": 4,
+      "protected_roots": [
+        0,
+        1,
+        4,
+        7,
+        9
+      ],
+      "replays": {
+        "m33": "be358470483d0526d92f14900f530f58e54bd212341762b4a9bb4bc6749ab1ce",
+        "m4": "186392d8c9ce4b1e01b4349ef7f1ed175e99d2c792b334d7924f74d6117a0e43",
+        "m42": "4b6d43743fa4cc1c87e036ff869bcb37fbd6eced3b57cd8a80d3114961f3af18"
+      },
+      "audit_hashes": {
+        "m33": "9fcd48ad4188e610512db9e21ab85bd8aa6aee268368c605c34ac4f7eb237a34",
+        "m4": "6eda4379d286ff49e38950290e429b5fd04d5eea248a084777a9a80e25f14f76",
+        "m42": "f9356640c19141aa98984ec6ca54590f5592fb9cd275fefc6dc7b37e4711ec9a"
+      },
+      "profiles": {
+        "M33": {
+          "regions": 277,
+          "observed": 274,
+          "source_audit": {
+            "correct": 11,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 1
+          }
+        },
+        "M4": {
+          "regions": 294,
+          "observed": 291,
+          "source_audit": {
+            "correct": 12,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 0
+          }
+        },
+        "M41": {
+          "regions": 294,
+          "observed": 291,
+          "source_audit": {
+            "correct": 12,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 0
+          }
+        },
+        "M42": {
+          "regions": 294,
+          "observed": 291,
+          "source_audit": {
+            "correct": 12,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 0
+          }
+        }
+      }
+    }
+  },
+  "geometry_ablation": {
+    "basque": {
+      "shoulder": {
+        "sha256": "345efd842f721ac09d713bde7f13b783b59aba6a3eb19a047ae75d18f83ff6aa",
+        "regions": 88,
+        "attempts": 20,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": [
+          {
+            "index": 187,
+            "lane": "shoulder"
+          },
+          {
+            "index": 190,
+            "lane": "shoulder"
+          },
+          {
+            "index": 191,
+            "lane": "shoulder"
+          },
+          {
+            "index": 193,
+            "lane": "shoulder"
+          },
+          {
+            "index": 195,
+            "lane": "shoulder"
+          },
+          {
+            "index": 196,
+            "lane": "shoulder"
+          },
+          {
+            "index": 197,
+            "lane": "shoulder"
+          },
+          {
+            "index": 200,
+            "lane": "shoulder"
+          },
+          {
+            "index": 201,
+            "lane": "shoulder"
+          },
+          {
+            "index": 202,
+            "lane": "shoulder"
+          },
+          {
+            "index": 204,
+            "lane": "shoulder"
+          },
+          {
+            "index": 205,
+            "lane": "shoulder"
+          },
+          {
+            "index": 206,
+            "lane": "shoulder"
+          }
+        ]
+      },
+      "ear": {
+        "sha256": "35b0e34ac7e20a937e2531201990b6ca165ffbedd4d736f6dd41c53b5f5241b6",
+        "regions": 91,
+        "attempts": 20,
+        "flip_calls": 4,
+        "detail_person_calls": 0,
+        "accepted": [
+          {
+            "index": 187,
+            "lane": "shoulder"
+          },
+          {
+            "index": 190,
+            "lane": "shoulder"
+          },
+          {
+            "index": 191,
+            "lane": "shoulder"
+          },
+          {
+            "index": 193,
+            "lane": "shoulder"
+          },
+          {
+            "index": 194,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 195,
+            "lane": "shoulder"
+          },
+          {
+            "index": 196,
+            "lane": "shoulder"
+          },
+          {
+            "index": 197,
+            "lane": "shoulder"
+          },
+          {
+            "index": 199,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 200,
+            "lane": "shoulder"
+          },
+          {
+            "index": 201,
+            "lane": "shoulder"
+          },
+          {
+            "index": 202,
+            "lane": "shoulder"
+          },
+          {
+            "index": 203,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 204,
+            "lane": "shoulder"
+          },
+          {
+            "index": 205,
+            "lane": "shoulder"
+          },
+          {
+            "index": 206,
+            "lane": "shoulder"
+          }
+        ]
+      },
+      "detail": {
+        "sha256": "fc31c042caee598ec9e0ca478126eaa406ecd3e6bf06fa5647680b46cca9ce52",
+        "regions": 92,
+        "attempts": 20,
+        "flip_calls": 4,
+        "detail_person_calls": 5,
+        "accepted": [
+          {
+            "index": 187,
+            "lane": "shoulder"
+          },
+          {
+            "index": 190,
+            "lane": "shoulder"
+          },
+          {
+            "index": 191,
+            "lane": "shoulder"
+          },
+          {
+            "index": 193,
+            "lane": "shoulder"
+          },
+          {
+            "index": 194,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 195,
+            "lane": "shoulder"
+          },
+          {
+            "index": 196,
+            "lane": "shoulder"
+          },
+          {
+            "index": 197,
+            "lane": "shoulder"
+          },
+          {
+            "index": 198,
+            "lane": "detail_cap"
+          },
+          {
+            "index": 199,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 200,
+            "lane": "shoulder"
+          },
+          {
+            "index": 201,
+            "lane": "shoulder"
+          },
+          {
+            "index": 202,
+            "lane": "shoulder"
+          },
+          {
+            "index": 203,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 204,
+            "lane": "shoulder"
+          },
+          {
+            "index": 205,
+            "lane": "shoulder"
+          },
+          {
+            "index": 206,
+            "lane": "shoulder"
+          }
+        ]
+      },
+      "full": {
+        "sha256": "72e2e51f9da7329a65e74d93bf44a09587dd9341f11c49d5e3c0a0a8dfbddac9",
+        "regions": 93,
+        "attempts": 20,
+        "flip_calls": 4,
+        "detail_person_calls": 5,
+        "accepted": [
+          {
+            "index": 187,
+            "lane": "shoulder"
+          },
+          {
+            "index": 190,
+            "lane": "shoulder"
+          },
+          {
+            "index": 191,
+            "lane": "shoulder"
+          },
+          {
+            "index": 192,
+            "lane": "pixel_cap"
+          },
+          {
+            "index": 193,
+            "lane": "shoulder"
+          },
+          {
+            "index": 194,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 195,
+            "lane": "shoulder"
+          },
+          {
+            "index": 196,
+            "lane": "shoulder"
+          },
+          {
+            "index": 197,
+            "lane": "shoulder"
+          },
+          {
+            "index": 198,
+            "lane": "detail_cap"
+          },
+          {
+            "index": 199,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 200,
+            "lane": "shoulder"
+          },
+          {
+            "index": 201,
+            "lane": "shoulder"
+          },
+          {
+            "index": 202,
+            "lane": "shoulder"
+          },
+          {
+            "index": 203,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 204,
+            "lane": "shoulder"
+          },
+          {
+            "index": 205,
+            "lane": "shoulder"
+          },
+          {
+            "index": 206,
+            "lane": "shoulder"
+          }
+        ]
+      }
+    },
+    "mirror": {
+      "shoulder": {
+        "sha256": "035b8e02019b2f2f14baeadf8e14373fb35b5b052224de22fe18e1257b6601e0",
+        "regions": 74,
+        "attempts": 19,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": [
+          {
+            "index": 195,
+            "lane": "shoulder"
+          },
+          {
+            "index": 196,
+            "lane": "shoulder"
+          },
+          {
+            "index": 197,
+            "lane": "shoulder"
+          },
+          {
+            "index": 199,
+            "lane": "shoulder"
+          },
+          {
+            "index": 200,
+            "lane": "shoulder"
+          },
+          {
+            "index": 201,
+            "lane": "shoulder"
+          },
+          {
+            "index": 202,
+            "lane": "shoulder"
+          },
+          {
+            "index": 204,
+            "lane": "shoulder"
+          },
+          {
+            "index": 205,
+            "lane": "shoulder"
+          },
+          {
+            "index": 206,
+            "lane": "shoulder"
+          },
+          {
+            "index": 207,
+            "lane": "shoulder"
+          },
+          {
+            "index": 208,
+            "lane": "shoulder"
+          }
+        ]
+      },
+      "ear": {
+        "sha256": "6989526df772a3f7566d304ce2120efab1759adac8b200befc734384f4146466",
+        "regions": 76,
+        "attempts": 19,
+        "flip_calls": 6,
+        "detail_person_calls": 0,
+        "accepted": [
+          {
+            "index": 194,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 195,
+            "lane": "shoulder"
+          },
+          {
+            "index": 196,
+            "lane": "shoulder"
+          },
+          {
+            "index": 197,
+            "lane": "shoulder"
+          },
+          {
+            "index": 199,
+            "lane": "shoulder"
+          },
+          {
+            "index": 200,
+            "lane": "shoulder"
+          },
+          {
+            "index": 201,
+            "lane": "shoulder"
+          },
+          {
+            "index": 202,
+            "lane": "shoulder"
+          },
+          {
+            "index": 204,
+            "lane": "shoulder"
+          },
+          {
+            "index": 205,
+            "lane": "shoulder"
+          },
+          {
+            "index": 206,
+            "lane": "shoulder"
+          },
+          {
+            "index": 207,
+            "lane": "shoulder"
+          },
+          {
+            "index": 208,
+            "lane": "shoulder"
+          },
+          {
+            "index": 209,
+            "lane": "flip_ear_cap"
+          }
+        ]
+      },
+      "detail": {
+        "sha256": "9767ce59690d11b29c97efdcbde476e82e030a8457ed5acced229d3d9c9a7abb",
+        "regions": 78,
+        "attempts": 19,
+        "flip_calls": 6,
+        "detail_person_calls": 7,
+        "accepted": [
+          {
+            "index": 194,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 195,
+            "lane": "shoulder"
+          },
+          {
+            "index": 196,
+            "lane": "shoulder"
+          },
+          {
+            "index": 197,
+            "lane": "shoulder"
+          },
+          {
+            "index": 198,
+            "lane": "detail_cap"
+          },
+          {
+            "index": 199,
+            "lane": "shoulder"
+          },
+          {
+            "index": 200,
+            "lane": "shoulder"
+          },
+          {
+            "index": 201,
+            "lane": "shoulder"
+          },
+          {
+            "index": 202,
+            "lane": "shoulder"
+          },
+          {
+            "index": 203,
+            "lane": "detail_cap"
+          },
+          {
+            "index": 204,
+            "lane": "shoulder"
+          },
+          {
+            "index": 205,
+            "lane": "shoulder"
+          },
+          {
+            "index": 206,
+            "lane": "shoulder"
+          },
+          {
+            "index": 207,
+            "lane": "shoulder"
+          },
+          {
+            "index": 208,
+            "lane": "shoulder"
+          },
+          {
+            "index": 209,
+            "lane": "flip_ear_cap"
+          }
+        ]
+      },
+      "full": {
+        "sha256": "60cf41f5f289c45618c5bf862e2083f9df1c22c999a95d51ae85d0eb6f5b02b3",
+        "regions": 78,
+        "attempts": 19,
+        "flip_calls": 6,
+        "detail_person_calls": 7,
+        "accepted": [
+          {
+            "index": 194,
+            "lane": "ear_cap"
+          },
+          {
+            "index": 195,
+            "lane": "shoulder"
+          },
+          {
+            "index": 196,
+            "lane": "shoulder"
+          },
+          {
+            "index": 197,
+            "lane": "shoulder"
+          },
+          {
+            "index": 198,
+            "lane": "detail_cap"
+          },
+          {
+            "index": 199,
+            "lane": "shoulder"
+          },
+          {
+            "index": 200,
+            "lane": "shoulder"
+          },
+          {
+            "index": 201,
+            "lane": "shoulder"
+          },
+          {
+            "index": 202,
+            "lane": "shoulder"
+          },
+          {
+            "index": 203,
+            "lane": "detail_cap"
+          },
+          {
+            "index": 204,
+            "lane": "shoulder"
+          },
+          {
+            "index": 205,
+            "lane": "shoulder"
+          },
+          {
+            "index": 206,
+            "lane": "shoulder"
+          },
+          {
+            "index": 207,
+            "lane": "shoulder"
+          },
+          {
+            "index": 208,
+            "lane": "shoulder"
+          },
+          {
+            "index": 209,
+            "lane": "flip_ear_cap"
+          }
+        ]
+      }
+    },
+    "danzon": {
+      "shoulder": {
+        "sha256": "f4969a02f17eda8976771b4335c1e9d09fcdc160128782fd6f5295222da9ba9d",
+        "regions": 300,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      },
+      "ear": {
+        "sha256": "a234810b3764ad5af337ec9f14f40f30a21dc71aec8ae36d3c521260b8872e37",
+        "regions": 300,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      },
+      "detail": {
+        "sha256": "84e4377bf26f153d8d088f247d9e3f4231843e42f4b49fab0d6981697258aec3",
+        "regions": 300,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      },
+      "full": {
+        "sha256": "b60d3adf10a52373760c3f2bc6c7031fb6279f2631016f839e3c0c541c6e1c0f",
+        "regions": 300,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      }
+    },
+    "baganda": {
+      "shoulder": {
+        "sha256": "88485f0728f0c39d7934f59a54e881c74b71291e619d6a3a56fcad4aac30901c",
+        "regions": 37,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      },
+      "ear": {
+        "sha256": "29c3ef631f98e72f0684917a4fae84f4a5685aac32e9ef7e01591237fd0de081",
+        "regions": 37,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      },
+      "detail": {
+        "sha256": "9a36d184917d7639c5c2bdf1f89dbee8f94aed5d9afe44e62521511c94f582a8",
+        "regions": 37,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      },
+      "full": {
+        "sha256": "28601916be31c1ce741da0583f873da04a573d6873cd13091a252ab99eb732b3",
+        "regions": 37,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      }
+    },
+    "ensemble": {
+      "shoulder": {
+        "sha256": "24c3d78fed79c7e5f90a67e4c99328b1f5789834b0cc3a03bc23c66543ce0d2b",
+        "regions": 294,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      },
+      "ear": {
+        "sha256": "11ebfbab3045610e156a6dd08b68f01de9bd0c900f4ab3a3625e39f7cd07926c",
+        "regions": 294,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      },
+      "detail": {
+        "sha256": "814ca1fb51c834432d4a048c57e6b771033b4cded68dac96d30414c5e3efd4bf",
+        "regions": 294,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      },
+      "full": {
+        "sha256": "81605eb856966ce06dfad044b2025a1f213341ea47f7b4e603fe80b7c8350020",
+        "regions": 294,
+        "attempts": 0,
+        "flip_calls": 0,
+        "detail_person_calls": 0,
+        "accepted": []
+      }
+    }
+  },
+  "source_head_audits": {
+    "danzon": {
+      "sha256": "47112adfafd85a220802b35636c63270949e87ccb5988dddd41ae72aa57a4329",
+      "labels_sha256": "e6f17ff6812f9c222de7383a445d22075782fabb287af4ea5d0cba944ff470d2",
+      "results": {
+        "baseline": {
+          "samples": 2,
+          "full_head_envelopes": 0,
+          "min_head_coverage": 0.0,
+          "torso_probes_covered": 0,
+          "neighbor_rects_checked": 2,
+          "max_neighbor_rect_overlap": 0.0,
+          "rows": [
+            {
+              "index": 50,
+              "head_coverage": 0.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            },
+            {
+              "index": 75,
+              "head_coverage": 0.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            }
+          ]
+        },
+        "candidate": {
+          "samples": 2,
+          "full_head_envelopes": 1,
+          "min_head_coverage": 0.6250835375361996,
+          "torso_probes_covered": 0,
+          "neighbor_rects_checked": 2,
+          "max_neighbor_rect_overlap": 0.07049180327868852,
+          "rows": [
+            {
+              "index": 50,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0
+              ]
+            },
+            {
+              "index": 75,
+              "head_coverage": 0.6250835375361996,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.07049180327868852
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "ensemble": {
+      "sha256": "82d2eadf9c43ba90642174b170cf0b65748b125d90c1bafc4d56267da6c19653",
+      "labels_sha256": "c3365057d906d95daf0803e0f05f27bc8779901404bafcb52ec5006cd8348250",
+      "results": {
+        "baseline": {
+          "samples": 1,
+          "full_head_envelopes": 0,
+          "min_head_coverage": 0.0,
+          "torso_probes_covered": 0,
+          "neighbor_rects_checked": 2,
+          "max_neighbor_rect_overlap": 0.0,
+          "rows": [
+            {
+              "index": 25,
+              "head_coverage": 0.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0,
+                0.0
+              ]
+            }
+          ]
+        },
+        "candidate": {
+          "samples": 1,
+          "full_head_envelopes": 1,
+          "min_head_coverage": 1.0,
+          "torso_probes_covered": 0,
+          "neighbor_rects_checked": 2,
+          "max_neighbor_rect_overlap": 0.4375,
+          "rows": [
+            {
+              "index": 25,
+              "head_coverage": 1.0,
+              "torso_probe_covered": false,
+              "neighbor_rect_overlaps": [
+                0.0,
+                0.4375
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
