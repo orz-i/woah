@@ -424,6 +424,13 @@ int32_t frame_kernel_face_reappearance_choose(FrameKernelRect root_body,FrameKer
     const FrameKernelFaceReappearanceCandidate *current,size_t count,FrameKernelFaceReappearanceDecision *output);
 int32_t frame_kernel_face_reappearance_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
     FrameKernelEllipse face,FrameKernelHeadSticker *output);
+/* Coverage-only duplicate-proposal recovery. Does not mutate identity or
+   raw observations. Fresh local face and frozen garment decision required. */
+typedef struct FrameKernelDuplicateProposal { FrameKernelRect body; FrameKernelEllipse face; float confidence; uint32_t foreign; } FrameKernelDuplicateProposal;
+int32_t frame_kernel_face_duplicate_probe(const uint8_t *masks,size_t len,FrameKernelHeadMaskSpec spec,const FrameKernelDuplicateProposal *rows,size_t count);
+int32_t frame_kernel_face_duplicate_pair(const uint8_t *masks,size_t len,FrameKernelHeadMaskSpec spec,const FrameKernelDuplicateProposal *rows,size_t count,uint32_t *pair2,uint8_t *union_mask,size_t union_len);
+int32_t frame_kernel_face_duplicate_plan(FrameKernelEllipse face,FrameKernelTransform transform,float *output6);
+int32_t frame_kernel_face_duplicate_sticker(const uint8_t *masks,size_t len,FrameKernelHeadMaskSpec spec,const FrameKernelDuplicateProposal *rows,size_t count,uint32_t primary,uint32_t secondary,FrameKernelEllipse local,FrameKernelHeadSticker *output);
 /* Experimental current-frame coverage-only recovery. Root must be the last
    canonically owned DIRECT face and body; predicted_body the retained
    selected track's current prediction. Hard age <=800ms; never renews

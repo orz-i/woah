@@ -259,6 +259,232 @@ pub fn choose(
     })
 }
 
+/// A raw proposal is still a rival until same-face, same-instance evidence
+/// proves it redundant. Missing faces are represented by a zero ellipse.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct DuplicateProposal {
+    pub body: Rect,
+    pub face: Ellipse,
+    pub confidence: f32,
+    pub foreign: u32,
+}
+
+fn same_face(a: Ellipse, b: Ellipse) -> bool {
+    valid_seed(a)
+        && valid_seed(b)
+        && ((a.center_x - b.center_x) / a.radius_x.min(b.radius_x))
+            .hypot((a.center_y - b.center_y) / a.radius_y.min(b.radius_y))
+            <= 0.35
+        && (0.72..=1.39).contains(&(a.radius_x / b.radius_x))
+        && (0.72..=1.39).contains(&(a.radius_y / b.radius_y))
+}
+
+/// Cheap current mask/box preflight; no face inference needed until a
+/// geometrically plausible duplicate pair of unowned observations exists.
+pub fn duplicate_geometry(
+    masks: &[u8],
+    spec: HeadMaskSpec,
+    p: &[DuplicateProposal],
+) -> Result<Vec<[usize; 2]>, Error> {
+    let n = (spec.width as usize)
+        .checked_mul(spec.height as usize)
+        .ok_or(Error::Invalid)?;
+    if p.len() > 32
+        || n == 0
+        || n.checked_mul(p.len()) != Some(masks.len())
+        || (!p.is_empty() && !spec.valid(&masks[..n]))
+        || spec.width != spec.transform.proto_size
+        || spec.height != spec.transform.proto_size
+        || p.iter().any(|q| {
+            !q.body.valid()
+                || !q.confidence.is_finite()
+                || !(0.0..=1.0).contains(&q.confidence)
+                || q.foreign > 1
+        })
+    {
+        return Err(Error::Invalid);
+    }
+    let area = |b: Rect| (b.right - b.left) * (b.bottom - b.top);
+    let mut pairs = Vec::new();
+    for i in 0..p.len() {
+        for j in i + 1..p.len() {
+            let (a, b) = if area(p[i].body) >= area(p[j].body) {
+                (i, j)
+            } else {
+                (j, i)
+            };
+            let (x, y) = (p[a], p[b]);
+            if x.foreign != 0 || y.foreign != 0 || x.confidence < 0.4 || y.confidence < 0.3 {
+                continue;
+            }
+            let overlap = (x.body.right.min(y.body.right) - x.body.left.max(y.body.left)).max(0.0)
+                * (x.body.bottom.min(y.body.bottom) - x.body.top.max(y.body.top)).max(0.0);
+            if overlap / area(y.body) < 0.80 {
+                continue;
+            }
+            let m = &masks[a * n..(a + 1) * n];
+            let k = &masks[b * n..(b + 1) * n];
+            let (mut inter, mut na, mut nb) = (0usize, 0usize, 0usize);
+            for (&v, &w) in m.iter().zip(k) {
+                na += usize::from(v >= 128);
+                nb += usize::from(w >= 128);
+                inter += usize::from(v >= 128 && w >= 128);
+            }
+            if na.min(nb) < 8 || inter * 5 < na.min(nb) * 4 {
+                continue;
+            }
+            pairs.push([a, b]);
+        }
+    }
+    Ok(pairs)
+}
+
+/// Coalesce just one unambiguous duplicate pair for this coverage-only lane.
+/// Both detector measurements must be current, independently owned by their
+/// raw masks; the smaller proposal must mostly lie inside the larger one.
+/// Any third raw mask at the measured face center or committed foreign owner
+/// prevents this lane. The canonical tracker still sees all raw proposals.
+pub fn duplicate_pair(
+    masks: &[u8],
+    spec: HeadMaskSpec,
+    p: &[DuplicateProposal],
+    out: &mut [u8],
+) -> Result<[usize; 2], Error> {
+    let pairs = duplicate_geometry(masks, spec, p)?;
+    let n = (spec.width as usize)
+        .checked_mul(spec.height as usize)
+        .ok_or(Error::Invalid)?;
+    if out.len() != n || !spec.valid(out) {
+        return Err(Error::Invalid);
+    }
+    let mut found = None;
+    for [a, b] in pairs {
+        let (x, y) = (p[a], p[b]);
+        if !same_face(x.face, y.face) {
+            continue;
+        }
+        let inside = |f: Ellipse, r: Rect| {
+            f.center_x >= r.left
+                && f.center_x <= r.right
+                && f.center_y >= r.top
+                && f.center_y <= r.top + (r.bottom - r.top) * 0.60
+        };
+        if !inside(x.face, x.body) || !inside(y.face, y.body) {
+            continue;
+        }
+        let m = &masks[a * n..(a + 1) * n];
+        let k = &masks[b * n..(b + 1) * n];
+        if ![(m, x.face), (k, y.face)]
+            .into_iter()
+            .all(|(m, f)| mask_support(m, spec, f).is_some_and(|s| s[0] >= 4 && s[1] >= 12))
+        {
+            continue;
+        }
+        if masks.chunks_exact(n).enumerate().any(|(q, m)| {
+            q != a
+                && q != b
+                && [x.face, y.face]
+                    .into_iter()
+                    .any(|f| mask_support(m, spec, f).is_none_or(|s| s[1] > 0))
+        }) {
+            continue;
+        }
+        if found.replace([a, b]).is_some() {
+            return Err(Error::NoEvidence);
+        }
+    }
+    let [a, b] = found.ok_or(Error::NoEvidence)?;
+    for (i, v) in out.iter_mut().enumerate() {
+        *v = masks[a * n + i].max(masks[b * n + i]);
+    }
+    Ok([a, b])
+}
+
+/// Local current-face check at a third scale. No historical pixels used.
+pub fn duplicate_face_plan(face: Ellipse, t: crate::geometry::Transform) -> Option<[f32; 6]> {
+    if !valid_seed(face) || !t.valid() {
+        return None;
+    }
+    let side =
+        (5.0 * face.radius_x.max(face.radius_y)).min(t.source_width.min(t.source_height) as f32);
+    if side < 4.0 {
+        return None;
+    }
+    let x = (face.center_x - side * 0.5).clamp(0.0, t.source_width as f32 - side);
+    let y = (face.center_y - side * 0.5).clamp(0.0, t.source_height as f32 - side);
+    Some([
+        x,
+        y,
+        x + side,
+        y + side,
+        (face.center_x - x) / side,
+        (face.center_y - y) / side,
+    ])
+}
+
+/// Recheck the pair and every raw rival before a fresh local detector can
+/// supply a conservative union of the three current face measurements.
+/// The appearance decision is separately required by the caller.
+pub fn duplicate_sticker(
+    masks: &[u8],
+    spec: HeadMaskSpec,
+    p: &[DuplicateProposal],
+    pair: [usize; 2],
+    local: Ellipse,
+) -> Result<HeadSticker, Error> {
+    let n = (spec.width as usize)
+        .checked_mul(spec.height as usize)
+        .ok_or(Error::Invalid)?;
+    if n > 1024 * 1024 || n == 0 || !valid_seed(local) {
+        return Err(Error::Invalid);
+    }
+    let mut union = vec![0; n];
+    if duplicate_pair(masks, spec, p, &mut union)? != pair || spec.person != p[pair[0]].body {
+        return Err(Error::NoEvidence);
+    }
+    let [a, b] = pair;
+    if !same_face(p[a].face, local)
+        || !same_face(p[b].face, local)
+        || !mask_support(&union, spec, local).is_some_and(|s| s[0] >= 4 && s[1] >= 12)
+        || masks
+            .chunks_exact(n)
+            .enumerate()
+            .any(|(i, m)| i != a && i != b && mask_support(m, spec, local).is_none_or(|s| s[1] > 0))
+    {
+        return Err(Error::NoEvidence);
+    }
+    let mut placement = sticker(&union, spec, p[a].face, local, 0).ok_or(Error::Invalid)?;
+    let cell = spec.transform.input_size as f32 / (spec.width as f32 * spec.transform.scale);
+    let e = p[b].face;
+    let bounds = &mut placement.bounds;
+    bounds.left = bounds.left.min(e.center_x - e.radius_x - cell);
+    bounds.right = bounds.right.max(e.center_x + e.radius_x + cell);
+    bounds.top = bounds.top.min(e.center_y - e.radius_y - cell);
+    bounds.bottom = bounds.bottom.max(e.center_y + e.radius_y + cell);
+    let half = ((bounds.right - bounds.left).max(bounds.bottom - bounds.top) * 0.5).next_up();
+    let center_x = (bounds.left + bounds.right) * 0.5;
+    let center_y = (bounds.top + bounds.bottom) * 0.5;
+    placement.square = Ellipse {
+        center_x,
+        center_y,
+        radius_x: half,
+        radius_y: half,
+    };
+    if !valid_seed(placement.square)
+        || p.iter().enumerate().any(|(i, q)| {
+            i != a
+                && i != b
+                && valid_seed(q.face)
+                && (q.face.center_x - center_x).abs() <= half * 1.02
+                && (q.face.center_y - center_y).abs() <= half * 1.02
+        })
+    {
+        return Err(Error::NoEvidence);
+    }
+    Ok(placement)
+}
+
 /// Reappearance can have a small visible profile while the current silhouette
 /// still contains a connected crown. Preserve the original required sticker,
 /// and extend only to supported upper rows connected to the measured face.
@@ -419,6 +645,95 @@ mod tests {
             face: face(),
             eligible: 1,
         }
+    }
+    #[test]
+    fn duplicate_only_coalesces_current_same_face_and_contained_unowned_masks() {
+        let spec = HeadMaskSpec {
+            width: 64,
+            height: 64,
+            transform: crate::geometry::Transform {
+                scale: 1.0,
+                pad_left: 0.0,
+                pad_top: 0.0,
+                source_width: 256,
+                source_height: 256,
+                input_size: 256,
+                proto_size: 64,
+            },
+            person: body(),
+        };
+        let face = Ellipse {
+            center_x: 60.0,
+            center_y: 44.0,
+            radius_x: 16.0,
+            radius_y: 18.0,
+        };
+        let p = [
+            DuplicateProposal {
+                body: body(),
+                face,
+                confidence: 0.45,
+                foreign: 0,
+            },
+            DuplicateProposal {
+                body: Rect {
+                    left: 28.0,
+                    top: 20.0,
+                    right: 96.0,
+                    bottom: 108.0,
+                },
+                face,
+                confidence: 0.35,
+                foreign: 0,
+            },
+        ];
+        let mut m = vec![0; 8192];
+        for y in 5..16 {
+            m[y * 64 + 10..y * 64 + 20].fill(255);
+            m[4096 + y * 64 + 10..4096 + y * 64 + 20].fill(255);
+        }
+        for y in 16..28 {
+            m[y * 64 + 7..y * 64 + 24].fill(255);
+            m[4096 + y * 64 + 8..4096 + y * 64 + 23].fill(255);
+        }
+        for y in 28..53 {
+            m[y * 64 + 9..y * 64 + 22].fill(255);
+        }
+        let mut union = vec![0; 4096];
+        assert_eq!(duplicate_geometry(&m, spec, &p).unwrap(), vec![[0, 1]]);
+        assert_eq!(duplicate_pair(&m, spec, &p, &mut union), Ok([0, 1]));
+        assert_eq!(union, &m[..4096]);
+        assert!(duplicate_face_plan(face, spec.transform).is_some());
+        let sticker = duplicate_sticker(&m, spec, &p, [0, 1], face).unwrap();
+        assert!(sticker.bounds.left <= 44.0 && sticker.bounds.right >= 76.0);
+        let mut other = p;
+        other[1].face.center_x += 15.0;
+        assert_eq!(
+            duplicate_pair(&m, spec, &other, &mut union),
+            Err(Error::NoEvidence)
+        );
+        other = p;
+        other[1].foreign = 1;
+        assert!(duplicate_geometry(&m, spec, &other).unwrap().is_empty());
+        let mut weak = p;
+        weak[0].confidence = 0.39;
+        assert!(duplicate_geometry(&m, spec, &weak).unwrap().is_empty());
+        let mut third = m.clone();
+        third.extend_from_slice(&m[4096..]);
+        let third_p = [p[0], p[1], DuplicateProposal { foreign: 1, ..p[1] }];
+        assert_eq!(
+            duplicate_pair(&third, spec, &third_p, &mut union),
+            Err(Error::NoEvidence)
+        );
+        let mut blank = m.clone();
+        blank[4096..].fill(0);
+        assert!(duplicate_geometry(&blank, spec, &p).unwrap().is_empty());
+        let mut wrong = face;
+        wrong.center_x += 20.0;
+        assert_eq!(
+            duplicate_sticker(&m, spec, &p, [0, 1], wrong),
+            Err(Error::NoEvidence)
+        );
     }
     #[test]
     fn unique_garment_reappearance_never_overrides_equal_rivals_or_ineligible_owner() {

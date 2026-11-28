@@ -1,0 +1,416 @@
+{
+  "base_commit": "f6a0f11b",
+  "scope": "host-only crowded duplicate current face proposal recovery with exclusive frozen garment roots",
+  "base_library_sha256": "4c1cdfad61778e845a6aac6bae5612280b0b6ca34c51c4f645f2d2d900930bab",
+  "candidate_library_sha256": "6ad5a44700a97eace156dc0ee4182a88e3f69cb724845b0e1dbfaea76eaf0857",
+  "rust_tests": {
+    "passed": 206,
+    "ignored": 1,
+    "failed": 0,
+    "strict_clippy": "pass",
+    "abi_v1": "pass"
+  },
+  "cases": {
+    "group-id2": {
+      "replay_sha256": "50325582f5433249bd4bbc3073c60b91576abc3bc99cf0fe8287dfc4d71630c0",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 2,
+      "protected_roots": [
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "injected_face_drops": [],
+      "tracking_snapshot_equal": true,
+      "rendered_before": 108,
+      "rendered_after": 109,
+      "missing_before": [
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119
+      ],
+      "missing_after": [
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118
+      ],
+      "changed_sticker_rows": [
+        {
+          "index": 119,
+          "before": null,
+          "after": [
+            271.9788818359375,
+            172.27589416503906,
+            46.27592849731445,
+            46.27592849731445
+          ],
+          "required_bounds": [
+            237.09397888183594,
+            125.99996948242188,
+            306.86376953125,
+            218.55181884765625
+          ]
+        }
+      ],
+      "attempts": [
+        {
+          "index": 119,
+          "root_age_us": 1533333,
+          "root_index": 96,
+          "pair_status": 0,
+          "current_face_calls": 7,
+          "pair": [
+            1,
+            2
+          ],
+          "root_indices": [
+            96,
+            94,
+            92
+          ],
+          "rival_count": 10,
+          "garment_status": 0,
+          "similarity": 0.8777777552604675,
+          "rival_root": 0.7817994356155396,
+          "rival_current": 0.7312073707580566,
+          "local_face": [
+            271.9788818359375,
+            180.16702270507812,
+            28.88490104675293,
+            32.384788513183594
+          ],
+          "finish_status": 0
+        }
+      ],
+      "baseline_and_candidate_exact_equal": false,
+      "baseline_matches_m31": true,
+      "candidate_matches_m31": false
+    },
+    "group-id3": {
+      "replay_sha256": "7bdbabca5821bdbaa8cde8506afe9650ca4087913e424ef4f7f089c35a222be9",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 3,
+      "protected_roots": [
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "injected_face_drops": [],
+      "tracking_snapshot_equal": true,
+      "rendered_before": 106,
+      "rendered_after": 106,
+      "missing_before": [
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111
+      ],
+      "missing_after": [
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111
+      ],
+      "changed_sticker_rows": [],
+      "attempts": [],
+      "baseline_and_candidate_exact_equal": true,
+      "baseline_matches_m31": true,
+      "candidate_matches_m31": true
+    },
+    "group-id4": {
+      "replay_sha256": "ccd2fa8980fe696a87723db6142823d19ec0e9df3d712182f1bd1ff942f1e804",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 4,
+      "protected_roots": [
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "injected_face_drops": [],
+      "tracking_snapshot_equal": true,
+      "rendered_before": 120,
+      "rendered_after": 120,
+      "missing_before": [],
+      "missing_after": [],
+      "changed_sticker_rows": [],
+      "attempts": [],
+      "baseline_and_candidate_exact_equal": true,
+      "baseline_matches_m31": true,
+      "candidate_matches_m31": true
+    },
+    "salsa-id0": {
+      "replay_sha256": "b441df0abe3a6a0742db3b857bc1758e84b53917925bfa5945ed9caa590c9374",
+      "fixture_sha256": "47d98760f606e288c8e46dedb8aa2a1102c0220e0c62928f84c912a8364d8aff",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 0,
+      "protected_roots": [
+        0,
+        1
+      ],
+      "injected_face_drops": [],
+      "tracking_snapshot_equal": true,
+      "rendered_before": 80,
+      "rendered_after": 80,
+      "missing_before": [],
+      "missing_after": [],
+      "changed_sticker_rows": [],
+      "attempts": [],
+      "baseline_and_candidate_exact_equal": true,
+      "baseline_matches_m31": true,
+      "candidate_matches_m31": true
+    },
+    "salsa-id1": {
+      "replay_sha256": "6af43164b7e2dfa977e27a68ba3ea7c486fa149cc1c2350d5812e9078d96667d",
+      "fixture_sha256": "47d98760f606e288c8e46dedb8aa2a1102c0220e0c62928f84c912a8364d8aff",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 1,
+      "protected_roots": [
+        0,
+        1
+      ],
+      "injected_face_drops": [],
+      "tracking_snapshot_equal": true,
+      "rendered_before": 80,
+      "rendered_after": 80,
+      "missing_before": [],
+      "missing_after": [],
+      "changed_sticker_rows": [],
+      "attempts": [],
+      "baseline_and_candidate_exact_equal": true,
+      "baseline_matches_m31": true,
+      "candidate_matches_m31": true
+    },
+    "dynamic": {
+      "replay_sha256": "ea6095c5cf272c187345accb0d16696fdbaac870bef318e24b7ba4ea44def47d",
+      "fixture_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 1,
+      "protected_roots": [
+        1
+      ],
+      "injected_face_drops": [],
+      "tracking_snapshot_equal": true,
+      "rendered_before": 18,
+      "rendered_after": 18,
+      "missing_before": [],
+      "missing_after": [],
+      "changed_sticker_rows": [],
+      "attempts": [],
+      "baseline_and_candidate_exact_equal": true,
+      "baseline_matches_m31": true,
+      "candidate_matches_m31": true
+    },
+    "mirror-id5": {
+      "replay_sha256": "d2927afb623d76f47e2c415001de19b5a6408877170d33da5a3978e2d8c255a5",
+      "fixture_sha256": "bb44f58ce9df3b6206a1e9d4af587ec6e6fc108db5f0c07f98746cfd368ce489",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 5,
+      "protected_roots": [
+        0,
+        3,
+        4,
+        5,
+        6
+      ],
+      "injected_face_drops": [],
+      "tracking_snapshot_equal": true,
+      "rendered_before": 109,
+      "rendered_after": 109,
+      "missing_before": [
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119
+      ],
+      "missing_after": [
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119
+      ],
+      "changed_sticker_rows": [],
+      "attempts": [],
+      "baseline_and_candidate_exact_equal": true
+    },
+    "drop-current": {
+      "replay_sha256": "6ffd1bf13b3ffe5cabbe4d5c78b58ee73dc405489ffc48b48308bd59e794473f",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 2,
+      "protected_roots": [
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "injected_face_drops": [
+        119
+      ],
+      "tracking_snapshot_equal": true,
+      "rendered_before": 108,
+      "rendered_after": 108,
+      "missing_before": [
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119
+      ],
+      "missing_after": [
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119
+      ],
+      "changed_sticker_rows": [],
+      "attempts": [],
+      "baseline_and_candidate_exact_equal": true
+    }
+  },
+  "source_review": {
+    "id2": "Black-top dancer is mostly hidden behind the foreground dancer in the tail; a partial head/hair sliver precedes the clearly visible face in the final sample. The previous direct hit on a foreground raised hand failed exclusive garment sampling and was excluded from the new recovery root bank. No dense visibility truth for the other frames.",
+    "id3": "Striped-shirt dancer is strongly occluded by the foreground dancer and reappears near its edge; previously source-reviewed partial frame 111 remains unresolved in this candidate. No dense visibility truth."
+  },
+  "head_audit": {
+    "sha256": "c75a51bbe246734905576461eb3a2e35ceea688605923e5ccefb9ca16027b625",
+    "results": {
+      "baseline": {
+        "samples": 1,
+        "full_head_envelopes": 0,
+        "min_head_coverage": 0.0,
+        "torso_probes_covered": 0,
+        "neighbor_rects_checked": 1,
+        "max_neighbor_rect_overlap": 0.0,
+        "rows": [
+          {
+            "index": 119,
+            "head_coverage": 0.0,
+            "torso_probe_covered": false,
+            "neighbor_rect_overlaps": [
+              0.0
+            ]
+          }
+        ]
+      },
+      "candidate": {
+        "samples": 1,
+        "full_head_envelopes": 1,
+        "min_head_coverage": 1.0,
+        "torso_probes_covered": 0,
+        "neighbor_rects_checked": 1,
+        "max_neighbor_rect_overlap": 0.0,
+        "rows": [
+          {
+            "index": 119,
+            "head_coverage": 1.0,
+            "torso_probe_covered": false,
+            "neighbor_rect_overlaps": [
+              0.0
+            ]
+          }
+        ]
+      }
+    },
+    "labels_sha256": "75b37c7ad5b1512d8208c1daea7fcd01b75223a779ecac0727803228b9221c40"
+  }
+}

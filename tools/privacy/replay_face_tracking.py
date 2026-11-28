@@ -43,8 +43,15 @@ ReappearanceDecision = struct("ReappearanceDecision", [("index",U),("similarity"
 
 MergedEdgeAnchor = struct("MergedEdgeAnchor", [("cap",Rect),("rival_body",Rect),("rival_face",Ellipse),("cap_age_us",I64),("rival_age_us",I64)])
 
+DuplicateProposal = struct("DuplicateProposal", [("body",Rect),("face",Ellipse),("confidence",F),("foreign",U)])
+
 
 def pixel_bind(lib):
+    if hasattr(lib,"frame_kernel_face_duplicate_pair"):
+        for name,args in [("duplicate_probe",[P,S,MaskSpec,P,S]),("duplicate_pair",[P,S,MaskSpec,P,S,P,P,S]),("duplicate_plan",[Ellipse,Transform,P]),("duplicate_sticker",[P,S,MaskSpec,P,S,U,U,Ellipse,P])]:
+            fn=getattr(lib,"frame_kernel_face_"+name)
+            fn.argtypes,fn.restype=args,C.c_int32
+            setattr(lib,name,fn)
     if hasattr(lib,"frame_kernel_face_merged_edge_views"):
         for name,args in [("merged_edge_views",[MaskSpec,MergedEdgeAnchor,P]),("merged_edge_finish",[P,S,MaskSpec,MergedEdgeAnchor,P,Ellipse,P])]:
             fn=getattr(lib,"frame_kernel_face_"+name)
@@ -380,6 +387,97 @@ def reappear_current(lib,face,evidence,entry,report,snapshot,track,trusted,targe
     return measured,required,placement,None
 
 
+def duplicate_reappearance(lib,face,evidence,report,snapshot,track,target,roots,row,cache,drops):
+    """Coverage only. A contaminated direct hit cannot become a garment
+    root unless the original current raw mask passes the exclusive sampler.
+    Raw duplicate proposals are coalesced only inside this one recovery lane.
+    """
+    if len(roots or ())<3 or track["observed"] or track["dormant"] or track["state"] not in (2,3):return None
+    if not any(q.get("track") and q["track"]["state"]==2 for q in report[:-1]):return None
+    entry=evidence[row["index"]];frame,image,tr,ds,masks=entry
+    if len(ds)<2 or len(ds)>32:return None
+    # Find last *qualified* direct root. Cache the immutable garment result
+    # per direct frame, including rejection, rather than learning on a gap.
+    now=row["time_us"]
+    bank=cache.setdefault("direct",{})
+    anchor=None
+    for old in reversed(report[:-1]):
+        age=now-old["time_us"]
+        if age>2_000_000:break
+        if old.get("kind")!=0 or old["index"] in drops or not old["track"]["observed"]:continue
+        if old["index"] not in bank:
+            prev=evidence[old["index"]];pds=prev[3];pm=prev[4]
+            match=[j for j,d in enumerate(pds) if vals(d.box)==old["track"]["bounds"]]
+            candidate=None
+            if len(match)==1:
+                j=match[0];sp=MaskSpec(160,160,prev[2],pds[j].box);rgb=np.ascontiguousarray(prev[1].convert("RGB"));g=Garment();f=Ellipse(*old["raw"])
+                status=lib.garment(ptr(rgb),rgb.size,ptr(pm),pm.size,len(pds),j,sp,f,C.byref(g))
+                if status<0:raise RuntimeError("invalid historical garment evidence")
+                if status==0:candidate=(sp.person,f,old["time_us"])
+            bank[old["index"]]=candidate
+        if bank[old["index"]] is not None:
+            anchor=bank[old["index"]];break
+    if anchor is None or not 950_000<now-anchor[2]<=2_000_000:return None
+    if not any(q["time_us"]>anchor[2] and q.get("track") and q["track"]["state"]==2 for q in report[:-1]):return None
+    # All current raw proposals, including weak ones, remain rivals until
+    # the shared Rust pair test certifies same-face redundancy.
+    foreign=[t for t in snapshot["tracks"] if t["id"]!=target and t["observed"]]
+    rows=[]
+    for j,d in enumerate(ds):
+        conflict=any(iou(d.box,t["bounds"])>.9 or (t["mask"] is not None and np.array_equal(masks[j],t["mask"])) for t in foreign)
+        rows.append(DuplicateProposal(d.box,Ellipse(),d.confidence,int(conflict)))
+    raw=(DuplicateProposal*len(rows))(*rows);sp=MaskSpec(160,160,tr,ds[0].box)
+    status=lib.duplicate_probe(ptr(masks),masks.size,sp,raw,len(raw))
+    if status<0:raise RuntimeError("invalid duplicate geometry evidence")
+    if status!=0:return None
+    faces=[]
+    for j,d in enumerate(ds):
+        f=detect_face(lib,face,image,MaskSpec(160,160,tr,d.box),masks[j]);faces.append(f)
+        raw[j].face=f or Ellipse()
+    pair=(U*2)();union=np.zeros_like(masks[0])
+    status=lib.duplicate_pair(ptr(masks),masks.size,sp,raw,len(raw),pair,ptr(union),union.size)
+    attempt=dict(root_age_us=now-anchor[2],root_index=next(i for i,v in bank.items() if v is anchor),pair_status=status,current_face_calls=len(ds))
+    row["duplicate_reappearance_attempt"]=attempt
+    if status<0:raise RuntimeError("invalid duplicate pair evidence")
+    if status!=0:return None
+    a,b=pair;attempt["pair"]=[a,b]
+    if cache.get("root_time")!=anchor[2]:
+        g,r,inds=garment_roots(lib,face,evidence,report,anchor)
+        cache.update(root_time=anchor[2],roots=g,rivals=r,indices=inds)
+    gr,rv=cache["roots"],cache["rivals"]
+    attempt.update(root_indices=cache["indices"],rival_count=len(rv))
+    if len(gr)<2 or not rv:return None
+    # Union only the certified pair. All other masks, even those without a
+    # current garment descriptor, continue to participate as mask negatives.
+    indices=[j for j in range(len(ds)) if j!=b]
+    merged=np.ascontiguousarray(np.stack([union if j==a else masks[j] for j in indices]))
+    rgb=np.ascontiguousarray(image.convert("RGB"));candidates=[];primary=None
+    for j,k in enumerate(indices):
+        f=faces[k]
+        if f is None:continue
+        spk=MaskSpec(160,160,tr,ds[k].box);g=Garment();status=lib.garment(ptr(rgb),rgb.size,ptr(merged),merged.size,len(indices),j,spk,f,C.byref(g))
+        if status<0:raise RuntimeError("invalid current garment evidence")
+        if status==0:
+            if k==a:primary=len(candidates)
+            candidates.append(ReappearanceCandidate(g,spk.person,f,int(k==a)))
+    if primary is None:return None
+    ga=(Garment*len(gr))(*gr);ra=(Garment*len(rv))(*rv);ca=(ReappearanceCandidate*len(candidates))(*candidates);decision=ReappearanceDecision()
+    status=lib.reappearance_choose(anchor[0],anchor[1],now-anchor[2],ga,len(ga),ra,len(ra),ca,len(ca),C.byref(decision));attempt["garment_status"]=status
+    if status!=0 or decision.index!=primary:return None
+    attempt.update(similarity=decision.similarity,rival_root=decision.rival_root,rival_current=decision.rival_current)
+    sp=MaskSpec(160,160,tr,ds[a].box);plan=np.empty(6,np.float32)
+    status=lib.duplicate_plan(faces[a],tr,ptr(plan))
+    if status!=0:return None
+    local=detect_face(lib,face,image,sp,union,explicit_plan=plan);attempt["current_face_calls"]+=1
+    if local is None:return None
+    attempt["local_face"]=vals(local)
+    placement=HeadSticker();status=lib.duplicate_sticker(ptr(masks),masks.size,sp,raw,len(raw),a,b,local,C.byref(placement));attempt["finish_status"]=status
+    if status<0:raise RuntimeError("invalid duplicate finish evidence")
+    if status!=0:return None
+    required=Ellipse();check(lib.current_face_region(ptr(union),union.size,sp,local,C.byref(required)))
+    return local,required,placement,None
+
+
 def merged_edge_current(lib,yolo,face,history,snapshot,track,entry,spec,target,roots,row,drops):
     """Only a current single merged mask, retained occluded rival, and two
     previously observed distinct identities qualify. History plans crops,
@@ -454,7 +552,7 @@ def summarize(rows):
                 body_observed=sum(r["track"] is not None and r["track"]["observed"] for r in rows),
                 direct_face=sum(r["kind"]==0 for r in rows), projected_face=sum(r["kind"]==1 for r in rows),
                 estimated_face=sum(r["kind"]==2 for r in rows),
-                coverage_only_recovered=sum(r["kind"] in (3,4) for r in rows),
+                coverage_only_recovered=sum(r["kind"] in (3,4,5) for r in rows),
                 garment_reappearance=sum(r["kind"]==4 for r in rows),
                 terminal_current_continuations=sum(r["kind"]==3 and r.get("recovery_attempt",{}).get("continuation",False) for r in rows),
                 rendered=len(usable), missing=[r["index"] for r in rows if r["render"] is None],
@@ -474,7 +572,7 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None):
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None, crowded_recovery=False):
     tracking = Tracking(lib,target,protected_roots,pair_continuity)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
@@ -482,6 +580,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
     recovery_previous = None
     reappearance_cache = {}
     merged_history = []
+    duplicate_cache = {}
     first_head = None
     report = []
     try:
@@ -508,6 +607,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 sticker_seed = None
                 reappearance_cache.clear()
                 merged_history.clear()
+                duplicate_cache.clear()
                 continue
             row["track"] = next(t for t in row["tracks"] if t["id"]==target)
             if "person_bbox" in frame:
@@ -571,6 +671,9 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 if multiperson_recovery and recovery is None and index not in drops:
                     recovery=reappear_current(lib,face,evidence,evidence[index],report,snapshot,track,trusted,target,row,reappearance_cache)
                     coverage_kind=4
+                if crowded_recovery and recovery is None and index not in drops:
+                    recovery=duplicate_reappearance(lib,face,evidence,report,snapshot,track,target,protected_roots,row,duplicate_cache,drops)
+                    coverage_kind=5
                 if recovery is None:
                     continue
                 raw,required,placement,recovery_previous=recovery
@@ -683,11 +786,14 @@ def main():
     parser.add_argument("--pair-head",action="store_true",help="Candidate-only current pair face ownership and edge cap experiment")
     parser.add_argument("--inject-pair-merge",default="",help="Host diagnostic only: union exactly two current raw masks/boxes at these frame indices for BOTH comparison arms")
     parser.add_argument("--merged-edge",action="store_true",help="Candidate-only bounded current local resegmentation for a merged edge head")
+    parser.add_argument("--crowded-recovery",action="store_true",help="Candidate-only duplicate current proposal recovery using verified historical garment roots")
     parser.add_argument("--same-base-policy",action="store_true",help="Apply enabled association and recovery flags to baseline too")
     parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args()
     if args.merged_edge and not (args.pair_head and args.pair_continuity and args.same_base_policy):
         parser.error("--merged-edge requires --pair-head --pair-continuity --same-base-policy for a paired M3 comparison")
+    if args.crowded_recovery and not (args.merged_edge and args.multiperson_recovery):
+        parser.error("--crowded-recovery requires --merged-edge and --multiperson-recovery for paired M3.1 comparison")
     base, candidate=load(args.baseline),load(args.candidate)
     yolo=model(ROOT/"models/litert/yolo11n-seg-fp16.tflite")
     face=model(ROOT/"testdata/models/face/blaze_face_full_range.tflite")
@@ -724,7 +830,7 @@ def main():
             "experimental_cover_fallback":args.cover_fallback_experiment,
             "multiperson_recovery":args.multiperson_recovery,
             "pair_continuity":args.pair_continuity,
-            "pair_head":args.pair_head, "merged_edge":args.merged_edge, "same_base_policy":args.same_base_policy, "injected_pair_merges":sorted(injected_merges),
+            "pair_head":args.pair_head, "merged_edge":args.merged_edge, "crowded_recovery":args.crowded_recovery, "same_base_policy":args.same_base_policy, "injected_pair_merges":sorted(injected_merges),
             "model_sha256": {name:hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
                              for name,path in [("person","models/litert/yolo11n-seg-fp16.tflite"),("face","testdata/models/face/blaze_face_full_range.tflite")]}}
     libs=[("baseline",base)]
@@ -732,7 +838,7 @@ def main():
         libs.append(("size_only",load(args.size_only)))
     libs.append(("candidate",candidate))
     for name,lib in libs:
-        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and (name=="candidate" or args.merged_edge),merged_edge_yolo=yolo if args.merged_edge and name=="candidate" else None)
+        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and (name=="candidate" or args.merged_edge),merged_edge_yolo=yolo if args.merged_edge and (name=="candidate" or args.crowded_recovery) else None,crowded_recovery=args.crowded_recovery and name=="candidate")
         print(name,json.dumps(report[name]["summary"]),flush=True)
     for name in [n for n,_ in libs if n!="baseline"]:
         if args.pair_continuity and not args.same_base_policy and name=="candidate":

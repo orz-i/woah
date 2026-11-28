@@ -9,6 +9,140 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// Readable raw masks and proposal rows. Return 0 for possible geometry,
+/// 1 for none, -1 invalid; never writes or requires face measurements.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_duplicate_probe(
+    masks: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    rows: *const crate::face_reappearance::DuplicateProposal,
+    count: usize,
+) -> i32 {
+    use crate::face_reappearance::{Error, duplicate_geometry};
+    if count > 32 || len > 32 * 1024 * 1024 {
+        return REGION_INVALID;
+    }
+    // SAFETY: bounded readable arrays supplied by caller.
+    let (Some(m), Some(p)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(rows, count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    match duplicate_geometry(m, spec, p) {
+        Ok(v) if !v.is_empty() => REGION_OK,
+        Ok(_) | Err(Error::NoEvidence) => REGION_NONE,
+        Err(Error::Invalid) => REGION_INVALID,
+    }
+}
+
+/// # Safety
+/// Raw masks and proposal rows are readable; pair2 and union_mask writable
+/// and disjoint. Nonzero result leaves caller output unchanged.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_duplicate_pair(
+    masks: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    rows: *const crate::face_reappearance::DuplicateProposal,
+    count: usize,
+    pair2: *mut u32,
+    union_mask: *mut u8,
+    union_len: usize,
+) -> i32 {
+    use crate::face_reappearance::{Error, duplicate_pair};
+    if count > 32
+        || len > 32 * 1024 * 1024
+        || union_len > 1024 * 1024
+        || pair2.is_null()
+        || union_mask.is_null()
+    {
+        return REGION_INVALID;
+    }
+    // SAFETY: checked bounded readable arrays supplied by caller.
+    let (Some(m), Some(p)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(rows, count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let mut u = vec![0; union_len];
+    match duplicate_pair(m, spec, p, &mut u) {
+        Ok(pair) => {
+            // SAFETY: caller supplies two writable indices and union storage.
+            unsafe {
+                pair2.write(pair[0] as u32);
+                pair2.add(1).write(pair[1] as u32);
+                std::ptr::copy_nonoverlapping(u.as_ptr(), union_mask, union_len);
+            };
+            REGION_OK
+        }
+        Err(Error::NoEvidence) => REGION_NONE,
+        Err(Error::Invalid) => REGION_INVALID,
+    }
+}
+/// # Safety
+/// Six writable disjoint floats. No write on failure.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_duplicate_plan(
+    face: Ellipse,
+    t: Transform,
+    out: *mut f32,
+) -> i32 {
+    if out.is_null() {
+        return REGION_INVALID;
+    }
+    let Some(plan) = crate::face_reappearance::duplicate_face_plan(face, t) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies six writable floats.
+    unsafe { std::ptr::copy_nonoverlapping(plan.as_ptr(), out, 6) };
+    REGION_OK
+}
+/// # Safety
+/// Raw masks and proposal rows readable, output disjoint and writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_duplicate_sticker(
+    masks: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    rows: *const crate::face_reappearance::DuplicateProposal,
+    count: usize,
+    primary: u32,
+    secondary: u32,
+    local: Ellipse,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    use crate::face_reappearance::{Error, duplicate_sticker};
+    if count > 32 || len > 32 * 1024 * 1024 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: checked bounded readable arrays supplied by caller.
+    let (Some(m), Some(p)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(rows, count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    match duplicate_sticker(m, spec, p, [primary as usize, secondary as usize], local) {
+        Ok(v) => {
+            // SAFETY: caller supplies a disjoint writable output.
+            unsafe { out.write(v) };
+            REGION_OK
+        }
+        Err(Error::NoEvidence) => REGION_NONE,
+        Err(Error::Invalid) => REGION_INVALID,
+    }
+}
+
+/// # Safety
 /// Output has three writable disjoint Rects. On failure output is unchanged.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_face_merged_edge_views(
