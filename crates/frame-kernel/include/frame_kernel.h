@@ -457,6 +457,11 @@ int32_t frame_kernel_research_tracklet_ear_cap(const uint8_t *masks,size_t len,s
 int32_t frame_kernel_research_tracklet_flip_ear_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses24,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
 /* Current dual-pose profile-axis head geometry; poses42 = two nose/eyes/ears/shoulders x,y,confidence arrays. */
 int32_t frame_kernel_research_anatomical_head(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,FrameKernelHeadSticker *output);
+/* 0 compatible, 1 inconclusive, 2 contradictory; current evidence only. */
+int32_t frame_kernel_research_anatomical_observation(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,FrameKernelEllipse observed,FrameKernelHeadSticker *output);
+typedef struct FrameKernelCompactRivalView { const uint8_t *masks; size_t len,count; const FrameKernelRect *boxes; const float *confidences; } FrameKernelCompactRivalView;
+int32_t frame_kernel_research_compact_rivals(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,FrameKernelCompactRivalView first,FrameKernelCompactRivalView second,FrameKernelRect output[2]);
+int32_t frame_kernel_research_anatomical_placement(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,const FrameKernelRect *boxes,const FrameKernelEllipse *faces,FrameKernelEllipse observed,const FrameKernelRect *extra,size_t extra_count,FrameKernelHeadSticker *output);
 int32_t frame_kernel_research_owned_head(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,const FrameKernelRect *boxes,const FrameKernelEllipse *faces,FrameKernelEllipse previous,FrameKernelEllipse observed,FrameKernelHeadSticker *output);
 int32_t frame_kernel_research_profile_head_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,const FrameKernelEllipse *faces,FrameKernelEllipse previous,uint32_t repair,FrameKernelHeadSticker *output);
 /* Research-only fixed extent and rival head competition diagnostic.

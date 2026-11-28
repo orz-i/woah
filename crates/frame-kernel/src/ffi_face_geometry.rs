@@ -225,6 +225,52 @@ pub unsafe extern "C" fn frame_kernel_research_anatomical_head(
     REGION_OK
 }
 
+/// Compare a measured face to the independently certified current head.
+/// 0 compatible, 1 inconclusive, 2 contradictory; no state is changed.
+/// # Safety
+/// Packed masks and two mapped pose7 arrays are readable. The optional
+/// output is disjoint and writable if non-null.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_anatomical_observation(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    poses: *const f32,
+    observed: Ellipse,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(3..=32).contains(&count) || len > 32 * 1024 * 1024 {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable arrays.
+    let (Some(m), Some(p)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(poses, 42),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let poses = [p[..21].try_into().unwrap(), p[21..].try_into().unwrap()];
+    let Some(cap) =
+        crate::face_head_topology::anatomical_head_cap(m, index as usize, count, spec, poses)
+    else {
+        return REGION_NONE;
+    };
+    let Some(agree) =
+        crate::face_head_topology::anatomical_observation_agrees(spec, cap, poses, observed)
+    else {
+        return REGION_NONE;
+    };
+    if !out.is_null() {
+        // SAFETY: caller supplies one disjoint writable output.
+        unsafe { out.write(cap) };
+    }
+    if agree { REGION_OK } else { 2 }
+}
+
 /// # Safety
 /// Readable packed masks, two mapped pose7 arrays, count body boxes and
 /// faces, one disjoint output.
@@ -279,6 +325,141 @@ pub unsafe extern "C" fn frame_kernel_research_owned_head(
         return REGION_NONE;
     };
     // SAFETY: caller provides one disjoint writable output.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CompactRivalView {
+    pub masks: *const u8,
+    pub len: usize,
+    pub count: usize,
+    pub boxes: *const Rect,
+    pub confidences: *const f32,
+}
+
+/// Return the number (0..2) of independently matched compact negative
+/// fragments. -1 means invalid transport; no output on inconclusive evidence.
+/// # Safety
+/// Scene masks, pose floats, view arrays and two disjoint output rectangles
+/// are readable/writable as described.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_compact_rivals(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    poses: *const f32,
+    first: CompactRivalView,
+    second: CompactRivalView,
+    out: *mut Rect,
+) -> i32 {
+    if (spec.width as usize)
+        .checked_mul(spec.height as usize)
+        .and_then(|n| n.checked_mul(count))
+        != Some(len)
+        || !(3..=32).contains(&count)
+        || len > 32 * 1024 * 1024
+        || out.is_null()
+        || [first, second]
+            .iter()
+            .any(|v| v.count == 0 || v.count > 32 || v.len > 32 * 1024 * 1024)
+    {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable arrays and view metadata.
+    let (Some(m), Some(p), Some(a), Some(ab), Some(ac), Some(b), Some(bb), Some(bc)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(poses, 42),
+            crate::ffi_tracking::borrowed(first.masks, first.len),
+            crate::ffi_tracking::borrowed(first.boxes, first.count),
+            crate::ffi_tracking::borrowed(first.confidences, first.count),
+            crate::ffi_tracking::borrowed(second.masks, second.len),
+            crate::ffi_tracking::borrowed(second.boxes, second.count),
+            crate::ffi_tracking::borrowed(second.confidences, second.count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::compact_rival_fragments(
+        m,
+        index as usize,
+        spec,
+        [p[..21].try_into().unwrap(), p[21..].try_into().unwrap()],
+        [(a, ab, ac), (b, bb, bc)],
+    ) else {
+        return 0;
+    };
+    for (i, r) in v.iter().enumerate() {
+        // SAFETY: caller supplies two disjoint writable rectangles, v.len()<=2.
+        unsafe { out.add(i).write(*r) };
+    }
+    v.len() as i32
+}
+
+/// Current anatomy-first placement, with optional separately certified
+/// negative head extents. A contradictory measured face is never unioned.
+/// # Safety
+/// Packed masks, two mapped pose7 arrays, count boxes/faces, extra_count
+/// rectangles and one disjoint output are readable/writable as applicable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_anatomical_placement(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    poses: *const f32,
+    boxes: *const Rect,
+    faces: *const Ellipse,
+    observed: Ellipse,
+    extra: *const Rect,
+    extra_count: usize,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(3..=32).contains(&count) || len > 32 * 1024 * 1024 || extra_count > 2 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies the bounded arrays.
+    let (Some(m), Some(p), Some(b), Some(f), Some(e)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(poses, 42),
+            crate::ffi_tracking::borrowed(boxes, count),
+            crate::ffi_tracking::borrowed(faces, count),
+            crate::ffi_tracking::borrowed(extra, extra_count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let poses = [p[..21].try_into().unwrap(), p[21..].try_into().unwrap()];
+    let Some(cap) =
+        crate::face_head_topology::anatomical_head_cap(m, index as usize, count, spec, poses)
+    else {
+        return REGION_NONE;
+    };
+    let observed =
+        if crate::face_head_topology::anatomical_observation_agrees(spec, cap, poses, observed)
+            == Some(true)
+        {
+            observed
+        } else {
+            Ellipse::default()
+        };
+    let Some(v) = crate::face_head_topology::anatomical_head_placement(
+        m,
+        index as usize,
+        spec,
+        cap,
+        (b, f, e),
+        observed,
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies one disjoint writable output.
     unsafe { out.write(v) };
     REGION_OK
 }

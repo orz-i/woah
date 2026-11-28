@@ -124,11 +124,15 @@ def main():
     ap.add_argument("--without-memo", action="store_true", help="Exact inference-cache ablation")
     ap.add_argument("--profile-experiment", action="store_true", help="Include the unapproved M5.1/M5.3 projected-head competition control")
     ap.add_argument("--owned-head-experiment", action="store_true", help="Opt-in M5.5 anatomy-first ownership comparison")
+    ap.add_argument("--anatomical-clock-experiment", action="store_true", help="Reject contradictory direct/projected face observations before the temporal state update")
+    ap.add_argument("--compact-rival-experiment", action="store_true", help="Two-view compact negative fragments for the anatomical clock placement")
     ap.add_argument("--shared-dense", type=Path)
     ap.add_argument("--shared-reference", type=Path)
     a = ap.parse_args()
     if (a.shared_dense is None) != (a.shared_reference is None):
         ap.error("shared dense evidence and its canonical reference must be supplied together")
+    if a.compact_rival_experiment and not a.anatomical_clock_experiment:
+        ap.error("compact rivals require anatomical clock experiment")
     if a.owned_head_experiment and a.profile_experiment:
         ap.error("evaluate head experiments separately")
     start = time.perf_counter()
@@ -167,7 +171,8 @@ def main():
     tracked = replay(lib, face, evidence, a.target_id, set(), protected_roots=roots,
                      multiperson_recovery=True, pair_continuity=True, pair_head=True,
                      merged_edge_yolo=person, crowded_recovery=True, crowded_consensus=True,
-                     crowd_clothing=True, adaptive_clothing=True, motion_clothing=True, part_continuity=True)
+                     crowd_clothing=True, adaptive_clothing=True, motion_clothing=True, part_continuity=True,
+                     anatomical_policy=owned_heads.AnatomicalPolicy(lib,pose,face,person if a.compact_rival_experiment else None) if a.anatomical_clock_experiment else None)
     canonical = {"scope": "M5.1 canonical association, no source-label input", "fixture_sha256": sha(a.fixture),
                  "library_sha256": sha(a.library), "target_id": a.target_id, "identity_protected_roots": roots,
                  "model_sha256": {"person": sha(PERSON_MODEL), "face": sha(FACE_MODEL)}, "candidate": tracked}
@@ -227,6 +232,8 @@ def main():
             lane, raw = "offline_tracklet", by_index[i]
         elif row.get("fragment_head_repair"):
             lane, raw = "fragment_window", row["fragment_head_repair"]["raw"]
+        elif row.get("anatomical_clock_placement"):
+            lane, raw = "anatomical_clock", profile.canonical_raw(row)
         elif row.get("owned_head_replacement"):
             lane, raw = "anatomical_head", profile.canonical_raw(row)
         elif row.get("profile_head_repair"):
@@ -242,7 +249,7 @@ def main():
            "canonical_sha256": sha(canonical_path), "geometry_sha256": sha(profile_path),
            "dense_sha256": sha(dense_path) if needs_dense else None,
            "recovery_sha256": sha(recovery_path) if needs_dense else None,
-           "profile_experiment": a.profile_experiment, "owned_head_experiment": a.owned_head_experiment, "owned_head_sha256": sha(owned_path) if a.owned_head_experiment else None, "owned_head_changed": owned_changed, "dense_scheduled": needs_dense, "dense_reused": needs_dense and a.shared_dense is not None, "baseline": tracked,
+           "profile_experiment": a.profile_experiment, "anatomical_clock_experiment": a.anatomical_clock_experiment, "compact_rival_experiment": a.compact_rival_experiment, "owned_head_experiment": a.owned_head_experiment, "owned_head_sha256": sha(owned_path) if a.owned_head_experiment else None, "owned_head_changed": owned_changed, "dense_scheduled": needs_dense, "dense_reused": needs_dense and a.shared_dense is not None, "baseline": tracked,
            "candidate": {"frames": current, "summary": coverage_stats(current)}, "final_placements": placements,
            "canonical_placement_stats": coverage_stats(prior), "offline_spans": spans,
            "offline_attempts": attempts, "profile_changed": sorted(set(geo["changed"]) - set(geo["fragment_changed"])), "fragment_changed": geo["fragment_changed"],

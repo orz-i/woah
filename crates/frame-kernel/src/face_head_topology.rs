@@ -744,8 +744,21 @@ pub(crate) fn competition_local_rival(
     {
         return None;
     }
+    local_rival_match(scene, spec, cap.bounds, first, second_view, 0.45)?;
+    Some(cap.bounds)
+}
+
+fn local_rival_match(
+    scene: &[u8],
+    spec: HeadMaskSpec,
+    b: Rect,
+    first: &[u8],
+    second_view: (&[u8], &[f32]),
+    minimum_confidence: f32,
+) -> Option<usize> {
+    let (second, confidence) = second_view;
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
     let views = competition_views(spec)?;
-    let b = cap.bounds;
     let t = spec.transform;
     if views.iter().any(|v| {
         b.left < v.left + 2.
@@ -798,7 +811,7 @@ pub(crate) fn competition_local_rival(
         .enumerate()
         .max_by(|a, b| a.1.total_cmp(b.1))?;
     if best < 0.60
-        || confidence[j] < 0.45
+        || confidence[j] < minimum_confidence
         || scores
             .iter()
             .enumerate()
@@ -810,7 +823,122 @@ pub(crate) fn competition_local_rival(
     if head.iter().filter(|&&k| m[k] >= 128).count() * 10 < head.len() * 9 {
         return None;
     }
-    Some(b)
+    Some(j)
+}
+
+type CompactView<'a> = (&'a [u8], &'a [Rect], &'a [f32]);
+
+/// A compact independently segmented proposal can be negative evidence
+/// even when the local pose network cannot observe shoulders. It is only
+/// a visible rival fragment, not a certified full head. Two views must
+/// agree on the mask, and each must separately support the target ear core.
+pub(crate) fn compact_rival_fragments(
+    scene: &[u8],
+    index: usize,
+    spec: HeadMaskSpec,
+    poses: [[f32; 21]; 2],
+    views: [CompactView<'_>; 2],
+) -> Option<Vec<Rect>> {
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if n == 0 || !scene.len().is_multiple_of(n) {
+        return None;
+    }
+    let count = scene.len() / n;
+    let cap = anatomical_head_cap(scene, index, count, spec, poses)?;
+    let t = spec.transform;
+    let cell = t.input_size as f32 / (t.proto_size as f32 * t.scale);
+    let [a, b] = views;
+    for (m, boxes, conf) in views {
+        if boxes.is_empty()
+            || boxes.len() > 32
+            || boxes.len() != conf.len()
+            || n.checked_mul(boxes.len())? != m.len()
+            || boxes.iter().any(|r| !r.valid())
+            || conf
+                .iter()
+                .any(|v| !v.is_finite() || !(0.25..=1.).contains(v))
+        {
+            return None;
+        }
+    }
+    let ex = poses.iter().map(|p| (p[9] + p[12]) * 0.25).sum::<f32>();
+    let ey = poses.iter().map(|p| (p[10] + p[13]) * 0.25).sum::<f32>();
+    let u = ((ex * t.scale + t.pad_left) / t.input_size as f32 * spec.width as f32).floor() as i32;
+    let v = ((ey * t.scale + t.pad_top) / t.input_size as f32 * spec.height as f32).floor() as i32;
+    let mut core = vec![];
+    for y in v - 1..=v + 1 {
+        for x in u - 1..=u + 1 {
+            if x >= 0 && y >= 0 && x < spec.width as i32 && y < spec.height as i32 {
+                core.push(y as usize * spec.width as usize + x as usize);
+            }
+        }
+    }
+    if core.len() != 9 {
+        return None;
+    }
+    let support = |m: &[u8]| core.iter().filter(|&&k| m[k] >= 128).count();
+    let target_present = |m: &[u8]| m.chunks_exact(n).any(|q| support(q) >= 7);
+    if !target_present(a.0) || !target_present(b.0) {
+        return Some(vec![]);
+    }
+    let size = (cap.bounds.right - cap.bounds.left).min(cap.bounds.bottom - cap.bounds.top);
+    let near = Rect {
+        left: cap.square.center_x - cap.square.radius_x * 1.02,
+        top: cap.square.center_y - cap.square.radius_y * 1.02,
+        right: cap.square.center_x + cap.square.radius_x * 1.02,
+        bottom: cap.square.center_y + cap.square.radius_y * 1.02,
+    };
+    let compact = |r: Rect| {
+        let w = r.right - r.left;
+        let h = r.bottom - r.top;
+        w >= 3. * cell
+            && h >= 3. * cell
+            && (0.25..=0.85).contains(&(w / size))
+            && (0.25..=0.85).contains(&(h / size))
+            && (0.55..=1.8).contains(&(w / h))
+            && crate::geometry::overlap_iou(near, r) > 0.
+    };
+    let mut out = vec![];
+    for (i, (&r, &conf)) in a.1.iter().zip(a.2).enumerate() {
+        let m = &a.0[i * n..(i + 1) * n];
+        if !compact(r) || support(m) != 0 {
+            continue;
+        }
+        let Some(j) = local_rival_match(scene, spec, r, m, (b.0, b.2), 0.25) else {
+            continue;
+        };
+        let q = b.1[j];
+        let other = &b.0[j * n..(j + 1) * n];
+        // At least one detector view is strong; the weaker view must have
+        // independent, unique mask agreement and a compact matching box.
+        if conf.max(b.2[j]) < 0.45
+            || !compact(q)
+            || support(other) != 0
+            || crate::geometry::overlap_iou(r, q) < 0.60
+        {
+            continue;
+        }
+        if local_rival_match(scene, spec, q, other, (a.0, a.2), 0.25) != Some(i) {
+            continue;
+        }
+        let union = Rect {
+            left: r.left.min(q.left),
+            top: r.top.min(q.top),
+            right: r.right.max(q.right),
+            bottom: r.bottom.max(q.bottom),
+        };
+        if out
+            .iter()
+            .any(|&z| crate::geometry::overlap_iou(z, union) > 0.2)
+        {
+            return None;
+        }
+        out.push(union);
+        if out.len() > 2 {
+            return None;
+        }
+    }
+    Some(out)
 }
 
 /// Use current detected rival faces as negative evidence, plus complete
@@ -1667,6 +1795,57 @@ pub(crate) fn anatomical_head_cap(
     })
 }
 
+/// A certified current cap is independent of a face measurement. Compare
+/// only the center, allowing one prototype cell of quantization slack.
+/// A missing certificate is handled by the caller as inconclusive.
+pub(crate) fn anatomical_face_agrees(
+    spec: HeadMaskSpec,
+    cap: HeadSticker,
+    observed: Ellipse,
+) -> Option<bool> {
+    if !spec.transform.valid()
+        || cap.topology != 1
+        || cap.rows < 6
+        || !cap.bounds.valid()
+        || !valid_seed(observed)
+    {
+        return None;
+    }
+    let cell = spec.transform.input_size as f32
+        / (spec.transform.proto_size as f32 * spec.transform.scale);
+    Some(
+        observed.center_x >= cap.bounds.left - cell
+            && observed.center_x <= cap.bounds.right + cell
+            && observed.center_y >= cap.bounds.top - cell
+            && observed.center_y <= cap.bounds.bottom + cell,
+    )
+}
+
+/// The crown certificate may include lower neck support. A direct facial
+/// center below the ear-to-shoulder axis in both current poses is a different
+/// observation even if it lies in the certificate's padded rectangle.
+pub(crate) fn anatomical_observation_agrees(
+    spec: HeadMaskSpec,
+    cap: HeadSticker,
+    poses: [[f32; 21]; 2],
+    observed: Ellipse,
+) -> Option<bool> {
+    if !anatomical_face_agrees(spec, cap, observed)? {
+        return Some(false);
+    }
+    let cell = spec.transform.input_size as f32
+        / (spec.transform.proto_size as f32 * spec.transform.scale);
+    let below = |p: [f32; 21]| {
+        let e = [(p[9] + p[12]) * 0.5, (p[10] + p[13]) * 0.5];
+        let s = [(p[15] + p[18]) * 0.5, (p[16] + p[19]) * 0.5];
+        let d = [s[0] - e[0], s[1] - e[1]];
+        let len = d[0].hypot(d[1]);
+        let along = ((observed.center_x - e[0]) * d[0] + (observed.center_y - e[1]) * d[1]) / len;
+        len.is_finite() && len > 0. && along > 0.70 * len + cell
+    };
+    Some(!poses.into_iter().all(below))
+}
+
 /// Resolve an existing direct or projected observation against independently
 /// certified head geometry, then minimize overlap with all measured rivals.
 /// Return no replacement when the old center agrees or competition persists.
@@ -1684,18 +1863,25 @@ pub(crate) fn owned_head_replacement(
     if !valid_seed(previous) || cap.topology != 1 || cap.rows < 6 || !cap.bounds.valid() {
         return None;
     }
+    if anatomical_face_agrees(spec, cap, previous)? {
+        return None;
+    }
+    anatomical_head_placement(masks, index, spec, cap, (boxes, faces, &[]), observed)
+}
+
+pub(crate) fn anatomical_head_placement(
+    masks: &[u8],
+    index: usize,
+    spec: HeadMaskSpec,
+    cap: HeadSticker,
+    evidence: (&[Rect], &[Ellipse], &[Rect]),
+    observed: Ellipse,
+) -> Option<HeadSticker> {
+    let (boxes, faces, extra) = evidence;
     let mut bounds = cap.bounds;
-    let cell = spec.transform.input_size as f32
-        / (spec.transform.proto_size as f32 * spec.transform.scale);
-    let contains = |x: f32, y: f32| {
-        x >= cap.bounds.left - cell
-            && x <= cap.bounds.right + cell
-            && y >= cap.bounds.top - cell
-            && y <= cap.bounds.bottom + cell
-    };
     // Preserve a corroborated face extent, even when the prior sticker is
     // shifted. Do not union a spatially contradictory detector observation.
-    if valid_seed(observed) && contains(observed.center_x, observed.center_y) {
+    if anatomical_face_agrees(spec, cap, observed) == Some(true) {
         bounds.left = bounds
             .left
             .min((observed.center_x - observed.radius_x).max(0.));
@@ -1709,12 +1895,7 @@ pub(crate) fn owned_head_replacement(
             .bottom
             .max((observed.center_y + observed.radius_y).min(spec.transform.source_height as f32));
     }
-    // Only replace a clearly discordant center; no speculative global
-    // shrinking of correctly centered legacy regions.
-    if contains(previous.center_x, previous.center_y) {
-        return None;
-    }
-    let competition = current_head_competition(masks, index, spec, bounds, boxes, faces, &[])?;
+    let competition = current_head_competition(masks, index, spec, bounds, boxes, faces, extra)?;
     if competition.status == 1 || competition.unknown_count > 0 {
         return None;
     }
@@ -3000,6 +3181,93 @@ mod tests {
         let blocking = [foreign, cap.square, Ellipse::default()];
         assert!(
             owned_head_replacement(&m, 0, sp, cap, &boxes, &blocking, [foreign, foreign]).is_none()
+        );
+    }
+
+    #[test]
+    fn anatomical_observation_rejects_face_at_neck_before_clock_update() {
+        let (sp, mut m, _) = ear_cap_fixture();
+        m.extend(vec![0; 4096]);
+        let p = [
+            128., 64., 0.9, 120., 58., 0.9, 135., 58., 0.9, 110., 64., 0.9, 146., 64., 0.9, 92.,
+            94., 0.9, 164., 94., 0.9,
+        ];
+        let mut cap = anatomical_head_cap(&m, 0, 3, sp, [p, p]).unwrap();
+        cap.bounds.bottom = 100.; // a certificate containing a neck corridor
+        let face = Ellipse {
+            center_x: 128.,
+            center_y: 64.,
+            radius_x: 12.,
+            radius_y: 15.,
+        };
+        assert_eq!(
+            anatomical_observation_agrees(sp, cap, [p, p], face),
+            Some(true)
+        );
+        let wrong = Ellipse {
+            center_y: 94.,
+            ..face
+        };
+        assert_eq!(anatomical_face_agrees(sp, cap, wrong), Some(true));
+        assert_eq!(
+            anatomical_observation_agrees(sp, cap, [p, p], wrong),
+            Some(false)
+        );
+        assert_eq!(
+            anatomical_observation_agrees(sp, cap, [p, p], Ellipse::default()),
+            None
+        );
+    }
+
+    #[test]
+    fn compact_rival_requires_two_separate_current_views() {
+        let (sp, mut scene, _) = ear_cap_fixture();
+        scene.extend(vec![0; 4096]);
+        let p = [
+            128., 64., 0.9, 120., 58., 0.9, 135., 58., 0.9, 110., 64., 0.9, 146., 64., 0.9, 92.,
+            94., 0.9, 164., 94., 0.9,
+        ];
+        let r = Rect {
+            left: 152.,
+            top: 40.,
+            right: 176.,
+            bottom: 64.,
+        };
+        let mut a = vec![0; 8192];
+        a[..4096].copy_from_slice(&scene[..4096]);
+        paint(&mut a[4096..], 10..16, 38, 44);
+        let b = a.clone();
+        let boxes = [sp.person, r];
+        let c = [0.8, 0.48];
+        let d = [0.8, 0.28];
+        assert_eq!(
+            compact_rival_fragments(&scene, 0, sp, [p, p], [(&a, &boxes, &c), (&b, &boxes, &d)]),
+            Some(vec![r])
+        );
+        let mut dup = b.clone();
+        dup.extend_from_slice(&b[4096..]);
+        let db = [sp.person, r, r];
+        let dc = [0.8, 0.28, 0.7];
+        assert_eq!(
+            compact_rival_fragments(&scene, 0, sp, [p, p], [(&a, &boxes, &c), (&dup, &db, &dc)]),
+            Some(vec![])
+        );
+        let mut missing = b.clone();
+        missing[..4096].fill(0);
+        assert_eq!(
+            compact_rival_fragments(
+                &scene,
+                0,
+                sp,
+                [p, p],
+                [(&a, &boxes, &c), (&missing, &boxes, &d)]
+            ),
+            Some(vec![])
+        );
+        scene[8192..].copy_from_slice(&b[4096..]);
+        assert_eq!(
+            compact_rival_fragments(&scene, 0, sp, [p, p], [(&a, &boxes, &c), (&b, &boxes, &d)]),
+            Some(vec![])
         );
     }
 

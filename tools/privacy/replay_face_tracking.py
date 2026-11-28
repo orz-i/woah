@@ -598,7 +598,7 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None, crowded_recovery=False, crowded_consensus=False, crowd_clothing=False, adaptive_clothing=False, motion_clothing=False, part_continuity=False):
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None, crowded_recovery=False, crowded_consensus=False, crowd_clothing=False, adaptive_clothing=False, motion_clothing=False, part_continuity=False, anatomical_policy=None):
     tracking = Tracking(lib,target,protected_roots,pair_continuity,crowd_clothing,adaptive_clothing,motion_clothing,part_continuity)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
@@ -608,6 +608,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
     merged_history = []
     duplicate_cache = {}
     rejected_direct_at = None
+    anatomical_hold = False
     first_head = None
     report = []
     try:
@@ -637,6 +638,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 merged_history.clear()
                 duplicate_cache.clear()
                 rejected_direct_at = None
+                anatomical_hold = False
                 continue
             row["track"] = next(t for t in row["tracks"] if t["id"]==target)
             if "person_bbox" in frame:
@@ -677,7 +679,21 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                     if status!=0:
                         direct=None
                         rejected_direct_at=time
+            prepared=None
+            if anatomical_policy is not None and crowded_index is not None and index not in drops:
+                prepared=anatomical_policy.prepare(image,transform,detections,masks,crowded_index,direct)
+                status,cap=anatomical_policy.compare(masks,crowded_index,prepared,direct)
+                if status==2:
+                    row["anatomical_direct_rejected"]={"face":vals(direct),"head":vals(cap.bounds)}
+                    direct=None
+                    # Discard incompatible face history, including size and
+                    # pixel seeds. A body identity observation is unchanged.
+                    state,render_state,sticker_state=State(),RenderState(),RenderState()
+                    trusted,pixel_seed,sticker_seed=None,None,None
+                    rejected_direct_at=time
+                    anatomical_hold=True
             if direct is not None:
+                anatomical_hold=False
                 rejected_direct_at=None
                 raw, kind = direct, 0
                 trusted = (spec.person, raw, time)
@@ -747,6 +763,18 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                     x0,y0,hx0,hy0=first_head
                     row["relative_motion_error"]=[sticker.x-x0-(frame["head_x"]-hx0),sticker.y-y0-(frame["head_y"]-hy0)]
                 continue
+            if prepared is not None and kind==1:
+                status,cap=anatomical_policy.compare(masks,crowded_index,prepared,raw)
+                if status==2:
+                    row["anatomical_projection_rejected"]={"face":vals(raw),"head":vals(cap.bounds)}
+                    state,render_state,sticker_state=State(),RenderState(),RenderState()
+                    trusted,pixel_seed,sticker_seed=None,None,None
+                    row["pixel_motion"]=None
+                    anatomical_hold=True
+                    pixel_required=None
+                    fallback=Head()
+                    check(lib.current_head_region(ptr(mask),mask.size,spec,None,C.byref(fallback)))
+                    raw,kind=fallback.region,2
             out=Ellipse()
             flags=int(track["observed"]) | (16 if kind==0 else 0)
             if row["pixel_motion"] is not None:
@@ -780,6 +808,17 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 check(lib.render_size_step(C.byref(sticker_state),sticker_required,time,kind,C.byref(sticker)))
                 if kind==0:
                     sticker_seed=sticker
+            if anatomical_hold and prepared is not None and kind==2:
+                certified,rival_trace=anatomical_policy.place(image,transform,detections,masks,crowded_index,prepared)
+                if certified is not None:
+                    sticker=certified.square
+                    row["sticker_required_bounds"]=vals(certified.bounds)
+                    row["topology"]=certified.topology
+                    row["topology_rows"]=certified.rows
+                    row["anatomical_clock_placement"]=True
+                    if rival_trace is not None:row["anatomical_compact_rivals"]=rival_trace
+                else:
+                    row["anatomical_clock_placement_unresolved"]=True
             # Render-only visible cap for a weak observation. Do not feed
             # the new shape back to temporal or identity/detector state.
             if edge is not None and kind in (1,2):
