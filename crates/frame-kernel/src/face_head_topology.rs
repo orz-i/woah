@@ -403,6 +403,257 @@ pub fn pair_edge_cap(masks: &[u8], index: usize, spec: HeadMaskSpec) -> Option<H
     })
 }
 
+/// Locator only, drawn from the last genuinely observed separate pair.
+/// Neither historical geometry nor an earlier rescue is current coverage.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct MergedEdgeAnchor {
+    pub cap: Rect,
+    pub rival_body: Rect,
+    pub rival_face: Ellipse,
+    pub cap_age_us: i64,
+    pub rival_age_us: i64,
+}
+
+fn rect_center(b: Rect) -> (f32, f32) {
+    ((b.left + b.right) * 0.5, (b.top + b.bottom) * 0.5)
+}
+
+/// Bounded crop plan for a single merged current body mask. The two target
+/// views preserve the neighbor-side safety margin and vary scale and far
+/// margin. The third view is a current
+/// rival witness, not a source of target geometry.
+pub fn merged_edge_views(spec: HeadMaskSpec, a: MergedEdgeAnchor) -> Option<[Rect; 3]> {
+    let t = spec.transform;
+    if !t.valid()
+        || !spec.person.valid()
+        || !a.cap.valid()
+        || !a.rival_body.valid()
+        || !valid_seed(a.rival_face)
+        || ![a.cap_age_us, a.rival_age_us]
+            .into_iter()
+            .all(|v| (1..=150_000).contains(&v))
+        || spec.width != t.proto_size
+        || spec.height != t.proto_size
+        || t.proto_size < 2
+    {
+        return None;
+    }
+    let cell = t.input_size as f32 / (t.proto_size as f32 * t.scale);
+    let (x, y) = rect_center(a.cap);
+    let r = ((a.cap.right - a.cap.left).max(a.cap.bottom - a.cap.top)) * 0.5;
+    if !cell.is_finite()
+        || cell <= 0.0
+        || r < 3.0 * cell
+        || a.cap.top.abs() > cell
+        || spec.person.top > cell
+        || spec.person.top < -cell
+        || a.rival_face.center_x < a.rival_body.left
+        || a.rival_face.center_x > a.rival_body.right
+        || a.rival_face.center_y < a.rival_body.top
+        || a.rival_face.center_y
+            > a.rival_body.top + 0.60 * (a.rival_body.bottom - a.rival_body.top)
+        || (a.rival_face.center_x - x).abs() < r + a.rival_face.radius_x * 0.5
+        || (a.rival_face.center_x - x).abs() > 4.0 * r
+        || (a.rival_face.center_y - y).abs() > 2.0 * r
+        || x < spec.person.left
+        || x > spec.person.right
+        || a.rival_face.center_x < spec.person.left
+        || a.rival_face.center_x > spec.person.right
+        || y > spec.person.bottom
+        || a.rival_face.center_y > spec.person.bottom
+    {
+        return None;
+    }
+    let clip = |l: f32, top: f32, right: f32, bottom: f32| {
+        let b = Rect {
+            left: l.floor().clamp(0.0, t.source_width as f32),
+            top: top.floor().clamp(0.0, t.source_height as f32),
+            right: right.ceil().clamp(0.0, t.source_width as f32),
+            bottom: bottom.ceil().clamp(0.0, t.source_height as f32),
+        };
+        (b.valid()
+            && b.right - b.left >= 4.0 * r.min(16.0)
+            && b.bottom - b.top >= 4.0 * r.min(16.0))
+        .then_some(b)
+    };
+    let left_rival = a.rival_face.center_x < x;
+    let target = |near: f32, far: f32, depth: f32| {
+        let (l, b) = if left_rival {
+            (x - near * r, x + far * r)
+        } else {
+            (x - far * r, x + near * r)
+        };
+        clip(l, 0.0, b, depth * r)
+    };
+    let w = a.rival_body.right - a.rival_body.left;
+    let h = a.rival_body.bottom - a.rival_body.top;
+    let (l, b) = if left_rival {
+        (a.rival_body.left - 0.3 * w, a.rival_body.right + 0.06 * w)
+    } else {
+        (a.rival_body.left - 0.06 * w, a.rival_body.right + 0.3 * w)
+    };
+    let views = [
+        target(1.5, 2.8, 6.5)?,
+        target(1.5, 3.2, 7.5)?,
+        clip(
+            l,
+            a.rival_body.top - 0.12 * h,
+            b,
+            a.rival_body.top + 0.72 * h,
+        )?,
+    ];
+    (views[0] != views[1]).then_some(views)
+}
+
+/// Current-only two-view head cap agreement with a fresh rival detector.
+/// Packed scene-grid masks: original merged, two separately inferred target
+/// crops, one separately inferred rival crop. No identity/clock update.
+pub fn merged_edge_finish(
+    masks: &[u8],
+    spec: HeadMaskSpec,
+    a: MergedEdgeAnchor,
+    confidence: [f32; 3],
+    rival: Ellipse,
+) -> Option<HeadSticker> {
+    use crate::face_observations::mask_support;
+    let views = merged_edge_views(spec, a)?;
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if n.checked_mul(4)? != masks.len()
+        || !confidence
+            .into_iter()
+            .all(|c| c.is_finite() && (0.5..=1.0).contains(&c))
+        || !valid_seed(rival)
+    {
+        return None;
+    }
+    let merged = &masks[..n];
+    let rival_mask = &masks[3 * n..];
+    let t = spec.transform;
+    let cell = t.input_size as f32 / (t.proto_size as f32 * t.scale);
+    // A crop-reprojected plane may not contain current support outside its
+    // actual source view. This rejects substituted full-frame masks.
+    for (j, v) in views.iter().enumerate() {
+        let m = &masks[(j + 1) * n..(j + 2) * n];
+        if !spec.valid(m)
+            || m.iter().enumerate().any(|(i, &value)| {
+                if value < 96 {
+                    return false;
+                }
+                let sx =
+                    (i % spec.width as usize) as f32 * cell + cell * 0.5 - t.pad_left / t.scale;
+                let sy = (i / spec.width as usize) as f32 * cell + cell * 0.5 - t.pad_top / t.scale;
+                sx < v.left - cell * 0.01
+                    || sx >= v.right + cell * 0.01
+                    || sy < v.top - cell * 0.01
+                    || sy >= v.bottom + cell * 0.01
+            })
+        {
+            return None;
+        }
+    }
+    let (cx, cy) = rect_center(a.cap);
+    let r = ((a.cap.right - a.cap.left).max(a.cap.bottom - a.cap.top)) * 0.5;
+    if ((rival.center_x - a.rival_face.center_x) / a.rival_face.radius_x)
+        .hypot((rival.center_y - a.rival_face.center_y) / a.rival_face.radius_y)
+        > 0.65
+        || !(0.65..=1.55).contains(&(rival.radius_x / a.rival_face.radius_x))
+        || !(0.65..=1.55).contains(&(rival.radius_y / a.rival_face.radius_y))
+        || ![merged, rival_mask]
+            .into_iter()
+            .all(|m| mask_support(m, spec, rival).is_some_and(|s| s[0] >= 4 && s[1] >= 12))
+        || rival.center_x - rival.radius_x * 0.5 <= views[2].left
+        || rival.center_x + rival.radius_x * 0.5 >= views[2].right
+    {
+        return None;
+    }
+    let edge_row = (t.pad_top / t.scale / cell).floor();
+    if !edge_row.is_finite() || edge_row < 0.0 || edge_row >= spec.height as f32 {
+        return None;
+    }
+    let seed = Ellipse {
+        center_x: cx,
+        center_y: cy,
+        radius_x: r,
+        radius_y: r,
+    };
+    let mut caps = Vec::new();
+    for j in 0..2 {
+        let m = &masks[(j + 1) * n..(j + 2) * n];
+        if !spec.valid(m) {
+            return None;
+        }
+        let (cap, path) = cap_trace(m, spec, seed, false, false, false)?;
+        let b = cap.bounds;
+        let v = views[j];
+        let (x, y) = rect_center(b);
+        if cap.partial
+            || cap.rows < 6
+            || !path.iter().any(|(y, _)| *y == edge_row as usize)
+            || b.top > cell
+            || b.left < v.left + cell
+            || b.right > v.right - cell
+            || b.bottom > v.bottom - cell
+            || (x - cx).hypot(y - cy) > r * 0.7
+            || !(0.5..=1.5).contains(&((b.bottom - b.top) / (a.cap.bottom - a.cap.top)))
+        {
+            return None;
+        }
+        let mut cells = 0;
+        let mut supported = 0;
+        let mut rival_core = 0;
+        for (y, run) in path {
+            for x in run.left..run.right {
+                let i = y * spec.width as usize + x;
+                cells += 1;
+                supported += usize::from(m[i] >= 128 && merged[i] >= 96);
+                let sx = (x as f32 + 0.5) * cell - t.pad_left / t.scale;
+                let sy = (y as f32 + 0.5) * cell - t.pad_top / t.scale;
+                rival_core += usize::from(
+                    ((sx - rival.center_x) / (rival.radius_x * 0.70))
+                        .hypot((sy - rival.center_y) / (rival.radius_y * 0.70))
+                        <= 1.0,
+                );
+            }
+        }
+        if cells == 0 || supported * 10 < cells * 9 || rival_core > 0 {
+            return None;
+        }
+        caps.push(cap);
+    }
+    let (a, b) = (caps[0].bounds, caps[1].bounds);
+    if crate::geometry::overlap_iou(a, b) < 0.75 {
+        return None;
+    }
+    let b = Rect {
+        left: (a.left.min(b.left) - cell).max(0.0),
+        top: 0.0,
+        right: (a.right.max(b.right) + cell).min(t.source_width as f32),
+        bottom: (a.bottom.max(b.bottom) + 2.0 * cell).min(t.source_height as f32),
+    };
+    let (x, y) = rect_center(b);
+    let half = ((b.right - b.left).max(b.bottom - b.top) * 0.5).next_up();
+    let square = Ellipse {
+        center_x: x,
+        center_y: y,
+        radius_x: half,
+        radius_y: half,
+    };
+    // The new visible square must not include the fresh rival face center.
+    if !b.valid()
+        || !valid_seed(square)
+        || (x - rival.center_x).abs() <= half && (y - rival.center_y).abs() <= half
+    {
+        return None;
+    }
+    Some(HeadSticker {
+        bounds: b,
+        square,
+        topology: 1,
+        rows: caps[0].rows.min(caps[1].rows),
+    })
+}
+
 pub fn sticker(
     pixels: &[u8],
     spec: HeadMaskSpec,
@@ -978,6 +1229,122 @@ mod tests {
             pair_face_owned(&rival, 0, nonedge, &face, view, 256.0),
             Some(true)
         );
+    }
+    fn merged_edge_fixture() -> (HeadMaskSpec, MergedEdgeAnchor, Vec<u8>, Ellipse) {
+        let mut sp = spec();
+        sp.person = Rect {
+            left: 20.0,
+            top: 0.0,
+            right: 236.0,
+            bottom: 240.0,
+        };
+        let a = MergedEdgeAnchor {
+            cap: Rect {
+                left: 96.0,
+                top: 0.0,
+                right: 160.0,
+                bottom: 64.0,
+            },
+            rival_body: Rect {
+                left: 28.0,
+                top: 16.0,
+                right: 96.0,
+                bottom: 200.0,
+            },
+            rival_face: Ellipse {
+                center_x: 60.0,
+                center_y: 44.0,
+                radius_x: 16.0,
+                radius_y: 20.0,
+            },
+            cap_age_us: 80_000,
+            rival_age_us: 40_000,
+        };
+        let views = merged_edge_views(sp, a).unwrap();
+        let mut target = vec![0; 4096];
+        paint(&mut target, 0..12, 26, 38);
+        paint(&mut target, 12..20, 20, 44);
+        let mut rival = vec![0; 4096];
+        paint(&mut rival, 7..19, 11, 19);
+        let mut packed = vec![0; 4 * 4096];
+        for (i, v) in packed[..4096].iter_mut().enumerate() {
+            *v = target[i].max(rival[i]);
+        }
+        for (j, v) in views.iter().enumerate() {
+            let m = if j == 2 { &rival } else { &target };
+            for (i, &x) in m.iter().enumerate() {
+                let sx = (i % 64) as f32 * 4.0 + 2.0;
+                let sy = (i / 64) as f32 * 4.0 + 2.0;
+                if sx >= v.left && sx < v.right && sy >= v.top && sy < v.bottom {
+                    packed[(j + 1) * 4096 + i] = x;
+                }
+            }
+        }
+        (sp, a, packed, a.rival_face)
+    }
+    #[test]
+    fn merged_edge_consensus_uses_current_caps_not_history_and_abstains_without_evidence() {
+        let (sp, a, m, rival) = merged_edge_fixture();
+        let views = merged_edge_views(sp, a).expect("bounded current crops");
+        assert_ne!(views[0], views[1]);
+        let result = merged_edge_finish(&m, sp, a, [0.9; 3], rival)
+            .expect("two current consistent cap crops");
+        assert_eq!(result.bounds.top, 0.0);
+        assert!(
+            result.bounds.left <= 104.0
+                && result.bounds.right >= 152.0
+                && result.bounds.bottom >= 48.0
+        );
+        assert!((result.square.center_x - rival.center_x).abs() > result.square.radius_x);
+        let mut bad = m.clone();
+        bad[4096..8192].fill(0);
+        assert!(merged_edge_finish(&bad, sp, a, [0.9; 3], rival).is_none());
+        bad = m.clone();
+        bad[..4096].fill(0);
+        assert!(merged_edge_finish(&bad, sp, a, [0.9; 3], rival).is_none());
+        bad = m.clone();
+        bad[3 * 4096..].fill(0);
+        assert!(merged_edge_finish(&bad, sp, a, [0.9; 3], rival).is_none());
+        bad = m.clone();
+        bad[4096 + 2] = 255;
+        assert!(merged_edge_finish(&bad, sp, a, [0.9; 3], rival).is_none());
+        assert!(merged_edge_finish(&m, sp, a, [0.9, 0.49, 0.9], rival).is_none());
+        let mut a_expired = a;
+        a_expired.cap_age_us = 150_001;
+        assert!(merged_edge_views(sp, a_expired).is_none());
+        assert!(merged_edge_finish(&m, sp, a_expired, [0.9; 3], rival).is_none());
+        let mut rival_moved = rival;
+        rival_moved.center_x += 24.0;
+        assert!(merged_edge_finish(&m, sp, a, [0.9; 3], rival_moved).is_none());
+    }
+    #[test]
+    fn merged_edge_views_and_current_result_are_horizontally_symmetric() {
+        let (sp, a, m, rival) = merged_edge_fixture();
+        let flip = |r: Rect| Rect {
+            left: 256.0 - r.right,
+            right: 256.0 - r.left,
+            ..r
+        };
+        let flipped = |e: Ellipse| Ellipse {
+            center_x: 256.0 - e.center_x,
+            ..e
+        };
+        let mut b = a;
+        b.cap = flip(a.cap);
+        b.rival_body = flip(a.rival_body);
+        b.rival_face = flipped(a.rival_face);
+        let mut sp2 = sp;
+        sp2.person = flip(sp.person);
+        let expected = merged_edge_views(sp, a).unwrap().map(flip);
+        assert_eq!(merged_edge_views(sp2, b).unwrap(), expected);
+        let mut mm = m.clone();
+        for row in mm.chunks_exact_mut(64) {
+            row.reverse();
+        }
+        let x = merged_edge_finish(&m, sp, a, [0.9; 3], rival).unwrap();
+        let y = merged_edge_finish(&mm, sp2, b, [0.9; 3], flipped(rival)).unwrap();
+        assert_eq!(flip(x.bounds), y.bounds);
+        assert_eq!(flipped(x.square), y.square);
     }
     fn head_mask() -> Vec<u8> {
         let mut m = vec![0; 64 * 64];

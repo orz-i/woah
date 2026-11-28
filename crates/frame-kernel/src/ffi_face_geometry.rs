@@ -9,6 +9,72 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// Output has three writable disjoint Rects. On failure output is unchanged.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_merged_edge_views(
+    spec: HeadMaskSpec,
+    anchor: crate::face_head_topology::MergedEdgeAnchor,
+    output: *mut Rect,
+) -> i32 {
+    if output.is_null() {
+        return REGION_INVALID;
+    }
+    let Some(views) = crate::face_head_topology::merged_edge_views(spec, anchor) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies three writable disjoint Rects.
+    unsafe { std::ptr::copy_nonoverlapping(views.as_ptr(), output, 3) };
+    REGION_OK
+}
+
+/// # Safety
+/// Four readable packed current scene-grid masks; confidence3 is readable;
+/// output is disjoint and writable. Nonzero leaves output unchanged.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_merged_edge_finish(
+    masks: *const u8,
+    len: usize,
+    spec: HeadMaskSpec,
+    anchor: crate::face_head_topology::MergedEdgeAnchor,
+    confidence3: *const f32,
+    rival: Ellipse,
+    output: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if len > 4 * 1024 * 1024
+        || output.is_null()
+        || confidence3.is_null()
+        || (spec.width as usize)
+            .checked_mul(spec.height as usize)
+            .and_then(|n| n.checked_mul(4))
+            != Some(len)
+        || len == 0
+    {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies live readable masks and three confidences.
+    let (Some(masks), Some(conf)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(confidence3, 3),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(result) = crate::face_head_topology::merged_edge_finish(
+        masks,
+        spec,
+        anchor,
+        [conf[0], conf[1], conf[2]],
+        rival,
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies one disjoint writable output.
+    unsafe { output.write(result) };
+    REGION_OK
+}
+
+/// # Safety
 /// Readable packed current pair masks; disjoint writable output. Nonzero
 /// leaves output unchanged. Current geometry only, no observation lease.
 #[unsafe(no_mangle)]

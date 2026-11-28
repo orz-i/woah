@@ -388,6 +388,15 @@ int32_t frame_kernel_head_sticker(const uint8_t *pixels,size_t len,FrameKernelHe
    Visible top-edge cap square and exclusive fresh top-edge detector ownership. */
 int32_t frame_kernel_face_pair_edge_sticker(const uint8_t *masks,size_t len,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelHeadSticker *output);
 int32_t frame_kernel_face_pair_owned(const uint8_t *masks,size_t len,uint32_t index,FrameKernelHeadMaskSpec spec,const float *row18,FrameKernelRect view,float size);
+/* Experimental one-merged-instance current-only local edge cap. History is a
+   bounded locator, never output coverage. Views are two target crops then one rival crop. */
+typedef struct FrameKernelMergedEdgeAnchor {
+    FrameKernelRect cap,rival_body;
+    FrameKernelEllipse rival_face;
+    int64_t cap_age_us,rival_age_us;
+} FrameKernelMergedEdgeAnchor;
+int32_t frame_kernel_face_merged_edge_views(FrameKernelHeadMaskSpec spec,FrameKernelMergedEdgeAnchor anchor,FrameKernelRect *output3);
+int32_t frame_kernel_face_merged_edge_finish(const uint8_t *masks,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelMergedEdgeAnchor anchor,const float *confidence3,FrameKernelEllipse rival,FrameKernelHeadSticker *output);
 /* Current-mask ellipse from connected head rows (not the square API).
    kind=0 direct, 1 projected, 2 estimated; only current owned masks.
    Ambiguity retains conservative support; no identity or lease update. */

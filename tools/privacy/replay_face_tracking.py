@@ -18,7 +18,7 @@ from PIL import Image
 
 from replay_face_geometry import (
     ROOT, F, U, S, P, Rect, Ellipse, Transform, MaskSpec, Measurement, State,
-    RenderState, Head, check, detect_instances, detect_face, iou, load, model,
+    RenderState, Head, Detection, check, detect_instances, detect_face, iou, load, model,
     ptr, struct, vals,
 )
 
@@ -41,8 +41,18 @@ Garment = struct("Garment", [("rgb",F*512),("chroma",F*512),("samples",U)])
 ReappearanceCandidate = struct("ReappearanceCandidate", [("garment",Garment),("body",Rect),("face",Ellipse),("eligible",U)])
 ReappearanceDecision = struct("ReappearanceDecision", [("index",U),("similarity",F),("rival_root",F),("rival_current",F)])
 
+MergedEdgeAnchor = struct("MergedEdgeAnchor", [("cap",Rect),("rival_body",Rect),("rival_face",Ellipse),("cap_age_us",I64),("rival_age_us",I64)])
+
 
 def pixel_bind(lib):
+    if hasattr(lib,"frame_kernel_face_merged_edge_views"):
+        for name,args in [("merged_edge_views",[MaskSpec,MergedEdgeAnchor,P]),("merged_edge_finish",[P,S,MaskSpec,MergedEdgeAnchor,P,Ellipse,P])]:
+            fn=getattr(lib,"frame_kernel_face_"+name)
+            fn.argtypes,fn.restype=args,C.c_int32
+            setattr(lib,name,fn)
+        fn=lib.frame_kernel_reproject_mask
+        fn.argtypes,fn.restype=[P,S,Transform,Transform,Rect,P,S],C.c_int32
+        lib.reproject_mask=fn
     if hasattr(lib,"frame_kernel_face_pair_edge_sticker"):
         for name,args in [("pair_edge_sticker",[P,S,U,MaskSpec,P]),("pair_owned",[P,S,U,MaskSpec,P,Rect,F])]:
             fn=getattr(lib,"frame_kernel_face_"+name)
@@ -370,6 +380,70 @@ def reappear_current(lib,face,evidence,entry,report,snapshot,track,trusted,targe
     return measured,required,placement,None
 
 
+def merged_edge_current(lib,yolo,face,history,snapshot,track,entry,spec,target,roots,row,drops):
+    """Only a current single merged mask, retained occluded rival, and two
+    previously observed distinct identities qualify. History plans crops,
+    never supplies coverage. All actual inference is on current source pixels
+    except the one explicitly frozen rival anchor observation."""
+    frame,image,transform,ds,masks=entry
+    if len(roots or ())!=2 or len(snapshot["tracks"])!=2 or len(ds)!=1 or not track["observed"] or track["mask"] is None:
+        return None
+    if ds[0].confidence<.50 or vals(ds[0].box)!=vals(track["bounds"]) or not np.array_equal(masks[0],track["mask"]):
+        return None
+    rival=next(t for t in snapshot["tracks"] if t["id"]!=target)
+    if rival["id"] not in roots or target not in roots or rival["observed"] or rival["dormant"] or rival["state"] not in (2,3):
+        return None
+    now=frame["time_us"]
+    prior_cap=None
+    prior_rival=None
+    for prev,matches,cap in reversed(history):
+        old=prev[0]
+        age=now-old["time_us"]
+        if age>150_000: break
+        if age<=0 or set(matches)!=set(roots): continue
+        if prior_cap is None and cap is not None:
+            prior_cap=(Rect(*cap),age,old["index"])
+        if prior_rival is None and old["index"] not in drops:
+            prior_rival=(prev,matches[rival["id"]],age,old["index"])
+        if prior_cap and prior_rival: break
+    if prior_cap is None or prior_rival is None: return None
+    prev,j,rival_age,rival_index=prior_rival
+    prev_spec=MaskSpec(160,160,prev[2],prev[3][j].box)
+    prior_face=detect_face(lib,face,prev[1],prev_spec,prev[4][j],pair=(prev[4],j))
+    attempt=dict(prior_cap_index=prior_cap[2],prior_rival_index=rival_index,anchor_face_calls=1,segmentation_calls=0,current_face_calls=0)
+    row["merged_edge_attempt"]=attempt
+    if prior_face is None: return None
+    a=MergedEdgeAnchor(prior_cap[0],prev_spec.person,prior_face,prior_cap[1],rival_age)
+    views=(Rect*3)()
+    status=lib.merged_edge_views(spec,a,views)
+    attempt["plan_status"]=status
+    if status<0: raise RuntimeError("invalid merged edge view plan")
+    if status!=0: return None
+    attempt["views"]=[vals(v) for v in views]
+    planes=[masks[0]];confidence=[]
+    for v in views:
+        crop=image.crop(tuple(int(x) for x in vals(v)))
+        local,ds2,ms2=detect_instances(lib,yolo,crop)
+        attempt["segmentation_calls"]+=1
+        if len(ds2)!=1 or ds2[0].confidence<.50:
+            attempt["local_instances"]=len(ds2)
+            return None
+        mapped=np.zeros((160,160),np.uint8)
+        check(lib.reproject_mask(ptr(ms2[0]),ms2[0].size,local,transform,v,ptr(mapped),mapped.size))
+        planes.append(mapped);confidence.append(ds2[0].confidence)
+    attempt["local_confidence"]=confidence
+    current=detect_face(lib,face,image,MaskSpec(160,160,transform,a.rival_body),planes[3])
+    attempt["current_face_calls"]=1
+    if current is None:return None
+    attempt["current_rival_face"]=vals(current)
+    packed=np.ascontiguousarray(np.stack(planes));conf=np.asarray(confidence,np.float32)
+    output=HeadSticker()
+    status=lib.merged_edge_finish(ptr(packed),packed.size,spec,a,ptr(conf),current,C.byref(output))
+    attempt["finish_status"]=status
+    if status<0:raise RuntimeError("invalid merged edge finish evidence")
+    return output if status==0 else None
+
+
 def summarize(rows):
     usable = [r for r in rows if r["render"] is not None]
     sample = [r for r in usable if r["index"] % 3 == 0 or r["index"] == rows[-1]["index"]]
@@ -400,18 +474,21 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False):
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None):
     tracking = Tracking(lib,target,protected_roots,pair_continuity)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
     sticker_seed = None
     recovery_previous = None
     reappearance_cache = {}
+    merged_history = []
     first_head = None
     report = []
     try:
         for frame, image, transform, detections, masks in evidence:
             time, index = frame["time_us"], frame["index"]
+            if merged_edge_yolo is not None:
+                merged_history=[q for q in merged_history if 0<time-q[0][0]["time_us"]<=150_000]
             prior_recovery = recovery_previous
             recovery_previous = None  # no history across any other lane, rejected frame, or gap
             snapshot = tracking.step(transform,detections,masks,time,index==0)
@@ -430,6 +507,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
                 sticker_seed = None
                 reappearance_cache.clear()
+                merged_history.clear()
                 continue
             row["track"] = next(t for t in row["tracks"] if t["id"]==target)
             if "person_bbox" in frame:
@@ -552,6 +630,20 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 sticker=edge.square
                 row["pair_edge_compact"]=True
                 row["pair_edge_bounds"]=vals(edge.bounds)
+            if merged_edge_yolo is not None and kind in (1,2) and index not in drops:
+                merged=merged_edge_current(lib,merged_edge_yolo,face,merged_history,snapshot,track,evidence[index],spec,target,protected_roots,row,drops)
+                if merged is not None:
+                    sticker=merged.square
+                    row["merged_edge_bounds"]=vals(merged.bounds)
+            if merged_edge_yolo is not None and len(protected_roots or ())==2 and len(snapshot["tracks"])==2 and len(detections)==2:
+                exact={}
+                for person in snapshot["tracks"]:
+                    if not person["observed"] or person["dormant"] or person["mask"] is None: break
+                    indices=[j for j,d in enumerate(detections) if vals(d.box)==vals(person["bounds"]) and np.array_equal(masks[j],person["mask"])]
+                    if len(indices)!=1: break
+                    exact[person["id"]]=indices[0]
+                if set(exact)==set(protected_roots) and len(set(exact.values()))==2:
+                    merged_history.append((evidence[index],exact,row.get("pair_edge_bounds")))
             if kind==0 and hasattr(lib,"pixel_motion"):
                 gray,view=gray_view(image)
                 pixel_seed=(gray,view,raw,render,time)
@@ -589,21 +681,34 @@ def main():
     parser.add_argument("--multiperson-recovery",action="store_true",help="Opt in to candidate-only local recovery experiments")
     parser.add_argument("--pair-continuity",action="store_true",help="Candidate-only experimental two-person raw-mask association")
     parser.add_argument("--pair-head",action="store_true",help="Candidate-only current pair face ownership and edge cap experiment")
+    parser.add_argument("--inject-pair-merge",default="",help="Host diagnostic only: union exactly two current raw masks/boxes at these frame indices for BOTH comparison arms")
+    parser.add_argument("--merged-edge",action="store_true",help="Candidate-only bounded current local resegmentation for a merged edge head")
     parser.add_argument("--same-base-policy",action="store_true",help="Apply enabled association and recovery flags to baseline too")
     parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args()
+    if args.merged_edge and not (args.pair_head and args.pair_continuity and args.same_base_policy):
+        parser.error("--merged-edge requires --pair-head --pair-continuity --same-base-policy for a paired M3 comparison")
     base, candidate=load(args.baseline),load(args.candidate)
     yolo=model(ROOT/"models/litert/yolo11n-seg-fp16.tflite")
     face=model(ROOT/"testdata/models/face/blaze_face_full_range.tflite")
     fixture=json.loads(args.fixture.read_text())
     fps=fixture.get("fps",fixture.get("source_fps",30))
     evidence=[]
+    injected_merges={int(v) for v in args.inject_pair_merge.split(",") if v}
+    if 0 in injected_merges or injected_merges-set(range(len(fixture["frames"]))):
+        parser.error("merge injection indices must be noninitial fixture frames")
     for i,f in enumerate(fixture["frames"]):
         path=args.fixture.parent/f["asset"]
         if hashlib.sha256(path.read_bytes()).hexdigest()!=f["sha256"]:
             raise ValueError(f"Fixture hash mismatch: {path}")
         image=Image.open(path).convert("RGB")
         transform,detections,masks=detect_instances(base,yolo,image)
+        if i in injected_merges:
+            if len(detections)!=2:
+                parser.error(f"injected merge requires exactly two raw detections at {i}")
+            a,b=(d.box for d in detections)
+            detections=[Detection(Rect(min(a.left,b.left),min(a.top,b.top),max(a.right,b.right),max(a.bottom,b.bottom)),max(d.confidence for d in detections))]
+            masks=np.maximum(masks[0],masks[1])[None,:,:]
         evidence.append((dict(f,index=i,time_us=round(i*1e6/fps)),image,transform,detections,masks))
     drops={int(v) for v in args.drop_faces.split(",") if v}
     if drops-set(range(len(evidence))):
@@ -619,7 +724,7 @@ def main():
             "experimental_cover_fallback":args.cover_fallback_experiment,
             "multiperson_recovery":args.multiperson_recovery,
             "pair_continuity":args.pair_continuity,
-            "pair_head":args.pair_head, "same_base_policy":args.same_base_policy,
+            "pair_head":args.pair_head, "merged_edge":args.merged_edge, "same_base_policy":args.same_base_policy, "injected_pair_merges":sorted(injected_merges),
             "model_sha256": {name:hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
                              for name,path in [("person","models/litert/yolo11n-seg-fp16.tflite"),("face","testdata/models/face/blaze_face_full_range.tflite")]}}
     libs=[("baseline",base)]
@@ -627,7 +732,7 @@ def main():
         libs.append(("size_only",load(args.size_only)))
     libs.append(("candidate",candidate))
     for name,lib in libs:
-        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and name=="candidate")
+        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and (name=="candidate" or args.merged_edge),merged_edge_yolo=yolo if args.merged_edge and name=="candidate" else None)
         print(name,json.dumps(report[name]["summary"]),flush=True)
     for name in [n for n,_ in libs if n!="baseline"]:
         if args.pair_continuity and not args.same_base_policy and name=="candidate":
