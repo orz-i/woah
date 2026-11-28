@@ -424,6 +424,10 @@ int32_t frame_kernel_face_reappearance_choose(FrameKernelRect root_body,FrameKer
     const FrameKernelFaceReappearanceCandidate *current,size_t count,FrameKernelFaceReappearanceDecision *output);
 int32_t frame_kernel_face_reappearance_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
     FrameKernelEllipse face,FrameKernelHeadSticker *output);
+/* Experimental current crowded direct face validation. 0 success, 1 no retry/rejected/no conflict respectively, -1 invalid. */
+int32_t frame_kernel_crowded_face_views(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,float *output12);
+int32_t frame_kernel_crowded_face_accept(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,const FrameKernelEllipse *local2);
+int32_t frame_kernel_crowded_weak_conflict(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse estimate,int64_t age);
 /* Coverage-only duplicate-proposal recovery. Does not mutate identity or
    raw observations. Fresh local face and frozen garment decision required. */
 typedef struct FrameKernelDuplicateProposal { FrameKernelRect body; FrameKernelEllipse face; float confidence; uint32_t foreign; } FrameKernelDuplicateProposal;

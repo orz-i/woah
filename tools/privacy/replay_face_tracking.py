@@ -47,6 +47,11 @@ DuplicateProposal = struct("DuplicateProposal", [("body",Rect),("face",Ellipse),
 
 
 def pixel_bind(lib):
+    if hasattr(lib,"frame_kernel_crowded_face_views"):
+        for name,args in [("crowded_face_views",[P,S,S,U,MaskSpec,Ellipse,P]),("crowded_face_accept",[P,S,S,U,MaskSpec,Ellipse,P]),("crowded_weak_conflict",[P,S,S,U,MaskSpec,Ellipse,I64])]:
+            fn=getattr(lib,"frame_kernel_"+name)
+            fn.argtypes,fn.restype=args,C.c_int32
+            setattr(lib,name,fn)
     if hasattr(lib,"frame_kernel_face_duplicate_pair"):
         for name,args in [("duplicate_probe",[P,S,MaskSpec,P,S]),("duplicate_pair",[P,S,MaskSpec,P,S,P,P,S]),("duplicate_plan",[Ellipse,Transform,P]),("duplicate_sticker",[P,S,MaskSpec,P,S,U,U,Ellipse,P])]:
             fn=getattr(lib,"frame_kernel_face_"+name)
@@ -572,7 +577,7 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None, crowded_recovery=False):
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None, crowded_recovery=False, crowded_consensus=False):
     tracking = Tracking(lib,target,protected_roots,pair_continuity)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
@@ -581,6 +586,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
     reappearance_cache = {}
     merged_history = []
     duplicate_cache = {}
+    rejected_direct_at = None
     first_head = None
     report = []
     try:
@@ -608,6 +614,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 reappearance_cache.clear()
                 merged_history.clear()
                 duplicate_cache.clear()
+                rejected_direct_at = None
                 continue
             row["track"] = next(t for t in row["tracks"] if t["id"]==target)
             if "person_bbox" in frame:
@@ -631,7 +638,25 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                     if status<0: raise RuntimeError("invalid edge head evidence")
                     if status!=0: edge=None
             direct = detect_face(lib,face,image,spec,mask,pair=pair) if track["observed"] and mask is not None and index not in drops else None
+            crowded_index=None
+            if crowded_consensus and mask is not None and 3<=len(detections)<=32 and len(protected_roots or ())>=3:
+                matches=[j for j,d in enumerate(detections) if vals(d.box)==vals(spec.person) and np.array_equal(masks[j],mask)]
+                if len(matches)==1:crowded_index=matches[0]
+            if direct is not None and crowded_index is not None:
+                plans=np.empty((2,6),np.float32)
+                status=lib.crowded_face_views(ptr(masks),masks.size,len(detections),crowded_index,spec,direct,ptr(plans))
+                if status<0:raise RuntimeError("invalid crowded face evidence")
+                if status==0:
+                    local=[detect_face(lib,face,image,spec,mask,explicit_plan=plan) for plan in plans]
+                    packed=(Ellipse*2)(*(f or Ellipse() for f in local))
+                    status=lib.crowded_face_accept(ptr(masks),masks.size,len(detections),crowded_index,spec,direct,packed)
+                    if status<0:raise RuntimeError("invalid crowded face corroboration")
+                    row["crowded_face_consensus"]={"primary":vals(direct),"local":[vals(f) if f is not None else None for f in local],"accepted":status==0}
+                    if status!=0:
+                        direct=None
+                        rejected_direct_at=time
             if direct is not None:
+                rejected_direct_at=None
                 raw, kind = direct, 0
                 trusted = (spec.person, raw, time)
             elif trusted is not None and 0 <= time-trusted[2] <= 150_000:
@@ -665,6 +690,12 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 fallback = Head()
                 check(lib.current_head_region(ptr(mask),mask.size,spec,None,C.byref(fallback)))
                 raw,kind=fallback.region,2
+                if crowded_index is not None and rejected_direct_at is not None and 0<=time-rejected_direct_at<=150_000:
+                    status=lib.crowded_weak_conflict(ptr(masks),masks.size,len(detections),crowded_index,spec,raw,time-rejected_direct_at)
+                    if status<0:raise RuntimeError("invalid crowded weak evidence")
+                    if status==0:
+                        row["crowded_unresolved_weak"]={"estimate":vals(raw),"age_us":time-rejected_direct_at}
+                        continue  # no new trusted observation or false weak head; unresolved visibility
             else:
                 recovery=recover_current(lib,face,image,transform,detections,masks,snapshot,track,trusted,time,target,row,prior_recovery) if multiperson_recovery and index not in drops else None
                 coverage_kind=3
@@ -787,6 +818,7 @@ def main():
     parser.add_argument("--inject-pair-merge",default="",help="Host diagnostic only: union exactly two current raw masks/boxes at these frame indices for BOTH comparison arms")
     parser.add_argument("--merged-edge",action="store_true",help="Candidate-only bounded current local resegmentation for a merged edge head")
     parser.add_argument("--crowded-recovery",action="store_true",help="Candidate-only duplicate current proposal recovery using verified historical garment roots")
+    parser.add_argument("--crowded-consensus",action="store_true",help="Candidate-only contested direct face corroboration and weak head conflict check")
     parser.add_argument("--same-base-policy",action="store_true",help="Apply enabled association and recovery flags to baseline too")
     parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args()
@@ -794,6 +826,8 @@ def main():
         parser.error("--merged-edge requires --pair-head --pair-continuity --same-base-policy for a paired M3 comparison")
     if args.crowded_recovery and not (args.merged_edge and args.multiperson_recovery):
         parser.error("--crowded-recovery requires --merged-edge and --multiperson-recovery for paired M3.1 comparison")
+    if args.crowded_consensus and not args.crowded_recovery:
+        parser.error("--crowded-consensus requires --crowded-recovery for paired M3.2 comparison")
     base, candidate=load(args.baseline),load(args.candidate)
     yolo=model(ROOT/"models/litert/yolo11n-seg-fp16.tflite")
     face=model(ROOT/"testdata/models/face/blaze_face_full_range.tflite")
@@ -830,7 +864,7 @@ def main():
             "experimental_cover_fallback":args.cover_fallback_experiment,
             "multiperson_recovery":args.multiperson_recovery,
             "pair_continuity":args.pair_continuity,
-            "pair_head":args.pair_head, "merged_edge":args.merged_edge, "crowded_recovery":args.crowded_recovery, "same_base_policy":args.same_base_policy, "injected_pair_merges":sorted(injected_merges),
+            "pair_head":args.pair_head, "merged_edge":args.merged_edge, "crowded_recovery":args.crowded_recovery, "crowded_consensus":args.crowded_consensus, "same_base_policy":args.same_base_policy, "injected_pair_merges":sorted(injected_merges),
             "model_sha256": {name:hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
                              for name,path in [("person","models/litert/yolo11n-seg-fp16.tflite"),("face","testdata/models/face/blaze_face_full_range.tflite")]}}
     libs=[("baseline",base)]
@@ -838,7 +872,7 @@ def main():
         libs.append(("size_only",load(args.size_only)))
     libs.append(("candidate",candidate))
     for name,lib in libs:
-        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and (name=="candidate" or args.merged_edge),merged_edge_yolo=yolo if args.merged_edge and (name=="candidate" or args.crowded_recovery) else None,crowded_recovery=args.crowded_recovery and name=="candidate")
+        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and (name=="candidate" or args.merged_edge),merged_edge_yolo=yolo if args.merged_edge and (name=="candidate" or args.crowded_recovery) else None,crowded_recovery=args.crowded_recovery and (name=="candidate" or args.crowded_consensus),crowded_consensus=args.crowded_consensus and name=="candidate")
         print(name,json.dumps(report[name]["summary"]),flush=True)
     for name in [n for n,_ in libs if n!="baseline"]:
         if args.pair_continuity and not args.same_base_policy and name=="candidate":

@@ -9,6 +9,108 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// Readable packed raw masks and twelve writable disjoint floats. 0 means
+/// two current retry plans, 1 means no retry, -1 invalid transport.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_crowded_face_views(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    face: Ellipse,
+    out: *mut f32,
+) -> i32 {
+    if len > 32 * 1024 * 1024 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: bounded readable mask pool is supplied by the caller.
+    let Some(masks) = (unsafe { crate::ffi_tracking::borrowed(masks, len) }) else {
+        return REGION_INVALID;
+    };
+    match crate::face_observations::crowded_face_views(masks, count, index as usize, spec, face) {
+        Some(Some(views)) => {
+            // SAFETY: caller provides twelve disjoint writable floats.
+            unsafe { std::ptr::copy_nonoverlapping(views.as_ptr().cast::<f32>(), out, 12) };
+            REGION_OK
+        }
+        Some(None) => REGION_NONE,
+        None => REGION_INVALID,
+    }
+}
+/// # Safety
+/// Readable packed masks and two local detector ellipses (zero means miss).
+/// 0 accepted, 1 disputed/unconfirmed, -1 invalid.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_crowded_face_accept(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    face: Ellipse,
+    local: *const Ellipse,
+) -> i32 {
+    if len > 32 * 1024 * 1024 || local.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable mask pool and two ellipses.
+    let (Some(masks), Some(local)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(local, 2),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    match crate::face_observations::crowded_face_accept(
+        masks,
+        count,
+        index as usize,
+        spec,
+        face,
+        [local[0], local[1]],
+    ) {
+        Some(true) => REGION_OK,
+        Some(false) => REGION_NONE,
+        None => REGION_INVALID,
+    }
+}
+/// # Safety
+/// Readable packed masks. 0 means weak estimate has conflicting current
+/// evidence, 1 no conflict, -1 invalid.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_crowded_weak_conflict(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    estimate: Ellipse,
+    age: i64,
+) -> i32 {
+    if len > 32 * 1024 * 1024 {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable mask pool.
+    let Some(masks) = (unsafe { crate::ffi_tracking::borrowed(masks, len) }) else {
+        return REGION_INVALID;
+    };
+    match crate::face_observations::crowded_weak_conflict(
+        masks,
+        count,
+        index as usize,
+        spec,
+        estimate,
+        age,
+    ) {
+        Some(true) => REGION_OK,
+        Some(false) => REGION_NONE,
+        None => REGION_INVALID,
+    }
+}
+
+/// # Safety
 /// Readable raw masks and proposal rows. Return 0 for possible geometry,
 /// 1 for none, -1 invalid; never writes or requires face measurements.
 #[unsafe(no_mangle)]
