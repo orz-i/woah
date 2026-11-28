@@ -211,8 +211,6 @@ pub struct Tracker {
     pub next_id: i64,
     pub initialized: bool,
     pub offscreen_dormancy: bool,
-    pub(crate) privacy_pair_continuity: bool,
-    pub(crate) crowd_clothing: Option<crate::appearance::CrowdClothing>,
 }
 impl Tracker {
     pub fn new(config: TrackingConfig) -> Self {
@@ -232,8 +230,6 @@ impl Tracker {
             next_id: 0,
             initialized: false,
             offscreen_dormancy: false,
-            privacy_pair_continuity: false,
-            crowd_clothing: None,
         }
     }
     pub fn selection_class(&self, id: i64) -> SelectionClass {

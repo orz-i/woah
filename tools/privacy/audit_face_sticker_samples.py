@@ -38,25 +38,17 @@ def audit(replay, fixture, labels, fixture_path):
             xx, yy = np.meshgrid(np.arange(l, r)+.5, np.arange(top, bottom)+.5)
             covered = 0.0
             torso = False
-            neighbors = [0.0 for _ in label.get("neighbor_rects", [])]
             if row["render"] is not None:
                 x, y, rx, ry = row.get("sticker", row["render"])
                 half = max(8, 1.02*max(rx, ry))
                 covered = float(np.mean((np.abs(xx-x)<=half)&(np.abs(yy-y)<=half)))
                 tx, ty = label["torso_probe"]
                 torso = max(abs(tx-x), abs(ty-y)) <= half
-                for j,(nl,nt,nr,nb) in enumerate(label.get("neighbor_rects",[])):
-                    nx,ny=np.meshgrid(np.arange(nl,nr)+.5,np.arange(nt,nb)+.5)
-                    neighbors[j]=float(np.mean((np.abs(nx-x)<=half)&(np.abs(ny-y)<=half)))
-            rows.append(dict(index=i, head_coverage=covered, torso_probe_covered=torso,
-                             neighbor_rect_overlaps=neighbors))
+            rows.append(dict(index=i, head_coverage=covered, torso_probe_covered=torso))
         result[name] = dict(samples=len(rows),
             full_head_envelopes=sum(r["head_coverage"]==1 for r in rows),
             min_head_coverage=min(r["head_coverage"] for r in rows),
-            torso_probes_covered=sum(r["torso_probe_covered"] for r in rows),
-            neighbor_rects_checked=sum(len(r["neighbor_rect_overlaps"]) for r in rows),
-            max_neighbor_rect_overlap=max((v for r in rows for v in r["neighbor_rect_overlaps"]),default=None),
-            rows=rows)
+            torso_probes_covered=sum(r["torso_probe_covered"] for r in rows), rows=rows)
     return result
 
 

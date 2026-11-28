@@ -125,17 +125,13 @@ def detect_instances(lib, yolo, image):
     return transform, [detections[i] for i in range(count)], masks[:count].copy()
 
 
-def detect_face(lib, face, image, spec, mask, pair=None, explicit_plan=None, rgba=None):
+def detect_face(lib, face, image, spec, mask):
     person = spec.person
     w, h = image.size
     plan = np.empty(6, np.float32)
-    if explicit_plan is None:
-        check(lib.face_head_plan(person, w, h, ptr(plan)))
-    else:
-        plan=explicit_plan
+    check(lib.face_head_plan(person, w, h, ptr(plan)))
     view = Rect(*plan[:4])
-    source = image.convert("RGBA") if rgba is None else rgba
-    crop = np.asarray(source.transform((256,256), Image.Transform.EXTENT, tuple(plan[:4]), Image.Resampling.BILINEAR))
+    crop = np.asarray(image.convert("RGBA").transform((256,256), Image.Transform.EXTENT, tuple(plan[:4]), Image.Resampling.BILINEAR))
     face_in = np.empty((1,192,192,3), np.float32)
     check(lib.grid_face_input(ptr(crop),crop.nbytes,256,256,1024,ptr(face_in),face_in.size))
     boxes, scores = infer(face, face_in)
@@ -149,13 +145,6 @@ def detect_face(lib, face, image, spec, mask, pair=None, explicit_plan=None, rgb
         yes = U()
         check(lib.current_face_owned(ptr(mask) if mask is not None else None,mask.size if mask is not None else 0,spec,ptr(raw),C.byref(view),256,0,C.byref(yes)))
         if yes.value:
-            if pair is not None:
-                all_masks, index = pair
-                status=lib.pair_owned(ptr(all_masks),all_masks.size,index,spec,ptr(raw),view,256)
-                if status<0:
-                    raise RuntimeError("invalid pair ownership evidence")
-                if status!=0:
-                    continue
             owned.append(raw)
     measurement = None
     if owned:

@@ -168,14 +168,6 @@ impl AssociationCache {
     ) -> Option<f32> {
         let track = &tracker.tracks[track_index];
         let detection = &detections[index];
-        if tracker.protected_ids.contains(&track.id)
-            && tracker
-                .crowd_clothing
-                .as_ref()
-                .is_some_and(|c| !c.allowed(track, detection, index, timestamp_us))
-        {
-            return Some(0.0);
-        }
         let phase = match track.state {
             TrackState::Active => 0,
             TrackState::Occluded => 1,

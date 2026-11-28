@@ -226,27 +226,6 @@ typedef struct FrameKernelTrackingObservation {
  uint32_t mask_width, mask_height;
  FrameKernelTransform transform;
 } FrameKernelTrackingObservation;
-/* Stateless host research descriptors and reciprocal rank. No tracker writes.
-   Clothing vectors: count*2048 floats. Score -2 = missing. Rank index UINT32_MAX = none. */
-typedef struct FrameKernelResearchRank { uint32_t index; float score,row_margin,column_margin; uint32_t accepted; } FrameKernelResearchRank;
-/* Research pose-conditioned parts. 51 floats/observation (17 x,y,confidence);
-   2048 output floats, 24576 output RGB bytes, 2 support counts per observation. */
-int32_t frame_kernel_research_pose_parts(const FrameKernelTrackingObservation *obs,size_t count,const uint8_t *pixels,size_t len,const uint8_t *rgb,size_t rgb_len,FrameKernelTransform transform,const float *points,size_t point_len,float *vectors,size_t vector_len,uint8_t *patches,size_t patch_len,uint32_t *support,size_t support_len);
-int32_t frame_kernel_research_clothing_vectors(const FrameKernelTrackingObservation *obs,size_t count,const uint8_t *pixels,size_t len,const uint8_t *rgb,size_t rgb_len,FrameKernelTransform transform,float *out,size_t out_len);
-int32_t frame_kernel_research_similarity(const float *a,size_t a_len,const float *b,size_t b_len,size_t rows,size_t cols,size_t dim,size_t blocks,float *output);
-int32_t frame_kernel_research_rank(const float *scores,size_t len,size_t rows,size_t cols,float minimum,float margin,FrameKernelResearchRank *output);
-/* Research-only consecutive dual-cue consensus. Node flags: pooled=1,
-   unpooled=2, conflict=4; UINT32_MAX endpoints are unavailable. */
-typedef struct FrameKernelResearchTrackletNode {uint32_t previous,next,flags;} FrameKernelResearchTrackletNode;
-int32_t frame_kernel_research_tracklet_consensus(const uint32_t *counts,const int64_t *times,size_t frame_count,const FrameKernelResearchTrackletNode *nodes,size_t node_count,uint32_t *out);
-/* Anonymous raw three-frame paths for model evaluation. Output: two endpoint
-   indices per middle raw proposal, UINT32_MAX for no reciprocal triplet. */
-int32_t frame_kernel_research_triplet_paths(const FrameKernelTrackingObservation *obs,size_t count,const uint8_t *pixels,size_t len,const uint32_t *counts,const int64_t *times,uint32_t *out,size_t out_len);
-/* Offline-only bounded reciprocal raw instance proof. 0 writes frame_count
-   indices, 1 no evidence, -1 invalid. No identity session is changed. */
-int32_t frame_kernel_offline_tracklet_window(const FrameKernelTrackingObservation *observations,size_t count,const uint8_t *pixels,size_t len,const uint32_t *counts,const int64_t *times,size_t frame_count,uint32_t left,uint32_t right,uint32_t *out);
-/* Weak full-body path; one 1024-float upper clothing descriptor per observation. */
-int32_t frame_kernel_offline_part_window(const FrameKernelTrackingObservation *observations,size_t count,const uint8_t *pixels,size_t len,const uint32_t *counts,const int64_t *times,size_t frame_count,uint32_t left,uint32_t right,const float *upper,size_t upper_len,uint32_t *out);
 typedef struct FrameKernelReplayPlan {
  uint32_t required, reset;
  int64_t start_us, step_us;
@@ -278,12 +257,6 @@ int32_t frame_kernel_class_update(uint64_t id, const FrameKernelTrackingObservat
     const uint8_t *pixels, size_t pixels_len, const FrameKernelClassRoot *roots, size_t roots_len,
     FrameKernelClassDecision *output, size_t capacity, uint32_t *evaluations);
 uint64_t frame_kernel_tracking_create(FrameKernelTrackingOptions options);
-/* Experimental, default off. Must be called before initialization. */
-/* Experimental host current RGB clothing evidence; no face descriptors.
-   Actions 0/1 immutable, 4/5 adaptive, 6/7 adaptive with pixel-merge evidence, 8/9 with part-supported short continuity. */
-int32_t frame_kernel_tracking_clothing_step(uint64_t id,uint32_t action,int64_t at,const FrameKernelTrackingObservation *observations,size_t count,const uint8_t *pixels,size_t pixels_len,const uint8_t *rgb,size_t rgb_len,FrameKernelTransform transform);
-int64_t frame_kernel_tracking_motion_merges(uint64_t session,int64_t *output,size_t capacity);
-int32_t frame_kernel_tracking_pair_continuity(uint64_t id,uint32_t enabled);
 int32_t frame_kernel_tracking_destroy(uint64_t session);
 /* After initialization, reserve IDs below the analysis namespace floor. */
 int32_t frame_kernel_tracking_reserve_id_floor(uint64_t session, int64_t minimum_next_id);
@@ -409,19 +382,6 @@ typedef struct FrameKernelHeadSticker {
 } FrameKernelHeadSticker;
 int32_t frame_kernel_head_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
     FrameKernelEllipse measured,FrameKernelEllipse stabilized,uint32_t kind,FrameKernelHeadSticker *output);
-/* Experimental complete current pair; both raw masks packed in detection order.
-   Visible top-edge cap square and exclusive fresh top-edge detector ownership. */
-int32_t frame_kernel_face_pair_edge_sticker(const uint8_t *masks,size_t len,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelHeadSticker *output);
-int32_t frame_kernel_face_pair_owned(const uint8_t *masks,size_t len,uint32_t index,FrameKernelHeadMaskSpec spec,const float *row18,FrameKernelRect view,float size);
-/* Experimental one-merged-instance current-only local edge cap. History is a
-   bounded locator, never output coverage. Views are two target crops then one rival crop. */
-typedef struct FrameKernelMergedEdgeAnchor {
-    FrameKernelRect cap,rival_body;
-    FrameKernelEllipse rival_face;
-    int64_t cap_age_us,rival_age_us;
-} FrameKernelMergedEdgeAnchor;
-int32_t frame_kernel_face_merged_edge_views(FrameKernelHeadMaskSpec spec,FrameKernelMergedEdgeAnchor anchor,FrameKernelRect *output3);
-int32_t frame_kernel_face_merged_edge_finish(const uint8_t *masks,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelMergedEdgeAnchor anchor,const float *confidence3,FrameKernelEllipse rival,FrameKernelHeadSticker *output);
 /* Current-mask ellipse from connected head rows (not the square API).
    kind=0 direct, 1 projected, 2 estimated; only current owned masks.
    Ambiguity retains conservative support; no identity or lease update. */
@@ -431,94 +391,6 @@ int32_t frame_kernel_head_ellipse(const uint8_t *pixels,size_t len,FrameKernelHe
    local face only with a qualified head cap and a primary center below it. */
 int32_t frame_kernel_head_prefer_local(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
     FrameKernelEllipse primary,FrameKernelEllipse local,uint32_t *output);
-/* Experimental garment-only reappearance evidence, never a canonical
-   identity assignment or exemption. RGB top-down tightly packed; all raw
-   masks contiguous and same transform. Face region is only used to locate
-   a garment band below it; face pixels are not sampled. */
-typedef struct FrameKernelFaceGarment { float rgb[512],chroma[512];uint32_t samples; } FrameKernelFaceGarment;
-typedef struct FrameKernelFaceReappearanceCandidate {
-    FrameKernelFaceGarment garment; FrameKernelRect body; FrameKernelEllipse face; uint32_t eligible;
-} FrameKernelFaceReappearanceCandidate;
-typedef struct FrameKernelFaceReappearanceDecision {
-    uint32_t index;float similarity,rival_root,rival_current;
-} FrameKernelFaceReappearanceDecision;
-int32_t frame_kernel_face_garment(const uint8_t *rgb,size_t rgb_len,const uint8_t *masks,size_t mask_len,
-    size_t count,size_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,FrameKernelFaceGarment *output);
-int32_t frame_kernel_face_reappearance_choose(FrameKernelRect root_body,FrameKernelEllipse root_face,int64_t age_us,
-    const FrameKernelFaceGarment *roots,size_t root_count,const FrameKernelFaceGarment *rivals,size_t rival_count,
-    const FrameKernelFaceReappearanceCandidate *current,size_t count,FrameKernelFaceReappearanceDecision *output);
-int32_t frame_kernel_face_reappearance_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
-    FrameKernelEllipse face,FrameKernelHeadSticker *output);
-/* Research-only current complete cap; shoulders6 are x,y,confidence triples. */
-int32_t frame_kernel_research_tracklet_head(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *shoulders6,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
-/* Research-only ear-level current cap, pose12 = ears then shoulders x,y,confidence. */
-int32_t frame_kernel_research_tracklet_ear_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *pose12,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
-/* Current mapped mirrored pose corroboration; original and mapped pose12. */
-int32_t frame_kernel_research_tracklet_flip_ear_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses24,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
-/* Current anatomical head geometry; poses42 = two nose/eyes/ears/shoulders x,y,confidence arrays. */
-int32_t frame_kernel_research_anatomical_head(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,FrameKernelHeadSticker *output);
-/* Independent head instances (research, no identity embedding). */
-typedef struct FrameKernelHeadInstancePlacement { FrameKernelRect required; FrameKernelEllipse square; float rival_overlap; } FrameKernelHeadInstancePlacement;
-int32_t frame_kernel_research_decode_heads(const float *tensor,size_t len,size_t anchors,FrameKernelTransform tr,uint32_t flip,FrameKernelInstanceDetection *out,size_t capacity);
-int32_t frame_kernel_research_fuse_heads(const FrameKernelInstanceDetection *a,size_t na,const FrameKernelInstanceDetection *b,size_t nb,FrameKernelInstanceDetection *out,size_t capacity);
-int32_t frame_kernel_research_head_links(const FrameKernelInstanceDetection *a,size_t na,const FrameKernelInstanceDetection *b,size_t nb,int64_t delta,int32_t *out);
-int32_t frame_kernel_research_head_owners(const FrameKernelInstanceDetection *heads,size_t nh,const FrameKernelRect *bodies,size_t nb,const uint8_t *masks,size_t len,FrameKernelTransform tr,int32_t *out);
-int32_t frame_kernel_research_head_certified_path(const int64_t *times,const int32_t *owners,size_t n,int32_t target,uint32_t *out);
-int32_t frame_kernel_research_head_reconnect_path(const int64_t *times,const uint32_t *flags,size_t n,uint32_t *out);
-int32_t frame_kernel_research_head_arbitrate(const FrameKernelInstanceDetection *heads,size_t n,size_t index,FrameKernelTransform tr,FrameKernelEllipse previous,FrameKernelRect required_before,FrameKernelEllipse face,FrameKernelHeadInstancePlacement *out,uint32_t *mode);
-/* 0 compatible, 1 inconclusive, 2 contradictory; current evidence only. */
-int32_t frame_kernel_research_anatomical_observation(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,FrameKernelEllipse observed,FrameKernelHeadSticker *output);
-int32_t frame_kernel_research_anatomical_placement(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,const FrameKernelRect *boxes,const FrameKernelEllipse *faces,FrameKernelEllipse observed,const FrameKernelRect *extra,size_t extra_count,FrameKernelHeadSticker *output);
-/* Current mapped pose views and two fresh owned-face measurements. */
-int32_t frame_kernel_research_pose_face_views(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,float *output12);
-int32_t frame_kernel_research_pose_face_finish(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const FrameKernelEllipse *local2,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
-/* Two current body detail views, local owner and source cap consensus. */
-int32_t frame_kernel_research_tracklet_detail_views(FrameKernelHeadMaskSpec spec,FrameKernelRect *output2);
-int32_t frame_kernel_research_tracklet_detail_owner(const uint8_t *projected,size_t projected_len,const uint8_t *locals,size_t local_len,size_t scene_count,size_t local_count,uint32_t index,size_t plane,const float *confidence,uint32_t *out);
-int32_t frame_kernel_research_tracklet_detail_finish(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const FrameKernelHeadSticker *caps2,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
-/* Experimental current crowded direct face validation. 0 success, 1 no retry/rejected/no conflict respectively, -1 invalid. */
-int32_t frame_kernel_crowded_face_views(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,float *output12);
-int32_t frame_kernel_crowded_face_accept(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse face,const FrameKernelEllipse *local2);
-int32_t frame_kernel_crowded_weak_conflict(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,FrameKernelEllipse estimate,int64_t age);
-/* Coverage-only duplicate-proposal recovery. Does not mutate identity or
-   raw observations. Fresh local face and frozen garment decision required. */
-typedef struct FrameKernelDuplicateProposal { FrameKernelRect body; FrameKernelEllipse face; float confidence; uint32_t foreign; } FrameKernelDuplicateProposal;
-int32_t frame_kernel_face_duplicate_probe(const uint8_t *masks,size_t len,FrameKernelHeadMaskSpec spec,const FrameKernelDuplicateProposal *rows,size_t count);
-int32_t frame_kernel_face_duplicate_pair(const uint8_t *masks,size_t len,FrameKernelHeadMaskSpec spec,const FrameKernelDuplicateProposal *rows,size_t count,uint32_t *pair2,uint8_t *union_mask,size_t union_len);
-int32_t frame_kernel_face_duplicate_plan(FrameKernelEllipse face,FrameKernelTransform transform,float *output6);
-int32_t frame_kernel_face_duplicate_sticker(const uint8_t *masks,size_t len,FrameKernelHeadMaskSpec spec,const FrameKernelDuplicateProposal *rows,size_t count,uint32_t primary,uint32_t secondary,FrameKernelEllipse local,FrameKernelHeadSticker *output);
-/* Experimental current-frame coverage-only recovery. Root must be the last
-   canonically owned DIRECT face and body; predicted_body the retained
-   selected track's current prediction. Hard age <=800ms; never renews
-   the 150ms projection lease or grants identity/ownership/exemption.
-   Pass ALL current raw body boxes and competing retained track boxes.
-   Probe returns a unique candidate index; finish rechecks the same evidence
-   and requires a fresh detector face and ALL current raw masks concatenated
-   in the same order as bodies (one shared transform); rival support vetoes.
-   0 success, 1 no qualified evidence, -1 invalid; nonzero leaves output intact. */
-typedef struct FrameKernelFaceRecoveryAnchor {
-    FrameKernelRect root_body;
-    FrameKernelEllipse root_face;
-    FrameKernelRect predicted_body;
-    int64_t age_us;
-} FrameKernelFaceRecoveryAnchor;
-int32_t frame_kernel_face_recovery_probe(FrameKernelFaceRecoveryAnchor anchor,
-    const FrameKernelRect *bodies,size_t count,const FrameKernelRect *foreign,size_t foreign_count,uint32_t *output);
-int32_t frame_kernel_face_recovery_finish_exclusive(FrameKernelFaceRecoveryAnchor anchor,
-    const FrameKernelRect *bodies,size_t count,const FrameKernelRect *foreign,size_t foreign_count,uint32_t index,
-    const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse measured,FrameKernelHeadSticker *output);
-/* One terminal fresh-current continuation after 800ms: preceding frame must
-   have passed ROOT-ONLY recovery, gap <=150ms; never use a continuation as
-   the previous evidence. Absolute total age <=950ms; current detector and
-   current mask remain mandatory, plus pixel agreement. No lease is renewed. */
-typedef struct FrameKernelFaceRecoveryPrevious {
-    FrameKernelRect body;
-    FrameKernelEllipse face;
-    int64_t root_age_us;
-} FrameKernelFaceRecoveryPrevious;
-int32_t frame_kernel_face_recovery_continuation_probe(FrameKernelFaceRecoveryAnchor anchor,
-    FrameKernelFaceRecoveryPrevious previous,const FrameKernelRect *bodies,size_t count,
-    const FrameKernelRect *foreign,size_t foreign_count,uint32_t *output);
 /* Experimental bounded translation from a DIRECT face observation to current
    source pixels (top-down gray). The immutable seed's lease is <=150ms.
    Foreign current person boxes veto a peak, never grant ownership.
@@ -528,11 +400,6 @@ typedef struct FrameKernelGrayView {
     uint32_t width,height,stride;
     FrameKernelRect source;
 } FrameKernelGrayView;
-int32_t frame_kernel_face_recovery_continuation_finish_exclusive(FrameKernelFaceRecoveryAnchor anchor,
-    FrameKernelFaceRecoveryPrevious previous,const uint8_t *previous_gray,size_t previous_len,FrameKernelGrayView previous_view,
-    const uint8_t *current_gray,size_t current_len,FrameKernelGrayView current_view,
-    const FrameKernelRect *bodies,size_t count,const FrameKernelRect *foreign,size_t foreign_count,
-    uint32_t index,const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse measured,FrameKernelHeadSticker *output);
 typedef struct FrameKernelPixelMotion {
     float dx,dy,correlation,uniqueness;
 } FrameKernelPixelMotion;

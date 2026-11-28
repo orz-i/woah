@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 /// A two-sided fresh, unwarped silhouette match can disambiguate an overlap
 /// before predicted geometry moves an identity to its neighbor. All four
 /// masks must be current/last canonical and mutually comparable. This
-/// experimental path is restricted to a complete two-person face-only scene.
+/// path is restricted to a complete two-person face-only scene.
 fn direct_pair(tracks: [&Track; 2], detections: [&Detection; 2], at: i64) -> Option<[usize; 2]> {
     let old = [
         tracks[0].observed_mask.as_ref()?,
@@ -105,17 +105,21 @@ impl Tracker {
                 bottom: bottom + my,
             };
             let cols = (0..d.len())
-                .filter(|i| !f.unavailable(i) && intersection(envelope, d[*i].bounds) > 0.0)
+                .filter(|i| {
+                    !f.matched_detections.contains(i) && intersection(envelope, d[*i].bounds) > 0.0
+                })
                 .collect::<Vec<_>>();
             f.group_tracks.extend(rows.iter().copied());
             if cols.is_empty() {
                 continue;
             }
-            if self.privacy_pair_continuity
-                && self.tracks.len() == 2
+            if self.tracks.len() == 2
                 && d.len() == 2
                 && self.selected_ids.is_empty()
                 && self.face_selected_ids.len() == 1
+                && self.face_selected_ids.iter().all(|id| {
+                    self.protected_ids.contains(id) && self.tracks.iter().any(|t| t.id == *id)
+                })
                 && rows.len() == 2
                 && cols.len() == 2
                 && rows
@@ -255,7 +259,7 @@ impl Tracker {
                 .collect::<Vec<_>>();
             let residual_detections = cols
                 .iter()
-                .filter(|i| !f.unavailable(i))
+                .filter(|i| !f.matched_detections.contains(i))
                 .copied()
                 .collect::<Vec<_>>();
             let balanced = cols.len() == rows.len()

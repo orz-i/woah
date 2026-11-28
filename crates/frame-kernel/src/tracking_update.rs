@@ -36,7 +36,7 @@ pub(super) fn offset(a: Rect, x: f32, y: f32) -> Rect {
         bottom: a.bottom + y,
     }
 }
-pub(crate) fn center(a: Rect) -> [f32; 2] {
+pub(super) fn center(a: Rect) -> [f32; 2] {
     [
         a.left + (a.right - a.left).max(0.0) / 2.0,
         a.top + (a.bottom - a.top).max(0.0) / 2.0,
@@ -45,7 +45,7 @@ pub(crate) fn center(a: Rect) -> [f32; 2] {
 pub(super) fn max_dimension(a: Rect) -> f32 {
     (a.right - a.left).max(0.0).max((a.bottom - a.top).max(0.0))
 }
-pub(crate) fn commit(t: &mut Track, d: &Detection, at: i64) {
+pub(super) fn commit(t: &mut Track, d: &Detection, at: i64) {
     record_motion(t, d, at);
     t.observed_bounds = d.bounds;
     if d.mask.is_some() {
@@ -69,10 +69,9 @@ pub(crate) fn commit(t: &mut Track, d: &Detection, at: i64) {
     t.filter.update(d.bounds, at);
 }
 #[derive(Default)]
-pub(crate) struct Frame {
+pub(super) struct Frame {
     pub matched_tracks: BTreeSet<usize>,
     pub matched_detections: BTreeSet<usize>,
-    pub quarantined_detections: BTreeSet<usize>,
     pub group_tracks: BTreeSet<usize>,
     pub group_detections: BTreeSet<usize>,
     pub direct_group_detections: BTreeSet<usize>,
@@ -81,11 +80,6 @@ pub(crate) struct Frame {
     pub global_detections: BTreeSet<usize>,
     pub ambiguous_tracks: BTreeSet<usize>,
     pub cache: AssociationCache,
-}
-impl Frame {
-    pub(super) fn unavailable(&self, index: &usize) -> bool {
-        self.matched_detections.contains(index) || self.quarantined_detections.contains(index)
-    }
 }
 pub(super) fn scores(
     t: &Tracker,
@@ -270,9 +264,6 @@ impl Tracker {
         }
         self.update_groups(at);
         let mut frame = Frame::default();
-        if let Some(clothing) = self.crowd_clothing.clone() {
-            clothing.associate(self, d, at, &mut frame);
-        }
         self.associate_groups(d, at, &mut frame)?;
         self.associate_global(d, at, &mut frame)?;
         self.update_misses(d, at, &mut frame)?;
@@ -296,7 +287,7 @@ impl Tracker {
             })
             .collect::<Vec<_>>();
         let shadow = (0..d.len())
-            .filter(|i| !f.unavailable(i))
+            .filter(|i| !f.matched_detections.contains(i))
             .collect::<Vec<_>>();
         let mut rescue = BTreeSet::new();
         if !rows.is_empty() && !f.group_detections.is_empty() && !shadow.is_empty() {
@@ -381,7 +372,8 @@ impl Tracker {
         }
         let cols = (0..d.len())
             .filter(|i| {
-                !f.unavailable(i) && (!f.group_detections.contains(i) || rescue.contains(i))
+                !f.matched_detections.contains(i)
+                    && (!f.group_detections.contains(i) || rescue.contains(i))
             })
             .collect::<Vec<_>>();
         if rows.is_empty() || cols.is_empty() {
@@ -471,7 +463,7 @@ impl Tracker {
     fn recover_or_insert(&mut self, d: &[Detection], at: i64, f: &mut Frame) -> Result<()> {
         let mut unassigned = Vec::new();
         for di in 0..d.len() {
-            if f.unavailable(&di)
+            if f.matched_detections.contains(&di)
                 || f.group_detections.contains(&di)
                 || f.global_detections.contains(&di)
             {
@@ -510,14 +502,6 @@ impl Tracker {
             let candidate = &d[di];
             for &ti in &recoverable {
                 let t = &self.tracks[ti];
-                if self.protected_ids.contains(&t.id)
-                    && self
-                        .crowd_clothing
-                        .as_ref()
-                        .is_some_and(|c| !c.allowed(t, candidate, di, at))
-                {
-                    continue;
-                }
                 if reclaimed.contains(&t.id) {
                     continue;
                 }
