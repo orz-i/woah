@@ -473,6 +473,50 @@ pub(crate) fn offline_window(
     left: usize,
     right: usize,
 ) -> Option<Option<Vec<usize>>> {
+    if right >= frames.last()?.len() {
+        return None;
+    }
+    // Require independent canonical right-hand anchor for actual coverage.
+    Some(offline_path(frames, times, left)?.filter(|p| p.last().copied() == Some(right)))
+}
+
+/// Anonymous raw triplets for research descriptor pooling only. This is not
+/// an identity or coverage proof; the endpoints are not canonical anchors.
+pub(crate) fn research_triplet_paths(
+    frames: &[&[Detection]],
+    times: &[i64],
+) -> Option<Vec<Option<[usize; 2]>>> {
+    if frames.len() != 3
+        || times.len() != 3
+        || frames.iter().any(|f| f.len() > 64)
+        || times.windows(2).any(|w| {
+            w[1].checked_sub(w[0])
+                .is_none_or(|v| !(1..=100_000).contains(&v))
+        })
+    {
+        return None;
+    }
+    let mut out = vec![None; frames[1].len()];
+    let mut ambiguous = vec![false; out.len()];
+    if frames.iter().any(|d| d.is_empty()) {
+        return Some(out);
+    }
+    for i in 0..frames[0].len() {
+        if let Some(path) = offline_path(frames, times, i)? {
+            let m = path[1];
+            if ambiguous[m] {
+                continue;
+            }
+            if out[m].replace([path[0], path[2]]).is_some() {
+                out[m] = None;
+                ambiguous[m] = true;
+            }
+        }
+    }
+    Some(out)
+}
+
+fn offline_path(frames: &[&[Detection]], times: &[i64], left: usize) -> Option<Option<Vec<usize>>> {
     use crate::geometry::overlap_iou;
     use crate::tracking_mask::raw_mask_iou;
     if !(3..=8).contains(&frames.len())
@@ -483,7 +527,6 @@ pub(crate) fn offline_window(
                     .any(|q| !q.valid() || q.mask.as_ref().is_none_or(|m| !m.valid()))
         })
         || left >= frames[0].len()
-        || right >= frames.last()?.len()
         || times.windows(2).any(|w| {
             w[1].checked_sub(w[0])
                 .is_none_or(|v| !(1..=100_000).contains(&v))
@@ -550,11 +593,6 @@ pub(crate) fn offline_window(
             return Some(None);
         }
         path.push(j);
-    }
-    // The independently selected right-hand canonical anchor must agree
-    // with the entire reciprocal path; never replace the future anchor.
-    if path.last().copied() != Some(right) {
-        return Some(None);
     }
     Some(Some(path))
 }
@@ -625,6 +663,10 @@ mod tests {
         assert_eq!(
             offline_window(&frames, &times, 0, 0),
             Some(Some(vec![0, 1, 0]))
+        );
+        assert_eq!(
+            research_triplet_paths(&frames, &times),
+            Some(vec![Some([1, 1]), Some([0, 0])])
         );
         assert_eq!(offline_window(&frames, &times, 0, 1), Some(None));
         assert_eq!(offline_window(&frames, &[0, 40_000, 150_001], 0, 0), None);

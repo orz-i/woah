@@ -1630,6 +1630,163 @@ pub unsafe extern "C" fn frame_kernel_replay_plan(
     0
 }
 
+/// Stateless research clothing descriptor extraction using the same sampler
+/// as M4. Outputs are square-root histograms, not persisted by FrameKernel.
+/// # Safety
+/// Inputs are readable for their lengths, output contains count*2048 writable
+/// floats, disjoint from inputs.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_clothing_vectors(
+    obs: *const TrackingObservation,
+    count: usize,
+    pixels: *const u8,
+    len: usize,
+    rgb: *const u8,
+    rgb_len: usize,
+    tr: Transform,
+    out: *mut f32,
+    out_len: usize,
+) -> i32 {
+    if count > 64
+        || len > 64 * 1024 * 1024
+        || rgb_len > 128 * 1024 * 1024
+        || out.is_null()
+        || count.checked_mul(crate::appearance::RESEARCH_CLOTHING_DIM) != Some(out_len)
+    {
+        return -1;
+    }
+    // SAFETY: caller owns checked readable arrays.
+    let (Some(obs), Some(pix), Some(rgb)) = (unsafe {
+        (
+            borrowed(obs, count),
+            borrowed(pixels, len),
+            borrowed(rgb, rgb_len),
+        )
+    }) else {
+        return -1;
+    };
+    let Some(d) = decode_observations(obs, pix) else {
+        return -1;
+    };
+    let Some(v) = crate::appearance::research_clothing_vectors(&d, rgb, tr) else {
+        return -1;
+    };
+    // SAFETY: caller owns disjoint writable storage with out_len floats.
+    unsafe { std::ptr::copy_nonoverlapping(v.as_ptr(), out, out_len) };
+    0
+}
+/// # Safety
+/// Inputs are readable for their lengths, output has rows*cols writable
+/// disjoint floats. Nothing is retained by the kernel.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_similarity(
+    a: *const f32,
+    a_len: usize,
+    b: *const f32,
+    b_len: usize,
+    rows: usize,
+    cols: usize,
+    dim: usize,
+    blocks: usize,
+    out: *mut f32,
+) -> i32 {
+    if a_len > 64 * 2048 || b_len > 64 * 2048 || out.is_null() {
+        return -1;
+    }
+    // SAFETY: caller owns checked readable arrays.
+    let (Some(a), Some(b)) = (unsafe { (borrowed(a, a_len), borrowed(b, b_len)) }) else {
+        return -1;
+    };
+    let Some(v) = crate::appearance::research_similarity_matrix(a, b, rows, cols, dim, blocks)
+    else {
+        return -1;
+    };
+    // SAFETY: caller owns rows*cols disjoint writable floats.
+    unsafe { std::ptr::copy_nonoverlapping(v.as_ptr(), out, v.len()) };
+    0
+}
+/// # Safety
+/// Scores are readable for len elements; output has rows writable disjoint
+/// rank records. Invalid input never writes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_rank(
+    scores: *const f32,
+    len: usize,
+    rows: usize,
+    cols: usize,
+    minimum: f32,
+    margin: f32,
+    out: *mut crate::appearance::ResearchRank,
+) -> i32 {
+    if len > 64 * 64 || out.is_null() {
+        return -1;
+    }
+    // SAFETY: bounded readable array from caller.
+    let Some(v) = (unsafe { borrowed(scores, len) }) else {
+        return -1;
+    };
+    let Some(r) = crate::appearance::research_reciprocal_rank(v, rows, cols, minimum, margin)
+    else {
+        return -1;
+    };
+    // SAFETY: caller owns rows disjoint writable records.
+    unsafe { std::ptr::copy_nonoverlapping(r.as_ptr(), out, r.len()) };
+    0
+}
+
+/// Anonymous three-sample raw paths for research pooling, no track state.
+/// # Safety
+/// Inputs readable; output contains 2*middle_count disjoint u32 elements.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_triplet_paths(
+    obs: *const TrackingObservation,
+    count: usize,
+    pixels: *const u8,
+    len: usize,
+    counts: *const u32,
+    times: *const i64,
+    out: *mut u32,
+    out_len: usize,
+) -> i32 {
+    if count > 192 || len > 128 * 1024 * 1024 || out.is_null() {
+        return -1;
+    }
+    // SAFETY: caller supplies bounded readable observation and frame arrays.
+    let (Some(obs), Some(pix), Some(counts), Some(times)) = (unsafe {
+        (
+            borrowed(obs, count),
+            borrowed(pixels, len),
+            borrowed(counts, 3),
+            borrowed(times, 3),
+        )
+    }) else {
+        return -1;
+    };
+    if counts.iter().any(|&v| v > 64)
+        || counts.iter().map(|&v| v as usize).sum::<usize>() != count
+        || 2 * counts[1] as usize != out_len
+    {
+        return -1;
+    }
+    let Some(d) = decode_observations(obs, pix) else {
+        return -1;
+    };
+    let a = counts[0] as usize;
+    let b = a + counts[1] as usize;
+    let Some(paths) =
+        crate::tracking_motion::research_triplet_paths(&[&d[..a], &d[a..b], &d[b..]], times)
+    else {
+        return -1;
+    };
+    let output = paths
+        .into_iter()
+        .flat_map(|p| p.map_or([u32::MAX; 2], |v| v.map(|n| n as u32)))
+        .collect::<Vec<_>>();
+    // SAFETY: caller supplies out_len disjoint writable indices.
+    unsafe { std::ptr::copy_nonoverlapping(output.as_ptr(), out, out_len) };
+    0
+}
+
 /// Offline-only two-anchor proof over bounded consecutive raw observations.
 /// Output is frame_count raw indices; no writes on invalid/no evidence.
 /// # Safety

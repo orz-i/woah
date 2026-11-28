@@ -296,6 +296,159 @@ fn clothing_features(d: &[Detection], rgb: &[u8], tr: Transform) -> Option<Vec<O
     }
     Some(out)
 }
+/// Research-only descriptor transport for local comparative retrieval.
+pub const RESEARCH_CLOTHING_DIM: usize = 4 * 512;
+pub(crate) fn research_clothing_vectors(
+    d: &[Detection],
+    rgb: &[u8],
+    tr: Transform,
+) -> Option<Vec<f32>> {
+    let features = clothing_features(d, rgb, tr)?;
+    let mut out = vec![0.0; d.len().checked_mul(RESEARCH_CLOTHING_DIM)?];
+    for (feature, dest) in features
+        .into_iter()
+        .zip(out.chunks_exact_mut(RESEARCH_CLOTHING_DIM))
+    {
+        if let Some(f) = feature {
+            for (v, p) in dest.iter_mut().zip(f.hist.iter().flatten().flatten()) {
+                *v = p.sqrt();
+            }
+        }
+    }
+    Some(out)
+}
+
+/// Stateless, checked cosine evidence. Four blocks reproduce the minimum
+/// Bhattacharyya clothing similarity when supplied square-root histograms.
+/// A zero vector or missing block denotes unavailable evidence, not a match.
+/// This is a research score, not an identity assignment or calibrated probability.
+pub fn research_similarity_matrix(
+    a: &[f32],
+    b: &[f32],
+    rows: usize,
+    cols: usize,
+    dim: usize,
+    blocks: usize,
+) -> Option<Vec<f32>> {
+    if !(1..=64).contains(&rows)
+        || !(1..=64).contains(&cols)
+        || !(1..=RESEARCH_CLOTHING_DIM).contains(&dim)
+        || !matches!(blocks, 1 | 4)
+        || !dim.is_multiple_of(blocks)
+        || a.len() != rows.checked_mul(dim)?
+        || b.len() != cols.checked_mul(dim)?
+        || a.iter().chain(b).any(|v| !v.is_finite())
+    {
+        return None;
+    }
+    let block = dim / blocks;
+    let norms = |v: &[f32]| {
+        v.chunks_exact(block)
+            .map(|f| f.iter().map(|&x| f64::from(x).powi(2)).sum::<f64>().sqrt())
+            .collect::<Vec<_>>()
+    };
+    let na = norms(a);
+    let nb = norms(b);
+    let mut out = vec![-2.0; rows * cols];
+    for (i, x) in a.chunks_exact(dim).enumerate() {
+        for (j, y) in b.chunks_exact(dim).enumerate() {
+            let mut s = 1.0f64;
+            for (k, (u, v)) in x.chunks_exact(block).zip(y.chunks_exact(block)).enumerate() {
+                let (m, n) = (na[i * blocks + k], nb[j * blocks + k]);
+                if m <= 1e-12 || n <= 1e-12 {
+                    s = -2.0;
+                    break;
+                }
+                let dot = u
+                    .iter()
+                    .zip(v)
+                    .map(|(&a, &b)| f64::from(a) * f64::from(b))
+                    .sum::<f64>();
+                s = s.min((dot / m / n).clamp(-1.0, 1.0));
+            }
+            out[i * cols + j] = s as f32;
+        }
+    }
+    Some(out)
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ResearchRank {
+    pub index: u32,
+    pub score: f32,
+    pub row_margin: f32,
+    pub column_margin: f32,
+    pub accepted: u32,
+}
+/// Rank each reference against every available current candidate and every
+/// rival reference. Missing competition is not positive evidence; ties abstain.
+/// No persistent state and no tracker writes.
+pub fn research_reciprocal_rank(
+    scores: &[f32],
+    rows: usize,
+    cols: usize,
+    minimum: f32,
+    margin: f32,
+) -> Option<Vec<ResearchRank>> {
+    if !(1..=64).contains(&rows)
+        || !(1..=64).contains(&cols)
+        || scores.len() != rows.checked_mul(cols)?
+        || !minimum.is_finite()
+        || !(-1.0..=1.0).contains(&minimum)
+        || !margin.is_finite()
+        || !(0.0..=2.0).contains(&margin)
+        || scores
+            .iter()
+            .any(|&v| v != -2.0 && (!v.is_finite() || !(-1.0..=1.0).contains(&v)))
+    {
+        return None;
+    }
+    let mut out = Vec::with_capacity(rows);
+    for i in 0..rows {
+        let row = &scores[i * cols..(i + 1) * cols];
+        let mut valid = row.iter().enumerate().filter(|&(_, &v)| v >= -1.0);
+        let Some((mut j, &mut_score)) = valid.next() else {
+            out.push(ResearchRank {
+                index: u32::MAX,
+                score: -2.0,
+                row_margin: -2.0,
+                column_margin: -2.0,
+                accepted: 0,
+            });
+            continue;
+        };
+        let mut s = mut_score;
+        for (k, &v) in valid {
+            if v > s {
+                j = k;
+                s = v;
+            }
+        }
+        let rival_row = row
+            .iter()
+            .enumerate()
+            .filter(|&(k, &v)| k != j && v >= -1.0)
+            .map(|(_, &v)| v)
+            .reduce(f32::max);
+        let rival_col = (0..rows)
+            .filter(|&k| k != i && scores[k * cols + j] >= -1.0)
+            .map(|k| scores[k * cols + j])
+            .reduce(f32::max);
+        let rm = rival_row.map_or(-2.0, |v| s - v);
+        let cm = rival_col.map_or(-2.0, |v| s - v);
+        out.push(ResearchRank {
+            index: j as u32,
+            score: s,
+            row_margin: rm,
+            column_margin: cm,
+            accepted: u32::from(
+                s >= minimum && rm > 0.0 && cm > 0.0 && rm >= margin && cm >= margin,
+            ),
+        });
+    }
+    Some(out)
+}
 impl CrowdClothing {
     pub(crate) fn seed(d: &[Detection], ids: &[i64], rgb: &[u8], tr: Transform) -> Option<Self> {
         let f = clothing_features(d, rgb, tr)?;
@@ -754,6 +907,64 @@ mod tests {
             }
         }
         rgb
+    }
+    #[test]
+    fn research_clothing_transport_reuses_the_existing_sampler_and_missing_rule() {
+        let a = crowd_test_detection(10, 8, 24, 100);
+        let b = crowd_test_detection(60, 8, 24, 100);
+        let tr = a.mask.as_ref().unwrap().transform;
+        let ds = [a.clone(), b.clone()];
+        let rgb = crowd_test_rgb(&ds, &[[180, 40, 60], [24, 24, 24]]);
+        let existing = clothing_features(&ds, &rgb, tr).unwrap();
+        let v = research_clothing_vectors(&ds, &rgb, tr).unwrap();
+        let mat = research_similarity_matrix(&v, &v, 2, 2, RESEARCH_CLOTHING_DIM, 4).unwrap();
+        let expected = existing[0]
+            .as_ref()
+            .unwrap()
+            .score(existing[1].as_ref().unwrap());
+        assert!((mat[1] - expected).abs() < 1e-6);
+        assert!((mat[0] - 1.0).abs() < 1e-6);
+        let duplicate = [a.clone(), a];
+        let invalid = research_clothing_vectors(&duplicate, &rgb, tr).unwrap();
+        assert!(invalid.iter().all(|&q| q == 0.0));
+        assert_eq!(
+            research_similarity_matrix(&v, &invalid, 2, 2, RESEARCH_CLOTHING_DIM, 4),
+            Some(vec![-2.0; 4])
+        );
+    }
+    #[test]
+    fn research_similarity_rejects_missing_and_nonfinite_inputs() {
+        let a = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+        let b = [2.0, 0.0, 1.0, 1.0];
+        let q = research_similarity_matrix(&a, &b, 3, 2, 2, 1).unwrap();
+        assert_eq!(q[0], 1.0);
+        assert_eq!(q[2], 0.0);
+        assert_eq!(q[4..], [-2.0, -2.0]);
+        assert!(research_similarity_matrix(&[f32::NAN, 1.0], &b, 1, 2, 2, 1).is_none());
+        let a = [1., 0., 1., 0., 1., 0., 0., 1.];
+        let b = [1., 0., 1., 0., 1., 0., 1., 0.];
+        assert_eq!(
+            research_similarity_matrix(&a, &b, 1, 1, 8, 4),
+            Some(vec![0.0])
+        );
+    }
+    #[test]
+    fn research_rank_checks_both_competitors_and_ties() {
+        let result = research_reciprocal_rank(&[0.9, 0.2, 0.7, 0.8], 2, 2, 0.65, 0.05).unwrap();
+        assert_eq!(
+            result
+                .iter()
+                .map(|r| (r.index, r.accepted))
+                .collect::<Vec<_>>(),
+            vec![(0, 1), (1, 1)]
+        );
+        let tie = research_reciprocal_rank(&[0.9, 0.9, 0.9, 0.1], 2, 2, 0.65, 0.0).unwrap();
+        assert!(tie.iter().all(|r| r.accepted == 0));
+        let absent = research_reciprocal_rank(&[0.9, -2.0, -2.0, 0.8], 2, 2, 0.65, 0.05).unwrap();
+        assert!(absent.iter().all(|r| r.accepted == 0));
+        let empty = research_reciprocal_rank(&[-2.0, -2.0], 1, 2, 0.65, 0.05).unwrap();
+        assert_eq!(empty[0].index, u32::MAX);
+        assert!(research_reciprocal_rank(&[f32::INFINITY], 1, 1, 0.65, 0.05).is_none());
     }
     #[test]
     fn adaptive_learning_requires_exact_unique_consecutive_current_commit() {

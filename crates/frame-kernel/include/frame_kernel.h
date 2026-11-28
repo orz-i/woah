@@ -226,6 +226,15 @@ typedef struct FrameKernelTrackingObservation {
  uint32_t mask_width, mask_height;
  FrameKernelTransform transform;
 } FrameKernelTrackingObservation;
+/* Stateless host research descriptors and reciprocal rank. No tracker writes.
+   Clothing vectors: count*2048 floats. Score -2 = missing. Rank index UINT32_MAX = none. */
+typedef struct FrameKernelResearchRank { uint32_t index; float score,row_margin,column_margin; uint32_t accepted; } FrameKernelResearchRank;
+int32_t frame_kernel_research_clothing_vectors(const FrameKernelTrackingObservation *obs,size_t count,const uint8_t *pixels,size_t len,const uint8_t *rgb,size_t rgb_len,FrameKernelTransform transform,float *out,size_t out_len);
+int32_t frame_kernel_research_similarity(const float *a,size_t a_len,const float *b,size_t b_len,size_t rows,size_t cols,size_t dim,size_t blocks,float *output);
+int32_t frame_kernel_research_rank(const float *scores,size_t len,size_t rows,size_t cols,float minimum,float margin,FrameKernelResearchRank *output);
+/* Anonymous raw three-frame paths for model evaluation. Output: two endpoint
+   indices per middle raw proposal, UINT32_MAX for no reciprocal triplet. */
+int32_t frame_kernel_research_triplet_paths(const FrameKernelTrackingObservation *obs,size_t count,const uint8_t *pixels,size_t len,const uint32_t *counts,const int64_t *times,uint32_t *out,size_t out_len);
 /* Offline-only bounded reciprocal raw instance proof. 0 writes frame_count
    indices, 1 no evidence, -1 invalid. No identity session is changed. */
 int32_t frame_kernel_offline_tracklet_window(const FrameKernelTrackingObservation *observations,size_t count,const uint8_t *pixels,size_t len,const uint32_t *counts,const int64_t *times,size_t frame_count,uint32_t left,uint32_t right,uint32_t *out);
