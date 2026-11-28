@@ -467,6 +467,7 @@ int32_t frame_kernel_research_head_owners(const FrameKernelInstanceDetection *he
 int32_t frame_kernel_research_head_path(const int64_t *times,const int32_t *owners,size_t n,int32_t target,uint32_t *out);
 int32_t frame_kernel_research_head_instance_placement(const FrameKernelInstanceDetection *heads,size_t n,size_t index,FrameKernelTransform tr,FrameKernelHeadInstancePlacement *out);
 int32_t frame_kernel_research_head_certified_path(const int64_t *times,const int32_t *owners,size_t n,int32_t target,uint32_t *out);
+int32_t frame_kernel_research_head_reconnect_path(const int64_t *times,const uint32_t *flags,size_t n,uint32_t *out);
 int32_t frame_kernel_research_head_arbitrate(const FrameKernelInstanceDetection *heads,size_t n,size_t index,FrameKernelTransform tr,FrameKernelEllipse previous,FrameKernelRect required_before,FrameKernelEllipse face,FrameKernelHeadInstancePlacement *out,uint32_t *mode);
 int32_t frame_kernel_research_anatomical_observation(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,FrameKernelEllipse observed,FrameKernelHeadSticker *output);
 typedef struct FrameKernelCompactRivalView { const uint8_t *masks; size_t len,count; const FrameKernelRect *boxes; const float *confidences; } FrameKernelCompactRivalView;

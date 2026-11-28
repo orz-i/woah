@@ -14,7 +14,7 @@ import time
 import numpy as np
 from PIL import Image
 
-from evaluate_body_reid import PERSON_MODEL, FACE_MODEL, sha
+from evaluate_body_reid import PERSON_MODEL, FACE_MODEL, MODEL_FILES, sha
 from replay_face_geometry import (P, S, U, F, Detection, Transform, Rect, Ellipse,
     Letterbox, PixelSpec, struct, check, load, model, detect_instances, ptr, vals)
 
@@ -48,6 +48,7 @@ class HeadKernel:
         for name,args in {
             "head_certified_path":[P,P,S,I,P],
             "head_arbitrate":[P,S,S,Transform,Ellipse,Rect,Ellipse,P,P],
+            "head_reconnect_path":[P,P,S,P],
         }.items():
             f=getattr(lib,"frame_kernel_research_"+name,None)
             if f is not None:f.argtypes=args;f.restype=I;setattr(self,name,f)
@@ -76,6 +77,11 @@ class HeadKernel:
         out=(U*len(times))()
         fn=self.head_certified_path if certified else self.head_path
         check(fn((I64*len(times))(*times),(I*len(times))(*owners),len(times),target,out))
+        return list(out)
+
+    def reconnect(self,times,flags):
+        out=(U*len(times))()
+        check(self.head_reconnect_path((I64*len(times))(*times),(U*len(flags))(*flags),len(times),out))
         return list(out)
 
     def placement(self,heads,j,tr):
@@ -174,6 +180,85 @@ def raw_root_map(row,roots):
     return {j:ids[0] for j,ids in owners.items() if len(ids)==1}
 
 
+def reconnect_evidence(a,k,ref,prior,frames,paths,roots,target):
+    """Reuse dense body votes and the existing certified body-tracklet solver.
+    Current head ownership and reciprocal links are from the independent
+    stream. No source annotations or previous sticker enter identity proof.
+    """
+    from types import SimpleNamespace
+    from evaluate_pose_parts import POSE_SHA
+    from evaluate_tracklet_recovery import select
+
+    dense_path=getattr(a,"dense",None)
+    if dense_path is None:
+        return {},[]
+    dense=json.loads(dense_path.read_text())
+    canonical_path=getattr(a,"dense_reference",None)
+    if canonical_path is None:
+        raise ValueError("dense reference required")
+    canonical=json.loads(canonical_path.read_text())
+    library=getattr(a,"dense_library",None) or a.library
+    if (dense["fixture_sha256"]!=ref["fixture_sha256"]
+        or dense["reference_replay_sha256"]!=sha(canonical_path)
+        or canonical["fixture_sha256"]!=ref["fixture_sha256"]
+        or canonical["target_id"]!=target or dense["target_id"]!=target
+        or set(dense["protected_roots"])!=roots
+        or dense["library_sha256"]!=sha(library)
+        or dense["detector_hashes"]!=ref["model_sha256"]
+        or dense["pose_sha256"]!=POSE_SHA
+        or dense["reid_weights_sha256"]!={n:v for n,v in MODEL_FILES.items() if "0287" in n}):
+        raise ValueError("dense reconnect provenance mismatch")
+    body=dense["frames"];base=canonical["candidate"]["frames"]
+    if len(body)!=len(prior) or len(base)!=len(prior):
+        raise ValueError("dense reconnect length mismatch")
+    for i,(b,c,r) in enumerate(zip(body,base,prior)):
+        if (b["index"]!=i or b["time_us"]!=r["time_us"] or b["boxes"]!=r["raw_boxes"]
+            or any(c.get(n)!=r.get(n) for n in ("track","tracks","raw_boxes","tracking_snapshot_sha256"))):
+            raise ValueError("dense reconnect body mismatch")
+    proven=select(SimpleNamespace(lib=k.lib),body,roots,target,base)
+    if sha(library)!=sha(a.library):
+        old=load(library)
+        if proven!=select(SimpleNamespace(lib=old),body,roots,target,base):
+            raise ValueError("certified body tracklet solver changed")
+    selected={};diagnostics=[]
+    for path_id,path in enumerate(paths):
+        times=[];flags=[]
+        for i,j,owner in path:
+            h=frames[i];b=body[i];r=prior[i];raw=h["owners"][j]
+            pooled=b["votes"];single=b.get("single_votes",[])
+            all_votes=pooled+single
+            appearance=raw>=0 and any(v["root"]==target and v["raw"]==raw for v in pooled) and any(v["root"]==target and v["raw"]==raw for v in single)
+            certified=raw>=0 and proven.get(i)==raw
+            conflict=(owner>=0 and owner!=target)
+            if raw>=0:
+                conflict|=(raw in b["quarantined"]
+                    or any(v["root"]!=target and v["raw"]==raw for v in all_votes)
+                    or any(v["root"]==target and v["raw"]!=raw for v in all_votes)
+                    or any(o!=target and o in roots for o in b["canonical_owners"][raw])
+                    or (i in proven and proven[i]!=raw))
+            else:
+                # Unknown raw owner is not proof of a competing identity;
+                # an actual other head assigned the target raw is.
+                conflict|=any(v["root"]==target and v["raw"] in h["owners"] for v in all_votes)
+                conflict|=i in proven and proven[i] in h["owners"]
+            if r.get("track") and r["track"]["observed"] and owner!=target:
+                conflict=True
+            times.append(h["time_us"])
+            flags.append(int(appearance)+2*int(certified)+4*int(conflict))
+        codes=k.reconnect(times,flags)
+        hits=[(i,j) for (i,j,_),code in zip(path,codes) if code]
+        if hits:
+            diagnostics.append({"path":path_id,"span":[path[0][0],path[-1][0]],
+                "appearance_witnesses":[i for (i,_,_),f in zip(path,flags) if f&1 and not f&4],
+                "certified_body_witnesses":[i for (i,_,_),f in zip(path,flags) if f&2 and not f&4],
+                "conflicts":[i for (i,_,_),f in zip(path,flags) if f&4],
+                "supported":[i for i,j in hits]})
+        for i,j in hits:
+            if prior[i]["render"] is None:
+                selected.setdefault(i,[]).append((j,3,path_id))
+    return selected,diagnostics
+
+
 def associate(a):
     start=time.perf_counter();fixture=json.loads(a.fixture.read_text());ref=json.loads(a.reference_replay.read_text());stream=json.loads(a.stream.read_text())
     stream_library=getattr(a,"stream_library",None) or a.library
@@ -221,8 +306,14 @@ def associate(a):
         codes=k.path(times,ids,target,certified=policy=="arbitrate")
         for (i,j,owner),code in zip(path,codes):
             if code:selected[i].append((j,code,path_id))
+    reconnect,proofs=reconnect_evidence(a,k,ref,prior,frames,paths,roots,target)
+    # Keep the M5.7 arm exactly intact. The new proof only fills empty
+    # regions where the existing identity selection has no claim.
+    for i,choices in reconnect.items():
+        if not selected[i]:
+            selected[i].extend(choices)
     import copy
-    out=copy.deepcopy(prior);decisions=[];counts={"direct":0,"bridge":0,"ambiguous":0,"replacement":0,"added":0,"retained":0,"modes":{}}
+    out=copy.deepcopy(prior);decisions=[];counts={"direct":0,"bridge":0,"ambiguous":0,"replacement":0,"added":0,"retained":0,"modes":{},"reconnected":0}
     for i,choices in enumerate(selected):
         if len(choices)>1:counts["ambiguous"]+=1;continue
         if not choices:continue
@@ -233,7 +324,7 @@ def associate(a):
             # A currently observed competing protected root is a veto,
             # even if an anonymous tracklet happened to remain linked.
             if raw_root_map(r,roots).get(h["owners"][j],target)!=target:continue
-        counts["direct" if code==1 else "bridge"]+=1
+        counts["direct" if code==1 else "bridge" if code==2 else "reconnected"]+=1
         if policy=="arbitrate":
             p,mode=k.arbitrate(heads,j,Transform(*h["transform"]),r)
         else:p,mode=k.placement(heads,j,Transform(*h["transform"])),0
@@ -241,7 +332,7 @@ def associate(a):
             counts["retained"]+=1
             continue
         counts["modes"][str(mode)]=counts["modes"].get(str(mode),0)+1
-        v=vals(p.square);rec={"index":i,"head_index":j,"path":path_id,"proof":"current_owner" if code==1 else "bounded_path",
+        v=vals(p.square);rec={"index":i,"head_index":j,"path":path_id,"proof":"current_owner" if code==1 else "bounded_path" if code==2 else "body_head_reconnect",
             "head":h["heads"][j],"required":vals(p.required),"square":v,"model_rival_overlap":p.rival_overlap,"mode":mode}
         decisions.append(rec)
         old=r.get("sticker") or r.get("render")
@@ -256,7 +347,8 @@ def associate(a):
             out[i].update(render=v,kind=9);counts["added"]+=1
         counts["replacement"]+=int(old!=v)
     result={"scope":__doc__,"fixture_sha256":sha(a.fixture),"library_sha256":sha(a.library),"reference_replay_sha256":sha(a.reference_replay),
-        "stream_sha256":sha(a.stream),"stream_library_sha256":sha(stream_library),"policy":policy,"target_id":target,"counts":counts,"paths":len(paths),"decisions":decisions,
+        "stream_sha256":sha(a.stream),"stream_library_sha256":sha(stream_library),"policy":policy,"reconnect_proofs":proofs,
+        "dense_sha256":sha(a.dense) if getattr(a,"dense",None) is not None else None,"target_id":target,"counts":counts,"paths":len(paths),"decisions":decisions,
         "elapsed_s":time.perf_counter()-start,"baseline":{"frames":prior},"candidate":{"frames":out}}
     write(a.output,result);print("association",counts,"paths",len(paths),"elapsed",result["elapsed_s"],flush=True);return result
 
@@ -272,7 +364,16 @@ def main():
         else:
             p.add_argument("--stream",type=Path,required=True)
             p.add_argument("--stream-library",type=Path,help="Exact earlier producer library; verify fusion and temporal links against current build")
-            p.add_argument("--policy",choices=("head-only","arbitrate"),default="head-only")
-    a=ap.parse_args();produce(a) if a.command=="produce" else associate(a)
+            p.add_argument("--policy",choices=("head-only","arbitrate"),default="arbitrate")
+            p.add_argument("--dense",type=Path,help="Existing dense body evidence for reconnect")
+            p.add_argument("--dense-reference",type=Path)
+            p.add_argument("--dense-library",type=Path)
+    a=ap.parse_args()
+    if a.command=="associate":
+        if bool(a.dense)!=bool(a.dense_reference) or (a.dense_library is not None and a.dense is None):
+            ap.error("dense and dense-reference must be supplied together")
+        if a.dense is not None and a.policy!="arbitrate":
+            ap.error("reconnect requires arbitration")
+    produce(a) if a.command=="produce" else associate(a)
 
 if __name__=="__main__":main()

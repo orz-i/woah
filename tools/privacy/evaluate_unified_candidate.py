@@ -234,7 +234,8 @@ def main():
             head_model=a.head_instance_model,dual_view=True,threads=2),
             scene=scene,person=person)
         result=head_instances.associate(SimpleNamespace(**args,stream=head_stream_path,
-            output=head_result_path,policy="arbitrate"))
+            output=head_result_path,policy="arbitrate",
+            dense=dense_path if needs_dense else None,dense_reference=canonical_path if needs_dense else None))
         current=result["candidate"]["frames"]
         head_stats={"head_model":stream["head_model"],"head_model_sha256":stream["head_model_sha256"],
             "head_calls":stream["head_calls"],"head_inference_s":stream["head_inference_s"],

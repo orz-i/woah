@@ -1,0 +1,509 @@
+{
+  "scope": "Source-only manual approximate head envelopes on fixed-stride and boundary samples in Baganda reconnected intervals (20/81) and every added Basque sample (10/10); source crop coordinates fixed without rendering overlays; historical grid/failed-head labels reused where available. Selected neighbor rectangles only; Baganda neighbor heads not annotated. Not dense or blind semantic ground truth.",
+  "cases": {
+    "baganda_long_reconnect": {
+      "target_id": 10,
+      "manifest_sha256": "9d40826042be507a6e3c596d774dd2cd29350c03b3b4b73901f9e7cc93141dbf",
+      "labels": [
+        {
+          "index": 143,
+          "asset_sha256": "be7c100ea17208e9dd314bf31e5a03b2435110e46947c6b9a52ea9b5bae7093a",
+          "head_rect": [
+            507,
+            170,
+            537,
+            203
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            522,
+            258
+          ]
+        },
+        {
+          "index": 145,
+          "asset_sha256": "751e83ba3377468d7ccfa14ccf5c0e798dbf177d9fb6e35ce38249a6c2b0eb84",
+          "head_rect": [
+            509,
+            171,
+            540,
+            204
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            524,
+            259
+          ]
+        },
+        {
+          "index": 150,
+          "asset_sha256": "b0bfefa7a6d405d81d22488aeae4eed7b3ad99b36d5a2d4a1178b84a030cf3c1",
+          "head_rect": [
+            511,
+            172,
+            545,
+            204
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            518,
+            324
+          ]
+        },
+        {
+          "index": 153,
+          "asset_sha256": "c20e020236d7a5cf13b2f728d3b9e272f467f7d0c0a80ad6cea477e2d5be3540",
+          "head_rect": [
+            513,
+            172,
+            543,
+            205
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            528,
+            260
+          ]
+        },
+        {
+          "index": 155,
+          "asset_sha256": "98676ff067c7d4e9babc9aa0e52ac1a3138764088c4087a9861094d61d31edc1",
+          "head_rect": [
+            519,
+            171,
+            549,
+            205
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            534,
+            260
+          ]
+        },
+        {
+          "index": 160,
+          "asset_sha256": "1fc4a10c805d899b880f8c1487817d54bf52cf848dfca99f457dd3629b51a384",
+          "head_rect": [
+            522,
+            171,
+            556,
+            203
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            539,
+            258
+          ]
+        },
+        {
+          "index": 165,
+          "asset_sha256": "d3db30c839466de96cec1ceeee0fa63c012cc83bf2005e9625b7be20629b53db",
+          "head_rect": [
+            522,
+            171,
+            556,
+            202
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            539,
+            257
+          ]
+        },
+        {
+          "index": 170,
+          "asset_sha256": "60c700c32ed04c3bffc725a73e66e048ce6f5193ca0cd6f22a1c6182d857cf8f",
+          "head_rect": [
+            523,
+            170,
+            555,
+            202
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            539,
+            257
+          ]
+        },
+        {
+          "index": 175,
+          "asset_sha256": "f1d8cbf62b98d42117e8eb744067e22a6ad17070b507c5f72e39ebea2dfc4203",
+          "head_rect": [
+            522,
+            171,
+            551,
+            205
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            528,
+            324
+          ]
+        },
+        {
+          "index": 180,
+          "asset_sha256": "060fd33202899f18f31b48af6a9f24a0cb8eeebf6928429b7a2ed1c3a7a23b9e",
+          "head_rect": [
+            524,
+            171,
+            556,
+            205
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            540,
+            260
+          ]
+        },
+        {
+          "index": 185,
+          "asset_sha256": "f6b3a7b52932ed82a81245080d39da11ee35cc8ce89923a6d92dbe0bdffd2b83",
+          "head_rect": [
+            523,
+            171,
+            556,
+            203
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            539,
+            258
+          ]
+        },
+        {
+          "index": 190,
+          "asset_sha256": "4a3f9823737e9183aa516509cd64d99939affd14e1ca1b861ba154cee22e76d4",
+          "head_rect": [
+            522,
+            170,
+            555,
+            203
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            538,
+            258
+          ]
+        },
+        {
+          "index": 195,
+          "asset_sha256": "0b961f7b6114c39337821cc07ef516e6cc36b80800482972e4838db6b2d5d7cc",
+          "head_rect": [
+            518,
+            171,
+            551,
+            205
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            534,
+            260
+          ]
+        },
+        {
+          "index": 200,
+          "asset_sha256": "8f47600e1fe9592d068dc41f67ec30151f4745a6d374eb8fe8e6832a455bd2bd",
+          "head_rect": [
+            508,
+            172,
+            540,
+            208
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            518,
+            319
+          ]
+        },
+        {
+          "index": 205,
+          "asset_sha256": "391815591ae928c80beb5e8af429acae064e83268174a68ae6688c1ce1876517",
+          "head_rect": [
+            497,
+            171,
+            535,
+            205
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            516,
+            260
+          ]
+        },
+        {
+          "index": 210,
+          "asset_sha256": "fa4c9580cb285ac7c4810185a375c7819687ea3be5fc915c0a5bccd70f63a0d6",
+          "head_rect": [
+            481,
+            171,
+            516,
+            206
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            498,
+            261
+          ]
+        },
+        {
+          "index": 261,
+          "asset_sha256": "b6b32e551ac9bd513dd1b2f15c8c7b26f4b253f403e37d00bd66bb0960fe32a5",
+          "head_rect": [
+            532,
+            163,
+            573,
+            205
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            552,
+            260
+          ]
+        },
+        {
+          "index": 265,
+          "asset_sha256": "41ee5da258f6a967d992f504d0d437400caa38d77a6f2682d5886ba0fcde179b",
+          "head_rect": [
+            534,
+            162,
+            578,
+            205
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            556,
+            260
+          ]
+        },
+        {
+          "index": 270,
+          "asset_sha256": "bfff891f14c3a2a638a593066493dfd6833f8ad4cd9a8f63dd9f7bdf2fedc314",
+          "head_rect": [
+            539,
+            163,
+            580,
+            206
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            559,
+            261
+          ]
+        },
+        {
+          "index": 274,
+          "asset_sha256": "6c85ffb5ee42a7aeeb20c67983854a0b25f36a29b43e4540c0140455c16944af",
+          "head_rect": [
+            549,
+            163,
+            588,
+            205
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            568,
+            260
+          ]
+        }
+      ]
+    },
+    "basque_reconnect": {
+      "target_id": 0,
+      "manifest_sha256": "411299f4d7140d043bd934977208fcd91c6f4305be3ed15dcd83678fe0d96591",
+      "labels": [
+        {
+          "index": 179,
+          "asset_sha256": "69ccc08adcc3378f7ebc4bdd2e4ce2c6f0ee51417a6bc15df2a38356c7438926",
+          "head_rect": [
+            623,
+            131,
+            679,
+            187
+          ],
+          "neighbor_rects": [
+            [
+              694,
+              171,
+              717,
+              201
+            ]
+          ],
+          "torso_probe": [
+            651,
+            242
+          ]
+        },
+        {
+          "index": 181,
+          "asset_sha256": "48b92def82cfa1fcbccfa8900d33c45e4b21352ca676689dffbe234b07fe7a40",
+          "head_rect": [
+            644,
+            132,
+            708,
+            192
+          ],
+          "neighbor_rects": [
+            [
+              701,
+              171,
+              722,
+              197
+            ]
+          ],
+          "torso_probe": [
+            676,
+            247
+          ]
+        },
+        {
+          "index": 182,
+          "asset_sha256": "fa7492cf8c9b6eae0d61e20501249744845be7eac33d6bbed005bba005e0135c",
+          "head_rect": [
+            654,
+            129,
+            715,
+            187
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            684,
+            242
+          ]
+        },
+        {
+          "index": 183,
+          "asset_sha256": "a7662ff044d13137f178dc7a6a0d34f3db081fb31b59c8c62ec97e36fab48c47",
+          "head_rect": [
+            663,
+            125,
+            726,
+            179
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            694,
+            234
+          ]
+        },
+        {
+          "index": 184,
+          "asset_sha256": "9f4c7a11d44c13cf445008ed98ef26b72126ebb215ab1a456fb1ed2287015a96",
+          "head_rect": [
+            675,
+            116,
+            735,
+            175
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            705,
+            230
+          ]
+        },
+        {
+          "index": 185,
+          "asset_sha256": "0ff413e83c8405340fce90502adf48bc96915824a5954a942bec584cff800601",
+          "head_rect": [
+            690,
+            111,
+            746,
+            166
+          ],
+          "neighbor_rects": [],
+          "torso_probe": [
+            718,
+            221
+          ]
+        },
+        {
+          "index": 186,
+          "asset_sha256": "2745b364270582734b315cfdda205633885c6184d977651589042b7a43bb029e",
+          "head_rect": [
+            692,
+            104,
+            752,
+            163
+          ],
+          "neighbor_rects": [
+            [
+              660,
+              149,
+              690,
+              199
+            ]
+          ],
+          "torso_probe": [
+            722,
+            218
+          ]
+        },
+        {
+          "index": 188,
+          "asset_sha256": "8265e80390b141b764cc372e1ea5794f012fb4b138ecb9cd2f925ec7d4796f79",
+          "head_rect": [
+            711,
+            109,
+            767,
+            163
+          ],
+          "neighbor_rects": [
+            [
+              661,
+              151,
+              698,
+              194
+            ]
+          ],
+          "torso_probe": [
+            747,
+            225
+          ]
+        },
+        {
+          "index": 189,
+          "asset_sha256": "8443b1967f52ed4f79852bd1ad936cfd1016328c817825be3a82d0e001936882",
+          "head_rect": [
+            721,
+            113,
+            776,
+            169
+          ],
+          "neighbor_rects": [
+            [
+              665,
+              154,
+              701,
+              197
+            ]
+          ],
+          "torso_probe": [
+            758,
+            228
+          ]
+        },
+        {
+          "index": 192,
+          "asset_sha256": "ed2871da1b04b0293900f840858eb2d62c9ec2c7d8cda2f94c21de4e3197bf90",
+          "head_rect": [
+            739,
+            126,
+            792,
+            180
+          ],
+          "neighbor_rects": [
+            [
+              681,
+              168,
+              720,
+              211
+            ]
+          ],
+          "torso_probe": [
+            768,
+            239
+          ]
+        }
+      ]
+    }
+  }
+}

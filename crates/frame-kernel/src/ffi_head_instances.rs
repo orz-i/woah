@@ -181,6 +181,30 @@ pub unsafe extern "C" fn frame_kernel_research_head_certified_path(
     0
 }
 
+/// # Safety
+/// Path timestamps/flags readable; n output states disjoint writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_head_reconnect_path(
+    times: *const i64,
+    flags: *const u32,
+    n: usize,
+    out: *mut u32,
+) -> i32 {
+    if n > 100_000 || out.is_null() {
+        return -1;
+    }
+    // SAFETY: caller supplies bounded readable arrays.
+    let (Some(t), Some(f)) = (unsafe { (borrowed(times, n), borrowed(flags, n)) }) else {
+        return -1;
+    };
+    let Some(v) = algo::reconnect_path(t, f) else {
+        return -1;
+    };
+    // SAFETY: caller supplies n disjoint writable states.
+    unsafe { std::ptr::copy_nonoverlapping(v.as_ptr(), out, v.len()) };
+    0
+}
+
 #[repr(C)]
 pub struct HeadInstancePlacement {
     pub required: Rect,

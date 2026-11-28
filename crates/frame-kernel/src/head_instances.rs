@@ -384,6 +384,75 @@ pub(crate) fn certified_path(times: &[i64], owner: &[i32], target: i32) -> Optio
     Some(result)
 }
 
+/// Reconnect a continuously observed, reciprocal head path to independently
+/// certified body evidence. No head detection, face history or label alone
+/// establishes identity. Body witnesses are either simultaneous pooled and
+/// unpooled appearance votes on the same owned raw body (bit 0), or a node
+/// of an already certified raw body tracklet (bit 1). Explicit competing
+/// identity/merge evidence (bit 2) cuts the path. Zero is unknown, not a
+/// negative. A proof can propagate at most the existing two-second head
+/// bridge horizon from a witness; it cannot cross a broken head link.
+pub(crate) fn reconnect_path(times: &[i64], flags: &[u32]) -> Option<Vec<u32>> {
+    const HORIZON: i64 = 2_000_000;
+    if times.len() != flags.len()
+        || times.len() > 100_000
+        || flags.iter().any(|&f| f > 7)
+        || times.windows(2).any(|w| {
+            w[1].checked_sub(w[0])
+                .is_none_or(|v| !(1..=100_000).contains(&v))
+        })
+    {
+        return None;
+    }
+    let mut out = vec![0; flags.len()];
+    let mut start = 0;
+    while start < flags.len() {
+        if flags[start] & 4 != 0 {
+            start += 1;
+            continue;
+        }
+        let mut end = start + 1;
+        while end < flags.len() && flags[end] & 4 == 0 {
+            end += 1;
+        }
+        // A cluster needs three independent appearance windows (each
+        // three sample steps apart), or two separated raw-tracklet
+        // witnesses. Reuse the established raw-tracklet proof rather than
+        // counting its pooled votes as independent extra observations.
+        for (mask, count) in [(1, 3usize), (2, 2usize)] {
+            let witnesses: Vec<_> = (start..end).filter(|&j| flags[j] & mask != 0).collect();
+            for (k, &a) in witnesses.iter().enumerate() {
+                let mut chosen = a;
+                let mut n = 1;
+                for &b in &witnesses[k + 1..] {
+                    if times[b].saturating_sub(times[a]) > HORIZON {
+                        break;
+                    }
+                    if b - chosen >= 3 {
+                        chosen = b;
+                        n += 1;
+                        if n == count {
+                            break;
+                        }
+                    }
+                }
+                if n < count {
+                    continue;
+                }
+                // Only extrapolate along current observed head nodes, and
+                // only within a bounded distance of the certified cluster.
+                let lo = times[a].saturating_sub(HORIZON);
+                let hi = times[chosen].saturating_add(HORIZON);
+                let first = start + times[start..end].partition_point(|&t| t < lo);
+                let last = start + times[start..end].partition_point(|&t| t <= hi);
+                out[first..last].fill(3);
+            }
+        }
+        start = end;
+    }
+    Some(out)
+}
+
 /// Detector envelope with one source prototype cell or 8% size margin.
 /// Rival detections constrain only the position of the enclosing square.
 pub(crate) fn placement(
@@ -605,6 +674,33 @@ mod tests {
             Some(vec![0, 0, 0, 0, 0])
         );
     }
+    #[test]
+    fn reconnect_requires_independent_body_evidence_and_stops_at_conflicts() {
+        let times: Vec<i64> = (0..100).map(|i| i * 40_000).collect();
+        let mut f = vec![0; 100];
+        f[60] = 1;
+        f[61] = 1;
+        f[62] = 1;
+        assert!(reconnect_path(&times, &f).unwrap().iter().all(|&x| x == 0));
+        f[63] = 1;
+        f[66] = 1;
+        let r = reconnect_path(&times, &f).unwrap();
+        assert!(r[..10].iter().all(|&x| x == 0));
+        assert!(r[10..].iter().all(|&x| x == 3));
+        f[64] = 4;
+        assert!(reconnect_path(&times, &f).unwrap().iter().all(|&x| x == 0));
+        f.fill(0);
+        f[60] = 2;
+        f[63] = 2;
+        f[56] = 4;
+        f[70] = 4;
+        let r = reconnect_path(&times, &f).unwrap();
+        assert!(r[..57].iter().all(|&x| x == 0));
+        assert!(r[57..70].iter().all(|&x| x == 3));
+        assert!(r[70..].iter().all(|&x| x == 0));
+        assert!(reconnect_path(&[0, 200_000], &[1, 1]).is_none());
+    }
+
     #[test]
     fn independent_head_arbitration_does_not_shrink_agreeing_cover_without_rival() {
         let tr = Transform {
