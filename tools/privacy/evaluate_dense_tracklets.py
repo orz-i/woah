@@ -104,7 +104,6 @@ def main():
     out={"scope":__doc__,"fixture_sha256":sha(a.fixture),"reference_replay_sha256":sha(a.reference_replay),
          "library_sha256":sha(a.library),"detector_hashes":trace["model_sha256"],"pose_sha256":POSE_SHA,
          "reid_weights_sha256":{k:v for k,v in MODEL_FILES.items() if "0287" in k},
-         "reid_weights_sha256":{k:v for k,v in MODEL_FILES.items() if "0287" in k},
          "target_id":trace["target_id"],"protected_roots":trace["identity_protected_roots"],"seed_paths":paths,"frames":frames,
          "elapsed_s":time.perf_counter()-start}
     a.output.write_text(json.dumps(out,separators=(",",":"))+"\n")

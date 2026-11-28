@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import numpy as np
 from PIL import Image
-from evaluate_body_reid import PERSON_MODEL, FACE_MODEL, sha
+from evaluate_body_reid import PERSON_MODEL, FACE_MODEL, MODEL_FILES, sha
 from evaluate_pose_parts import PoseKernel, POSE_FILE, POSE_SHA, pose_points
 from replay_face_geometry import P,S,U,MaskSpec,Ellipse,check,detect_instances,detect_face,model,ptr,struct,vals
 from replay_face_tracking import I64,HeadSticker
@@ -62,6 +62,10 @@ def main():
             or dense["target_id"]!=base["target_id"] or dense["protected_roots"]!=base["identity_protected_roots"]):
         raise ValueError("model mismatch")
     frames=dense["frames"];target=base["target_id"];prior=base["candidate"]["frames"]
+    if dense["library_sha256"]!=sha(a.library) or dense["reid_weights_sha256"]!={k:v for k,v in MODEL_FILES.items() if "0287" in k}:
+        raise ValueError("dense evidence library or ReID weight mismatch")
+    if target not in set(base["identity_protected_roots"]):
+        raise ValueError("target is not a protected initial root")
     if len(prior)!=len(frames) or len(prior)!=len(fixture["frames"]) or any(r["index"]!=i or r["time_us"]!=prior[i]["time_us"] or r["boxes"]!=prior[i]["raw_boxes"] for i,r in enumerate(frames)):
         raise ValueError("raw evidence mismatch")
     kernel=PoseKernel(a.library);selected=select(kernel,frames,set(base["identity_protected_roots"]),target,prior)
@@ -95,10 +99,14 @@ def main():
         if spans and i==spans[-1]["end"]+1:
             spans[-1]["end"]=i;spans[-1]["raw"].append(j)
         else:spans.append({"start":i,"end":i,"raw":[j]})
+    if any(x["track"]!=y["track"] or x["tracks"]!=y["tracks"] for x,y in zip(prior,output)):
+        raise RuntimeError("research pass changed canonical identity")
+    if any(x["render"] is not None and x!=y for x,y in zip(prior,output)):
+        raise RuntimeError("research pass changed existing coverage")
     out={"scope":__doc__,"fixture_sha256":sha(a.fixture),"target_id":target,
          "dense_sha256":sha(a.dense),"reference_replay_sha256":sha(a.reference_replay),
          "library_sha256":sha(a.library),"spans":spans,"attempts":attempts,
-         "baseline":{"frames":prior},"candidate":{"frames":output}}
+         "baseline":{"frames":prior,"rendered":sum(r["render"] is not None for r in prior)},"candidate":{"frames":output,"rendered":sum(r["render"] is not None for r in output)}}
     a.output.write_text(json.dumps(out,separators=(",",":"))+"\n")
     print("spans",spans,"attempts",attempts,flush=True)
 if __name__=="__main__":main()
