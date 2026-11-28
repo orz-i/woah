@@ -1,0 +1,502 @@
+{
+  "base_commit": "1f28408f",
+  "decision": "RESEARCH_ONLY_MERGE_QUARANTINE_VERIFIED_LONG_GAP_REIDENTIFICATION_NOT_PROVEN",
+  "scope": "host-only one-step body pixel motion for merged-instance quarantine; no native activation",
+  "baseline_library_sha256": "92ded6cbed351940d3e4ce2d0cf5d02e244fd3ae8589919d0e44646dac69ef99",
+  "candidate_library_sha256": "c98f7b4e36394f20a9f7c110425a30cbeae0024729ae3f99b736918864b81a65",
+  "rust_tests": {
+    "passed": 215,
+    "ignored": 1,
+    "failed": 0,
+    "strict_clippy": "pass",
+    "abi_v1": "pass"
+  },
+  "cases": {
+    "group-id2": {
+      "replay_sha256": "6a0d72b5529bf22bf724c8ce99255f17f9e1a84b7e7a357bd1b6846cda549382",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 2,
+      "tracking_snapshot_equal": true,
+      "rendered_before": 106,
+      "rendered_after": 106,
+      "observed_before": 108,
+      "observed_after": 108,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": true,
+      "lost_render_indices": [],
+      "gained_render_indices": [],
+      "merge_events": []
+    },
+    "group-id3": {
+      "replay_sha256": "4efc590667fce46c66d069030f9f880e25b0a164ae7c68ce7ba57ac28716bfc4",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 3,
+      "tracking_snapshot_equal": true,
+      "rendered_before": 106,
+      "rendered_after": 106,
+      "observed_before": 103,
+      "observed_after": 103,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": true,
+      "lost_render_indices": [],
+      "gained_render_indices": [],
+      "merge_events": []
+    },
+    "group-id4": {
+      "replay_sha256": "a2f22a05b7ce41193d7d6817f46683d4f3deb4498e9edb788dba67f578922a64",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 4,
+      "tracking_snapshot_equal": true,
+      "rendered_before": 120,
+      "rendered_after": 120,
+      "observed_before": 120,
+      "observed_after": 120,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": true,
+      "lost_render_indices": [],
+      "gained_render_indices": [],
+      "merge_events": []
+    },
+    "salsa-id0": {
+      "replay_sha256": "8617067ff918d1e89764eb42b6b93d97d95b88be8ff242adf6e56dfc377c796a",
+      "fixture_sha256": "47d98760f606e288c8e46dedb8aa2a1102c0220e0c62928f84c912a8364d8aff",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 0,
+      "tracking_snapshot_equal": true,
+      "rendered_before": 80,
+      "rendered_after": 80,
+      "observed_before": 79,
+      "observed_after": 79,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": true,
+      "lost_render_indices": [],
+      "gained_render_indices": [],
+      "merge_events": []
+    },
+    "salsa-id1": {
+      "replay_sha256": "683f0933f6f00f25562ff7ef10d8b93e0ee8ca6f0d16f1858328d4708a90db1f",
+      "fixture_sha256": "47d98760f606e288c8e46dedb8aa2a1102c0220e0c62928f84c912a8364d8aff",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 1,
+      "tracking_snapshot_equal": true,
+      "rendered_before": 80,
+      "rendered_after": 80,
+      "observed_before": 80,
+      "observed_after": 80,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": true,
+      "lost_render_indices": [],
+      "gained_render_indices": [],
+      "merge_events": []
+    },
+    "dynamic": {
+      "replay_sha256": "6ba8041e93d05c185429ce00eea7fc2ed212bc6a4d883c62d3541aff2a546933",
+      "fixture_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 1,
+      "tracking_snapshot_equal": true,
+      "rendered_before": 18,
+      "rendered_after": 18,
+      "observed_before": 15,
+      "observed_after": 15,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": true,
+      "lost_render_indices": [],
+      "gained_render_indices": [],
+      "merge_events": []
+    },
+    "mirror-id5": {
+      "replay_sha256": "03df6215e30f74d4a2e2a06e2b38dbb983d0de3f70958a4e75345b207914075c",
+      "fixture_sha256": "bb44f58ce9df3b6206a1e9d4af587ec6e6fc108db5f0c07f98746cfd368ce489",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 5,
+      "tracking_snapshot_equal": true,
+      "rendered_before": 105,
+      "rendered_after": 105,
+      "observed_before": 105,
+      "observed_after": 105,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": true,
+      "lost_render_indices": [],
+      "gained_render_indices": [],
+      "merge_events": []
+    },
+    "swing-id6": {
+      "replay_sha256": "a615cceb7cf8b06d07be62ddfcdb7b7a07ed816a4373396582bd2d822e0a3760",
+      "fixture_sha256": "83e2892d421beb656e9d28dd4058d1b7f10d57babe334b7dd8470074c2d51b4e",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 6,
+      "tracking_snapshot_equal": true,
+      "rendered_before": 265,
+      "rendered_after": 265,
+      "observed_before": 253,
+      "observed_after": 253,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": true,
+      "lost_render_indices": [],
+      "gained_render_indices": [],
+      "merge_events": []
+    },
+    "swing-id7": {
+      "replay_sha256": "1484e6821c5eb2b2ca3652655e79d013ae875343c3f17757a0c73840d2f2a76f",
+      "fixture_sha256": "83e2892d421beb656e9d28dd4058d1b7f10d57babe334b7dd8470074c2d51b4e",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 7,
+      "tracking_snapshot_equal": true,
+      "rendered_before": 265,
+      "rendered_after": 265,
+      "observed_before": 254,
+      "observed_after": 254,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": true,
+      "lost_render_indices": [],
+      "gained_render_indices": [],
+      "merge_events": []
+    },
+    "basque-id0": {
+      "replay_sha256": "c9a06ff21ca6f96a49e4e15ce1e5e3ff63b215a54d545aa32b167484ef86520b",
+      "fixture_sha256": "411299f4d7140d043bd934977208fcd91c6f4305be3ed15dcd83678fe0d96591",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 0,
+      "tracking_snapshot_equal": false,
+      "rendered_before": 78,
+      "rendered_after": 75,
+      "observed_before": 76,
+      "observed_after": 75,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": false,
+      "lost_render_indices": [
+        74,
+        76,
+        77
+      ],
+      "gained_render_indices": [],
+      "merge_events": [
+        {
+          "index": 29,
+          "raw_index": 9,
+          "raw_bounds": [
+            752.3280029296875,
+            66.98966217041016,
+            918.359619140625,
+            534.7681274414062
+          ],
+          "witnesses": [
+            {
+              "previous_id": 7,
+              "votes": 27,
+              "previous_bounds": [
+                750.4046630859375,
+                99.03437805175781,
+                912.5545043945312,
+                534.3685302734375
+              ]
+            },
+            {
+              "previous_id": 10,
+              "votes": 20,
+              "previous_bounds": [
+                829.581298828125,
+                45.99041748046875,
+                919.6605834960938,
+                218.38787841796875
+              ]
+            }
+          ],
+          "baseline_observed_owners": [
+            7
+          ],
+          "candidate_observed_owners": []
+        },
+        {
+          "index": 74,
+          "raw_index": 1,
+          "raw_bounds": [
+            127.08963775634766,
+            157.92539978027344,
+            316.2220153808594,
+            501.8501892089844
+          ],
+          "witnesses": [
+            {
+              "previous_id": 0,
+              "votes": 9,
+              "previous_bounds": [
+                117.73015594482422,
+                161.8278350830078,
+                242.53323364257812,
+                491.0208740234375
+              ]
+            },
+            {
+              "previous_id": 8,
+              "votes": 21,
+              "previous_bounds": [
+                209.1781768798828,
+                159.1518096923828,
+                319.5090637207031,
+                510.61688232421875
+              ]
+            }
+          ],
+          "baseline_observed_owners": [
+            0
+          ],
+          "candidate_observed_owners": []
+        }
+      ]
+    },
+    "basque-id1": {
+      "replay_sha256": "28029747bc573f7e52e3c7f1d46002dd9303ceea9d38697a6e9a6a9266e0f982",
+      "fixture_sha256": "411299f4d7140d043bd934977208fcd91c6f4305be3ed15dcd83678fe0d96591",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 1,
+      "tracking_snapshot_equal": false,
+      "rendered_before": 101,
+      "rendered_after": 101,
+      "observed_before": 99,
+      "observed_after": 99,
+      "baseline_matches_m41": true,
+      "candidate_matches_m41": false,
+      "lost_render_indices": [],
+      "gained_render_indices": [],
+      "merge_events": [
+        {
+          "index": 29,
+          "raw_index": 9,
+          "raw_bounds": [
+            752.3280029296875,
+            66.98966217041016,
+            918.359619140625,
+            534.7681274414062
+          ],
+          "witnesses": [
+            {
+              "previous_id": 7,
+              "votes": 27,
+              "previous_bounds": [
+                750.4046630859375,
+                99.03437805175781,
+                912.5545043945312,
+                534.3685302734375
+              ]
+            },
+            {
+              "previous_id": 10,
+              "votes": 20,
+              "previous_bounds": [
+                829.581298828125,
+                45.99041748046875,
+                919.6605834960938,
+                218.38787841796875
+              ]
+            }
+          ],
+          "baseline_observed_owners": [
+            7
+          ],
+          "candidate_observed_owners": []
+        },
+        {
+          "index": 74,
+          "raw_index": 1,
+          "raw_bounds": [
+            127.08963775634766,
+            157.92539978027344,
+            316.2220153808594,
+            501.8501892089844
+          ],
+          "witnesses": [
+            {
+              "previous_id": 0,
+              "votes": 9,
+              "previous_bounds": [
+                117.73015594482422,
+                161.8278350830078,
+                242.53323364257812,
+                491.0208740234375
+              ]
+            },
+            {
+              "previous_id": 8,
+              "votes": 21,
+              "previous_bounds": [
+                209.1781768798828,
+                159.1518096923828,
+                319.5090637207031,
+                510.61688232421875
+              ]
+            }
+          ],
+          "baseline_observed_owners": [
+            0
+          ],
+          "candidate_observed_owners": []
+        }
+      ]
+    }
+  },
+  "source_audits": {
+    "basque": {
+      "sha256": "f5c85a44f55c43cb96f816f8804ecdf3e3bf325756d4df3dea64a07af69c3de1",
+      "labels_sha256": "5822e6fdb93c42468b652e281b5bc35017a6a914c73c304b9eb8a99c448e7c3f",
+      "summary": {
+        "baseline": {
+          "0": {
+            "correct": 3,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 7
+          }
+        },
+        "candidate": {
+          "0": {
+            "correct": 3,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 7
+          }
+        }
+      }
+    },
+    "basque-continuity": {
+      "sha256": "6dd94f9a53f755338639f9bb661865b43eec364c81ec4b010ad0e133f77d5576",
+      "labels_sha256": "2a55b33d0df72e66b7d6c3d5ffdf7a5f2b66936f552d1475748ed014969fe983",
+      "summary": {
+        "baseline": {
+          "0": {
+            "correct": 4,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 0
+          }
+        },
+        "candidate": {
+          "0": {
+            "correct": 4,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 0
+          }
+        }
+      }
+    },
+    "swing": {
+      "sha256": "6b1bd3eecda718f1c55ca6dda378a37beef609208b51ddee88399ce23d651e49",
+      "labels_sha256": "fb6df0fcf37e2f412a4e98efd2629972a138d656e184b16c3796e48cd47e5244",
+      "summary": {
+        "baseline": {
+          "6": {
+            "correct": 12,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 0
+          },
+          "7": {
+            "correct": 11,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 1
+          }
+        },
+        "candidate": {
+          "6": {
+            "correct": 12,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 0
+          },
+          "7": {
+            "correct": 11,
+            "wrong": 0,
+            "ambiguous": 0,
+            "unobserved_or_ambiguous": 1
+          }
+        }
+      }
+    }
+  },
+  "diagnostics": {
+    "m42-motion-probe.py": {
+      "local_sha256": "3c689aadcc63d0758923bdf114b0f0fb2c6c3a276173d58cf3e42c340f89d350"
+    },
+    "m42-native-probe.py": {
+      "local_sha256": "16970c21481643594be3605f17e20198a14980e3337775009770972c8f35f7f1"
+    },
+    "point_tracklet_limits": {
+      "prototype_grid_root0_start70": [
+        24,
+        8,
+        6,
+        3,
+        3,
+        2
+      ],
+      "half_source_root0_start70": [
+        41,
+        15,
+        8,
+        4,
+        2
+      ],
+      "half_source_root0_start73": [
+        22,
+        6,
+        2
+      ],
+      "half_source_root1_start91": [
+        49,
+        19,
+        13,
+        10,
+        5,
+        2
+      ],
+      "conclusion": "No validated correspondence chain through the actual full occlusion; do not use sparse survivors to create canonical identity."
+    }
+  },
+  "previous_ci": {
+    "run": "46105485419",
+    "validate_and_test": "success",
+    "ios": "failure: pod install --deployment, dance_native SPEC CHECKSUMS cf5aea98a535fc7a9cf713cd5af5fcb8127d05f5 -> cff92b0c2c573aef065e89e0bab39e452ae47927",
+    "governance": "failure",
+    "local_checksum": "cf5aea98a535fc7a9cf713cd5af5fcb8127d05f5",
+    "resolved": false
+  }
+}

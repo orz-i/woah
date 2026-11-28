@@ -105,9 +105,7 @@ impl Tracker {
                 bottom: bottom + my,
             };
             let cols = (0..d.len())
-                .filter(|i| {
-                    !f.matched_detections.contains(i) && intersection(envelope, d[*i].bounds) > 0.0
-                })
+                .filter(|i| !f.unavailable(i) && intersection(envelope, d[*i].bounds) > 0.0)
                 .collect::<Vec<_>>();
             f.group_tracks.extend(rows.iter().copied());
             if cols.is_empty() {
@@ -257,7 +255,7 @@ impl Tracker {
                 .collect::<Vec<_>>();
             let residual_detections = cols
                 .iter()
-                .filter(|i| !f.matched_detections.contains(i))
+                .filter(|i| !f.unavailable(i))
                 .copied()
                 .collect::<Vec<_>>();
             let balanced = cols.len() == rows.len()

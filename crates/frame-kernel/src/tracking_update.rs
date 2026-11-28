@@ -72,6 +72,7 @@ pub(crate) fn commit(t: &mut Track, d: &Detection, at: i64) {
 pub(crate) struct Frame {
     pub matched_tracks: BTreeSet<usize>,
     pub matched_detections: BTreeSet<usize>,
+    pub quarantined_detections: BTreeSet<usize>,
     pub group_tracks: BTreeSet<usize>,
     pub group_detections: BTreeSet<usize>,
     pub direct_group_detections: BTreeSet<usize>,
@@ -80,6 +81,11 @@ pub(crate) struct Frame {
     pub global_detections: BTreeSet<usize>,
     pub ambiguous_tracks: BTreeSet<usize>,
     pub cache: AssociationCache,
+}
+impl Frame {
+    pub(super) fn unavailable(&self, index: &usize) -> bool {
+        self.matched_detections.contains(index) || self.quarantined_detections.contains(index)
+    }
 }
 pub(super) fn scores(
     t: &Tracker,
@@ -290,7 +296,7 @@ impl Tracker {
             })
             .collect::<Vec<_>>();
         let shadow = (0..d.len())
-            .filter(|i| !f.matched_detections.contains(i))
+            .filter(|i| !f.unavailable(i))
             .collect::<Vec<_>>();
         let mut rescue = BTreeSet::new();
         if !rows.is_empty() && !f.group_detections.is_empty() && !shadow.is_empty() {
@@ -375,8 +381,7 @@ impl Tracker {
         }
         let cols = (0..d.len())
             .filter(|i| {
-                !f.matched_detections.contains(i)
-                    && (!f.group_detections.contains(i) || rescue.contains(i))
+                !f.unavailable(i) && (!f.group_detections.contains(i) || rescue.contains(i))
             })
             .collect::<Vec<_>>();
         if rows.is_empty() || cols.is_empty() {
@@ -466,7 +471,7 @@ impl Tracker {
     fn recover_or_insert(&mut self, d: &[Detection], at: i64, f: &mut Frame) -> Result<()> {
         let mut unassigned = Vec::new();
         for di in 0..d.len() {
-            if f.matched_detections.contains(&di)
+            if f.unavailable(&di)
                 || f.group_detections.contains(&di)
                 || f.global_detections.contains(&di)
             {

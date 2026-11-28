@@ -568,6 +568,11 @@ pub unsafe extern "C" fn frame_kernel_tracking_step(
             track.observed_mask_at_us = track.observed_mask.as_ref().map(|_| at);
         }
     }
+    if action >= 2
+        && let Some(c) = s.tracker.crowd_clothing.as_mut()
+    {
+        c.invalidate_motion();
+    }
     s.snapshot = encode(&s.tracker);
     0
 }
@@ -588,7 +593,7 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
     rgb_len: usize,
     transform: Transform,
 ) -> i32 {
-    if !matches!(action, 0 | 1 | 4 | 5)
+    if !matches!(action, 0 | 1 | 4 | 5 | 6 | 7)
         || count == 0
         || count > 64
         || pixels_len > 64 * 1024 * 1024
@@ -625,7 +630,8 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
     }
     let mut t = s.tracker.clone();
     let adaptive = action >= 4;
-    if matches!(action, 0 | 4) {
+    let motion = action >= 6;
+    if matches!(action, 0 | 4 | 6) {
         if t.initialized || t.initialize(d.clone(), &[]).is_err() {
             return -1;
         }
@@ -637,15 +643,31 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
         if adaptive {
             clothing.enable_adaptive(at, &t.protected_ids);
         }
+        if motion {
+            clothing.enable_motion();
+            if clothing
+                .prepare_motion(&t, &d, rgb, transform, at)
+                .is_none()
+            {
+                return -1;
+            }
+        }
         t.crowd_clothing = Some(clothing);
         for q in &mut t.tracks {
             q.observed_mask_at_us = q.observed_mask.as_ref().map(|_| at);
         }
     } else {
+        let prior = t.clone();
         let Some(clothing) = t.crowd_clothing.as_mut() else {
             return -1;
         };
-        if clothing.is_adaptive() != adaptive || clothing.observe(&d, rgb, transform).is_none() {
+        if clothing.is_adaptive() != adaptive
+            || clothing.is_motion() != motion
+            || clothing.observe(&d, rgb, transform).is_none()
+            || clothing
+                .prepare_motion(&prior, &d, rgb, transform, at)
+                .is_none()
+        {
             return -1;
         }
         if adaptive {
@@ -667,6 +689,45 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
     s.tracker = t;
     s.snapshot = encode(&s.tracker);
     0
+}
+
+/// # Safety
+/// Diagnostic flattened (raw index, previous identity, pixel votes) triples.
+/// Caller supplies capacity i64 elements; no retained pointer.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_tracking_motion_merges(
+    id: u64,
+    out: *mut i64,
+    capacity: usize,
+) -> i64 {
+    let Some(owner) = session(id) else {
+        return -1;
+    };
+    let Ok(s) = owner.lock() else {
+        return -1;
+    };
+    let Some(c) = s.tracker.crowd_clothing.as_ref() else {
+        return -1;
+    };
+    let values = c
+        .motion_merges()
+        .iter()
+        .flat_map(|m| {
+            m.ids
+                .iter()
+                .zip(&m.votes)
+                .flat_map(|(&id, &v)| [m.index as i64, id, v as i64])
+        })
+        .collect::<Vec<_>>();
+    if capacity == 0 {
+        return values.len() as i64;
+    }
+    if out.is_null() || capacity < values.len() {
+        return -1;
+    }
+    // SAFETY: caller supplies at least the required number of writable i64s.
+    unsafe { std::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
+    values.len() as i64
 }
 
 /// # Safety

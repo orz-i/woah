@@ -205,6 +205,9 @@ pub(crate) struct CrowdClothing {
     roots: Arc<BTreeMap<i64, ClothingRoot>>,
     current: Arc<Vec<Option<Clothing>>>,
     adaptive: bool,
+    motion: bool,
+    previous_pixels: Option<Arc<crate::tracking_motion::BodyPixelFrame>>,
+    merges: Arc<Vec<crate::tracking_motion::BodyMerge>>,
 }
 fn clothing_features(d: &[Detection], rgb: &[u8], tr: Transform) -> Option<Vec<Option<Clothing>>> {
     let w = tr.source_width as usize;
@@ -322,6 +325,9 @@ impl CrowdClothing {
             roots: Arc::new(roots),
             current: Arc::new(vec![]),
             adaptive: false,
+            motion: false,
+            previous_pixels: None,
+            merges: Arc::new(vec![]),
         })
     }
     pub(crate) fn enable_adaptive(&mut self, at: i64, protected: &std::collections::BTreeSet<i64>) {
@@ -353,6 +359,50 @@ impl CrowdClothing {
             root.recent = Some((at, root.feature.clone()));
             root.initial_ambiguous = ambiguous.contains(id);
         }
+    }
+    pub(crate) fn enable_motion(&mut self) {
+        self.motion = true;
+    }
+    pub(crate) fn is_motion(&self) -> bool {
+        self.motion
+    }
+    pub(crate) fn motion_merges(&self) -> &[crate::tracking_motion::BodyMerge] {
+        &self.merges
+    }
+    pub(crate) fn prepare_motion(
+        &mut self,
+        before: &Tracker,
+        d: &[Detection],
+        rgb: &[u8],
+        tr: Transform,
+        at: i64,
+    ) -> Option<()> {
+        if !self.motion {
+            return Some(());
+        }
+        let eligible = self
+            .roots
+            .iter()
+            .filter(|(id, r)| r.initial_ambiguous && before.protected_ids.contains(id))
+            .map(|(&id, _)| id)
+            .collect::<std::collections::BTreeSet<_>>();
+        self.merges = Arc::new(vec![]);
+        if eligible.is_empty() {
+            self.previous_pixels = None;
+            return Some(());
+        }
+        let current = Arc::new(crate::tracking_motion::BodyPixelFrame::new(at, d, rgb, tr)?);
+        if let Some(old) = &self.previous_pixels {
+            self.merges = Arc::new(crate::tracking_motion::confirmed_body_merges(
+                before, old, &current, &eligible,
+            ));
+        }
+        self.previous_pixels = Some(current);
+        Some(())
+    }
+    pub(crate) fn invalidate_motion(&mut self) {
+        self.previous_pixels = None;
+        self.merges = Arc::new(vec![]);
     }
     pub(crate) fn is_adaptive(&self) -> bool {
         self.adaptive
@@ -586,13 +636,29 @@ impl CrowdClothing {
     /// plausible live track with an immutable initial feature competes. No
     /// clothing-only matching or learning on an occlusion is allowed.
     pub(crate) fn associate(&self, t: &mut Tracker, d: &[Detection], at: i64, frame: &mut Frame) {
+        // Reserve a confirmed merged observation without assigning an ID.
+        // It cannot seed a new identity or replace either existing anchor.
+        for merge in self.merges.iter() {
+            frame.quarantined_detections.insert(merge.index);
+            for (i, q) in t.tracks.iter().enumerate() {
+                if merge.ids.contains(&q.id) {
+                    frame.ambiguous_tracks.insert(i);
+                }
+            }
+        }
         let rows = t
             .tracks
             .iter()
             .map(|tr| {
                 d.iter()
                     .enumerate()
-                    .map(|(j, d)| self.candidate(tr, d, j, at))
+                    .map(|(j, d)| {
+                        if self.merges.iter().any(|m| m.index == j) {
+                            0.0
+                        } else {
+                            self.candidate(tr, d, j, at)
+                        }
+                    })
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
@@ -616,7 +682,7 @@ impl CrowdClothing {
             {
                 continue;
             }
-            if frame.matched_detections.contains(&j) {
+            if frame.matched_detections.contains(&j) || frame.quarantined_detections.contains(&j) {
                 continue;
             }
             // A different freshly observed raw silhouette remains a veto.

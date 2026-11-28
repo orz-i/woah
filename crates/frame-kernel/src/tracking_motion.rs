@@ -123,6 +123,347 @@ pub fn estimate(
     })
 }
 
+// Short-lived body texture correspondences. Retain only the immediately
+// preceding reduced RGB view, never a face embedding or persistent image.
+#[derive(Clone)]
+pub(crate) struct BodyPixelFrame {
+    pub at: i64,
+    pub detections: Vec<Detection>,
+    width: usize,
+    height: usize,
+    rgb: Vec<[u8; 3]>,
+    owner: Vec<u8>,
+    strong: Vec<bool>,
+    transform: crate::geometry::Transform,
+}
+impl BodyPixelFrame {
+    pub(crate) fn new(
+        at: i64,
+        d: &[Detection],
+        rgb: &[u8],
+        tr: crate::geometry::Transform,
+    ) -> Option<Self> {
+        let sw = tr.source_width as usize;
+        let sh = tr.source_height as usize;
+        if !tr.valid() || d.len() > 64 || rgb.len() != sw.checked_mul(sh)?.checked_mul(3)? {
+            return None;
+        }
+        let divisor = sw.max(sh).div_ceil(480).max(1);
+        let width = sw.div_ceil(divisor);
+        let height = sh.div_ceil(divisor);
+        if width < 9 || height < 9 {
+            return None;
+        }
+        let n = tr.proto_size as usize;
+        let mut owner_grid = vec![0u8; n * n];
+        let mut strong_grid = vec![false; n * n];
+        for (j, q) in d.iter().enumerate() {
+            let m = q.mask.as_ref()?;
+            if !m.valid() || m.width != n || m.height != n || m.transform != tr {
+                return None;
+            }
+            for (k, &v) in m.pixels.iter().enumerate() {
+                if v >= 128 {
+                    if owner_grid[k] != 0 {
+                        owner_grid[k] = 255;
+                        strong_grid[k] = false;
+                    } else {
+                        owner_grid[k] = (j + 1) as u8;
+                        strong_grid[k] = v >= 160;
+                    }
+                }
+            }
+        }
+        let mut pixels = Vec::with_capacity(width * height);
+        let mut owner = Vec::with_capacity(width * height);
+        let mut strong = Vec::with_capacity(width * height);
+        for y in 0..height {
+            for x in 0..width {
+                let l = x * divisor;
+                let top = y * divisor;
+                let r = (l + divisor).min(sw);
+                let b = (top + divisor).min(sh);
+                let mut sums = [0u64; 3];
+                let mut count = 0;
+                for yy in top..b {
+                    for xx in l..r {
+                        let k = (yy * sw + xx) * 3;
+                        for c in 0..3 {
+                            sums[c] += u64::from(rgb[k + c]);
+                        }
+                        count += 1;
+                    }
+                }
+                pixels.push(sums.map(|v| (v / count) as u8));
+                let sx = (l + r) as f32 * 0.5;
+                let sy = (top + b) as f32 * 0.5;
+                let px = ((sx * tr.scale + tr.pad_left) * n as f32 / tr.input_size as f32).floor();
+                let py = ((sy * tr.scale + tr.pad_top) * n as f32 / tr.input_size as f32).floor();
+                if px >= 0.0 && py >= 0.0 && px < n as f32 && py < n as f32 {
+                    let k = py as usize * n + px as usize;
+                    owner.push(owner_grid[k]);
+                    strong.push(strong_grid[k]);
+                } else {
+                    owner.push(0);
+                    strong.push(false);
+                }
+            }
+        }
+        Some(Self {
+            at,
+            detections: d.to_vec(),
+            width,
+            height,
+            rgb: pixels,
+            owner,
+            strong,
+            transform: tr,
+        })
+    }
+    fn points(&self, index: usize) -> Vec<(usize, usize)> {
+        let Some(d) = self.detections.get(index) else {
+            return vec![];
+        };
+        let body = d.bounds;
+        let h = body.bottom - body.top;
+        let sx = self.transform.source_width as f32 / self.width as f32;
+        let sy = self.transform.source_height as f32 / self.height as f32;
+        let mut pts = Vec::new();
+        for y in (4..self.height - 4).step_by(3) {
+            let source_y = (y as f32 + 0.5) * sy;
+            if source_y < body.top + 0.18 * h || source_y >= body.top + 0.83 * h {
+                continue;
+            }
+            for x in (4..self.width - 4).step_by(3) {
+                let source_x = (x as f32 + 0.5) * sx;
+                if source_x < body.left || source_x >= body.right {
+                    continue;
+                }
+                if !(y - 3..=y + 3).all(|yy| {
+                    (x - 3..=x + 3).all(|xx| {
+                        let k = yy * self.width + xx;
+                        self.owner[k] == (index + 1) as u8 && self.strong[k]
+                    })
+                }) {
+                    continue;
+                }
+                let lum = |k: usize| self.rgb[k].iter().map(|&q| i32::from(q)).sum::<i32>();
+                let (mut gx, mut gy) = (0u32, 0u32);
+                for yy in y - 3..=y + 3 {
+                    for xx in x - 3..=x + 3 {
+                        let k = yy * self.width + xx;
+                        if xx < x + 3 {
+                            gx += (lum(k + 1) - lum(k)).unsigned_abs();
+                        }
+                        if yy < y + 3 {
+                            gy += (lum(k + self.width) - lum(k)).unsigned_abs();
+                        }
+                    }
+                }
+                let texture = gx.min(gy);
+                if texture >= 315 {
+                    pts.push((texture, x, y));
+                }
+            }
+        }
+        pts.sort_unstable_by(|a, b| b.cmp(a));
+        let mut out = Vec::new();
+        for (_, x, y) in pts {
+            if out.iter().all(|&(xx, yy): &(usize, usize)| {
+                x.abs_diff(xx).pow(2) + y.abs_diff(yy).pow(2) >= 25
+            }) {
+                out.push((x, y));
+            }
+            if out.len() >= 64 {
+                break;
+            }
+        }
+        out
+    }
+    fn patch_error(&self, x: usize, y: usize, other: &Self, u: usize, v: usize) -> u32 {
+        let mut e = 0u32;
+        for dy in 0..7 {
+            for dx in 0..7 {
+                let a = self.rgb[(y + dy - 3) * self.width + x + dx - 3];
+                let b = other.rgb[(v + dy - 3) * other.width + u + dx - 3];
+                e += a
+                    .into_iter()
+                    .zip(b)
+                    .map(|(p, q)| u32::from(p.abs_diff(q)))
+                    .sum::<u32>();
+            }
+        }
+        e
+    }
+    fn best(&self, other: &Self, x: usize, y: usize) -> Option<(usize, usize)> {
+        let l = x.saturating_sub(12).max(3);
+        let r = (x + 12).min(other.width - 4);
+        let top = y.saturating_sub(12).max(3);
+        let bottom = (y + 12).min(other.height - 4);
+        let mut best = (u32::MAX, 0, 0);
+        let mut errors = Vec::with_capacity((r - l + 1) * (bottom - top + 1));
+        // The entire bounded search is evaluated. A spatially separate
+        // second minimum is required in addition to forward/backward agreement.
+        for v in top..=bottom {
+            for u in l..=r {
+                let e = self.patch_error(x, y, other, u, v);
+                if e < best.0 {
+                    best = (e, u, v);
+                }
+                errors.push((e, u, v));
+            }
+        }
+        if best.0 > 22 * 147 {
+            return None;
+        }
+        let rival = errors
+            .into_iter()
+            .filter(|&(_, u, v)| u.abs_diff(best.1) > 2 || v.abs_diff(best.2) > 2)
+            .map(|(e, _, _)| e)
+            .min()?;
+        if rival < best.0 + 221 {
+            return None;
+        }
+        Some((best.1, best.2))
+    }
+    pub(crate) fn votes(&self, other: &Self, index: usize) -> Option<(usize, Vec<usize>)> {
+        if self.width != other.width
+            || self.height != other.height
+            || self.transform != other.transform
+            || !(1..=100_000).contains(&other.at.checked_sub(self.at)?)
+        {
+            return None;
+        }
+        let mut matched = 0;
+        let mut counts = vec![0; other.detections.len()];
+        for (x, y) in self.points(index) {
+            let Some((u, v)) = self.best(other, x, y) else {
+                continue;
+            };
+            let Some((xx, yy)) = other.best(self, u, v) else {
+                continue;
+            };
+            if xx.abs_diff(x) > 1 || yy.abs_diff(y) > 1 {
+                continue;
+            }
+            matched += 1;
+            let owner = other.owner[v * other.width + u];
+            if owner > 0 && owner != 255 {
+                counts[owner as usize - 1] += 1;
+            }
+        }
+        Some((matched, counts))
+    }
+}
+fn containment(a: &crate::tracking::Mask, b: &crate::tracking::Mask) -> f32 {
+    if a.transform != b.transform || a.width != b.width || a.height != b.height {
+        return 0.0;
+    }
+    let (mut n, mut both) = (0u32, 0u32);
+    for (&x, &y) in a.pixels.iter().zip(b.pixels.iter()) {
+        if x >= 128 {
+            n += 1;
+            both += u32::from(y >= 128);
+        }
+    }
+    if n == 0 { 0.0 } else { both as f32 / n as f32 }
+}
+#[derive(Clone, Debug)]
+pub(crate) struct BodyMerge {
+    pub index: usize,
+    pub ids: Vec<i64>,
+    pub votes: Vec<usize>,
+}
+/// Confirm only a current raw mask with two independent prior owners'
+/// exclusive current texture support. Never create a match from flow.
+pub(crate) fn confirmed_body_merges(
+    before: &crate::tracking::Tracker,
+    old: &BodyPixelFrame,
+    current: &BodyPixelFrame,
+    eligible: &BTreeSet<i64>,
+) -> Vec<BodyMerge> {
+    if !(1..=100_000).contains(&current.at.saturating_sub(old.at))
+        || old.transform != current.transform
+    {
+        return vec![];
+    }
+    let previous = before
+        .tracks
+        .iter()
+        .filter_map(|t| {
+            if !t.observed_this_frame
+                || t.observed_mask_at_us != Some(old.at)
+                || t.offscreen_dormant
+                || t.confidence < 0.50
+            {
+                return None;
+            }
+            let m = t.observed_mask.as_ref()?;
+            let mut exact = old.detections.iter().enumerate().filter(|(_, q)| {
+                q.bounds == t.observed_bounds
+                    && q.mask
+                        .as_ref()
+                        .is_some_and(|v| v.transform == m.transform && v.pixels == m.pixels)
+            });
+            let (j, _) = exact.next()?;
+            if exact.next().is_some() {
+                return None;
+            }
+            Some((t.id, j, m))
+        })
+        .collect::<Vec<_>>();
+    let mut out = Vec::new();
+    let mut cache = std::collections::BTreeMap::new();
+    for (j, d) in current.detections.iter().enumerate() {
+        if d.confidence < 0.50 {
+            continue;
+        }
+        let Some(m) = d.mask.as_ref() else {
+            continue;
+        };
+        let owners = previous
+            .iter()
+            .filter(|(_, _, p)| containment(p, m) >= 0.70)
+            .collect::<Vec<_>>();
+        if owners.len() < 2 || !owners.iter().any(|(id, _, _)| eligible.contains(id)) {
+            continue;
+        }
+        let mut supported = Vec::new();
+        for &&(id, k, p) in &owners {
+            if !owners.iter().any(|&&(other, _, q)| {
+                other != id && crate::tracking_mask::raw_mask_iou(p, q) <= 0.20
+            }) {
+                continue;
+            }
+            let Some((matched, votes)) = cache
+                .entry(k)
+                .or_insert_with(|| old.votes(current, k))
+                .as_ref()
+            else {
+                continue;
+            };
+            let n = votes[j];
+            if n >= 4 && n * 5 >= matched * 3 {
+                supported.push((id, n, p));
+            }
+        }
+        let distinct = supported.iter().enumerate().any(|(k, (id, _, a))| {
+            supported[k + 1..].iter().any(|(other, _, b)| {
+                (eligible.contains(id) || eligible.contains(other))
+                    && crate::tracking_mask::raw_mask_iou(a, b) <= 0.20
+            })
+        });
+        if distinct {
+            out.push(BodyMerge {
+                index: j,
+                ids: supported.iter().map(|(id, _, _)| *id).collect(),
+                votes: supported.iter().map(|(_, n, _)| *n).collect(),
+            });
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,6 +482,121 @@ mod tests {
             confidence: 0.9,
             foot_y: 250.0,
         }
+    }
+    fn pixel_detection(x: usize, y: usize, w: usize, h: usize) -> Detection {
+        let tr = crate::geometry::Transform {
+            scale: 1.0,
+            pad_left: 0.0,
+            pad_top: 0.0,
+            source_width: 128,
+            source_height: 128,
+            input_size: 128,
+            proto_size: 128,
+        };
+        let mut m = vec![0; 128 * 128];
+        for j in y..y + h {
+            m[j * 128 + x..j * 128 + x + w].fill(255);
+        }
+        Detection {
+            bounds: Rect {
+                left: x as f32,
+                top: y as f32,
+                right: (x + w) as f32,
+                bottom: (y + h) as f32,
+            },
+            confidence: 0.9,
+            foot_y: (y + h) as f32,
+            mask: Some(crate::tracking::Mask {
+                width: 128,
+                height: 128,
+                pixels: m.into(),
+                transform: tr,
+            }),
+        }
+    }
+    #[test]
+    fn independent_body_texture_confirms_merge_but_not_separate_or_stale_masks() {
+        let a = pixel_detection(10, 10, 35, 95);
+        let b = pixel_detection(75, 10, 35, 95);
+        let tr = a.mask.as_ref().unwrap().transform;
+        let mut seed = 17u32;
+        let mut pixels = vec![0; 128 * 128 * 3];
+        for v in &mut pixels {
+            seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+            *v = (seed >> 24) as u8;
+        }
+        let mut current = vec![0; pixels.len()];
+        for y in 1..128 {
+            for x in 2..128 {
+                let k = (y * 128 + x) * 3;
+                let j = ((y - 1) * 128 + x - 2) * 3;
+                current[k..k + 3].copy_from_slice(&pixels[j..j + 3]);
+            }
+        }
+        let mut tracker = crate::tracking::Tracker::new(TrackingConfig::default());
+        tracker
+            .initialize(vec![a.clone(), b.clone()], &[0, 1])
+            .unwrap();
+        for q in &mut tracker.tracks {
+            q.observed_mask_at_us = Some(0);
+        }
+        let old = BodyPixelFrame::new(0, &[a, b], &pixels, tr).unwrap();
+        let c = pixel_detection(12, 11, 35, 95);
+        let d = pixel_detection(77, 11, 35, 95);
+        let mut merged = pixel_detection(12, 11, 100, 95);
+        let union = c
+            .mask
+            .as_ref()
+            .unwrap()
+            .pixels
+            .iter()
+            .zip(d.mask.as_ref().unwrap().pixels.iter())
+            .map(|(&a, &b)| a.max(b))
+            .collect::<Vec<_>>();
+        merged.mask.as_mut().unwrap().pixels = union.into();
+        let eligible = BTreeSet::from([0]);
+        let new = BodyPixelFrame::new(40_000, std::slice::from_ref(&merged), &current, tr).unwrap();
+        let m = confirmed_body_merges(&tracker, &old, &new, &eligible);
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].index, 0);
+        assert_eq!(m[0].ids, vec![0, 1]);
+        assert!(m[0].votes.iter().all(|&v| v >= 4));
+        let separate = BodyPixelFrame::new(40_000, &[c, d], &current, tr).unwrap();
+        assert!(confirmed_body_merges(&tracker, &old, &separate, &eligible).is_empty());
+        let blank = BodyPixelFrame::new(
+            40_000,
+            std::slice::from_ref(&merged),
+            &vec![127; pixels.len()],
+            tr,
+        )
+        .unwrap();
+        assert!(confirmed_body_merges(&tracker, &old, &blank, &eligible).is_empty());
+        let stale =
+            BodyPixelFrame::new(100_001, std::slice::from_ref(&merged), &current, tr).unwrap();
+        assert!(confirmed_body_merges(&tracker, &old, &stale, &eligible).is_empty());
+        assert!(confirmed_body_merges(&tracker, &old, &new, &BTreeSet::new()).is_empty());
+        tracker.tracks[0].observed_this_frame = false;
+        assert!(confirmed_body_merges(&tracker, &old, &new, &eligible).is_empty());
+    }
+    #[test]
+    fn repeating_or_flat_texture_cannot_supply_unique_correspondences() {
+        let d = pixel_detection(10, 10, 80, 95);
+        let tr = d.mask.as_ref().unwrap().transform;
+        let pixels = vec![120; 128 * 128 * 3];
+        let a = BodyPixelFrame::new(0, std::slice::from_ref(&d), &pixels, tr).unwrap();
+        let b = BodyPixelFrame::new(40_000, std::slice::from_ref(&d), &pixels, tr).unwrap();
+        assert_eq!(a.votes(&b, 0), Some((0, vec![0])));
+        let mut tiled = vec![0; pixels.len()];
+        for y in 0..128 {
+            for x in 0..128 {
+                let k = (y * 128 + x) * 3;
+                tiled[k..k + 3].fill(if (x + y) % 4 < 2 { 240 } else { 15 });
+            }
+        }
+        let a = BodyPixelFrame::new(0, std::slice::from_ref(&d), &tiled, tr).unwrap();
+        let b = BodyPixelFrame::new(40_000, std::slice::from_ref(&d), &tiled, tr).unwrap();
+        assert!(!a.points(0).is_empty());
+        assert_eq!(a.votes(&b, 0), Some((0, vec![0])));
     }
     #[test]
     fn ordered_equal_consensus_keeps_the_first_hypothesis() {

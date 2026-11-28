@@ -192,7 +192,7 @@ class Snapshot:
 
 
 class Tracking:
-    def __init__(self, lib, target, protected_roots=None, pair_continuity=False, crowd_clothing=False, adaptive_clothing=False):
+    def __init__(self, lib, target, protected_roots=None, pair_continuity=False, crowd_clothing=False, adaptive_clothing=False, motion_clothing=False):
         tracker_bind(lib)
         self.lib, self.target = lib, target
         self.handle = lib.tracking_create(lib.tracking_defaults())
@@ -202,11 +202,15 @@ class Tracking:
             fn=lib.frame_kernel_tracking_pair_continuity
             fn.argtypes=[U64,U];fn.restype=C.c_int32
             check(fn(self.handle,1))
+        self.motion_clothing=motion_clothing
         self.adaptive_clothing=adaptive_clothing
         self.crowd_clothing=crowd_clothing and len(protected_roots or ())>=3
         if self.crowd_clothing:
             self.clothing_step=lib.frame_kernel_tracking_clothing_step
             self.clothing_step.argtypes=[U64,U,I64,P,S,P,S,P,S,Transform];self.clothing_step.restype=C.c_int32
+            if self.motion_clothing:
+                self.motion_merges=lib.frame_kernel_tracking_motion_merges
+                self.motion_merges.argtypes=[U64,P,S];self.motion_merges.restype=I64
         ids = (I64 * 1)(target)
         roots = sorted(set(protected_roots or ()) | {target})
         protected = (I64 * len(roots))(*roots)
@@ -220,7 +224,7 @@ class Tracking:
         action = 0 if first else (1 if n else 2)
         if self.crowd_clothing and n:
             rgb=np.ascontiguousarray(image.convert("RGB"))
-            check(self.clothing_step(self.handle,action+(4 if self.adaptive_clothing else 0),time,rows,n,ptr(masks),masks.size,ptr(rgb),rgb.size,transform))
+            check(self.clothing_step(self.handle,action+(6 if self.motion_clothing else 4 if self.adaptive_clothing else 0),time,rows,n,ptr(masks),masks.size,ptr(rgb),rgb.size,transform))
         else:
             check(self.lib.tracking_step(self.handle, action, time, rows if n else None, n,
                                          ptr(masks) if n else None, masks.size, None, 0))
@@ -233,6 +237,13 @@ class Tracking:
         data=bytes(out)
         snapshot=Snapshot(data).decode()
         snapshot["sha256"]=hashlib.sha256(data).hexdigest()
+        if self.crowd_clothing and self.motion_clothing and n:
+            count=self.motion_merges(self.handle,None,0)
+            if count<0 or count%3:raise RuntimeError("invalid motion evidence")
+            if count:
+                out=(I64*count)()
+                if self.motion_merges(self.handle,out,count)!=count:raise RuntimeError("motion evidence copy")
+                snapshot["body_merge_evidence"]=[list(out[i:i+3]) for i in range(0,count,3)]
         return snapshot
 
     def close(self):
@@ -586,8 +597,8 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None, crowded_recovery=False, crowded_consensus=False, crowd_clothing=False, adaptive_clothing=False):
-    tracking = Tracking(lib,target,protected_roots,pair_continuity,crowd_clothing,adaptive_clothing)
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False, merged_edge_yolo=None, crowded_recovery=False, crowded_consensus=False, crowd_clothing=False, adaptive_clothing=False, motion_clothing=False):
+    tracking = Tracking(lib,target,protected_roots,pair_continuity,crowd_clothing,adaptive_clothing,motion_clothing)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
     sticker_seed = None
@@ -614,6 +625,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                        class_evidence=snapshot["face"],motion_evidence=snapshot["motion"],
                        tracking_snapshot_sha256=snapshot["sha256"],
                        track=None,kind=None,render=None,pixel_motion=None)
+            if "body_merge_evidence" in snapshot:row["body_merge_evidence"]=snapshot["body_merge_evidence"]
             report.append(row)
             if index==0 and (track is None or not track["observed"]):
                 raise RuntimeError("Target ID has no initial observed identity")
@@ -830,6 +842,7 @@ def main():
     parser.add_argument("--crowded-consensus",action="store_true",help="Candidate-only contested direct face corroboration and weak head conflict check")
     parser.add_argument("--crowd-clothing",action="store_true",help="Candidate-only experimental clothing-supported crowded association")
     parser.add_argument("--adaptive-clothing",action="store_true",help="Candidate-only trusted adaptive appearance; M4 clothing baseline enabled")
+    parser.add_argument("--motion-clothing",action="store_true",help="Candidate-only pixel merge quarantine; M4.1 adaptive baseline enabled")
     parser.add_argument("--same-base-policy",action="store_true",help="Apply enabled association and recovery flags to baseline too")
     parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args()
@@ -843,6 +856,8 @@ def main():
         parser.error("--crowd-clothing requires --crowded-consensus")
     if args.adaptive_clothing and not args.crowd_clothing:
         parser.error("--adaptive-clothing requires --crowd-clothing")
+    if args.motion_clothing and not args.adaptive_clothing:
+        parser.error("--motion-clothing requires --adaptive-clothing")
     base, candidate=load(args.baseline),load(args.candidate)
     yolo=model(ROOT/"models/litert/yolo11n-seg-fp16.tflite")
     face=model(ROOT/"testdata/models/face/blaze_face_full_range.tflite")
@@ -879,7 +894,7 @@ def main():
             "experimental_cover_fallback":args.cover_fallback_experiment,
             "multiperson_recovery":args.multiperson_recovery,
             "pair_continuity":args.pair_continuity,
-            "pair_head":args.pair_head, "merged_edge":args.merged_edge, "crowded_recovery":args.crowded_recovery, "crowded_consensus":args.crowded_consensus,"crowd_clothing":args.crowd_clothing,"adaptive_clothing":args.adaptive_clothing, "same_base_policy":args.same_base_policy, "injected_pair_merges":sorted(injected_merges),
+            "pair_head":args.pair_head, "merged_edge":args.merged_edge, "crowded_recovery":args.crowded_recovery, "crowded_consensus":args.crowded_consensus,"crowd_clothing":args.crowd_clothing,"adaptive_clothing":args.adaptive_clothing,"motion_clothing":args.motion_clothing, "same_base_policy":args.same_base_policy, "injected_pair_merges":sorted(injected_merges),
             "model_sha256": {name:hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
                              for name,path in [("person","models/litert/yolo11n-seg-fp16.tflite"),("face","testdata/models/face/blaze_face_full_range.tflite")]}}
     libs=[("baseline",base)]
@@ -887,7 +902,7 @@ def main():
         libs.append(("size_only",load(args.size_only)))
     libs.append(("candidate",candidate))
     for name,lib in libs:
-        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and (name=="candidate" or args.merged_edge),merged_edge_yolo=yolo if args.merged_edge and (name=="candidate" or args.crowded_recovery) else None,crowded_recovery=args.crowded_recovery and (name=="candidate" or args.crowded_consensus),crowded_consensus=args.crowded_consensus and (name=="candidate" or args.crowd_clothing),crowd_clothing=args.crowd_clothing and (name=="candidate" or args.adaptive_clothing),adaptive_clothing=args.adaptive_clothing and name=="candidate")
+        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and (name=="candidate" or args.merged_edge),merged_edge_yolo=yolo if args.merged_edge and (name=="candidate" or args.crowded_recovery) else None,crowded_recovery=args.crowded_recovery and (name=="candidate" or args.crowded_consensus),crowded_consensus=args.crowded_consensus and (name=="candidate" or args.crowd_clothing),crowd_clothing=args.crowd_clothing and (name=="candidate" or args.adaptive_clothing),adaptive_clothing=args.adaptive_clothing and (name=="candidate" or args.motion_clothing),motion_clothing=args.motion_clothing and name=="candidate")
         print(name,json.dumps(report[name]["summary"]),flush=True)
     for name in [n for n,_ in libs if n!="baseline"]:
         if (args.crowd_clothing or (args.pair_continuity and not args.same_base_policy)) and name=="candidate":
