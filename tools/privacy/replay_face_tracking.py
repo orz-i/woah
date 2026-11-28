@@ -35,9 +35,45 @@ GrayView = struct("GrayView", [("width", U), ("height", U), ("stride", U), ("sou
 PixelMotion = struct("PixelMotion", [(key,F) for key in ("dx","dy","correlation","uniqueness")])
 PixelBridge = struct("PixelBridge", [("motion",PixelMotion),("measurement",Ellipse),("required",Ellipse)])
 HeadSticker = struct("HeadSticker", [("bounds",Rect),("square",Ellipse),("topology",U),("rows",U)])
+RecoveryAnchor = struct("RecoveryAnchor", [("root_body",Rect),("root_face",Ellipse),("predicted_body",Rect),("age_us",I64)])
+RecoveryPrevious = struct("RecoveryPrevious", [("body",Rect),("face",Ellipse),("root_age_us",I64)])
+Garment = struct("Garment", [("rgb",F*512),("chroma",F*512),("samples",U)])
+ReappearanceCandidate = struct("ReappearanceCandidate", [("garment",Garment),("body",Rect),("face",Ellipse),("eligible",U)])
+ReappearanceDecision = struct("ReappearanceDecision", [("index",U),("similarity",F),("rival_root",F),("rival_current",F)])
 
 
 def pixel_bind(lib):
+    if hasattr(lib,"frame_kernel_face_garment"):
+        fn=lib.frame_kernel_face_garment
+        fn.argtypes=[P,S,P,S,S,S,MaskSpec,Ellipse,P]
+        fn.restype=C.c_int32
+        lib.garment=fn
+        fn=lib.frame_kernel_face_reappearance_choose
+        fn.argtypes=[Rect,Ellipse,I64,P,S,P,S,P,S,P]
+        fn.restype=C.c_int32
+        lib.reappearance_choose=fn
+        fn=lib.frame_kernel_face_reappearance_sticker
+        fn.argtypes=[P,S,MaskSpec,Ellipse,P]
+        fn.restype=C.c_int32
+        lib.reappearance_sticker=fn
+    if hasattr(lib,"frame_kernel_face_recovery_finish_exclusive"):
+        fn=lib.frame_kernel_face_recovery_probe
+        fn.argtypes=[RecoveryAnchor,P,S,P,S,P]
+        fn.restype=C.c_int32
+        lib.recovery_probe=fn
+        fn=lib.frame_kernel_face_recovery_finish_exclusive
+        fn.argtypes=[RecoveryAnchor,P,S,P,S,U,P,S,MaskSpec,Ellipse,P]
+        fn.restype=C.c_int32
+        lib.recovery_finish=fn
+        if hasattr(lib,"frame_kernel_face_recovery_continuation_finish_exclusive"):
+            fn=lib.frame_kernel_face_recovery_continuation_probe
+            fn.argtypes=[RecoveryAnchor,RecoveryPrevious,P,S,P,S,P]
+            fn.restype=C.c_int32
+            lib.recovery_continuation_probe=fn
+            fn=lib.frame_kernel_face_recovery_continuation_finish_exclusive
+            fn.argtypes=[RecoveryAnchor,RecoveryPrevious,P,S,GrayView,P,S,GrayView,P,S,P,S,U,P,S,MaskSpec,Ellipse,P]
+            fn.restype=C.c_int32
+            lib.recovery_continuation_finish=fn
     if hasattr(lib,"frame_kernel_head_sticker"):
         fn=lib.frame_kernel_head_sticker
         fn.argtypes=[P,S,MaskSpec,Ellipse,Ellipse,U,P]
@@ -163,6 +199,168 @@ class Tracking:
         check(self.lib.tracking_destroy(self.handle))
 
 
+def recover_current(lib,face,image,transform,detections,masks,snapshot,track,trusted,time,target,row,previous_recovery):
+    # The prior direct clock and canonical tracker remain immutable. In
+    # particular no recovery result is ever cached as a directly owned face.
+    if not hasattr(lib,"recovery_probe") or trusted is None or track["observed"]:
+        return None
+    anchor=RecoveryAnchor(trusted[0],trusted[1],track["bounds"],time-trusted[2])
+    bodies=(Rect*len(detections))(*(d.box for d in detections))
+    foreign=[]
+    for other in snapshot["tracks"]:
+        if other["id"]==target or other["dormant"]:
+            continue
+        foreign.append(other["bounds"])
+        if not other["observed"] and vals(other["canonical"])!=vals(other["bounds"]):
+            foreign.append(other["canonical"])
+    competitors=(Rect*len(foreign))(*foreign)
+    index=U()
+    foreign_ptr=competitors if len(competitors) else None
+    continuation=(anchor.age_us>800_000 and previous_recovery is not None
+                  and hasattr(lib,"recovery_continuation_probe"))
+    if continuation:
+        previous,previous_gray,previous_view=previous_recovery
+        status=lib.recovery_continuation_probe(anchor,previous,bodies if len(bodies) else None,len(bodies),
+                                               foreign_ptr,len(competitors),C.byref(index))
+    else:
+        status=lib.recovery_probe(anchor,bodies if len(bodies) else None,len(bodies),
+                                  foreign_ptr,len(competitors),C.byref(index))
+    row["recovery_attempt"]={"age_us":anchor.age_us,"probe_status":status,"continuation":continuation}
+    if status<0:
+        # A historical face centered outside its body is not a valid root;
+        # report the rejected recovery, do not change old rendering.
+        return None
+    if status!=0:
+        return None
+    j=index.value
+    spec=MaskSpec(160,160,transform,detections[j].box)
+    mask=masks[j]
+    measured=detect_face(lib,face,image,spec,mask)
+    row["recovery_attempt"].update(candidate_index=j,current_detector=measured is not None)
+    if measured is None:
+        return None
+    placement=HeadSticker()
+    all_masks=np.ascontiguousarray(np.stack(masks))
+    if continuation:
+        gray,view=gray_view(image)
+        status=lib.recovery_continuation_finish(anchor,previous,ptr(previous_gray),previous_gray.size,previous_view,
+                                                ptr(gray),gray.size,view,bodies,len(bodies),foreign_ptr,len(competitors),
+                                                j,ptr(all_masks),all_masks.size,spec,measured,C.byref(placement))
+    else:
+        status=lib.recovery_finish(anchor,bodies,len(bodies),foreign_ptr,len(competitors),
+                                   j,ptr(all_masks),all_masks.size,spec,measured,C.byref(placement))
+    row["recovery_attempt"]["finish_status"]=status
+    if status!=0:
+        return None
+    required=Ellipse()
+    check(lib.current_face_region(ptr(mask),mask.size,spec,measured,C.byref(required)))
+    # Only an immediately preceding root-only success can serve as a
+    # continuation seed. A terminal continuation is never reusable.
+    next_previous=None
+    if not continuation:
+        gray,view=gray_view(image)
+        next_previous=(RecoveryPrevious(spec.person,measured,anchor.age_us),gray,view)
+    return measured,required,placement,next_previous
+
+
+def garment_candidates(lib,face,entry,known=None):
+    frame,image,transform,detections,masks=entry
+    rgb=np.ascontiguousarray(image.convert("RGB"))
+    result=[]
+    for j,d in enumerate(detections):
+        if d.confidence < .25:
+            continue
+        spec=MaskSpec(160,160,transform,d.box)
+        measured=known[1] if known is not None and j==known[0] else detect_face(lib,face,image,spec,masks[j])
+        if measured is None:
+            continue
+        descriptor=Garment()
+        status=lib.garment(ptr(rgb),rgb.size,ptr(masks),masks.size,len(detections),j,spec,measured,C.byref(descriptor))
+        if status<0:
+            raise RuntimeError("invalid garment input")
+        if status==0:
+            result.append((j,spec,measured,descriptor))
+    return result
+
+
+def garment_roots(lib,face,evidence,report,trusted):
+    # No current or future annotation enters these references. Require at least
+    # two separate exact direct observations spaced by 100ms; freeze during gap.
+    roots,rivals,indices=[],[],[]
+    last=trusted[2]+100_000
+    for old in reversed(report[:-1]):
+        if old["kind"]!=0 or not old["track"]["observed"] or not 0<=trusted[2]-old["time_us"]<=500_000:
+            continue
+        if last-old["time_us"]<100_000:
+            continue
+        entry=evidence[old["index"]]
+        ds=entry[3]
+        found=[j for j,d in enumerate(ds) if iou(d.box,Rect(*old["track"]["bounds"]))>.99]
+        if len(found)!=1:
+            continue
+        j=found[0]
+        candidates=garment_candidates(lib,face,entry,(j,Ellipse(*old["raw"])))
+        selected=next((x for x in candidates if x[0]==j),None)
+        if selected is None:
+            continue
+        roots.append(selected[3])
+        rivals.extend(x[3] for x in candidates if x[0]!=j)
+        indices.append(old["index"])
+        last=old["time_us"]
+        if len(roots)==3:
+            break
+    return roots,rivals,indices
+
+
+def reappear_current(lib,face,evidence,entry,report,snapshot,track,trusted,target,row,cache):
+    if not hasattr(lib,"reappearance_choose") or trusted is None or track["observed"]:
+        return None
+    age=row["time_us"]-trusted[2]
+    if not 950_000<age<=2_000_000:
+        return None
+    # Reappearance is restricted to a retained track with actual occlusion
+    # state after the immutable direct root; ordinary lost tracks do not qualify.
+    if track["state"] not in (2,3) or not any(
+        q["time_us"]>trusted[2] and q.get("track") and q["track"]["state"]==2
+        for q in report[:-1]
+    ):
+        return None
+    if cache.get("time")!=trusted[2]:
+        roots,rivals,indices=garment_roots(lib,face,evidence,report,trusted)
+        cache.update(time=trusted[2],roots=roots,rivals=rivals,indices=indices)
+    roots,rivals=cache["roots"],cache["rivals"]
+    row["reappearance_attempt"]={"age_us":age,"root_indices":cache["indices"],"rival_count":len(rivals)}
+    if len(roots)<2 or not rivals:
+        return None
+    frame,image,transform,detections,masks=entry
+    candidates=garment_candidates(lib,face,entry)
+    rows=[]
+    foreign=[t for t in snapshot["tracks"] if t["id"]!=target and t["observed"]]
+    for j,spec,f,g in candidates:
+        # A committed foreign observation is a negative example, not a
+        # recovery candidate. Require raw current face and body evidence.
+        conflict=any(iou(spec.person,t["bounds"])>.9 or
+                     (t["mask"] is not None and np.array_equal(masks[j],t["mask"])) for t in foreign)
+        rows.append(ReappearanceCandidate(g,spec.person,f,int(not conflict and detections[j].confidence>=.5)))
+    a=(Garment*len(roots))(*roots);b=(Garment*len(rivals))(*rivals)
+    c=(ReappearanceCandidate*len(rows))(*rows)
+    decision=ReappearanceDecision()
+    status=lib.reappearance_choose(trusted[0],trusted[1],age,a,len(a),b,len(b),c if len(c) else None,len(c),C.byref(decision))
+    row["reappearance_attempt"].update(status=status,candidates=len(c),candidate_eligible=[x.eligible for x in rows])
+    if status!=0:
+        return None
+    j,spec,measured,g=candidates[decision.index]
+    mask=masks[j]
+    placement=HeadSticker()
+    check(lib.reappearance_sticker(ptr(mask),mask.size,spec,measured,C.byref(placement)))
+    required=Ellipse()
+    check(lib.current_face_region(ptr(mask),mask.size,spec,measured,C.byref(required)))
+    row["reappearance_attempt"].update(candidate_index=j,similarity=decision.similarity,
+                                        rival_root=decision.rival_root,rival_current=decision.rival_current)
+    # Do not renew the root, set a body observation, or seed any continuation.
+    return measured,required,placement,None
+
+
 def summarize(rows):
     usable = [r for r in rows if r["render"] is not None]
     sample = [r for r in usable if r["index"] % 3 == 0 or r["index"] == rows[-1]["index"]]
@@ -173,6 +371,9 @@ def summarize(rows):
                 body_observed=sum(r["track"] is not None and r["track"]["observed"] for r in rows),
                 direct_face=sum(r["kind"]==0 for r in rows), projected_face=sum(r["kind"]==1 for r in rows),
                 estimated_face=sum(r["kind"]==2 for r in rows),
+                coverage_only_recovered=sum(r["kind"] in (3,4) for r in rows),
+                garment_reappearance=sum(r["kind"]==4 for r in rows),
+                terminal_current_continuations=sum(r["kind"]==3 and r.get("recovery_attempt",{}).get("continuation",False) for r in rows),
                 rendered=len(usable), missing=[r["index"] for r in rows if r["render"] is None],
                 pixel_bridged=sum(r.get("pixel_motion") is not None for r in rows),
                 topology_frames=sum(r.get("topology") in (1,2) for r in rows),
@@ -190,16 +391,20 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None):
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False):
     tracking = Tracking(lib,target,protected_roots)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
     sticker_seed = None
+    recovery_previous = None
+    reappearance_cache = {}
     first_head = None
     report = []
     try:
         for frame, image, transform, detections, masks in evidence:
             time, index = frame["time_us"], frame["index"]
+            prior_recovery = recovery_previous
+            recovery_previous = None  # no history across any other lane, rejected frame, or gap
             snapshot = tracking.step(transform,detections,masks,time,index==0)
             track = next((t for t in snapshot["tracks"] if t["id"]==target),None)
             row = dict(index=index,time_us=time,detected_persons=len(detections),
@@ -215,6 +420,7 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
             if track is None or track["dormant"]:
                 state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
                 sticker_seed = None
+                reappearance_cache.clear()
                 continue
             row["track"] = next(t for t in row["tracks"] if t["id"]==target)
             if "person_bbox" in frame:
@@ -261,6 +467,30 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 check(lib.current_head_region(ptr(mask),mask.size,spec,None,C.byref(fallback)))
                 raw,kind=fallback.region,2
             else:
+                recovery=recover_current(lib,face,image,transform,detections,masks,snapshot,track,trusted,time,target,row,prior_recovery) if multiperson_recovery and index not in drops else None
+                coverage_kind=3
+                if multiperson_recovery and recovery is None and index not in drops:
+                    recovery=reappear_current(lib,face,evidence,evidence[index],report,snapshot,track,trusted,target,row,reappearance_cache)
+                    coverage_kind=4
+                if recovery is None:
+                    continue
+                raw,required,placement,recovery_previous=recovery
+                sticker=placement.square
+                half=max(8,1.02*max(sticker.rx,sticker.ry))
+                row.update(kind=coverage_kind,raw=vals(raw),required=vals(required),render=vals(required),
+                           sticker=vals(sticker),topology=placement.topology,topology_rows=placement.rows,
+                           sticker_required_bounds=vals(placement.bounds),
+                           width=min(transform.width,sticker.x+half)-max(0,sticker.x-half),
+                           height=min(transform.height,sticker.y+half)-max(0,sticker.y-half),
+                           head_covered=None)
+                if "head_x" in frame:
+                    dx,dy=frame["head_x"]-sticker.x,frame["head_y"]-sticker.y
+                    row["head_covered"]=max(abs(dx),abs(dy))<=half
+                    row["head_mask_covered"]=((frame["head_x"]-required.x)/required.rx)**2+((frame["head_y"]-required.y)/required.ry)**2<=1
+                    if first_head is None:
+                        first_head=(sticker.x,sticker.y,frame["head_x"],frame["head_y"])
+                    x0,y0,hx0,hy0=first_head
+                    row["relative_motion_error"]=[sticker.x-x0-(frame["head_x"]-hx0),sticker.y-y0-(frame["head_y"]-hy0)]
                 continue
             out=Ellipse()
             flags=int(track["observed"]) | (16 if kind==0 else 0)
@@ -329,6 +559,7 @@ def main():
     parser.add_argument("--credible-roots",action="store_true",
                         help="Protect first-frame analysis IDs with confidence >= .60 as in Android FACE_ONLY; does not add privacy targets")
     parser.add_argument("--cover-fallback-experiment",action="store_true")
+    parser.add_argument("--multiperson-recovery",action="store_true",help="Opt in to candidate-only local recovery experiments")
     parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args()
     base, candidate=load(args.baseline),load(args.candidate)
@@ -356,6 +587,7 @@ def main():
             "fixture_sha256":hashlib.sha256(args.fixture.read_bytes()).hexdigest(),
             "target_id":args.target_id,"identity_protected_roots":roots,"injected_face_drops":sorted(drops),
             "experimental_cover_fallback":args.cover_fallback_experiment,
+            "multiperson_recovery":args.multiperson_recovery,
             "model_sha256": {name:hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
                              for name,path in [("person","models/litert/yolo11n-seg-fp16.tflite"),("face","testdata/models/face/blaze_face_full_range.tflite")]}}
     libs=[("baseline",base)]
@@ -363,7 +595,7 @@ def main():
         libs.append(("size_only",load(args.size_only)))
     libs.append(("candidate",candidate))
     for name,lib in libs:
-        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots)
+        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and name=="candidate")
         print(name,json.dumps(report[name]["summary"]),flush=True)
     for name in [n for n,_ in libs if n!="baseline"]:
         for a,b in zip(report["baseline"]["frames"],report[name]["frames"],strict=True):

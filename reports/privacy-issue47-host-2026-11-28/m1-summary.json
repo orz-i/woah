@@ -1,0 +1,993 @@
+{
+  "base_commit": "dd940184",
+  "historical_research": "da670362",
+  "comparison": "same release dylib, baseline opt-in off and candidate opt-in on; identical decoded detector evidence",
+  "library_sha256": "4d65e349d18c20db08f75287a2473abad41e06dc5e8e34ec395bee7c2cf71ad9",
+  "rust_tests": {
+    "passed": 198,
+    "ignored": 1,
+    "failed": 0,
+    "strict_clippy": "pass",
+    "abi_v1": "pass"
+  },
+  "cases": {
+    "group-id4": {
+      "replay_sha256": "90a966be3a86ff005d1892402775b4cccf13a6d6c47e9edd1a5fb7d8fd74f2d5",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 4,
+      "tracking_snapshot_equal": true,
+      "common_geometry_equal": true,
+      "baseline": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 107,
+        "direct_face": 81,
+        "projected_face": 13,
+        "estimated_face": 15,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 109,
+        "missing": [
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60
+        ],
+        "pixel_bridged": 5,
+        "topology_frames": 65,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 4.504319900654336,
+        "height_ratio": 3.6402311519250707,
+        "sampled_width_ratio": 4.186543117118976,
+        "sampled_height_ratio": 3.4285201064760376,
+        "sampled_widths": [
+          48.96,
+          48.96,
+          48.96,
+          48.96,
+          62.72,
+          73.44,
+          64.54,
+          60.49,
+          79.56,
+          84.2,
+          75.25,
+          67.04,
+          67.32,
+          67.32,
+          65.84,
+          73.44,
+          70.83,
+          79.56,
+          83.88,
+          87.7,
+          87.21,
+          140.76,
+          130.26,
+          116.31,
+          104.99,
+          107.42,
+          120.91,
+          125.25,
+          120.06,
+          116.58,
+          121.27,
+          171.24,
+          158.91,
+          152.79,
+          175.15,
+          204.97,
+          203.36
+        ]
+      },
+      "candidate": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 107,
+        "direct_face": 81,
+        "projected_face": 13,
+        "estimated_face": 15,
+        "coverage_only_recovered": 11,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 1,
+        "rendered": 120,
+        "missing": [],
+        "pixel_bridged": 5,
+        "topology_frames": 76,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 4.504319900654336,
+        "height_ratio": 3.6402311519250707,
+        "sampled_width_ratio": 4.186543117118976,
+        "sampled_height_ratio": 3.4285201064760376,
+        "sampled_widths": [
+          48.96,
+          48.96,
+          48.96,
+          48.96,
+          62.72,
+          73.44,
+          64.54,
+          60.49,
+          79.56,
+          84.2,
+          75.25,
+          67.04,
+          67.32,
+          67.32,
+          65.84,
+          73.44,
+          70.83,
+          69.65,
+          73.44,
+          73.44,
+          70.54,
+          79.56,
+          83.88,
+          87.7,
+          87.21,
+          140.76,
+          130.26,
+          116.31,
+          104.99,
+          107.42,
+          120.91,
+          125.25,
+          120.06,
+          116.58,
+          121.27,
+          171.24,
+          158.91,
+          152.79,
+          175.15,
+          204.97,
+          203.36
+        ]
+      },
+      "audit": {
+        "sha256": "2ced7d26a439c679eafa26780cf7efd2f9b16b24b0dc1004b21fd8f444e1c89f",
+        "labels_sha256": "4a81e2c332aea921f456e374f7c895fb3e02889deba109264a73638ed67d50f3",
+        "results": {
+          "baseline": {
+            "samples": 11,
+            "full_head_envelopes": 0,
+            "min_head_coverage": 0.0,
+            "torso_probes_covered": 0,
+            "neighbor_rects_checked": 22,
+            "max_neighbor_rect_overlap": 0.0,
+            "rows": [
+              {
+                "index": 50,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 51,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 52,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 53,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 54,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 55,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 56,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 57,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 58,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 59,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 60,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          },
+          "candidate": {
+            "samples": 11,
+            "full_head_envelopes": 11,
+            "min_head_coverage": 1.0,
+            "torso_probes_covered": 0,
+            "neighbor_rects_checked": 22,
+            "max_neighbor_rect_overlap": 0.0,
+            "rows": [
+              {
+                "index": 50,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 51,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 52,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 53,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 54,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 55,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 56,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 57,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 58,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 59,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 60,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "group-id3": {
+      "replay_sha256": "cc00685bde3147dee7731afa93d38f5e4dbbad35155ed628b40d40933839f90d",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 3,
+      "tracking_snapshot_equal": true,
+      "common_geometry_equal": true,
+      "baseline": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 97,
+        "direct_face": 89,
+        "projected_face": 7,
+        "estimated_face": 2,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 98,
+        "missing": [
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119
+        ],
+        "pixel_bridged": 3,
+        "topology_frames": 13,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 2.2448015353883792,
+        "height_ratio": 2.2448015353883792,
+        "sampled_width_ratio": 2.2448015353883792,
+        "sampled_height_ratio": 2.2448015353883792,
+        "sampled_widths": [
+          43.62,
+          44.67,
+          79.56,
+          97.92,
+          95.31,
+          86.82,
+          71.45,
+          72.43,
+          72.21,
+          58.62,
+          51.7,
+          48.63,
+          47.46,
+          47.11,
+          74.07,
+          57.77,
+          50.8,
+          47.35,
+          46.19,
+          74.79,
+          74.39,
+          73.85,
+          73.62,
+          76.04,
+          72.43,
+          69.54,
+          67.43,
+          67.37,
+          73.41,
+          72.32,
+          79.56,
+          85.68,
+          84.38
+        ]
+      },
+      "candidate": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 97,
+        "direct_face": 89,
+        "projected_face": 7,
+        "estimated_face": 2,
+        "coverage_only_recovered": 8,
+        "garment_reappearance": 8,
+        "terminal_current_continuations": 0,
+        "rendered": 106,
+        "missing": [
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111
+        ],
+        "pixel_bridged": 3,
+        "topology_frames": 13,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 2.2448015353883792,
+        "height_ratio": 2.2448015353883792,
+        "sampled_width_ratio": 2.2448015353883792,
+        "sampled_height_ratio": 2.2448015353883792,
+        "sampled_widths": [
+          43.62,
+          44.67,
+          79.56,
+          97.92,
+          95.31,
+          86.82,
+          71.45,
+          72.43,
+          72.21,
+          58.62,
+          51.7,
+          48.63,
+          47.46,
+          47.11,
+          74.07,
+          57.77,
+          50.8,
+          47.35,
+          46.19,
+          74.79,
+          74.39,
+          73.85,
+          73.62,
+          76.04,
+          72.43,
+          69.54,
+          67.43,
+          67.37,
+          73.41,
+          72.32,
+          79.56,
+          85.68,
+          84.38,
+          56.16,
+          55.07,
+          55.85
+        ]
+      },
+      "audit": {
+        "sha256": "fc607cf29cfc2a28469ecb3f374ff504407b7a1d24de899f1080fc83548f244e",
+        "labels_sha256": "d937309ef8b6ae6bdea05a7d82be6aa515984889f6e6aa911fbd0e62ac2969e4",
+        "results": {
+          "baseline": {
+            "samples": 8,
+            "full_head_envelopes": 0,
+            "min_head_coverage": 0.0,
+            "torso_probes_covered": 0,
+            "neighbor_rects_checked": 16,
+            "max_neighbor_rect_overlap": 0.0,
+            "rows": [
+              {
+                "index": 112,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 113,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 114,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 115,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 116,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 117,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 118,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 119,
+                "head_coverage": 0.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          },
+          "candidate": {
+            "samples": 8,
+            "full_head_envelopes": 8,
+            "min_head_coverage": 1.0,
+            "torso_probes_covered": 0,
+            "neighbor_rects_checked": 16,
+            "max_neighbor_rect_overlap": 0.0,
+            "rows": [
+              {
+                "index": 112,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 113,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 114,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 115,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 116,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 117,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 118,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "index": 119,
+                "head_coverage": 1.0,
+                "torso_probe_covered": false,
+                "neighbor_rect_overlaps": [
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "group-id2": {
+      "replay_sha256": "6609a57e4d451ba40ed3e77d3e2de36db3304ecedc23181888ce1e1e83909744",
+      "fixture_sha256": "49d3e040da4e9768d92ccad1cb0332c8bdcffebf7f592427ba2845992383170d",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 2,
+      "tracking_snapshot_equal": true,
+      "common_geometry_equal": true,
+      "baseline": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 108,
+        "direct_face": 46,
+        "projected_face": 9,
+        "estimated_face": 53,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 108,
+        "missing": [
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119
+        ],
+        "pixel_bridged": 2,
+        "topology_frames": 54,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 2.7351869085155784,
+        "height_ratio": 2.735186908515577,
+        "sampled_width_ratio": 2.335053258648908,
+        "sampled_height_ratio": 2.335053258648907,
+        "sampled_widths": [
+          67.75,
+          76.88,
+          82.58,
+          74.92,
+          67.38,
+          79.15,
+          80.91,
+          82.86,
+          72.0,
+          62.31,
+          57.74,
+          68.29,
+          101.86,
+          109.68,
+          111.24,
+          95.32,
+          102.56,
+          91.3,
+          92.49,
+          97.89,
+          101.7,
+          92.55,
+          99.69,
+          99.75,
+          97.88,
+          97.81,
+          97.89,
+          106.0,
+          108.78,
+          108.1,
+          98.17,
+          106.49,
+          100.91,
+          93.21,
+          119.4,
+          134.82
+        ]
+      },
+      "candidate": {
+        "frames": 120,
+        "tracked": 120,
+        "body_observed": 108,
+        "direct_face": 46,
+        "projected_face": 9,
+        "estimated_face": 53,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 108,
+        "missing": [
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119
+        ],
+        "pixel_bridged": 2,
+        "topology_frames": 54,
+        "max_relative_motion_error_x": null,
+        "max_relative_motion_error_y": null,
+        "relative_motion_75_pass": null,
+        "head_point_covered": 0,
+        "head_point_checked": 0,
+        "head_mask_point_covered": 0,
+        "head_mask_point_checked": 0,
+        "width_ratio": 2.7351869085155784,
+        "height_ratio": 2.735186908515577,
+        "sampled_width_ratio": 2.335053258648908,
+        "sampled_height_ratio": 2.335053258648907,
+        "sampled_widths": [
+          67.75,
+          76.88,
+          82.58,
+          74.92,
+          67.38,
+          79.15,
+          80.91,
+          82.86,
+          72.0,
+          62.31,
+          57.74,
+          68.29,
+          101.86,
+          109.68,
+          111.24,
+          95.32,
+          102.56,
+          91.3,
+          92.49,
+          97.89,
+          101.7,
+          92.55,
+          99.69,
+          99.75,
+          97.88,
+          97.81,
+          97.89,
+          106.0,
+          108.78,
+          108.1,
+          98.17,
+          106.49,
+          100.91,
+          93.21,
+          119.4,
+          134.82
+        ]
+      }
+    },
+    "dynamic": {
+      "replay_sha256": "ca1dbec521ea965daf9fbf67b46e4ab4161ce66fbc382ed0c2af3220d7e8c7ae",
+      "fixture_sha256": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+      "model_sha256": {
+        "person": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340",
+        "face": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b"
+      },
+      "target_id": 1,
+      "tracking_snapshot_equal": true,
+      "common_geometry_equal": true,
+      "baseline": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 15,
+        "projected_face": 3,
+        "estimated_face": 0,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 3,
+        "topology_frames": 15,
+        "max_relative_motion_error_x": 13.911893066406265,
+        "max_relative_motion_error_y": 37.42111962890624,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "head_mask_point_covered": 18,
+        "head_mask_point_checked": 18,
+        "width_ratio": 1.31496257873733,
+        "height_ratio": 1.31496257873733,
+        "sampled_width_ratio": 1.3145463845662126,
+        "sampled_height_ratio": 1.3145463845662126,
+        "sampled_widths": [
+          309.99,
+          407.5,
+          397.58,
+          380.73,
+          375.66,
+          364.29,
+          353.97
+        ]
+      },
+      "candidate": {
+        "frames": 18,
+        "tracked": 18,
+        "body_observed": 15,
+        "direct_face": 15,
+        "projected_face": 3,
+        "estimated_face": 0,
+        "coverage_only_recovered": 0,
+        "garment_reappearance": 0,
+        "terminal_current_continuations": 0,
+        "rendered": 18,
+        "missing": [],
+        "pixel_bridged": 3,
+        "topology_frames": 15,
+        "max_relative_motion_error_x": 13.911893066406265,
+        "max_relative_motion_error_y": 37.42111962890624,
+        "relative_motion_75_pass": true,
+        "head_point_covered": 18,
+        "head_point_checked": 18,
+        "head_mask_point_covered": 18,
+        "head_mask_point_checked": 18,
+        "width_ratio": 1.31496257873733,
+        "height_ratio": 1.31496257873733,
+        "sampled_width_ratio": 1.3145463845662126,
+        "sampled_height_ratio": 1.3145463845662126,
+        "sampled_widths": [
+          309.99,
+          407.5,
+          397.58,
+          380.73,
+          375.66,
+          364.29,
+          353.97
+        ]
+      }
+    }
+  },
+  "blocked_independent_crossing": {
+    "reason": "No initial observed selected identity for targets 1 and 2; neither replay reached candidate evaluation",
+    "logs_sha256": {
+      "crossing-id1.log": "d426e868fa0766752e3232baf29f97c6a184d737435411825be8b21f59ffc795",
+      "crossing-id2.log": "d426e868fa0766752e3232baf29f97c6a184d737435411825be8b21f59ffc795"
+    }
+  }
+}
