@@ -593,7 +593,7 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
     rgb_len: usize,
     transform: Transform,
 ) -> i32 {
-    if !matches!(action, 0 | 1 | 4 | 5 | 6 | 7)
+    if !matches!(action, 0 | 1 | 4 | 5 | 6 | 7 | 8 | 9)
         || count == 0
         || count > 64
         || pixels_len > 64 * 1024 * 1024
@@ -631,7 +631,8 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
     let mut t = s.tracker.clone();
     let adaptive = action >= 4;
     let motion = action >= 6;
-    if matches!(action, 0 | 4 | 6) {
+    let part_continuity = action >= 8;
+    if matches!(action, 0 | 4 | 6 | 8) {
         if t.initialized || t.initialize(d.clone(), &[]).is_err() {
             return -1;
         }
@@ -652,6 +653,9 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
                 return -1;
             }
         }
+        if part_continuity {
+            clothing.enable_part_continuity();
+        }
         t.crowd_clothing = Some(clothing);
         for q in &mut t.tracks {
             q.observed_mask_at_us = q.observed_mask.as_ref().map(|_| at);
@@ -663,6 +667,7 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
         };
         if clothing.is_adaptive() != adaptive
             || clothing.is_motion() != motion
+            || clothing.is_part_continuity() != part_continuity
             || clothing.observe(&d, rgb, transform).is_none()
             || clothing
                 .prepare_motion(&prior, &d, rgb, transform, at)
@@ -670,6 +675,7 @@ pub unsafe extern "C" fn frame_kernel_tracking_clothing_step(
         {
             return -1;
         }
+        clothing.prepare_part_continuity(&prior, &d, at);
         if adaptive {
             let before = t.clone();
             if t.update(d.clone(), at).is_err() {

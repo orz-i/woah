@@ -206,6 +206,8 @@ pub(crate) struct CrowdClothing {
     current: Arc<Vec<Option<Clothing>>>,
     adaptive: bool,
     motion: bool,
+    part_continuity: bool,
+    continuity: Arc<std::collections::BTreeSet<(i64, usize)>>,
     previous_pixels: Option<Arc<crate::tracking_motion::BodyPixelFrame>>,
     merges: Arc<Vec<crate::tracking_motion::BodyMerge>>,
 }
@@ -694,6 +696,8 @@ impl CrowdClothing {
             current: Arc::new(vec![]),
             adaptive: false,
             motion: false,
+            part_continuity: false,
+            continuity: Arc::new(std::collections::BTreeSet::new()),
             previous_pixels: None,
             merges: Arc::new(vec![]),
         })
@@ -733,6 +737,125 @@ impl CrowdClothing {
     }
     pub(crate) fn is_motion(&self) -> bool {
         self.motion
+    }
+    pub(crate) fn enable_part_continuity(&mut self) {
+        self.part_continuity = true;
+    }
+    pub(crate) fn is_part_continuity(&self) -> bool {
+        self.part_continuity
+    }
+    /// A single weak garment band must not erase a fresh, independently
+    /// unique raw silhouette. This supplies a bounded reservation only after ordinary clothing
+    /// reservations, never a long-gap recovery or a general score override.
+    /// The upper garment must independently corroborate the immutable root.
+    pub(crate) fn prepare_part_continuity(
+        &mut self,
+        before: &Tracker,
+        detections: &[Detection],
+        at: i64,
+    ) {
+        use crate::tracking_mask::raw_mask_iou;
+        let mut accepted = std::collections::BTreeSet::new();
+        if !self.part_continuity {
+            self.continuity = Arc::new(accepted);
+            return;
+        }
+        let fresh = before
+            .tracks
+            .iter()
+            .filter(|q| {
+                q.observed_this_frame
+                    && !q.offscreen_dormant
+                    && q.observed_mask_at_us
+                        .is_some_and(|v| (1..=100_000).contains(&at.saturating_sub(v)))
+                    && q.observed_mask.is_some()
+            })
+            .collect::<Vec<_>>();
+        for old in &fresh {
+            if !before.protected_ids.contains(&old.id) {
+                continue;
+            }
+            let Some(root) = self.roots.get(&old.id) else {
+                continue;
+            };
+            let prev = old.observed_mask.as_ref().unwrap();
+            let scores = detections
+                .iter()
+                .map(|d| d.mask.as_ref().map_or(0.0, |m| raw_mask_iou(prev, m)))
+                .collect::<Vec<_>>();
+            let Some((j, &v)) = scores.iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1)) else {
+                continue;
+            };
+            let d = &detections[j];
+            let Some(m) = d.mask.as_ref() else {
+                continue;
+            };
+            let Some(Some(f)) = self.current.get(j) else {
+                continue;
+            };
+            if !(0.30..0.50).contains(&d.confidence)
+                || v < 0.70
+                || Self::height(d.bounds) < 0.85 * Self::height(root.bounds)
+                || Self::height(d.bounds) < 0.85 * Self::height(old.observed_bounds)
+                || overlap_iou(old.observed_bounds, d.bounds) < 0.60
+                || !Self::plausible(root, old, d, at)
+                || scores
+                    .iter()
+                    .enumerate()
+                    .any(|(k, &s)| k != j && v - s < 0.20)
+                || fresh.iter().any(|q| {
+                    q.id != old.id
+                        && q.observed_mask
+                            .as_ref()
+                            .is_some_and(|p| v - raw_mask_iou(p, m) < 0.20)
+                })
+                || self.merges.iter().any(|x| x.index == j)
+            {
+                continue;
+            }
+            let torso = root.feature.hist[0]
+                .iter()
+                .zip(&f.hist[0])
+                .map(|(a, b)| {
+                    a.iter()
+                        .zip(b)
+                        .map(|(x, y)| (x * y).sqrt())
+                        .sum::<f32>()
+                        .clamp(0., 1.)
+                })
+                .fold(1., f32::min);
+            // Only an actually deficient lower-body descriptor is bypassed.
+            // A changed torso or unsupported clothing stays a hard veto.
+            if torso < 0.80 || root.feature.score(f) >= 0.64 {
+                continue;
+            }
+            // Exclude any merge/split-like current or previous silhouette.
+            let contained = |a: &crate::tracking::Mask, b: &crate::tracking::Mask| -> bool {
+                if a.transform != b.transform || a.pixels.len() != b.pixels.len() {
+                    return false;
+                }
+                let mut total = 0usize;
+                let mut inter = 0usize;
+                for (&a, &b) in a.pixels.iter().zip(b.pixels.iter()) {
+                    if a >= 128 {
+                        total += 1;
+                        inter += usize::from(b >= 128);
+                    }
+                }
+                total > 0 && inter * 10 >= total * 7
+            };
+            if fresh.iter().any(|q| {
+                q.id != old.id && q.observed_mask.as_ref().is_some_and(|p| contained(p, m))
+            }) || detections
+                .iter()
+                .enumerate()
+                .any(|(k, q)| k != j && q.mask.as_ref().is_some_and(|p| contained(p, prev)))
+            {
+                continue;
+            }
+            accepted.insert((old.id, j));
+        }
+        self.continuity = Arc::new(accepted);
     }
     pub(crate) fn motion_merges(&self) -> &[crate::tracking_motion::BodyMerge] {
         &self.merges
@@ -918,6 +1041,7 @@ impl CrowdClothing {
     }
     pub(crate) fn clear(&mut self) {
         self.current = Arc::new(vec![]);
+        self.continuity = Arc::new(std::collections::BTreeSet::new());
     }
     fn height(b: Rect) -> f32 {
         b.bottom - b.top
@@ -1070,6 +1194,18 @@ impl CrowdClothing {
             }
             accepted.push((i, j));
         }
+        for &(id, j) in self.continuity.iter() {
+            let Some(i) = t.tracks.iter().position(|q| q.id == id) else {
+                continue;
+            };
+            if frame.unavailable(&j)
+                || accepted.iter().any(|&(a, b)| a == i || b == j)
+                || rows.iter().enumerate().any(|(k, r)| k != i && r[j] >= 0.65)
+            {
+                continue;
+            }
+            accepted.push((i, j));
+        }
         for (i, j) in accepted {
             frame.matched_tracks.insert(i);
             frame.matched_detections.insert(j);
@@ -1136,6 +1272,53 @@ mod tests {
             p[j * 3..j * 3 + 3].copy_from_slice(&[xx, y, 0.9]);
         }
         p
+    }
+    #[test]
+    fn part_continuity_keeps_full_weak_body_only_with_unique_current_torso() {
+        let a = crowd_test_detection(8, 8, 24, 100);
+        let b = crowd_test_detection(75, 8, 24, 100);
+        let tr = a.mask.as_ref().unwrap().transform;
+        let seed = [a.clone(), b.clone()];
+        let rgb = crowd_test_rgb(&seed, &[[180, 40, 60], [24, 24, 24]]);
+        let mut clothing = CrowdClothing::seed(&seed, &[0, 1], &rgb, tr).unwrap();
+        let mut tracker = Tracker::new(crate::tracking::TrackingConfig::default());
+        tracker.protected_ids.extend([0, 1]);
+        tracker.initialize(seed.to_vec(), &[]).unwrap();
+        for t in &mut tracker.tracks {
+            t.observed_mask_at_us = Some(0);
+        }
+        clothing.enable_part_continuity();
+        let mut current = crowd_test_detection(9, 8, 24, 100);
+        current.confidence = 0.4;
+        let ds = [current.clone(), b.clone()];
+        let mut rgb = crowd_test_rgb(&ds, &[[180, 40, 60], [24, 24, 24]]);
+        for y in 58..108 {
+            for x in 9..33 {
+                let k = (y * 128 + x) * 3;
+                rgb[k..k + 3].copy_from_slice(&[20, 90, 230]);
+            }
+        }
+        clothing.observe(&ds, &rgb, tr).unwrap();
+        clothing.prepare_part_continuity(&tracker, &ds, 40_000);
+        assert_eq!(
+            *clothing.continuity,
+            std::collections::BTreeSet::from([(0, 0)])
+        );
+        let mut frame = Frame::default();
+        clothing.associate(&mut tracker.clone(), &ds, 40_000, &mut frame);
+        assert!(frame.matched_tracks.contains(&0));
+        clothing.prepare_part_continuity(&tracker, &ds, 100_001);
+        assert!(clothing.continuity.is_empty());
+        let duplicate = [current.clone(), current.clone(), b.clone()];
+        clothing.observe(&duplicate, &rgb, tr).unwrap();
+        clothing.prepare_part_continuity(&tracker, &duplicate, 40_000);
+        assert!(clothing.continuity.is_empty());
+        let mut fragment = crowd_test_detection(9, 8, 24, 80);
+        fragment.confidence = 0.4;
+        let fragment = [fragment, b];
+        clothing.observe(&fragment, &rgb, tr).unwrap();
+        clothing.prepare_part_continuity(&tracker, &fragment, 40_000);
+        assert!(clothing.continuity.is_empty());
     }
     #[test]
     fn pose_parts_sample_only_exclusive_lower_body_pixels_and_abstain_on_missing_joints() {

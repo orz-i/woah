@@ -136,6 +136,57 @@ pub unsafe extern "C" fn frame_kernel_research_tracklet_flip_ear_cap(
 }
 
 /// # Safety
+/// Packed current masks, two mapped current pose7 arrays (42 floats), count
+/// faces, and one disjoint writable sticker.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_profile_head_cap(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    poses: *const f32,
+    faces: *const Ellipse,
+    previous: Ellipse,
+    repair: u32,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(3..=32).contains(&count) || len > 32 * 1024 * 1024 || repair > 1 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable inputs.
+    let (Some(m), Some(p), Some(f)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(poses, 42),
+            crate::ffi_tracking::borrowed(faces, count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let poses = [p[..21].try_into().unwrap(), p[21..].try_into().unwrap()];
+    let result = if repair == 1 {
+        crate::face_head_topology::profile_head_repair(
+            m,
+            index as usize,
+            count,
+            spec,
+            poses,
+            f,
+            previous,
+        )
+    } else {
+        crate::face_head_topology::profile_head_cap(m, index as usize, count, spec, poses, f)
+    };
+    let Some(v) = result else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies one disjoint writable output.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
+/// # Safety
 /// Two writable disjoint Rect outputs; no writes on failure.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_research_tracklet_detail_views(

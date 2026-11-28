@@ -508,23 +508,8 @@ fn finish_tracklet_bounds(
     if !b.valid() || !valid_seed(square) {
         return None;
     }
-    // Competing current detector faces remain negative evidence even when
-    // their raw segmentation has no support on the target cap.
-    for (j, &f) in faces.iter().enumerate() {
-        if !valid_seed(f) {
-            continue;
-        }
-        if j == index {
-            continue;
-        }
-        let render_half = (1.02 * half).max(8.0);
-        let iw = (square.center_x + render_half).min(f.center_x + f.radius_x)
-            - (square.center_x - render_half).max(f.center_x - f.radius_x);
-        let ih = (square.center_y + render_half).min(f.center_y + f.radius_y)
-            - (square.center_y - render_half).max(f.center_y - f.radius_y);
-        if iw.max(0.0) * ih.max(0.0) > 0.10 * 4.0 * f.radius_x * f.radius_y {
-            return None;
-        }
+    if rival_face_conflict(square, index, faces) {
+        return None;
     }
     Some(HeadSticker {
         bounds: b,
@@ -532,6 +517,24 @@ fn finish_tracklet_bounds(
         topology: 1,
         rows,
     })
+}
+
+/// Same render-square sampling margin for the existing and proposed
+/// placement. Every current detected rival is retained, even if its mask
+/// does not support the selected cap.
+fn rival_face_conflict(square: Ellipse, index: usize, faces: &[Ellipse]) -> bool {
+    let half = (1.02 * square.radius_x.max(square.radius_y)).max(8.0);
+    faces
+        .iter()
+        .enumerate()
+        .filter(|(j, f)| *j != index && valid_seed(**f))
+        .any(|(_, f)| {
+            let iw = (square.center_x + half).min(f.center_x + f.radius_x)
+                - (square.center_x - half).max(f.center_x - f.radius_x);
+            let ih = (square.center_y + half).min(f.center_y + f.radius_y)
+                - (square.center_y - half).max(f.center_y - f.radius_y);
+            iw.max(0.0) * ih.max(0.0) > 0.10 * 4.0 * f.radius_x * f.radius_y
+        })
 }
 
 /// A complete current crown recovered from a stable ear-level run rather
@@ -773,6 +776,312 @@ pub(crate) fn tracklet_flip_ear_cap(
         }
     }
     tracklet_ear_cap(masks, index, count, spec, flipped, faces)
+}
+
+/// Current profile head cap sampled in the ear-to-shoulder coordinate
+/// system. Side-on or inclined heads need not have horizontally separated
+/// ears or shoulders. Both independently mapped current poses must certify
+/// a complete cap. The shared finalizer retains direct/rival face constraints.
+pub(crate) fn profile_head_cap(
+    masks: &[u8],
+    index: usize,
+    count: usize,
+    spec: HeadMaskSpec,
+    poses: [[f32; 21]; 2],
+    faces: &[Ellipse],
+) -> Option<HeadSticker> {
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if !(3..=32).contains(&count)
+        || index >= count
+        || n.checked_mul(count)? != masks.len()
+        || faces.len() != count
+        || faces
+            .iter()
+            .any(|&f| !valid_seed(f) && f != Ellipse::default())
+        || poses.iter().flatten().any(|v| !v.is_finite())
+        || poses
+            .iter()
+            .any(|p| p.chunks_exact(3).any(|q| !(0.0..=1.0).contains(&q[2])))
+    {
+        return None;
+    }
+    let own = &masks[index * n..(index + 1) * n];
+    let tr = spec.transform;
+    if !spec.valid(own) || spec.width != tr.proto_size || spec.height != tr.proto_size {
+        return None;
+    }
+    let cell = tr.input_size as f32 / (tr.proto_size as f32 * tr.scale);
+    if !cell.is_finite() || cell <= 0.0 {
+        return None;
+    }
+    let w = spec.width as usize;
+    let h = spec.height as usize;
+    let bh = spec.person.bottom - spec.person.top;
+    let at = |x: f32, y: f32| -> Option<usize> {
+        if x < 0.0 || y < 0.0 || x >= tr.source_width as f32 || y >= tr.source_height as f32 {
+            return None;
+        }
+        let u = ((x * tr.scale + tr.pad_left) * w as f32 / tr.input_size as f32).floor();
+        let v = ((y * tr.scale + tr.pad_top) * h as f32 / tr.input_size as f32).floor();
+        (u >= 0.0 && v >= 0.0 && u < w as f32 && v < h as f32)
+            .then_some(v as usize * w + u as usize)
+    };
+    let rival = |i: usize| {
+        masks
+            .chunks_exact(n)
+            .enumerate()
+            .any(|(j, m)| j != index && m[i] >= 128)
+    };
+    let pose_geom = |p: [f32; 21]| -> Option<([f32; 2], [f32; 2], f32)> {
+        // Pose arrays are nose, both eyes, both ears, both shoulders.
+        if p[2] < 0.40 || p[11] < 0.40 || p[14] < 0.40 || p[17] < 0.40 || p[20] < 0.40 {
+            return None;
+        }
+        let e = [(p[9] + p[12]) * 0.5, (p[10] + p[13]) * 0.5];
+        let s = [(p[15] + p[18]) * 0.5, (p[16] + p[19]) * 0.5];
+        let dist = (e[0] - s[0]).hypot(e[1] - s[1]);
+        if dist < 4.0 * cell
+            || !(0.06..=0.22).contains(&(dist / bh))
+            || (p[9] - p[12]).hypot(p[10] - p[13]) > 0.5 * dist
+            || !(0.30..=1.35).contains(&((p[0] - e[0]).hypot(p[1] - e[1]) / dist))
+        {
+            return None;
+        }
+        for j in [0, 3, 4, 5, 6] {
+            let (x, y) = (p[j * 3], p[j * 3 + 1]);
+            if x < spec.person.left - cell
+                || x > spec.person.right + cell
+                || y < spec.person.top - cell
+                || y > spec.person.bottom + cell
+            {
+                return None;
+            }
+            let mut support = 0;
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    if at(x + dx as f32 * cell, y + dy as f32 * cell)
+                        .is_some_and(|q| own[q] >= 128 && !rival(q))
+                    {
+                        support += 1;
+                    }
+                }
+            }
+            // The nose can protrude from the coarse segmentation, but both
+            // ears/shoulders need positive exclusive local support.
+            if j != 0 && support < 2 {
+                return None;
+            }
+        }
+        Some((e, s, dist))
+    };
+    let a = pose_geom(poses[0])?;
+    let b = pose_geom(poses[1])?;
+    if !(0.75..=1.33).contains(&(a.2 / b.2))
+        || (a.0[0] - b.0[0]).hypot(a.0[1] - b.0[1]) > 0.25 * a.2
+        || (a.1[0] - b.1[0]).hypot(a.1[1] - b.1[1]) > 0.30 * a.2
+    {
+        return None;
+    }
+    let scan = |(e, s, dist): ([f32; 2], [f32; 2], f32)| -> Option<(Rect, u32)> {
+        let axis = [(s[0] - e[0]) / dist, (s[1] - e[1]) / dist];
+        if axis[1] < 0.20 {
+            return None;
+        }
+        let side = [axis[1], -axis[0]];
+        let step = cell * 0.5;
+        let gw = (3.6 * dist / step).ceil() as usize + 1;
+        let gh = (2.9 * dist / step).ceil() as usize + 1;
+        if gw > 160 || gh > 160 || gw < 9 || gh < 9 {
+            return None;
+        }
+        let coord = |x: usize, y: usize| {
+            let u = x as f32 * step - 1.8 * dist;
+            let v = y as f32 * step - 1.7 * dist;
+            [
+                e[0] + u * side[0] + v * axis[0],
+                e[1] + u * side[1] + v * axis[1],
+            ]
+        };
+        let mut mask = vec![0u8; gw * gh];
+        let mut comp = vec![false; gw * gh];
+        for y in 0..gh {
+            for x in 0..gw {
+                let [x0, y0] = coord(x, y);
+                if let Some(i) = at(x0, y0) {
+                    mask[y * gw + x] = own[i];
+                    comp[y * gw + x] = rival(i);
+                }
+            }
+        }
+        let x0 = (1.8 * dist / step).round() as usize;
+        let y0 = (1.7 * dist / step).round() as usize;
+        if y0 < 3 || y0 + 3 >= gh {
+            return None;
+        }
+        let near = |y| {
+            runs(&mask, gw, y, 0, gw)
+                .into_iter()
+                .find(|r| r.left <= x0 && x0 < r.right)
+        };
+        let seed = near(y0)?;
+        let mut widths = (y0 - 2..y0 + 2)
+            .filter_map(|y| near(y).map(|q| q.width()))
+            .collect::<Vec<_>>();
+        if widths.len() < 3 {
+            return None;
+        }
+        widths.sort_unstable();
+        let reference = widths[widths.len() / 2] as f32;
+        if reference < 4.0 || !(0.85..=2.35).contains(&(reference * step / dist)) {
+            return None;
+        }
+        let linked = |y: usize, prev: Run| {
+            runs(&mask, gw, y, 0, gw)
+                .into_iter()
+                .filter(|q| q.overlap(prev) * 2 >= q.width().min(prev.width()))
+                .collect::<Vec<_>>()
+        };
+        let mut path = vec![(y0, seed)];
+        let mut prev = seed;
+        let mut crown = false;
+        for y in (0..y0).rev() {
+            let mut rs = linked(y, prev);
+            if rs.is_empty() {
+                crown = true;
+                break;
+            }
+            if rs.len() == 2 && rs[1].left.saturating_sub(rs[0].right) <= 1 {
+                rs = vec![Run {
+                    left: rs[0].left,
+                    right: rs[1].right,
+                }];
+            }
+            if rs.len() != 1 {
+                return None;
+            }
+            let r = rs[0];
+            if r.left == 0 || r.right == gw || r.width() as f32 > 1.4 * reference + 1.0 {
+                return None;
+            }
+            path.push((y, r));
+            prev = r;
+        }
+        if !crown || ((y0 - path.last()?.0) as f32) * step < 0.55 * dist {
+            return None;
+        }
+        prev = seed;
+        let mut widened = 0;
+        let mut lower = false;
+        for y in y0 + 1..gh {
+            let rs = linked(y, prev);
+            if rs.len() != 1 {
+                return None;
+            }
+            let r = rs[0];
+            let contested = comp[y * gw + r.left..y * gw + r.right]
+                .iter()
+                .filter(|&&v| v)
+                .count();
+            let broad = r.width() as f32 > 1.22 * reference + 0.5 || contested * 10 > r.width();
+            if broad {
+                widened += 1;
+                if widened >= 2 {
+                    lower = true;
+                    break;
+                }
+                continue;
+            }
+            if widened > 0
+                || r.left == 0
+                || r.right == gw
+                || r.width() as f32 > 1.4 * reference + 1.0
+            {
+                return None;
+            }
+            path.push((y, r));
+            prev = r;
+        }
+        if !lower || path.len() < 8 {
+            return None;
+        }
+        let bottom = path.iter().map(|q| q.0).max()?;
+        if !((0.10 * dist)..=(1.05 * dist)).contains(&((bottom - y0) as f32 * step)) {
+            return None;
+        }
+        let mut b = Rect {
+            left: f32::INFINITY,
+            top: f32::INFINITY,
+            right: f32::NEG_INFINITY,
+            bottom: f32::NEG_INFINITY,
+        };
+        let (mut total, mut strong, mut competing) = (0usize, 0usize, 0usize);
+        for &(y, r) in &path {
+            for x in r.left..r.right {
+                let [u, v] = coord(x, y);
+                b.left = b.left.min(u);
+                b.right = b.right.max(u);
+                b.top = b.top.min(v);
+                b.bottom = b.bottom.max(v);
+                total += 1;
+                strong += usize::from(mask[y * gw + x] >= 128);
+                competing += usize::from(comp[y * gw + x]);
+            }
+        }
+        if total == 0 || strong * 10 < total * 9 || competing * 20 > total {
+            return None;
+        }
+        b.left = (b.left - step).max(0.);
+        b.right = (b.right + step).min(tr.source_width as f32);
+        b.top = (b.top - step).max(0.);
+        b.bottom = (b.bottom + step).min(tr.source_height as f32);
+        let bw = b.right - b.left;
+        let hh = b.bottom - b.top;
+        if !b.valid()
+            || !(0.06..=0.28).contains(&(bw / bh))
+            || !(0.06..=0.32).contains(&(hh / bh))
+            || !(0.60..=1.75).contains(&(hh / bw))
+        {
+            return None;
+        }
+        Some((b, path.len() as u32))
+    };
+    let (a, ar) = scan(a)?;
+    let (b, br) = scan(b)?;
+    if crate::geometry::overlap_iou(a, b) < 0.75 {
+        return None;
+    }
+    let union = Rect {
+        left: a.left.min(b.left),
+        top: a.top.min(b.top),
+        right: a.right.max(b.right),
+        bottom: a.bottom.max(b.bottom),
+    };
+    finish_tracklet_bounds(masks, index, spec, union, ar.min(br), faces)
+}
+
+/// Only repair an oversized *projected* placement when a current rival
+/// face is actually endangered and both fresh pose-axis caps agree. No
+/// direct-face measurement, identity clock or historical geometry is changed.
+pub(crate) fn profile_head_repair(
+    masks: &[u8],
+    index: usize,
+    count: usize,
+    spec: HeadMaskSpec,
+    poses: [[f32; 21]; 2],
+    faces: &[Ellipse],
+    previous: Ellipse,
+) -> Option<HeadSticker> {
+    if !valid_seed(previous)
+        || faces.get(index).is_none_or(|&f| f != Ellipse::default())
+        || !rival_face_conflict(previous, index, faces)
+    {
+        return None;
+    }
+    let cap = profile_head_cap(masks, index, count, spec, poses, faces)?;
+    if cap.square.radius_x > 0.80 * previous.radius_x.max(previous.radius_y) {
+        return None;
+    }
+    Some(cap)
 }
 
 /// Two bounded current body-detail views. The current raw body box locates
@@ -1804,6 +2113,33 @@ mod tests {
                 110., 64., 0.9, 146., 64., 0.9, 92., 94., 0.9, 164., 94., 0.9,
             ],
         )
+    }
+    #[test]
+    fn profile_axis_cap_requires_current_dual_pose_and_exclusive_crown() {
+        let (sp, mut m, _) = ear_cap_fixture();
+        m.extend(vec![0; 4096]);
+        let p = [
+            111., 64., 0.9, 116., 60., 0.9, 116., 60., 0.9, 126., 64., 0.9, 130., 64., 0.9, 92.,
+            94., 0.9, 164., 94., 0.9,
+        ];
+        let fs = [Ellipse::default(); 3];
+        let cap = profile_head_cap(&m, 0, 3, sp, [p, p], &fs).expect("profile cap");
+        assert!(cap.bounds.top <= 40. && cap.bounds.bottom >= 80.);
+        let mut bad = p;
+        bad[9] += 30.;
+        bad[12] += 30.;
+        assert!(profile_head_cap(&m, 0, 3, sp, [p, bad], &fs).is_none());
+        let mut rival = m.clone();
+        paint(&mut rival[8192..], 13..18, 29, 35);
+        assert!(profile_head_cap(&rival, 0, 3, sp, [p, p], &fs).is_none());
+        let mut rival_face = fs;
+        rival_face[2] = Ellipse {
+            center_x: 128.,
+            center_y: 64.,
+            radius_x: 14.,
+            radius_y: 14.,
+        };
+        assert!(profile_head_cap(&m, 0, 3, sp, [p, p], &rival_face).is_none());
     }
     #[test]
     fn ear_level_cap_recovers_tapered_crown_and_checks_current_competition() {

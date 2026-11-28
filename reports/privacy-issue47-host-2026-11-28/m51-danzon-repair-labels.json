@@ -1,0 +1,33 @@
+{
+  "scope": "Targeted source-only approximate visible-head envelopes, nearby visible non-target head rectangles and torso probes after candidate repair selection. Not a blind or dense coverage audit. 960x540 source coordinates.",
+  "cases": {
+    "profile_repairs": {
+      "target_id": 4,
+      "manifest_sha256": "de3b93f28308dfb629398ec0aeddd1db233ea1026dae9678ace7f5d0fe63067d",
+      "labels": [
+        {
+          "index": 33,
+          "asset_sha256": "c22e75b76689ded5bff50c25940317dee53a1e95080ae9852e2f2b7627eed56a",
+          "head_rect": [
+            332,
+            65,
+            406,
+            129
+          ],
+          "neighbor_rects": [
+            [
+              244,
+              50,
+              302,
+              114
+            ]
+          ],
+          "torso_probe": [
+            373,
+            242
+          ]
+        }
+      ]
+    }
+  }
+}

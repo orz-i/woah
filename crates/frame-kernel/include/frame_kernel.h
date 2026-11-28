@@ -278,7 +278,7 @@ int32_t frame_kernel_class_update(uint64_t id, const FrameKernelTrackingObservat
 uint64_t frame_kernel_tracking_create(FrameKernelTrackingOptions options);
 /* Experimental, default off. Must be called before initialization. */
 /* Experimental host current RGB clothing evidence; no face descriptors.
-   Actions 0/1 immutable, 4/5 adaptive, 6/7 adaptive with pixel-merge evidence. */
+   Actions 0/1 immutable, 4/5 adaptive, 6/7 adaptive with pixel-merge evidence, 8/9 with part-supported short continuity. */
 int32_t frame_kernel_tracking_clothing_step(uint64_t id,uint32_t action,int64_t at,const FrameKernelTrackingObservation *observations,size_t count,const uint8_t *pixels,size_t pixels_len,const uint8_t *rgb,size_t rgb_len,FrameKernelTransform transform);
 int64_t frame_kernel_tracking_motion_merges(uint64_t session,int64_t *output,size_t capacity);
 int32_t frame_kernel_tracking_pair_continuity(uint64_t id,uint32_t enabled);
@@ -453,6 +453,8 @@ int32_t frame_kernel_research_tracklet_head(const uint8_t *masks,size_t len,size
 int32_t frame_kernel_research_tracklet_ear_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *pose12,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
 /* Current mapped mirrored pose corroboration; original and mapped pose12. */
 int32_t frame_kernel_research_tracklet_flip_ear_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses24,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
+/* Current dual-pose profile-axis head geometry; poses42 = two nose/eyes/ears/shoulders x,y,confidence arrays. */
+int32_t frame_kernel_research_profile_head_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,const FrameKernelEllipse *faces,FrameKernelEllipse previous,uint32_t repair,FrameKernelHeadSticker *output);
 /* Two current body detail views, local owner and source cap consensus. */
 int32_t frame_kernel_research_tracklet_detail_views(FrameKernelHeadMaskSpec spec,FrameKernelRect *output2);
 int32_t frame_kernel_research_tracklet_detail_owner(const uint8_t *projected,size_t projected_len,const uint8_t *locals,size_t local_len,size_t scene_count,size_t local_count,uint32_t index,size_t plane,const float *confidence,uint32_t *out);
