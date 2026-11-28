@@ -52,6 +52,197 @@ pub unsafe extern "C" fn frame_kernel_research_tracklet_head(
 }
 
 /// # Safety
+/// Readable packed current masks, twelve ear/shoulder floats and count
+/// face measurements; one disjoint writable sticker. No write on failure.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_tracklet_ear_cap(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    pose: *const f32,
+    faces: *const Ellipse,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(2..=32).contains(&count) || len > 32 * 1024 * 1024 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller provides bounded readable inputs.
+    let (Some(m), Some(p), Some(f)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(pose, 12),
+            crate::ffi_tracking::borrowed(faces, count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::tracklet_ear_cap(
+        m,
+        index as usize,
+        count,
+        spec,
+        p.try_into().unwrap(),
+        f,
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller provides one disjoint writable output.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
+/// # Safety
+/// Readable packed current masks, 24 floats for current original and mapped
+/// flipped ear/shoulder poses, count faces; disjoint writable sticker.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_tracklet_flip_ear_cap(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    poses: *const f32,
+    faces: *const Ellipse,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(2..=32).contains(&count) || len > 32 * 1024 * 1024 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller provides bounded readable inputs.
+    let (Some(m), Some(p), Some(f)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(poses, 24),
+            crate::ffi_tracking::borrowed(faces, count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::tracklet_flip_ear_cap(
+        m,
+        index as usize,
+        count,
+        spec,
+        [p[..12].try_into().unwrap(), p[12..].try_into().unwrap()],
+        f,
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller provides one disjoint writable output.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
+/// # Safety
+/// Two writable disjoint Rect outputs; no writes on failure.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_tracklet_detail_views(
+    spec: HeadMaskSpec,
+    out: *mut Rect,
+) -> i32 {
+    if out.is_null() {
+        return REGION_INVALID;
+    }
+    let Some(v) = crate::face_head_topology::tracklet_detail_views(spec) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller provides two writable Rects.
+    unsafe { std::ptr::copy_nonoverlapping(v.as_ptr(), out, 2) };
+    REGION_OK
+}
+/// # Safety
+/// Readable projected/current local masks and confidences; output index writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_tracklet_detail_owner(
+    projected: *const u8,
+    projected_len: usize,
+    locals: *const u8,
+    local_len: usize,
+    scene_count: usize,
+    local_count: usize,
+    index: u32,
+    plane: usize,
+    confidence: *const f32,
+    out: *mut u32,
+) -> i32 {
+    if scene_count > 32
+        || local_count > 32
+        || plane > 1024 * 1024
+        || projected_len > 32 * 1024 * 1024
+        || local_len > 32 * 1024 * 1024
+        || out.is_null()
+    {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller provides bounded readable input pools.
+    let (Some(p), Some(l), Some(c)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(projected, projected_len),
+            crate::ffi_tracking::borrowed(locals, local_len),
+            crate::ffi_tracking::borrowed(confidence, local_count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(j) = crate::face_head_topology::tracklet_detail_owner(
+        p,
+        l,
+        scene_count,
+        local_count,
+        index as usize,
+        plane,
+        c,
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies writable index.
+    unsafe { out.write(j as u32) };
+    REGION_OK
+}
+/// # Safety
+/// Readable current scene masks, two source-space caps and count face measurements.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_tracklet_detail_finish(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    caps: *const crate::face_head_topology::HeadSticker,
+    faces: *const Ellipse,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(2..=32).contains(&count) || len > 32 * 1024 * 1024 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable arrays.
+    let (Some(m), Some(b), Some(f)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(caps, 2),
+            crate::ffi_tracking::borrowed(faces, count),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::tracklet_detail_finish(
+        m,
+        index as usize,
+        count,
+        spec,
+        [b[0], b[1]],
+        f,
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies disjoint writable output.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
+/// # Safety
 /// Twelve disjoint writable floats; no write on failure.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_offline_face_plans(

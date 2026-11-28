@@ -419,8 +419,23 @@ pub(crate) fn tracklet_current_head(
     {
         return None;
     }
+    finish_tracklet_cap(masks, index, spec, b, &path, faces)
+}
+
+fn finish_tracklet_cap(
+    masks: &[u8],
+    index: usize,
+    spec: HeadMaskSpec,
+    b: Rect,
+    path: &[(usize, Run)],
+    faces: &[Ellipse],
+) -> Option<HeadSticker> {
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    let own = &masks[index * n..(index + 1) * n];
+    let tr = spec.transform;
+    let cell = tr.input_size as f32 / (tr.proto_size as f32 * tr.scale);
     let (mut total, mut strong, mut rival) = (0usize, 0usize, 0usize);
-    for (y, run) in path {
+    for &(y, run) in path {
         for x in run.left..run.right {
             let k = y * spec.width as usize + x;
             total += 1;
@@ -436,12 +451,26 @@ pub(crate) fn tracklet_current_head(
     if total == 0 || strong * 10 < total * 9 || rival * 20 > total {
         return None;
     }
-    let mut b = Rect {
+    let b = Rect {
         left: (b.left - cell).max(0.0),
         top: (b.top - cell).max(0.0),
         right: (b.right + cell).min(tr.source_width as f32),
         bottom: (b.bottom + cell).min(tr.source_height as f32),
     };
+    finish_tracklet_bounds(masks, index, spec, b, path.len() as u32, faces)
+}
+
+fn finish_tracklet_bounds(
+    masks: &[u8],
+    index: usize,
+    spec: HeadMaskSpec,
+    mut b: Rect,
+    rows: u32,
+    faces: &[Ellipse],
+) -> Option<HeadSticker> {
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    let own = &masks[index * n..(index + 1) * n];
+    let tr = spec.transform;
     // An actual selected-face measurement may not be discarded to make
     // the new cap smaller. It must be inside the connected cap, supported
     // by the current owner, and free of strong competing face-core support.
@@ -501,8 +530,420 @@ pub(crate) fn tracklet_current_head(
         bounds: b,
         square,
         topology: 1,
-        rows: cap.rows,
+        rows,
     })
+}
+
+/// A complete current crown recovered from a stable ear-level run rather
+/// than its tiny first rows. Geometry only; identity must be independently
+/// proven. A wide/branched run at ear level is not accepted as a head.
+pub(crate) fn tracklet_ear_cap(
+    masks: &[u8],
+    index: usize,
+    count: usize,
+    spec: HeadMaskSpec,
+    pose: [f32; 12],
+    faces: &[Ellipse],
+) -> Option<HeadSticker> {
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if !(2..=32).contains(&count)
+        || index >= count
+        || n.checked_mul(count)? != masks.len()
+        || faces.len() != count
+        || faces
+            .iter()
+            .any(|&f| !valid_seed(f) && f != Ellipse::default())
+        || pose.iter().any(|v| !v.is_finite())
+        || pose.chunks_exact(3).any(|v| !(0.40..=1.0).contains(&v[2]))
+    {
+        return None;
+    }
+    let own = &masks[index * n..(index + 1) * n];
+    let tr = spec.transform;
+    if !spec.valid(own) || spec.width != tr.proto_size || spec.height != tr.proto_size {
+        return None;
+    }
+    let cell = tr.input_size as f32 / (tr.proto_size as f32 * tr.scale);
+    if !cell.is_finite() || cell <= 0.0 {
+        return None;
+    }
+    let w = spec.width as usize;
+    let h = spec.height as usize;
+    let (ex, ey) = ((pose[0] + pose[3]) * 0.5, (pose[1] + pose[4]) * 0.5);
+    let (sx, sy) = ((pose[6] + pose[9]) * 0.5, (pose[7] + pose[10]) * 0.5);
+    let ew = (pose[0] - pose[3]).abs();
+    let sw = (pose[6] - pose[9]).hypot(pose[7] - pose[10]);
+    let bh = spec.person.bottom - spec.person.top;
+    if sw < 4.0 * cell
+        || !(0.10..=0.45).contains(&(sw / bh))
+        || (pose[7] - pose[10]).abs() > 0.40 * sw
+        || ew < 3.0 * cell
+        || !(0.25..=0.75).contains(&(ew / sw))
+        || (pose[1] - pose[4]).abs() > ew * 0.4
+        || (ex - sx).abs() > 0.45 * sw
+        || !(0.30..=0.90).contains(&((sy - ey) / sw))
+    {
+        return None;
+    }
+    let gx = |x: f32| (x * tr.scale + tr.pad_left) * w as f32 / tr.input_size as f32;
+    let gy = |y: f32| (y * tr.scale + tr.pad_top) * h as f32 / tr.input_size as f32;
+    let fx =
+        |x: usize| (x as f32 * cell - tr.pad_left / tr.scale).clamp(0.0, tr.source_width as f32);
+    let fy =
+        |y: usize| (y as f32 * cell - tr.pad_top / tr.scale).clamp(0.0, tr.source_height as f32);
+    for q in pose.chunks_exact(3) {
+        if q[0] < spec.person.left
+            || q[0] > spec.person.right
+            || q[1] < spec.person.top
+            || q[1] > spec.person.bottom
+            || q[0] < 0.0
+            || q[0] >= tr.source_width as f32
+            || q[1] < 0.0
+            || q[1] >= tr.source_height as f32
+        {
+            return None;
+        }
+        let x = gx(q[0]).floor() as i32;
+        let y = gy(q[1]).floor() as i32;
+        let mut supported = 0;
+        for yy in y - 1..=y + 1 {
+            for xx in x - 1..=x + 1 {
+                if xx < 0 || yy < 0 || xx >= w as i32 || yy >= h as i32 {
+                    continue;
+                }
+                let k = yy as usize * w + xx as usize;
+                if own[k] >= 128
+                    && masks
+                        .chunks_exact(n)
+                        .enumerate()
+                        .all(|(j, m)| j == index || m[k] < 128)
+                {
+                    supported += 1;
+                }
+            }
+        }
+        if supported < 2 {
+            return None;
+        }
+    }
+    let left = gx(spec.person.left - cell).floor().clamp(0.0, w as f32) as usize;
+    let right = gx(spec.person.right + cell).ceil().clamp(0.0, w as f32) as usize;
+    let top = gy((spec.person.top - 2.0 * cell).max(ey - sw))
+        .floor()
+        .clamp(0.0, h as f32) as usize;
+    let bottom = gy(sy + cell).ceil().clamp(0.0, h as f32) as usize;
+    let y0 = gy(ey).floor() as usize;
+    let x0 = gx(ex);
+    if left >= right || y0 <= top + 2 || y0 + 2 >= bottom {
+        return None;
+    }
+    let e0 = gx(pose[0].min(pose[3]));
+    let e1 = gx(pose[0].max(pose[3]));
+    let at = runs(own, w, y0, left, right);
+    let core = at
+        .into_iter()
+        .find(|r| r.left as f32 <= e0 + 1.0 && r.right as f32 >= e1 - 1.0)?;
+    let cw = core.width() as f32 * cell;
+    if !(1.05..=2.1).contains(&(cw / ew))
+        || !(0.35..=0.95).contains(&(cw / sw))
+        || (core.center() - x0).abs() * cell > 0.25 * sw
+    {
+        return None;
+    }
+    let mut path = vec![(y0, core)];
+    let mut prev = core;
+    let mut reached_top = false;
+    for y in (top..y0).rev() {
+        let row = runs(own, w, y, left, right);
+        let mut linked = row
+            .iter()
+            .copied()
+            .filter(|r| r.overlap(prev) * 2 >= r.width().min(prev.width()));
+        let Some(run) = linked.next() else {
+            reached_top = true;
+            break;
+        };
+        if linked.next().is_some()
+            || run.width() as f32 > core.width() as f32 * 1.35 + 0.5
+            || (run.center() - x0).abs() * cell > 0.35 * sw
+        {
+            return None;
+        }
+        path.push((y, run));
+        prev = run;
+        // At most one tiny tip row may be lost to the two-cell run minimum;
+        // margin below covers it. A wider continuing lobe at boundary fails.
+    }
+    if !reached_top || y0 - path.last()?.0 < 3 {
+        return None;
+    }
+    prev = core;
+    let mut widened = false;
+    let mut pending = None;
+    for y in y0 + 1..bottom {
+        let row = runs(own, w, y, left, right);
+        let mut linked = row
+            .iter()
+            .copied()
+            .filter(|r| r.overlap(prev) * 2 >= r.width().min(prev.width()));
+        let run = linked.next()?;
+        if linked.next().is_some() {
+            return None;
+        }
+        let broad = run.width() as f32 > core.width() as f32 * 1.30 + 0.5
+            || run.width() as f32 * cell > sw * 0.95;
+        if broad {
+            if pending.is_some() {
+                widened = true;
+                break;
+            }
+            pending = Some(run);
+            continue;
+        }
+        if pending.is_some() || (run.center() - x0).abs() * cell > 0.35 * sw {
+            return None;
+        }
+        path.push((y, run));
+        prev = run;
+    }
+    if !widened || path.len() < 6 || path.iter().map(|(y, _)| *y).max()? <= y0 {
+        return None;
+    }
+    let l = path.iter().map(|(_, r)| r.left).min()?;
+    let r = path.iter().map(|(_, r)| r.right).max()?;
+    let t = path.iter().map(|(y, _)| *y).min()?;
+    let b = path.iter().map(|(y, _)| *y).max()? + 1;
+    let bounds = Rect {
+        left: fx(l),
+        top: fy(t),
+        right: fx(r),
+        bottom: fy(b),
+    };
+    let bw = bounds.right - bounds.left;
+    let hh = bounds.bottom - bounds.top;
+    if !(0.45..=1.15).contains(&(bw / sw))
+        || !(0.50..=1.40).contains(&(hh / sw))
+        || !(0.65..=1.65).contains(&(hh / bw))
+        || bounds.bottom > sy + 0.12 * sw
+        || bounds.top > ey - 0.25 * sw
+        || (bounds.left + bounds.right - 2.0 * ex).abs() > 0.70 * sw
+    {
+        return None;
+    }
+    finish_tracklet_cap(masks, index, spec, bounds, &path, faces)
+}
+
+/// A current mirrored pose may fill weak keypoints, but may not relocate
+/// a strongly inconsistent head or body. Both poses are on the same source
+/// coordinate system; no historical or reflected raw mask is substituted.
+pub(crate) fn tracklet_flip_ear_cap(
+    masks: &[u8],
+    index: usize,
+    count: usize,
+    spec: HeadMaskSpec,
+    poses: [[f32; 12]; 2],
+    faces: &[Ellipse],
+) -> Option<HeadSticker> {
+    let [primary, flipped] = poses;
+    if primary.iter().chain(&flipped).any(|v| !v.is_finite())
+        || primary
+            .chunks_exact(3)
+            .any(|v| !(0.25..=1.0).contains(&v[2]))
+        || flipped
+            .chunks_exact(3)
+            .any(|v| !(0.40..=1.0).contains(&v[2]))
+    {
+        return None;
+    }
+    let sw = (flipped[6] - flipped[9]).hypot(flipped[7] - flipped[10]);
+    if !sw.is_finite() || sw <= 0.0 {
+        return None;
+    }
+    for (a, b) in primary.chunks_exact(3).zip(flipped.chunks_exact(3)) {
+        let allowance = if a[2] >= 0.40 { 0.15 } else { 0.25 };
+        if (a[0] - b[0]).hypot(a[1] - b[1]) > sw * allowance {
+            return None;
+        }
+    }
+    for i in [0, 6] {
+        let dx = (primary[i] + primary[i + 3] - flipped[i] - flipped[i + 3]) * 0.5;
+        let dy = (primary[i + 1] + primary[i + 4] - flipped[i + 1] - flipped[i + 4]) * 0.5;
+        if dx.hypot(dy) > 0.15 * sw {
+            return None;
+        }
+    }
+    tracklet_ear_cap(masks, index, count, spec, flipped, faces)
+}
+
+/// Two bounded current body-detail views. The current raw body box locates
+/// inference; no head labels, old pose or historical mask enter the plan.
+pub(crate) fn tracklet_detail_views(spec: HeadMaskSpec) -> Option<[Rect; 2]> {
+    let t = spec.transform;
+    let b = spec.person;
+    if !t.valid() || !b.valid() {
+        return None;
+    }
+    let h = b.bottom - b.top;
+    let w = b.right - b.left;
+    let cx = (b.left + b.right) * 0.5;
+    let radius = (0.70 * w).max(0.32 * h);
+    let view = |depth: f32| {
+        let r = Rect {
+            left: (cx - radius).floor().max(0.0),
+            right: (cx + radius).floor().min(t.source_width as f32),
+            top: (b.top - 0.10 * h).floor().max(0.0),
+            bottom: (b.top + depth * h).floor().min(t.source_height as f32),
+        };
+        (r.valid() && r.right - r.left >= 64.0 && r.bottom - r.top >= 64.0).then_some(r)
+    };
+    let v = [view(0.70)?, view(0.85)?];
+    (v[0] != v[1]).then_some(v)
+}
+
+/// Compare independent current local proposals to the reprojected *current*
+/// scene masks, with every raw rival retained. No local index is inferred
+/// by relative order. A high-similarity duplicate is ambiguous.
+pub(crate) fn tracklet_detail_owner(
+    projected: &[u8],
+    locals: &[u8],
+    scene_count: usize,
+    local_count: usize,
+    index: usize,
+    n: usize,
+    confidence: &[f32],
+) -> Option<usize> {
+    if !(2..=32).contains(&scene_count)
+        || !(1..=32).contains(&local_count)
+        || index >= scene_count
+        || n == 0
+        || projected.len() != n.checked_mul(scene_count)?
+        || locals.len() != n.checked_mul(local_count)?
+        || confidence.len() != local_count
+        || confidence
+            .iter()
+            .any(|&v| !v.is_finite() || !(0.0..=1.0).contains(&v))
+    {
+        return None;
+    }
+    let iou = |a: &[u8], b: &[u8]| {
+        let (mut inter, mut union) = (0u32, 0u32);
+        for (&x, &y) in a.iter().zip(b) {
+            inter += u32::from(x >= 128 && y >= 128);
+            union += u32::from(x >= 128 || y >= 128);
+        }
+        if union == 0 {
+            0.0
+        } else {
+            inter as f32 / union as f32
+        }
+    };
+    let own = &projected[index * n..(index + 1) * n];
+    let scores = locals
+        .chunks_exact(n)
+        .map(|q| iou(own, q))
+        .collect::<Vec<_>>();
+    let (j, &score) = scores
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.total_cmp(b.1))?;
+    let candidate = &locals[j * n..(j + 1) * n];
+    if score < 0.65
+        || confidence[j] < 0.50
+        || scores
+            .iter()
+            .enumerate()
+            .any(|(i, &q)| i != j && score - q < 0.20)
+        || projected.chunks_exact(n).enumerate().any(|(i, q)| {
+            i != index && (iou(q, candidate) > 0.15 || score - iou(q, candidate) < 0.20)
+        })
+    {
+        return None;
+    }
+    Some(j)
+}
+
+/// Two independently localized current caps must agree in scene geometry
+/// and still pass original scene ownership and face competition. Their
+/// union, not their average, determines placement. No crop-boundary lobe
+/// or conflicting direct measurement is used as recovery.
+pub(crate) fn tracklet_detail_finish(
+    masks: &[u8],
+    index: usize,
+    count: usize,
+    spec: HeadMaskSpec,
+    caps: [HeadSticker; 2],
+    faces: &[Ellipse],
+) -> Option<HeadSticker> {
+    use crate::face_observations::mask_support;
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if !(2..=32).contains(&count)
+        || index >= count
+        || n.checked_mul(count)? != masks.len()
+        || faces.len() != count
+        || faces
+            .iter()
+            .any(|&f| !valid_seed(f) && f != Ellipse::default())
+    {
+        return None;
+    }
+    let own = &masks[index * n..(index + 1) * n];
+    let t = spec.transform;
+    if !spec.valid(own) || spec.width != t.proto_size || spec.height != t.proto_size {
+        return None;
+    }
+    if caps
+        .iter()
+        .any(|c| c.topology != 1 || c.rows < 6 || !valid_seed(c.square))
+    {
+        return None;
+    }
+    let bounds = caps.map(|c| c.bounds);
+    let views = tracklet_detail_views(spec)?;
+    let cell = t.input_size as f32 / (t.proto_size as f32 * t.scale);
+    if !cell.is_finite() || cell <= 0.0 {
+        return None;
+    }
+    let bh = spec.person.bottom - spec.person.top;
+    for (r, v) in bounds.iter().zip(views) {
+        let w = r.right - r.left;
+        let h = r.bottom - r.top;
+        if !r.valid()
+            || r.left <= v.left + cell
+            || r.right >= v.right - cell
+            || r.top <= v.top + cell
+            || r.bottom >= v.bottom - cell
+            || !(0.06..=0.35).contains(&(w / bh))
+            || !(0.06..=0.35).contains(&(h / bh))
+            || !(0.50..=1.80).contains(&(h / w))
+            || r.bottom > spec.person.top + 0.35 * bh
+        {
+            return None;
+        }
+        let center = Ellipse {
+            center_x: (r.left + r.right) * 0.5,
+            center_y: (r.top + r.bottom) * 0.5,
+            radius_x: w * 0.5,
+            radius_y: h * 0.5,
+        };
+        if !mask_support(own, spec, center).is_some_and(|s| s[0] >= 4 && s[1] >= 12)
+            || masks
+                .chunks_exact(n)
+                .enumerate()
+                .any(|(j, m)| j != index && mask_support(m, spec, center).is_none_or(|s| s[1] > 4))
+        {
+            return None;
+        }
+    }
+    if crate::geometry::overlap_iou(bounds[0], bounds[1]) < 0.65 {
+        return None;
+    }
+    let b = Rect {
+        left: bounds[0].left.min(bounds[1].left),
+        top: bounds[0].top.min(bounds[1].top),
+        right: bounds[0].right.max(bounds[1].right),
+        bottom: bounds[0].bottom.max(bounds[1].bottom),
+    };
+    finish_tracklet_bounds(masks, index, spec, b, caps[0].rows.min(caps[1].rows), faces)
 }
 
 /// Current visible head cap at a clipped top edge. Both raw masks must be
@@ -1340,6 +1781,88 @@ mod tests {
         paint(&mut m[..4096], 20..60, 23, 41);
         paint(&mut m[4096..], 6..54, 48, 60);
         (sp, m)
+    }
+    fn ear_cap_fixture() -> (HeadMaskSpec, Vec<u8>, [f32; 12]) {
+        let mut sp = spec();
+        sp.person = Rect {
+            left: 80.,
+            top: 40.,
+            right: 176.,
+            bottom: 240.,
+        };
+        let mut m = vec![0; 8192];
+        paint(&mut m[..4096], 10..11, 30, 34);
+        paint(&mut m[..4096], 11..12, 28, 36);
+        paint(&mut m[..4096], 12..21, 26, 38);
+        paint(&mut m[..4096], 21..26, 20, 44);
+        paint(&mut m[..4096], 26..60, 23, 41);
+        paint(&mut m[4096..], 10..54, 48, 60);
+        (
+            sp,
+            m,
+            [
+                110., 64., 0.9, 146., 64., 0.9, 92., 94., 0.9, 164., 94., 0.9,
+            ],
+        )
+    }
+    #[test]
+    fn ear_level_cap_recovers_tapered_crown_and_checks_current_competition() {
+        let (sp, m, p) = ear_cap_fixture();
+        let faces = [Ellipse::default(); 2];
+        let cap = tracklet_ear_cap(&m, 0, 2, sp, p, &faces).expect("complete taper");
+        assert!(
+            cap.bounds.top <= 40.
+                && cap.bounds.bottom >= 84.
+                && cap.bounds.left <= 104.
+                && cap.bounds.right >= 152.
+        );
+        let mut weak = p;
+        weak[2] = 0.3;
+        assert!(tracklet_ear_cap(&m, 0, 2, sp, weak, &faces).is_none());
+        assert_eq!(
+            tracklet_flip_ear_cap(&m, 0, 2, sp, [weak, p], &faces),
+            Some(cap)
+        );
+        weak[0] += 28.;
+        assert!(tracklet_flip_ear_cap(&m, 0, 2, sp, [weak, p], &faces).is_none());
+        let mut sleeve = m.clone();
+        paint(&mut sleeve[..4096], 15..19, 20, 38);
+        assert!(tracklet_ear_cap(&sleeve, 0, 2, sp, p, &faces).is_none());
+        let mut rival = m.clone();
+        paint(&mut rival[4096..], 13..18, 29, 35);
+        assert!(tracklet_ear_cap(&rival, 0, 2, sp, p, &faces).is_none());
+    }
+    #[test]
+    fn detail_cap_requires_unique_local_owner_two_agreeing_complete_caps() {
+        let (sp, m, p) = ear_cap_fixture();
+        let faces = [Ellipse::default(); 2];
+        assert_eq!(
+            tracklet_detail_owner(&m, &m, 2, 2, 0, 4096, &[0.9, 0.9]),
+            Some(0)
+        );
+        let mut duplicate = m.clone();
+        duplicate[4096..].copy_from_slice(&m[..4096]);
+        assert!(tracklet_detail_owner(&m, &duplicate, 2, 2, 0, 4096, &[0.9, 0.9]).is_none());
+        assert!(tracklet_detail_owner(&m, &m, 2, 2, 0, 4096, &[0.4, 0.9]).is_none());
+        let cap = tracklet_ear_cap(&m, 0, 2, sp, p, &faces).unwrap();
+        let result =
+            tracklet_detail_finish(&m, 0, 2, sp, [cap, cap], &faces).expect("same current caps");
+        assert_eq!(result, cap);
+        let mut wrong = cap;
+        wrong.bounds.left += 45.;
+        wrong.bounds.right += 45.;
+        assert!(tracklet_detail_finish(&m, 0, 2, sp, [cap, wrong], &faces).is_none());
+        let mut partial = cap;
+        partial.rows = 3;
+        assert!(tracklet_detail_finish(&m, 0, 2, sp, [cap, partial], &faces).is_none());
+        let mut rival = faces;
+        rival[1] = Ellipse {
+            center_x: 128.,
+            center_y: 62.,
+            radius_x: 14.,
+            radius_y: 16.,
+        };
+        assert!(tracklet_detail_finish(&m, 0, 2, sp, [cap, cap], &rival).is_none());
     }
     #[test]
     fn tracklet_current_head_requires_exclusive_cap_and_current_shoulders() {

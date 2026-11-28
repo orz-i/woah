@@ -26,7 +26,7 @@ POSE_FILE = "movenet-lightning-f16-4.tflite"
 POSE_SHA = "0fac2226112d0371903ca86e3853cec24ef603a0b2f96f589b180f0ebdd135ab"
 
 
-def pose_points(net, image, tr, det, masks, j, context=False):
+def pose_points(net, image, tr, det, masks, j, context=False, flip=False):
     """Isolate one raw instance before pose inference; letterbox the crop."""
     b=det.box
     w,h=image.size
@@ -48,10 +48,14 @@ def pose_points(net, image, tr, det, masks, j, context=False):
                      Image.Resampling.BILINEAR,fillcolor=(114,114,114))).copy()
     if not context:
         z[~visible]=114
+    if flip:
+        z=np.ascontiguousarray(z[:,::-1])
     net.set_tensor(net.get_input_details()[0]["index"],z[None])
     net.invoke()
     p=net.get_tensor(net.get_output_details()[0]["index"]).reshape(17,3)
-    out=np.stack([left+p[:,1]*side,top+p[:,0]*side,p[:,2]],axis=1).astype(np.float32)
+    out=np.stack([left+(1-p[:,1] if flip else p[:,1])*side,top+p[:,0]*side,p[:,2]],axis=1).astype(np.float32)
+    if flip:
+        out=out[[0,2,1,4,3,6,5,8,7,10,9,12,11,14,13,16,15]]
     if not np.isfinite(out).all() or (out[:,2]<0).any() or (out[:,2]>1).any():
         raise ValueError("invalid pose output")
     return out

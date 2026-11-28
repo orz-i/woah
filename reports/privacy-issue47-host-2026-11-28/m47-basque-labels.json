@@ -1,0 +1,165 @@
+{
+  "scope": "Approximate source-only visible-head envelope, one nearby non-target head and torso probe. Original unrendered M4.6 samples reviewed before M4.7 candidate inference; mirror labels geometrically transformed, not independent footage. Headscarf tail below neck excluded.",
+  "cases": {
+    "missing_head": {
+      "target_id": 0,
+      "manifest_sha256": "411299f4d7140d043bd934977208fcd91c6f4305be3ed15dcd83678fe0d96591",
+      "labels": [
+        {
+          "index": 188,
+          "asset_sha256": "8265e80390b141b764cc372e1ea5794f012fb4b138ecb9cd2f925ec7d4796f79",
+          "head_rect": [
+            711,
+            109,
+            767,
+            163
+          ],
+          "neighbor_rects": [
+            [
+              661,
+              151,
+              698,
+              194
+            ]
+          ],
+          "torso_probe": [
+            747,
+            225
+          ]
+        },
+        {
+          "index": 189,
+          "asset_sha256": "8443b1967f52ed4f79852bd1ad936cfd1016328c817825be3a82d0e001936882",
+          "head_rect": [
+            721,
+            113,
+            776,
+            169
+          ],
+          "neighbor_rects": [
+            [
+              665,
+              154,
+              701,
+              197
+            ]
+          ],
+          "torso_probe": [
+            758,
+            228
+          ]
+        },
+        {
+          "index": 192,
+          "asset_sha256": "ed2871da1b04b0293900f840858eb2d62c9ec2c7d8cda2f94c21de4e3197bf90",
+          "head_rect": [
+            739,
+            126,
+            792,
+            180
+          ],
+          "neighbor_rects": [
+            [
+              681,
+              168,
+              720,
+              211
+            ]
+          ],
+          "torso_probe": [
+            768,
+            239
+          ]
+        },
+        {
+          "index": 194,
+          "asset_sha256": "53da3ea46eb2795b8cc8fd2555f36390ccc23c2d860542bdfe7c64715e70c954",
+          "head_rect": [
+            739,
+            106,
+            792,
+            161
+          ],
+          "neighbor_rects": [
+            [
+              683,
+              164,
+              719,
+              207
+            ]
+          ],
+          "torso_probe": [
+            775,
+            229
+          ]
+        },
+        {
+          "index": 198,
+          "asset_sha256": "f5e8be24a3b2737e11adcd42ba79374f22793baf6576d6f7ceefb80dc1fbba35",
+          "head_rect": [
+            739,
+            89,
+            790,
+            139
+          ],
+          "neighbor_rects": [
+            [
+              686,
+              144,
+              717,
+              188
+            ]
+          ],
+          "torso_probe": [
+            768,
+            220
+          ]
+        },
+        {
+          "index": 199,
+          "asset_sha256": "db4cd5c8b3f828eb4ccfad88733bc56df9dbdbead0ebc042cd137287a39ed991",
+          "head_rect": [
+            739,
+            92,
+            793,
+            143
+          ],
+          "neighbor_rects": [
+            [
+              686,
+              146,
+              720,
+              190
+            ]
+          ],
+          "torso_probe": [
+            768,
+            220
+          ]
+        },
+        {
+          "index": 203,
+          "asset_sha256": "9c5f4d99bb5d66ff05291cdb563a69c3cd64331d922fec5b89529d769f108ec4",
+          "head_rect": [
+            745,
+            114,
+            793,
+            165
+          ],
+          "neighbor_rects": [
+            [
+              699,
+              156,
+              732,
+              200
+            ]
+          ],
+          "torso_probe": [
+            776,
+            234
+          ]
+        }
+      ]
+    }
+  }
+}
