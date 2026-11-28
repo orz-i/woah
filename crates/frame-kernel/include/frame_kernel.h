@@ -458,6 +458,16 @@ int32_t frame_kernel_research_tracklet_flip_ear_cap(const uint8_t *masks,size_t 
 /* Current dual-pose profile-axis head geometry; poses42 = two nose/eyes/ears/shoulders x,y,confidence arrays. */
 int32_t frame_kernel_research_anatomical_head(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,FrameKernelHeadSticker *output);
 /* 0 compatible, 1 inconclusive, 2 contradictory; current evidence only. */
+/* Independent head instances (research, no identity embedding). */
+typedef struct FrameKernelHeadInstancePlacement { FrameKernelRect required; FrameKernelEllipse square; float rival_overlap; } FrameKernelHeadInstancePlacement;
+int32_t frame_kernel_research_decode_heads(const float *tensor,size_t len,size_t anchors,FrameKernelTransform tr,uint32_t flip,FrameKernelInstanceDetection *out,size_t capacity);
+int32_t frame_kernel_research_fuse_heads(const FrameKernelInstanceDetection *a,size_t na,const FrameKernelInstanceDetection *b,size_t nb,FrameKernelInstanceDetection *out,size_t capacity);
+int32_t frame_kernel_research_head_links(const FrameKernelInstanceDetection *a,size_t na,const FrameKernelInstanceDetection *b,size_t nb,int64_t delta,int32_t *out);
+int32_t frame_kernel_research_head_owners(const FrameKernelInstanceDetection *heads,size_t nh,const FrameKernelRect *bodies,size_t nb,const uint8_t *masks,size_t len,FrameKernelTransform tr,int32_t *out);
+int32_t frame_kernel_research_head_path(const int64_t *times,const int32_t *owners,size_t n,int32_t target,uint32_t *out);
+int32_t frame_kernel_research_head_instance_placement(const FrameKernelInstanceDetection *heads,size_t n,size_t index,FrameKernelTransform tr,FrameKernelHeadInstancePlacement *out);
+int32_t frame_kernel_research_head_certified_path(const int64_t *times,const int32_t *owners,size_t n,int32_t target,uint32_t *out);
+int32_t frame_kernel_research_head_arbitrate(const FrameKernelInstanceDetection *heads,size_t n,size_t index,FrameKernelTransform tr,FrameKernelEllipse previous,FrameKernelRect required_before,FrameKernelEllipse face,FrameKernelHeadInstancePlacement *out,uint32_t *mode);
 int32_t frame_kernel_research_anatomical_observation(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,FrameKernelEllipse observed,FrameKernelHeadSticker *output);
 typedef struct FrameKernelCompactRivalView { const uint8_t *masks; size_t len,count; const FrameKernelRect *boxes; const float *confidences; } FrameKernelCompactRivalView;
 int32_t frame_kernel_research_compact_rivals(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,FrameKernelCompactRivalView first,FrameKernelCompactRivalView second,FrameKernelRect output[2]);

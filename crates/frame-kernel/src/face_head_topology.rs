@@ -566,7 +566,10 @@ fn overlap_fraction(a: Rect, b: Rect) -> f64 {
 /// Evaluate all knots and pairwise intersections of those linear segments:
 /// this minimizes the worst supplied rival overlap, without shrinking the
 /// necessary rectangle. Tie-break by total overlap and distance to center.
-fn minimize_head_square(required: Rect, rivals: &[Rect]) -> Option<(Ellipse, f32, f32, f32)> {
+pub(crate) fn minimize_head_square(
+    required: Rect,
+    rivals: &[Rect],
+) -> Option<(Ellipse, f32, f32, f32)> {
     if !required.valid() || rivals.iter().any(|r| !r.valid()) || rivals.len() > 64 {
         return None;
     }

@@ -17,6 +17,7 @@ import time
 from PIL import Image
 
 import evaluate_dense_tracklets as dense
+import evaluate_head_instances as head_instances
 import evaluate_owned_heads as owned_heads
 import evaluate_profile_head_geometry as profile
 import evaluate_tracklet_recovery as recovery
@@ -126,6 +127,7 @@ def main():
     ap.add_argument("--owned-head-experiment", action="store_true", help="Opt-in M5.5 anatomy-first ownership comparison")
     ap.add_argument("--anatomical-clock-experiment", action="store_true", help="Reject contradictory direct/projected face observations before the temporal state update")
     ap.add_argument("--compact-rival-experiment", action="store_true", help="Two-view compact negative fragments for the anatomical clock placement")
+    ap.add_argument("--head-instance-model", type=Path, help="Opt-in M5.7 independent head instance comparison (pinned research ONNX)")
     ap.add_argument("--shared-dense", type=Path)
     ap.add_argument("--shared-reference", type=Path)
     a = ap.parse_args()
@@ -218,6 +220,27 @@ def main():
         current = offline["candidate"]["frames"]
         spans, attempts = offline["spans"], offline["attempts"]
         checkpoint("offline_geometry")
+    head_stream_path=a.output_dir/"head_stream.json"
+    head_reference_path=a.output_dir/"head_reference.json"
+    head_result_path=a.output_dir/"head_instances.json"
+    head_stats=None
+    if a.head_instance_model is not None:
+        # Independent geometry uses the canonical raw body observations,
+        # not the existing sticker or any audit annotations for identity.
+        # Reuse the same decoded scene instead of repeating segmentation.
+        write(head_reference_path,{**canonical,"candidate":{"frames":current}})
+        args=dict(library=a.library,fixture=a.fixture,reference_replay=head_reference_path)
+        stream=head_instances.produce(SimpleNamespace(**args,output=head_stream_path,
+            head_model=a.head_instance_model,dual_view=True,threads=2),
+            scene=scene,person=person)
+        result=head_instances.associate(SimpleNamespace(**args,stream=head_stream_path,
+            output=head_result_path,policy="arbitrate"))
+        current=result["candidate"]["frames"]
+        head_stats={"head_model":stream["head_model"],"head_model_sha256":stream["head_model_sha256"],
+            "head_calls":stream["head_calls"],"head_inference_s":stream["head_inference_s"],
+            "additional_person_calls":stream["person_calls"],"policy":"arbitrate","counts":result["counts"],
+            "stream_sha256":sha(head_stream_path),"result_sha256":sha(head_result_path)}
+        checkpoint("head_instance_geometry")
     prior = tracked["frames"]
     identity_keys = ("track", "tracks", "raw_boxes", "tracking_snapshot_sha256", "class_evidence", "motion_evidence")
     if len(current) != len(prior) or any(any(x[k] != y[k] for k in identity_keys) for x,y in zip(prior,current)):
@@ -228,7 +251,9 @@ def main():
         if row["render"] is None:
             placements.append(None)
             continue
-        if row.get("offline_tracklet_reentry"):
+        if row.get("independent_head_instance"):
+            lane, raw = "independent_head_instance", profile.canonical_raw(row)
+        elif row.get("offline_tracklet_reentry"):
             lane, raw = "offline_tracklet", by_index[i]
         elif row.get("fragment_head_repair"):
             lane, raw = "fragment_window", row["fragment_head_repair"]["raw"]
@@ -244,12 +269,13 @@ def main():
         x, y, rx, ry = sticker
         radius = max(rx, ry)
         placements.append({"source": lane, "raw_index": raw, "square": [x, y, radius, radius],
-                           "render_bounds": profile.square(sticker), "required_bounds": row.get("sticker_required_bounds")})
+                           "render_bounds": profile.square(sticker), "required_bounds": row.get("sticker_required_bounds"),
+                           **({"head_index":row["independent_head_index"]} if row.get("independent_head_instance") else {})})
     out = {**{k:v for k,v in canonical.items() if k != "candidate"}, "scope": __doc__,
            "canonical_sha256": sha(canonical_path), "geometry_sha256": sha(profile_path),
            "dense_sha256": sha(dense_path) if needs_dense else None,
            "recovery_sha256": sha(recovery_path) if needs_dense else None,
-           "profile_experiment": a.profile_experiment, "anatomical_clock_experiment": a.anatomical_clock_experiment, "compact_rival_experiment": a.compact_rival_experiment, "owned_head_experiment": a.owned_head_experiment, "owned_head_sha256": sha(owned_path) if a.owned_head_experiment else None, "owned_head_changed": owned_changed, "dense_scheduled": needs_dense, "dense_reused": needs_dense and a.shared_dense is not None, "baseline": tracked,
+           "head_instance_experiment": head_stats, "profile_experiment": a.profile_experiment, "anatomical_clock_experiment": a.anatomical_clock_experiment, "compact_rival_experiment": a.compact_rival_experiment, "owned_head_experiment": a.owned_head_experiment, "owned_head_sha256": sha(owned_path) if a.owned_head_experiment else None, "owned_head_changed": owned_changed, "dense_scheduled": needs_dense, "dense_reused": needs_dense and a.shared_dense is not None, "baseline": tracked,
            "candidate": {"frames": current, "summary": coverage_stats(current)}, "final_placements": placements,
            "canonical_placement_stats": coverage_stats(prior), "offline_spans": spans,
            "offline_attempts": attempts, "profile_changed": sorted(set(geo["changed"]) - set(geo["fragment_changed"])), "fragment_changed": geo["fragment_changed"],
