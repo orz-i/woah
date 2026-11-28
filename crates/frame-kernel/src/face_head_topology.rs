@@ -62,6 +62,7 @@ fn cap_trace(
     seed: Ellipse,
     direct: bool,
     crown_join: bool,
+    discrete_junction: bool,
 ) -> Option<(Cap, Vec<(usize, Run)>)> {
     let tr = spec.transform;
     let cell_x = tr.input_size as f32 / (spec.width as f32 * tr.scale);
@@ -184,8 +185,19 @@ fn cap_trace(
         // At low mask resolution the first connected branch may recede by
         // a cell on the next row. Confirm sustained widening relative to
         // the upper lobe, rather than requiring two identical strict peaks.
+        let discrete_lower_branch = refine
+            && discrete_junction
+            && y as f32 >= cy
+            && path.len() >= 5
+            && first_branch.is_some_and(|branch| {
+                branch.width() >= prev.width() + 3
+                    && run.width() >= prev.width() + 2
+                    && (prev.left.saturating_sub(branch.left) >= 2
+                        || branch.right.saturating_sub(prev.right) >= 2)
+                    && run.overlap(prev) * 2 >= prev.width()
+            });
         let confirms = widened > 0
-            && run.width() as f32 > reference * 1.30 + 0.5
+            && (run.width() as f32 > reference * 1.30 + 0.5 || discrete_lower_branch)
             && run.overlap(prev) * 2 >= prev.width();
         if expanding || confirms {
             widened += 1;
@@ -195,6 +207,22 @@ fn cap_trace(
             // The first broadened row is withheld; a second consecutive
             // widened row confirms a neck/shoulder or arm junction.
             if widened >= 2 {
+                if discrete_lower_branch
+                    && let Some(branch) = first_branch
+                    && path.last().is_some_and(|(last_y, _)| *last_y + 2 == y)
+                {
+                    // The first widened row includes a continuous lower
+                    // head/neck core. Its lateral branches are uncertain,
+                    // but this intersection is directly supported by both
+                    // the preceding head run and the current mask row.
+                    let core = Run {
+                        left: branch.left.max(prev.left),
+                        right: branch.right.min(prev.right),
+                    };
+                    if core.width() * 2 >= prev.width() {
+                        path.push((y - 1, core));
+                    }
+                }
                 stopped = true;
                 break;
             }
@@ -266,7 +294,7 @@ fn cap_trace(
 }
 
 fn cap(pixels: &[u8], spec: HeadMaskSpec, seed: Ellipse, direct: bool) -> Option<Cap> {
-    cap_trace(pixels, spec, seed, direct, false).map(|(cap, _)| cap)
+    cap_trace(pixels, spec, seed, direct, false, false).map(|(cap, _)| cap)
 }
 
 /// This square is a placement requirement, not an ellipse-shaped privacy mask.
@@ -411,6 +439,106 @@ pub fn sticker(
     })
 }
 
+/// The existing cap cutoff confirms a shoulder branch with two wider
+/// rows. At low resolution the first bilateral widening row can already
+/// be part of that branch while still below the global width threshold.
+/// Only narrow the terminal row to its connected core when the preceding
+/// lobe is stable, both sides expand and subsequent rows confirm the branch.
+/// Preserve the row's full vertical extent (including possible chin pixels).
+/// The direct measured ellipse and sampling margin are still required.
+fn refine_lower_junction(
+    pixels: &[u8],
+    spec: HeadMaskSpec,
+    seed: Ellipse,
+    cap: &mut Cap,
+    path: &mut [(usize, Run)],
+) {
+    if cap.partial || path.len() < 6 {
+        return;
+    }
+    let Some(&(y, last)) = path.last() else {
+        return;
+    };
+    // Compare to the stable lobe rather than a single preceding row;
+    // a quantized head/neck silhouette often grows in one-cell steps.
+    let upper = &path[path.len().saturating_sub(6)..path.len() - 1];
+    let mut widths: Vec<_> = upper.iter().map(|(_, r)| r.width()).collect();
+    widths.sort_unstable();
+    let breadth = widths[widths.len() / 2];
+    if breadth < 3 || widths.iter().filter(|&&w| w.abs_diff(breadth) <= 1).count() < 4 {
+        return;
+    }
+    let Some(core) = upper
+        .iter()
+        .rev()
+        .map(|(_, r)| *r)
+        .find(|r| r.width() == breadth)
+    else {
+        return;
+    };
+    let cell_y = spec.transform.input_size as f32 / (spec.height as f32 * spec.transform.scale);
+    let top = y as f32 * cell_y - spec.transform.pad_top / spec.transform.scale;
+    if last.width() < breadth + 2
+        || last.left >= core.left
+        || last.right <= core.right
+        || top < seed.center_y + seed.radius_y - cell_y
+        || y + 2 >= spec.height as usize
+    {
+        return;
+    }
+    let w = spec.width as usize;
+    // Two lower rows must confirm an actual connected bilateral branch;
+    // an isolated chin/hair widening that retracts is never dropped.
+    let mut previous = last;
+    for row in [y + 1, y + 2] {
+        let connected = runs(pixels, w, row, 0, w);
+        let mut compatible = connected
+            .iter()
+            .filter(|r| r.overlap(previous) * 2 >= previous.width());
+        let Some(r) = compatible.next() else {
+            return;
+        };
+        if compatible.next().is_some()
+            || r.width() < last.width()
+            || r.left > core.left
+            || r.right < core.right
+        {
+            return;
+        }
+        previous = *r;
+    }
+    if previous.width() < last.width() + 1 {
+        return;
+    }
+    if let Some((_, run)) = path.last_mut() {
+        // Retain the central lower head corridor. Only the lateral
+        // protrusions, not the complete row, are identified as shoulder.
+        *run = Run {
+            left: run.left.max(core.left),
+            right: run.right.min(core.right),
+        };
+    }
+    let cell_x = spec.transform.input_size as f32 / (spec.width as f32 * spec.transform.scale);
+    let sx = |x: usize| {
+        (x as f32 * cell_x - spec.transform.pad_left / spec.transform.scale)
+            .clamp(0.0, spec.transform.source_width as f32)
+    };
+    let sy = |x: usize| {
+        (x as f32 * cell_y - spec.transform.pad_top / spec.transform.scale)
+            .clamp(0.0, spec.transform.source_height as f32)
+    };
+    let (Some(first), Some(last)) = (path.first(), path.last()) else {
+        return;
+    };
+    cap.bounds = Rect {
+        left: sx(path.iter().map(|(_, r)| r.left).min().unwrap_or(0)),
+        top: sy(first.0),
+        right: sx(path.iter().map(|(_, r)| r.right).max().unwrap_or(0)),
+        bottom: sy(last.0 + 1),
+    };
+    cap.rows = path.len() as u32;
+}
+
 /// Enclose an actual connected head silhouette, not the four corners of its
 /// bounding rectangle. Preserve the complete measured/stabilized face
 /// ellipses for direct evidence. In the weak lane the current full cap may
@@ -432,9 +560,23 @@ pub fn ellipse_region(
     if !cell_x.is_finite() || !cell_y.is_finite() || cell_x <= 0.0 || cell_y <= 0.0 {
         return None;
     }
-    let qualified = cap_trace(pixels, spec, measured, kind == 0, false).or_else(|| {
+    let qualified = cap_trace(pixels, spec, measured, kind == 0, false, false).or_else(|| {
         (kind == 0)
-            .then(|| cap_trace(pixels, spec, measured, true, true))
+            .then(|| {
+                cap_trace(pixels, spec, measured, true, true, false).or_else(|| {
+                    // This additional discrete confirmation is rendering
+                    // only. Require a complete cap with the current
+                    // detector center inside it; ambiguous partial
+                    // caps keep the pre-existing conservative fallback.
+                    cap_trace(pixels, spec, measured, true, true, true).filter(|(c, _)| {
+                        !c.partial
+                            && measured.center_x >= c.bounds.left
+                            && measured.center_x <= c.bounds.right
+                            && measured.center_y >= c.bounds.top
+                            && measured.center_y <= c.bounds.bottom
+                    })
+                })
+            })
             .flatten()
     });
     let mut base = stabilized;
@@ -453,7 +595,7 @@ pub fn ellipse_region(
             base.radius_y = base.radius_y.max(extent);
         }
     }
-    let Some((cap, path)) = qualified else {
+    let Some((mut cap, mut path)) = qualified else {
         // If the upper lobe is ambiguous, do not discard old support. Use
         // the actual detector for the mask search, not temporally enlarged
         // radii that would mistake progressively wider arms for the head.
@@ -467,6 +609,9 @@ pub fn ellipse_region(
             Some(base)
         };
     };
+    if kind == 0 && !clipped {
+        refine_lower_junction(pixels, spec, measured, &mut cap, &mut path);
+    }
     if kind != 0 && !clipped {
         // A current head-like cap within the weak region may correct a
         // downward translation caused by changing body bounds. Keep the
@@ -590,8 +735,8 @@ pub fn prefer_local_face(
     if !spec.valid(pixels) || !valid_seed(primary) || !valid_seed(local) {
         return None;
     }
-    let Some((c, _)) = cap_trace(pixels, spec, local, true, false)
-        .or_else(|| cap_trace(pixels, spec, local, true, true))
+    let Some((c, _)) = cap_trace(pixels, spec, local, true, false, false)
+        .or_else(|| cap_trace(pixels, spec, local, true, true, false))
     else {
         return Some(false);
     };

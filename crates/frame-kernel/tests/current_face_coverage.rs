@@ -345,3 +345,60 @@ fn qualified_head_cap_can_override_torso_but_not_a_distant_or_unowned_hypothesis
     );
     assert_eq!(prefer_local_face(&mask[..1023], s, torso, local), None);
 }
+
+#[test]
+fn connected_head_does_not_include_confirmed_early_shoulder_junction() {
+    use frame_kernel::face_head_topology::ellipse_region;
+    let mut s = spec();
+    s.person = Rect {
+        left: 8.0,
+        top: 12.0,
+        right: 120.0,
+        bottom: 124.0,
+    };
+    let face = Ellipse {
+        center_x: 60.0,
+        center_y: 36.0,
+        radius_x: 12.0,
+        radius_y: 13.0,
+    };
+    let mut p = vec![0; 1024];
+    for (y, l, r) in [
+        (4, 14, 18),
+        (5, 13, 19),
+        (6, 12, 20),
+        (7, 12, 20),
+        (8, 12, 20),
+        (9, 12, 20),
+        (10, 12, 20),
+        (11, 11, 21),
+    ] {
+        p[y * 32 + l..y * 32 + r].fill(255);
+    }
+    for y in 12..29 {
+        p[y * 32 + 6..y * 32 + 26].fill(255);
+    }
+    // The head itself (including all cell corners) remains covered.
+    let out = ellipse_region(&p, s, face, face, 0).unwrap();
+    for y in 4..11 {
+        for x in 0..32 {
+            if p[y * 32 + x] == 0 {
+                continue;
+            }
+            for dx in [0.0, 4.0] {
+                for dy in [0.0, 4.0] {
+                    assert!(contains(out, x as f32 * 4.0 + dx, y as f32 * 4.0 + dy));
+                }
+            }
+        }
+    }
+    for k in 0..360 {
+        let a = k as f32 * std::f32::consts::TAU / 360.0;
+        assert!(contains(
+            out,
+            face.center_x + face.radius_x * a.cos(),
+            face.center_y + face.radius_y * a.sin()
+        ));
+    }
+    assert!(!contains(out, 24.0, 56.0));
+}
