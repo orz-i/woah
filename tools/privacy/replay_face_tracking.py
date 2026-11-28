@@ -809,14 +809,13 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 if kind==0:
                     sticker_seed=sticker
             if anatomical_hold and prepared is not None and kind==2:
-                certified,rival_trace=anatomical_policy.place(image,transform,detections,masks,crowded_index,prepared)
+                certified=anatomical_policy.place(image,transform,detections,masks,crowded_index,prepared)
                 if certified is not None:
                     sticker=certified.square
                     row["sticker_required_bounds"]=vals(certified.bounds)
                     row["topology"]=certified.topology
                     row["topology_rows"]=certified.rows
                     row["anatomical_clock_placement"]=True
-                    if rival_trace is not None:row["anatomical_compact_rivals"]=rival_trace
                 else:
                     row["anatomical_clock_placement_unresolved"]=True
             # Render-only visible cap for a weak observation. Do not feed

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M5.4 host-only unified FrameKernel candidate; one scene analysis per video.
+"""M6 host-only unified FrameKernel research candidate; one scene analysis per video.
 
 The canonical tracker remains the identity authority. Geometry may use a
 current two-anchor fragment proof or a confirmed offline tracklet without
@@ -18,8 +18,8 @@ from PIL import Image
 
 import evaluate_dense_tracklets as dense
 import evaluate_head_instances as head_instances
-import evaluate_owned_heads as owned_heads
-import evaluate_profile_head_geometry as profile
+import anatomical_face_policy
+import evaluate_fragment_heads as fragment
 import evaluate_tracklet_recovery as recovery
 from evaluate_body_reid import PERSON_MODEL, FACE_MODEL, sha
 from evaluate_pose_parts import POSE_FILE, POSE_SHA, load_0287
@@ -123,20 +123,12 @@ def main():
         ap.add_argument("--" + n, type=Path, required=True)
     ap.add_argument("--target-id", type=int, required=True)
     ap.add_argument("--without-memo", action="store_true", help="Exact inference-cache ablation")
-    ap.add_argument("--profile-experiment", action="store_true", help="Include the unapproved M5.1/M5.3 projected-head competition control")
-    ap.add_argument("--owned-head-experiment", action="store_true", help="Opt-in M5.5 anatomy-first ownership comparison")
-    ap.add_argument("--anatomical-clock-experiment", action="store_true", help="Reject contradictory direct/projected face observations before the temporal state update")
-    ap.add_argument("--compact-rival-experiment", action="store_true", help="Two-view compact negative fragments for the anatomical clock placement")
-    ap.add_argument("--head-instance-model", type=Path, help="Opt-in M5.7 independent head instance comparison (pinned research ONNX)")
+    ap.add_argument("--head-instance-model", type=Path, required=True, help="Pinned nano head model; local research only")
     ap.add_argument("--shared-dense", type=Path)
     ap.add_argument("--shared-reference", type=Path)
     a = ap.parse_args()
     if (a.shared_dense is None) != (a.shared_reference is None):
         ap.error("shared dense evidence and its canonical reference must be supplied together")
-    if a.compact_rival_experiment and not a.anatomical_clock_experiment:
-        ap.error("compact rivals require anatomical clock experiment")
-    if a.owned_head_experiment and a.profile_experiment:
-        ap.error("evaluate head experiments separately")
     start = time.perf_counter()
     if sha(a.model_dir / POSE_FILE) != POSE_SHA:
         raise ValueError("pose weight mismatch")
@@ -174,7 +166,7 @@ def main():
                      multiperson_recovery=True, pair_continuity=True, pair_head=True,
                      merged_edge_yolo=person, crowded_recovery=True, crowded_consensus=True,
                      crowd_clothing=True, adaptive_clothing=True, motion_clothing=True, part_continuity=True,
-                     anatomical_policy=owned_heads.AnatomicalPolicy(lib,pose,face,person if a.compact_rival_experiment else None) if a.anatomical_clock_experiment else None)
+                     anatomical_policy=anatomical_face_policy.AnatomicalPolicy(lib,pose,face))
     canonical = {"scope": "M5.1 canonical association, no source-label input", "fixture_sha256": sha(a.fixture),
                  "library_sha256": sha(a.library), "target_id": a.target_id, "identity_protected_roots": roots,
                  "model_sha256": {"person": sha(PERSON_MODEL), "face": sha(FACE_MODEL)}, "candidate": tracked}
@@ -185,20 +177,10 @@ def main():
     tracked = canonical["candidate"]
     checkpoint("canonical")
     common = dict(library=a.library, fixture=a.fixture, reference_replay=canonical_path, model_dir=a.model_dir)
-    profile.run(SimpleNamespace(**common, output=profile_path, diagnostic_indices="", fragment_window=True,
-                                fragment_only=not a.profile_experiment, head_competition=a.profile_experiment), scene=scene, models=models)
+    fragment.run(SimpleNamespace(**common, output=profile_path), scene=scene, models=models)
     geo = json.loads(profile_path.read_text())
     current = geo["candidate"]["frames"]
     checkpoint("current_geometry")
-    owned_path = a.output_dir / "owned_heads.json"
-    owned_changed = []
-    if a.owned_head_experiment:
-        owned_heads.run(SimpleNamespace(**common, output=owned_path),
-                        scene=scene, models=models, geometry=current)
-        owned = json.loads(owned_path.read_text())
-        current = owned["candidate"]["frames"]
-        owned_changed = owned["changed"]
-        checkpoint("owned_head_geometry")
     # The offline lane cannot repair a current observed body or an existing
     # placement. Avoid the expensive dense model pass if no eligible gap exists.
     needs_dense = any(r["render"] is None and r.get("track") is not None and not r["track"]["observed"] for r in current)
@@ -224,24 +206,23 @@ def main():
     head_reference_path=a.output_dir/"head_reference.json"
     head_result_path=a.output_dir/"head_instances.json"
     head_stats=None
-    if a.head_instance_model is not None:
-        # Independent geometry uses the canonical raw body observations,
-        # not the existing sticker or any audit annotations for identity.
-        # Reuse the same decoded scene instead of repeating segmentation.
-        write(head_reference_path,{**canonical,"candidate":{"frames":current}})
-        args=dict(library=a.library,fixture=a.fixture,reference_replay=head_reference_path)
-        stream=head_instances.produce(SimpleNamespace(**args,output=head_stream_path,
-            head_model=a.head_instance_model,dual_view=True,threads=2),
-            scene=scene,person=person)
-        result=head_instances.associate(SimpleNamespace(**args,stream=head_stream_path,
-            output=head_result_path,policy="arbitrate",
-            dense=dense_path if needs_dense else None,dense_reference=canonical_path if needs_dense else None))
-        current=result["candidate"]["frames"]
-        head_stats={"head_model":stream["head_model"],"head_model_sha256":stream["head_model_sha256"],
-            "head_calls":stream["head_calls"],"head_inference_s":stream["head_inference_s"],
-            "additional_person_calls":stream["person_calls"],"policy":"arbitrate","counts":result["counts"],
-            "stream_sha256":sha(head_stream_path),"result_sha256":sha(head_result_path)}
-        checkpoint("head_instance_geometry")
+    # Independent geometry uses the canonical raw body observations,
+    # not the existing sticker or any audit annotations for identity.
+    # Reuse the same decoded scene instead of repeating segmentation.
+    write(head_reference_path,{**canonical,"candidate":{"frames":current}})
+    args=dict(library=a.library,fixture=a.fixture,reference_replay=head_reference_path)
+    stream=head_instances.produce(SimpleNamespace(**args,output=head_stream_path,
+        head_model=a.head_instance_model,threads=2),
+        scene=scene,person=person)
+    result=head_instances.associate(SimpleNamespace(**args,stream=head_stream_path,
+        output=head_result_path,
+        dense=dense_path if needs_dense else None,dense_reference=canonical_path if needs_dense else None))
+    current=result["candidate"]["frames"]
+    head_stats={"head_model":stream["head_model"],"head_model_sha256":stream["head_model_sha256"],
+        "head_calls":stream["head_calls"],"head_inference_s":stream["head_inference_s"],
+        "additional_person_calls":stream["person_calls"],"policy":"arbitrate","counts":result["counts"],
+        "stream_sha256":sha(head_stream_path),"result_sha256":sha(head_result_path)}
+    checkpoint("head_instance_geometry")
     prior = tracked["frames"]
     identity_keys = ("track", "tracks", "raw_boxes", "tracking_snapshot_sha256", "class_evidence", "motion_evidence")
     if len(current) != len(prior) or any(any(x[k] != y[k] for k in identity_keys) for x,y in zip(prior,current)):
@@ -253,33 +234,29 @@ def main():
             placements.append(None)
             continue
         if row.get("independent_head_instance"):
-            lane, raw = "independent_head_instance", profile.canonical_raw(row)
+            lane, raw = "independent_head_instance", fragment.canonical_raw(row)
         elif row.get("offline_tracklet_reentry"):
             lane, raw = "offline_tracklet", by_index[i]
         elif row.get("fragment_head_repair"):
             lane, raw = "fragment_window", row["fragment_head_repair"]["raw"]
         elif row.get("anatomical_clock_placement"):
-            lane, raw = "anatomical_clock", profile.canonical_raw(row)
-        elif row.get("owned_head_replacement"):
-            lane, raw = "anatomical_head", profile.canonical_raw(row)
-        elif row.get("profile_head_repair"):
-            lane, raw = "profile_competition", profile.canonical_raw(row)
+            lane, raw = "anatomical_clock", fragment.canonical_raw(row)
         else:
-            lane, raw = "canonical", profile.canonical_raw(row)
+            lane, raw = "canonical", fragment.canonical_raw(row)
         sticker = row["sticker"] if row.get("sticker") is not None else row["render"]
         x, y, rx, ry = sticker
         radius = max(rx, ry)
         placements.append({"source": lane, "raw_index": raw, "square": [x, y, radius, radius],
-                           "render_bounds": profile.square(sticker), "required_bounds": row.get("sticker_required_bounds"),
+                           "render_bounds": fragment.square(sticker), "required_bounds": row.get("sticker_required_bounds"),
                            **({"head_index":row["independent_head_index"]} if row.get("independent_head_instance") else {})})
     out = {**{k:v for k,v in canonical.items() if k != "candidate"}, "scope": __doc__,
            "canonical_sha256": sha(canonical_path), "geometry_sha256": sha(profile_path),
            "dense_sha256": sha(dense_path) if needs_dense else None,
            "recovery_sha256": sha(recovery_path) if needs_dense else None,
-           "head_instance_experiment": head_stats, "profile_experiment": a.profile_experiment, "anatomical_clock_experiment": a.anatomical_clock_experiment, "compact_rival_experiment": a.compact_rival_experiment, "owned_head_experiment": a.owned_head_experiment, "owned_head_sha256": sha(owned_path) if a.owned_head_experiment else None, "owned_head_changed": owned_changed, "dense_scheduled": needs_dense, "dense_reused": needs_dense and a.shared_dense is not None, "baseline": tracked,
+           "head_instance_experiment": head_stats, "candidate_config": "m6-unified-nano-clock-reconnect", "dense_scheduled": needs_dense, "dense_reused": needs_dense and a.shared_dense is not None, "baseline": tracked,
            "candidate": {"frames": current, "summary": coverage_stats(current)}, "final_placements": placements,
            "canonical_placement_stats": coverage_stats(prior), "offline_spans": spans,
-           "offline_attempts": attempts, "profile_changed": sorted(set(geo["changed"]) - set(geo["fragment_changed"])), "fragment_changed": geo["fragment_changed"],
+           "offline_attempts": attempts, "fragment_changed": geo["fragment_changed"],
            "stages_cumulative_model_counts": stages, "reid_calls": reid_calls,
            "elapsed_s": time.perf_counter()-start, "model_calls": {n:m.stats() for n,m in zip(("person", "face", "pose"),models)}}
     write(a.output_dir / "unified.json", out)

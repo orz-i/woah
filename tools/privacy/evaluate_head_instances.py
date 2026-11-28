@@ -20,7 +20,6 @@ from replay_face_geometry import (P, S, U, F, Detection, Transform, Rect, Ellips
 
 MODEL_SHA = {
     "yolo-head-nano.onnx": "899aac905efae0b504bab324a7ef3a5444612d6511966d9da1efc3964993b4c5",
-    "yolo-head-medium.onnx": "19ae628e67095520fabe7b21eb54d2fd1c1dae93099cae68213b58d52aaa3e63",
 }
 I = C.c_int32
 I64 = C.c_int64
@@ -40,18 +39,11 @@ class HeadKernel:
             "fuse_heads":[P,S,P,S,P,S],
             "head_links":[P,S,P,S,I64,P],
             "head_owners":[P,S,P,S,P,S,Transform,P],
-            "head_path":[P,P,S,I,P],
-            "head_instance_placement":[P,S,S,Transform,P],
-        }.items():
-            f=getattr(lib,"frame_kernel_research_"+name);f.argtypes=args;f.restype=I;setattr(self,name,f)
-
-        for name,args in {
             "head_certified_path":[P,P,S,I,P],
             "head_arbitrate":[P,S,S,Transform,Ellipse,Rect,Ellipse,P,P],
             "head_reconnect_path":[P,P,S,P],
         }.items():
-            f=getattr(lib,"frame_kernel_research_"+name,None)
-            if f is not None:f.argtypes=args;f.restype=I;setattr(self,name,f)
+            f=getattr(lib,"frame_kernel_research_"+name);f.argtypes=args;f.restype=I;setattr(self,name,f)
 
     def decode(self,tensor,tr,flip):
         output=(Detection*128)();n=self.decode_heads(ptr(tensor),tensor.size,tensor.size//5,tr,flip,output,128)
@@ -73,22 +65,15 @@ class HeadKernel:
         check(self.head_links((Detection*len(a))(*a),len(a),(Detection*len(b))(*b),len(b),dt,out))
         return list(out)
 
-    def path(self,times,owners,target,certified=False):
+    def path(self,times,owners,target):
         out=(U*len(times))()
-        fn=self.head_certified_path if certified else self.head_path
-        check(fn((I64*len(times))(*times),(I*len(times))(*owners),len(times),target,out))
+        check(self.head_certified_path((I64*len(times))(*times),(I*len(times))(*owners),len(times),target,out))
         return list(out)
 
     def reconnect(self,times,flags):
         out=(U*len(times))()
         check(self.head_reconnect_path((I64*len(times))(*times),(U*len(flags))(*flags),len(times),out))
         return list(out)
-
-    def placement(self,heads,j,tr):
-        out=Placement()
-        rc=self.head_instance_placement((Detection*len(heads))(*heads),len(heads),j,tr,C.byref(out))
-        if rc<0:raise RuntimeError("invalid head placement")
-        return out if rc==0 else None
 
     def arbitrate(self,heads,j,tr,row):
         previous=row.get("sticker") or row.get("render")
@@ -150,8 +135,8 @@ def produce(a,scene=None,person=None):
         r=rows[i]
         if r["index"]!=i or [vals(d.box) for d in ds]!=r["raw_boxes"]:raise ValueError("raw scene evidence mismatch")
         primary=detector.detect(im,False)
-        flipped=detector.detect(im,True) if a.dual_view else []
-        heads=k.fuse(primary,flipped) if a.dual_view else primary
+        flipped=detector.detect(im,True)
+        heads=k.fuse(primary,flipped)
         owners=k.owners(heads,ds,ms,tr)
         rec={"index":i,"time_us":r["time_us"],"asset_sha256":meta["sha256"],"raw_boxes":r["raw_boxes"],
              "transform":vals(tr),"heads":[pack_head(h) for h in heads],"primary":[pack_head(h) for h in primary],
@@ -163,7 +148,7 @@ def produce(a,scene=None,person=None):
         if i%75==0:print("scene",i,"heads",len(heads),"elapsed",round(time.perf_counter()-start,2),flush=True)
     result={"scope":__doc__,"fixture_sha256":sha(a.fixture),"library_sha256":sha(a.library),
             "head_model":a.head_model.name,"head_model_sha256":sha(a.head_model),"person_model_sha256":sha(PERSON_MODEL),
-            "dual_view":a.dual_view,"head_calls":detector.calls,"head_inference_s":detector.seconds,"person_calls":person_calls,
+            "dual_view":True,"head_calls":detector.calls,"head_inference_s":detector.seconds,"person_calls":person_calls,
             "elapsed_s":time.perf_counter()-start,"frames":frames}
     write(a.output,result);return result
 
@@ -262,10 +247,9 @@ def reconnect_evidence(a,k,ref,prior,frames,paths,roots,target):
 def associate(a):
     start=time.perf_counter();fixture=json.loads(a.fixture.read_text());ref=json.loads(a.reference_replay.read_text());stream=json.loads(a.stream.read_text())
     stream_library=getattr(a,"stream_library",None) or a.library
-    policy=getattr(a,"policy","head-only")
     if (stream["fixture_sha256"]!=sha(a.fixture) or ref["fixture_sha256"]!=stream["fixture_sha256"]
         or stream["library_sha256"]!=sha(stream_library) or stream["person_model_sha256"]!=sha(PERSON_MODEL)
-        or MODEL_SHA.get(stream["head_model"])!=stream["head_model_sha256"]):
+        or not stream["dual_view"] or MODEL_SHA.get(stream["head_model"])!=stream["head_model_sha256"]):
         raise ValueError("stream provenance mismatch")
     prior=ref["candidate"]["frames"];frames=stream["frames"];roots=set(ref["identity_protected_roots"]);target=ref["target_id"]
     if len(frames)!=len(prior) or len(prior)!=len(fixture["frames"]) or target not in roots:raise ValueError("stream/target mismatch")
@@ -277,7 +261,7 @@ def associate(a):
         if cached_library:
             raw=[unpack_head(q) for q in h["primary"]]
             mapped=[unpack_head(q) for q in h["flipped"]]
-            actual=k.fuse(raw,mapped) if stream["dual_view"] else raw
+            actual=k.fuse(raw,mapped)
             if [pack_head(q) for q in actual]!=h["heads"]:raise ValueError("head fusion changed")
             if i:
                 old=frames[i-1];dt=h["time_us"]-old["time_us"]
@@ -303,7 +287,7 @@ def associate(a):
     selected=[[] for _ in frames]
     for path_id,path in enumerate(paths):
         times=[frames[i]["time_us"] for i,j,o in path];ids=[o for i,j,o in path]
-        codes=k.path(times,ids,target,certified=policy=="arbitrate")
+        codes=k.path(times,ids,target)
         for (i,j,owner),code in zip(path,codes):
             if code:selected[i].append((j,code,path_id))
     reconnect,proofs=reconnect_evidence(a,k,ref,prior,frames,paths,roots,target)
@@ -325,9 +309,7 @@ def associate(a):
             # even if an anonymous tracklet happened to remain linked.
             if raw_root_map(r,roots).get(h["owners"][j],target)!=target:continue
         counts["direct" if code==1 else "bridge" if code==2 else "reconnected"]+=1
-        if policy=="arbitrate":
-            p,mode=k.arbitrate(heads,j,Transform(*h["transform"]),r)
-        else:p,mode=k.placement(heads,j,Transform(*h["transform"])),0
+        p,mode=k.arbitrate(heads,j,Transform(*h["transform"]),r)
         if p is None:
             counts["retained"]+=1
             continue
@@ -347,7 +329,7 @@ def associate(a):
             out[i].update(render=v,kind=9);counts["added"]+=1
         counts["replacement"]+=int(old!=v)
     result={"scope":__doc__,"fixture_sha256":sha(a.fixture),"library_sha256":sha(a.library),"reference_replay_sha256":sha(a.reference_replay),
-        "stream_sha256":sha(a.stream),"stream_library_sha256":sha(stream_library),"policy":policy,"reconnect_proofs":proofs,
+        "stream_sha256":sha(a.stream),"stream_library_sha256":sha(stream_library),"policy":"arbitrate","reconnect_proofs":proofs,
         "dense_sha256":sha(a.dense) if getattr(a,"dense",None) is not None else None,"target_id":target,"counts":counts,"paths":len(paths),"decisions":decisions,
         "elapsed_s":time.perf_counter()-start,"baseline":{"frames":prior},"candidate":{"frames":out}}
     write(a.output,result);print("association",counts,"paths",len(paths),"elapsed",result["elapsed_s"],flush=True);return result
@@ -359,12 +341,11 @@ def main():
         p=sub.add_parser(name)
         for arg in ("library","fixture","reference-replay","output"):p.add_argument("--"+arg,type=Path,required=True)
         if name=="produce":
-            p.add_argument("--head-model",type=Path,required=True);p.add_argument("--dual-view",action="store_true")
+            p.add_argument("--head-model",type=Path,required=True)
             p.add_argument("--threads",type=int,default=2)
         else:
             p.add_argument("--stream",type=Path,required=True)
             p.add_argument("--stream-library",type=Path,help="Exact earlier producer library; verify fusion and temporal links against current build")
-            p.add_argument("--policy",choices=("head-only","arbitrate"),default="arbitrate")
             p.add_argument("--dense",type=Path,help="Existing dense body evidence for reconnect")
             p.add_argument("--dense-reference",type=Path)
             p.add_argument("--dense-library",type=Path)
@@ -372,8 +353,6 @@ def main():
     if a.command=="associate":
         if bool(a.dense)!=bool(a.dense_reference) or (a.dense_library is not None and a.dense is None):
             ap.error("dense and dense-reference must be supplied together")
-        if a.dense is not None and a.policy!="arbitrate":
-            ap.error("reconnect requires arbitration")
     produce(a) if a.command=="produce" else associate(a)
 
 if __name__=="__main__":main()

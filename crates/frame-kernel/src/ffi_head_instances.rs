@@ -132,31 +132,6 @@ pub unsafe extern "C" fn frame_kernel_research_head_owners(
 }
 
 /// # Safety
-/// Path times and owners are readable; n output states are disjoint writable.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn frame_kernel_research_head_path(
-    times: *const i64,
-    owners: *const i32,
-    n: usize,
-    target: i32,
-    out: *mut u32,
-) -> i32 {
-    if n > 100_000 || out.is_null() {
-        return -1;
-    }
-    // SAFETY: caller provides readable bounded arrays.
-    let (Some(t), Some(o)) = (unsafe { (borrowed(times, n), borrowed(owners, n)) }) else {
-        return -1;
-    };
-    let Some(v) = algo::assign_path(t, o, target) else {
-        return -1;
-    };
-    // SAFETY: caller provides n disjoint writable states.
-    unsafe { std::ptr::copy_nonoverlapping(v.as_ptr(), out, v.len()) };
-    0
-}
-
-/// # Safety
 /// Path times and owners are readable; n output states disjoint writable.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_research_head_certified_path(
@@ -211,37 +186,6 @@ pub struct HeadInstancePlacement {
     pub square: Ellipse,
     pub rival_overlap: f32,
 }
-/// # Safety
-/// Heads are readable and out is one disjoint writable result.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn frame_kernel_research_head_instance_placement(
-    heads: *const Head,
-    n: usize,
-    index: usize,
-    tr: Transform,
-    out: *mut HeadInstancePlacement,
-) -> i32 {
-    if n > 128 || out.is_null() {
-        return -1;
-    }
-    // SAFETY: caller provides a readable bounded array.
-    let Some(h) = (unsafe { borrowed(heads, n) }) else {
-        return -1;
-    };
-    let Some((required, square, rival_overlap)) = algo::placement(h, index, tr) else {
-        return 1;
-    };
-    // SAFETY: caller supplies disjoint writable output.
-    unsafe {
-        out.write(HeadInstancePlacement {
-            required,
-            square,
-            rival_overlap,
-        })
-    };
-    0
-}
-
 /// # Safety
 /// Heads are readable and out/mode are disjoint writable results.
 #[unsafe(no_mangle)]
