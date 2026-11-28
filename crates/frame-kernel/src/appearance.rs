@@ -318,6 +318,221 @@ pub(crate) fn research_clothing_vectors(
     Some(out)
 }
 
+/// Local pose-conditioned clothing evidence. Two anonymous parts (shoulder
+/// to hip, hip to knee), 64x64 canonical patches and two color histograms
+/// each. Missing evidence is zero; only strong exclusive current pixels
+/// contribute. No face landmark or pose geometry is used as an identity cue.
+pub const POSE_PART_SIDE: usize = 64;
+pub const POSE_PART_DIM: usize = 1024;
+pub const POSE_PART_BYTES: usize = POSE_PART_SIDE * POSE_PART_SIDE * 3;
+pub(crate) struct PoseParts {
+    pub vectors: Vec<f32>,
+    pub patches: Vec<u8>,
+    pub support: Vec<u32>,
+}
+pub(crate) fn research_pose_parts(
+    d: &[Detection],
+    rgb: &[u8],
+    tr: Transform,
+    points: &[f32],
+) -> Option<PoseParts> {
+    let (w, h, n) = (
+        tr.source_width as usize,
+        tr.source_height as usize,
+        tr.proto_size as usize,
+    );
+    if !tr.valid()
+        || d.len() > 64
+        || points.len() != d.len().checked_mul(51)?
+        || rgb.len() != w.checked_mul(h)?.checked_mul(3)?
+        || d.iter().any(|q| !q.valid())
+        || points.iter().any(|v| !v.is_finite())
+        || points.chunks_exact(3).any(|v| !(0.0..=1.0).contains(&v[2]))
+        || d.iter().any(|q| {
+            q.mask
+                .as_ref()
+                .is_none_or(|m| m.transform != tr || m.width != n || m.height != n || !m.valid())
+        })
+    {
+        return None;
+    }
+    let mut owners = vec![0u8; n * n];
+    for (i, q) in d.iter().enumerate() {
+        for (k, &v) in q.mask.as_ref()?.pixels.iter().enumerate() {
+            if v >= 128 {
+                owners[k] = if owners[k] == 0 { (i + 1) as u8 } else { 255 };
+            }
+        }
+    }
+    let cell = tr.input_size as f32 / (n as f32 * tr.scale);
+    if !cell.is_finite() || cell <= 0.0 {
+        return None;
+    }
+    let grid = |x: f32, y: f32| -> Option<usize> {
+        if x < 0.0 || x >= w as f32 || y < 0.0 || y >= h as f32 {
+            return None;
+        }
+        let u = ((x * tr.scale + tr.pad_left) * n as f32 / tr.input_size as f32).floor();
+        let v = ((y * tr.scale + tr.pad_top) * n as f32 / tr.input_size as f32).floor();
+        (u >= 0.0 && u < n as f32 && v >= 0.0 && v < n as f32)
+            .then_some(v as usize * n + u as usize)
+    };
+    let mut result = PoseParts {
+        vectors: vec![0.0; d.len() * 2 * POSE_PART_DIM],
+        patches: vec![114; d.len() * 2 * POSE_PART_BYTES],
+        support: vec![0; d.len() * 2],
+    };
+    for (i, q) in d.iter().enumerate() {
+        let m = q.mask.as_ref()?;
+        let body = q.bounds;
+        let kp = &points[i * 51..(i + 1) * 51];
+        let joint = |j: usize| -> Option<[f32; 2]> {
+            let p = [kp[j * 3], kp[j * 3 + 1]];
+            if kp[j * 3 + 2] < 0.30
+                || p[0] < body.left - cell
+                || p[0] > body.right + cell
+                || p[1] < body.top - cell
+                || p[1] > body.bottom + cell
+            {
+                return None;
+            }
+            let mut support = 0;
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    if let Some(k) = grid(p[0] + dx as f32 * cell, p[1] + dy as f32 * cell)
+                        && owners[k] == (i + 1) as u8
+                        && m.pixels[k] >= 128
+                    {
+                        support += 1;
+                    }
+                }
+            }
+            (support >= 2).then_some(p)
+        };
+        let midpoint = |a: [f32; 2], b: [f32; 2]| [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5];
+        let length = |a: [f32; 2], b: [f32; 2]| (a[0] - b[0]).hypot(a[1] - b[1]);
+        let Some(sl) = joint(5) else {
+            continue;
+        };
+        let Some(sr) = joint(6) else {
+            continue;
+        };
+        let Some(hl) = joint(11) else {
+            continue;
+        };
+        let Some(hr) = joint(12) else {
+            continue;
+        };
+        let sh = midpoint(sl, sr);
+        let hip = midpoint(hl, hr);
+        let height = length(sh, hip);
+        if height < 3.0 * cell
+            || height < 0.12 * (body.bottom - body.top)
+            || height > 0.65 * (body.bottom - body.top)
+        {
+            continue;
+        }
+        let shoulder_width = length(sl, sr);
+        let hip_width = length(hl, hr);
+        if shoulder_width < cell || hip_width < cell {
+            continue;
+        }
+        // Local axis follows the torso. Sampling excludes the shoulder line
+        // itself and stays below it; lower-body axis follows the hip-to-knee
+        // midpoint and samples the interior of the visible garment.
+        for part in 0..2 {
+            let (a, b, wa, wb, lo, hi) = if part == 0 {
+                (sh, hip, shoulder_width, hip_width, 0.14, 0.90)
+            } else {
+                let (Some(kl), Some(kr)) = (joint(13), joint(14)) else {
+                    continue;
+                };
+                (
+                    hip,
+                    midpoint(kl, kr),
+                    hip_width,
+                    length(kl, kr).max(hip_width * 0.7),
+                    0.10,
+                    0.90,
+                )
+            };
+            let len = length(a, b);
+            if len < 3.0 * cell || len > height * 2.4 {
+                continue;
+            }
+            let axis = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+            // Reject near-horizontal/reversed parts rather than sampling
+            // unreliable overlapping head/limb geometry. In-plane lean
+            // is normalized; front/back viewpoint is not inferred.
+            if axis[1] < 0.30 {
+                continue;
+            }
+            let perp = [axis[1], -axis[0]];
+            let mut hist = [[0u32; 512]; 2];
+            let mut pixels = vec![114u8; POSE_PART_BYTES];
+            let mut cells = std::collections::BTreeSet::new();
+            let mut count = 0u32;
+            for y in 0..POSE_PART_SIDE {
+                let t = lo + (hi - lo) * (y as f32 + 0.5) / POSE_PART_SIDE as f32;
+                let width = (wa + (wb - wa) * t).clamp(cell * 2.0, height * 1.6)
+                    * (if part == 0 { 0.82 } else { 1.20 });
+                for x in 0..POSE_PART_SIDE {
+                    let u = ((x as f32 + 0.5) / POSE_PART_SIDE as f32 - 0.5) * width;
+                    let sx = a[0] + (b[0] - a[0]) * t + perp[0] * u;
+                    let sy = a[1] + (b[1] - a[1]) * t + perp[1] * u;
+                    // Never sample above the upper body band or outside the
+                    // raw person box, even with a bad pose prediction.
+                    if sx < body.left
+                        || sx >= body.right
+                        || sy < body.top + 0.20 * (body.bottom - body.top)
+                        || sy >= body.bottom
+                    {
+                        continue;
+                    }
+                    let Some(k) = grid(sx, sy) else {
+                        continue;
+                    };
+                    if owners[k] != (i + 1) as u8 || m.pixels[k] < 160 {
+                        continue;
+                    }
+                    let q = (sy as usize * w + sx as usize) * 3;
+                    let dst = (y * POSE_PART_SIDE + x) * 3;
+                    pixels[dst..dst + 3].copy_from_slice(&rgb[q..q + 3]);
+                    count += 1;
+                    if !cells.insert(k) {
+                        continue;
+                    }
+                    let (r, g, b) = (
+                        i32::from(rgb[q]),
+                        i32::from(rgb[q + 1]),
+                        i32::from(rgb[q + 2]),
+                    );
+                    let color = (r / 32 * 64 + g / 32 * 8 + b / 32) as usize;
+                    let chroma = (((r - g + 256) / 64).min(7) * 64
+                        + ((g - b + 256) / 64).min(7) * 8
+                        + ((r + g + b) / 96).min(7)) as usize;
+                    hist[0][color] += 1;
+                    hist[1][chroma] += 1;
+                }
+            }
+            if count < 1024 || cells.len() < 20 {
+                continue;
+            }
+            let slot = i * 2 + part;
+            result.support[slot] = count;
+            result.patches[slot * POSE_PART_BYTES..(slot + 1) * POSE_PART_BYTES]
+                .copy_from_slice(&pixels);
+            for (dst, &v) in result.vectors[slot * POSE_PART_DIM..(slot + 1) * POSE_PART_DIM]
+                .iter_mut()
+                .zip(hist.iter().flatten())
+            {
+                *dst = (v as f32 / cells.len() as f32).sqrt();
+            }
+        }
+    }
+    Some(result)
+}
+
 /// Stateless, checked cosine evidence. Four blocks reproduce the minimum
 /// Bhattacharyya clothing similarity when supplied square-root histograms.
 /// A zero vector or missing block denotes unavailable evidence, not a match.
@@ -333,7 +548,7 @@ pub fn research_similarity_matrix(
     if !(1..=64).contains(&rows)
         || !(1..=64).contains(&cols)
         || !(1..=RESEARCH_CLOTHING_DIM).contains(&dim)
-        || !matches!(blocks, 1 | 4)
+        || !matches!(blocks, 1 | 2 | 4)
         || !dim.is_multiple_of(blocks)
         || a.len() != rows.checked_mul(dim)?
         || b.len() != cols.checked_mul(dim)?
@@ -907,6 +1122,91 @@ mod tests {
             }
         }
         rgb
+    }
+    fn test_pose(x: f32) -> [f32; 51] {
+        let mut p = [0.0; 51];
+        for (j, xx, y) in [
+            (5, x + 4.0, 33.0),
+            (6, x + 20.0, 33.0),
+            (11, x + 5.0, 60.0),
+            (12, x + 19.0, 60.0),
+            (13, x + 4.0, 90.0),
+            (14, x + 20.0, 90.0),
+        ] {
+            p[j * 3..j * 3 + 3].copy_from_slice(&[xx, y, 0.9]);
+        }
+        p
+    }
+    #[test]
+    fn pose_parts_sample_only_exclusive_lower_body_pixels_and_abstain_on_missing_joints() {
+        let a = crowd_test_detection(10, 8, 24, 100);
+        let b = crowd_test_detection(60, 8, 24, 100);
+        let tr = a.mask.as_ref().unwrap().transform;
+        let ds = [a.clone(), b.clone()];
+        let mut rgb = crowd_test_rgb(&ds, &[[180, 40, 60], [24, 24, 24]]);
+        // Give the first person's upper and lower parts separate colors.
+        for y in 60..108 {
+            for x in 10..34 {
+                let k = (y * 128 + x) * 3;
+                rgb[k..k + 3].copy_from_slice(&[30, 60, 200]);
+            }
+        }
+        // The uppermost portion must never contribute to part features.
+        for y in 8..28 {
+            for x in 10..34 {
+                let k = (y * 128 + x) * 3;
+                rgb[k..k + 3].copy_from_slice(&[255, 255, 0]);
+            }
+        }
+        let p = [test_pose(10.0), test_pose(60.0)].concat();
+        let r = research_pose_parts(&ds, &rgb, tr, &p).unwrap();
+        assert!(r.support.iter().all(|&n| n >= 1024));
+        assert!(
+            r.patches[..POSE_PART_BYTES]
+                .chunks_exact(3)
+                .all(|q| q == [180, 40, 60] || q == [114, 114, 114])
+        );
+        assert!(
+            r.patches[POSE_PART_BYTES..2 * POSE_PART_BYTES]
+                .chunks_exact(3)
+                .all(|q| q == [30, 60, 200] || q == [114, 114, 114])
+        );
+        let mut missing = p.clone();
+        missing[13 * 3 + 2] = 0.1;
+        let m = research_pose_parts(&ds, &rgb, tr, &missing).unwrap();
+        assert_eq!(m.support[0], r.support[0]);
+        assert_eq!(m.support[1], 0);
+        assert!(
+            m.vectors[POSE_PART_DIM..2 * POSE_PART_DIM]
+                .iter()
+                .all(|&x| x == 0.0)
+        );
+        let duplicated = [a.clone(), a];
+        let p = [test_pose(10.0), test_pose(10.0)].concat();
+        let r = research_pose_parts(&duplicated, &rgb, tr, &p).unwrap();
+        assert_eq!(r.support, vec![0; 4]);
+        assert!(r.patches.iter().all(|&v| v == 114));
+        let mut p = p;
+        p[0] = f32::NAN;
+        assert!(research_pose_parts(&duplicated, &rgb, tr, &p).is_none());
+    }
+    #[test]
+    fn pose_parts_normalize_translation_with_no_joint_identity_features() {
+        let a = crowd_test_detection(10, 8, 24, 100);
+        let b = crowd_test_detection(60, 8, 24, 100);
+        let tr = a.mask.as_ref().unwrap().transform;
+        let ds = [a, b];
+        let rgb = crowd_test_rgb(&ds, &[[50, 90, 160], [50, 90, 160]]);
+        let p = [test_pose(10.0), test_pose(60.0)].concat();
+        let r = research_pose_parts(&ds, &rgb, tr, &p).unwrap();
+        assert_eq!(
+            &r.vectors[..2 * POSE_PART_DIM],
+            &r.vectors[2 * POSE_PART_DIM..]
+        );
+        assert_eq!(
+            &r.patches[..2 * POSE_PART_BYTES],
+            &r.patches[2 * POSE_PART_BYTES..]
+        );
     }
     #[test]
     fn research_clothing_transport_reuses_the_existing_sampler_and_missing_rule() {

@@ -229,6 +229,9 @@ typedef struct FrameKernelTrackingObservation {
 /* Stateless host research descriptors and reciprocal rank. No tracker writes.
    Clothing vectors: count*2048 floats. Score -2 = missing. Rank index UINT32_MAX = none. */
 typedef struct FrameKernelResearchRank { uint32_t index; float score,row_margin,column_margin; uint32_t accepted; } FrameKernelResearchRank;
+/* Research pose-conditioned parts. 51 floats/observation (17 x,y,confidence);
+   2048 output floats, 24576 output RGB bytes, 2 support counts per observation. */
+int32_t frame_kernel_research_pose_parts(const FrameKernelTrackingObservation *obs,size_t count,const uint8_t *pixels,size_t len,const uint8_t *rgb,size_t rgb_len,FrameKernelTransform transform,const float *points,size_t point_len,float *vectors,size_t vector_len,uint8_t *patches,size_t patch_len,uint32_t *support,size_t support_len);
 int32_t frame_kernel_research_clothing_vectors(const FrameKernelTrackingObservation *obs,size_t count,const uint8_t *pixels,size_t len,const uint8_t *rgb,size_t rgb_len,FrameKernelTransform transform,float *out,size_t out_len);
 int32_t frame_kernel_research_similarity(const float *a,size_t a_len,const float *b,size_t b_len,size_t rows,size_t cols,size_t dim,size_t blocks,float *output);
 int32_t frame_kernel_research_rank(const float *scores,size_t len,size_t rows,size_t cols,float minimum,float margin,FrameKernelResearchRank *output);

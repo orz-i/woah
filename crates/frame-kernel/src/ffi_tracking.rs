@@ -1630,6 +1630,69 @@ pub unsafe extern "C" fn frame_kernel_replay_plan(
     0
 }
 
+/// Stateless research pose parts. Points are 17 source x,y,confidence triples
+/// per raw observation. Outputs are 2x1024 floats, 2x64x64 RGB bytes and two
+/// support counts per observation. Zero support denotes unavailable evidence.
+/// # Safety
+/// Readable bounded input arrays; all outputs writable, disjoint and sized
+/// as specified. No data retained.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_pose_parts(
+    obs: *const TrackingObservation,
+    count: usize,
+    pixels: *const u8,
+    len: usize,
+    rgb: *const u8,
+    rgb_len: usize,
+    tr: Transform,
+    points: *const f32,
+    point_len: usize,
+    vectors: *mut f32,
+    vector_len: usize,
+    patches: *mut u8,
+    patch_len: usize,
+    support: *mut u32,
+    support_len: usize,
+) -> i32 {
+    if count > 64
+        || len > 64 * 1024 * 1024
+        || rgb_len > 128 * 1024 * 1024
+        || point_len != count * 51
+        || vector_len != count * 2 * crate::appearance::POSE_PART_DIM
+        || patch_len != count * 2 * crate::appearance::POSE_PART_BYTES
+        || support_len != count * 2
+        || vectors.is_null()
+        || patches.is_null()
+        || support.is_null()
+    {
+        return -1;
+    }
+    // SAFETY: caller supplies readable bounded input arrays.
+    let (Some(obs), Some(pix), Some(rgb), Some(points)) = (unsafe {
+        (
+            borrowed(obs, count),
+            borrowed(pixels, len),
+            borrowed(rgb, rgb_len),
+            borrowed(points, point_len),
+        )
+    }) else {
+        return -1;
+    };
+    let Some(d) = decode_observations(obs, pix) else {
+        return -1;
+    };
+    let Some(v) = crate::appearance::research_pose_parts(&d, rgb, tr, points) else {
+        return -1;
+    };
+    // SAFETY: caller supplies disjoint outputs with documented capacities.
+    unsafe {
+        std::ptr::copy_nonoverlapping(v.vectors.as_ptr(), vectors, v.vectors.len());
+        std::ptr::copy_nonoverlapping(v.patches.as_ptr(), patches, v.patches.len());
+        std::ptr::copy_nonoverlapping(v.support.as_ptr(), support, v.support.len());
+    }
+    0
+}
+
 /// Stateless research clothing descriptor extraction using the same sampler
 /// as M4. Outputs are square-root histograms, not persisted by FrameKernel.
 /// # Safety
