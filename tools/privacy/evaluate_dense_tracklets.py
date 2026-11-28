@@ -17,8 +17,8 @@ from evaluate_pose_parts import (PoseKernel, POSE_FILE, POSE_SHA, pose_points,
 from replay_face_geometry import MaskSpec, detect_instances, detect_face, model, vals
 
 
-def evidence(kernel, detector, face, pose, reid, im):
-    tr,ds,ms=detect_instances(kernel.lib,detector,im)
+def evidence(kernel, detector, face, pose, reid, im, raw=None):
+    tr,ds,ms=raw if raw is not None else detect_instances(kernel.lib,detector,im)
     rgb=np.asarray(im).copy(); yy,xx=np.ogrid[:im.height,:im.width]
     faces=[]
     for j,d in enumerate(ds):
@@ -106,6 +106,10 @@ def main():
     ap.add_argument("--shared-reference",type=Path)
     a=ap.parse_args()
     if (a.shared_dense is None)!=(a.shared_reference is None):ap.error("shared dense and reference must be supplied together")
+    run(a)
+
+
+def run(a, scene=None, models=None):
     fixture=json.loads(a.fixture.read_text()); trace=json.loads(a.reference_replay.read_text())
     if trace["fixture_sha256"]!=sha(a.fixture) or trace["model_sha256"]!={"person":sha(PERSON_MODEL),"face":sha(FACE_MODEL)}:
         raise ValueError("source replay mismatch")
@@ -115,14 +119,17 @@ def main():
         reuse_dense(a,trace)
         return
     canonical=trace["candidate"]["frames"]; kernel=PoseKernel(a.library)
-    detector=model(PERSON_MODEL); face=model(FACE_MODEL);pose=model(a.model_dir/POSE_FILE); reid=load_0287(a.model_dir)
+    detector,face,pose,reid=models if models is not None else (model(PERSON_MODEL),model(FACE_MODEL),model(a.model_dir/POSE_FILE),load_0287(a.model_dir))
     seed=[];seedfeat=[];recent=[];frames=[];start=time.perf_counter()
     refs=None
     for i,meta in enumerate(fixture["frames"]):
         f=a.fixture.parent/meta["asset"]
         if sha(f)!=meta["sha256"]:raise ValueError("frame hash mismatch")
-        im=Image.open(f).convert("RGB")
-        raw,features,faces,support=evidence(kernel,detector,face,pose,reid,im)
+        if scene is None:
+            im=Image.open(f).convert("RGB"); current=None
+        else:
+            im,*current=scene(i)
+        raw,features,faces,support=evidence(kernel,detector,face,pose,reid,im,current)
         _,ds,ms=raw
         if [vals(d.box) for d in ds]!=canonical[i]["raw_boxes"]:
             raise ValueError(f"raw evidence changed {i}")

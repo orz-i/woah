@@ -72,7 +72,7 @@ def fragment_windows(rows):
                 break
 
 
-def fragment_recovery(kernel,person,face,pose,fixture,fixture_path,prior,out,target,counts):
+def fragment_recovery(kernel,person,face,pose,fixture,fixture_path,prior,out,target,counts,scene=None):
     lib=kernel.lib
     proof=lib.frame_kernel_offline_part_window
     proof.argtypes=[P,S,P,S,P,P,S,U,U,P,S,P];proof.restype=C.c_int32
@@ -88,7 +88,10 @@ def fragment_recovery(kernel,person,face,pose,fixture,fixture_path,prior,out,tar
         for r in rows:
             meta=fixture["frames"][r["index"]];f=fixture_path.parent/meta["asset"]
             if sha(f)!=meta["sha256"]:raise ValueError("fragment frame hash mismatch")
-            im=Image.open(f).convert("RGB");tr,ds,ms=detect_instances(lib,person,im);counts["person"]+=1
+            if scene is None:
+                im=Image.open(f).convert("RGB");tr,ds,ms=detect_instances(lib,person,im);counts["person"]+=1
+            else:
+                im,tr,ds,ms=scene(r["index"])
             if [vals(d.box) for d in ds]!=r["raw_boxes"]:raise ValueError("fragment raw evidence mismatch")
             evidence.append((tr,ds,ms));images.append(im)
             features.append(kernel.clothing(im,tr,ds,ms)[:,:1024])
@@ -252,6 +255,10 @@ def main():
     ap.add_argument("--head-competition",action="store_true",help="Research: minimize fixed required square against current rival head extents")
     a=ap.parse_args()
     if a.fragment_only and not a.fragment_window:ap.error("--fragment-only requires --fragment-window")
+    run(a)
+
+
+def run(a, scene=None, models=None):
     fixture=json.loads(a.fixture.read_text());ref=json.loads(a.reference_replay.read_text())
     if ref["fixture_sha256"]!=sha(a.fixture) or ref["model_sha256"]!={"person":sha(PERSON_MODEL),"face":sha(FACE_MODEL)} or sha(a.model_dir/POSE_FILE)!=POSE_SHA:
         raise ValueError("fixture or model hash mismatch")
@@ -259,7 +266,8 @@ def main():
     if len(prior)!=len(fixture["frames"]):raise ValueError("trace length")
     diagnostic={int(v) for v in a.diagnostic_indices.split(",") if v}
     if diagnostic-set(range(len(prior))):raise ValueError("diagnostic index outside fixture")
-    kernel=PoseKernel(a.library);person=model(PERSON_MODEL);face=model(FACE_MODEL);pose=model(a.model_dir/POSE_FILE)
+    kernel=PoseKernel(a.library)
+    person,face,pose=models if models is not None else (model(PERSON_MODEL),model(FACE_MODEL),model(a.model_dir/POSE_FILE))
     fn=kernel.lib.frame_kernel_research_profile_head_cap
     fn.argtypes=[P,S,S,U,MaskSpec,P,P,Ellipse,U,P];fn.restype=C.c_int32
     out=copy.deepcopy(prior);attempts=[];counts={"person":0,"face":0,"pose":0}
@@ -279,7 +287,10 @@ def main():
         if not possible and i not in diagnostic:continue
         meta=fixture["frames"][i];f=a.fixture.parent/meta["asset"]
         if sha(f)!=meta["sha256"]:raise ValueError("frame hash mismatch")
-        im=Image.open(f).convert("RGB");tr,ds,ms=detect_instances(kernel.lib,person,im);counts["person"]+=1
+        if scene is None:
+            im=Image.open(f).convert("RGB");tr,ds,ms=detect_instances(kernel.lib,person,im);counts["person"]+=1
+        else:
+            im,tr,ds,ms=scene(i)
         if [vals(d.box) for d in ds]!=r["raw_boxes"]:raise ValueError("current raw evidence mismatch")
         # The exact current raw index is derived from the canonical observed
         # box and remains unique among the raw proposals.
@@ -325,7 +336,7 @@ def main():
                               topology=cap.topology,topology_rows=cap.rows,profile_head_repair=True,
                               width=min(tr.width,v[2])-max(0,v[0]),height=min(tr.height,v[3])-max(0,v[1]))
         attempts.append(detail)
-    fragment_attempts,fragment_changed=(fragment_recovery(kernel,person,face,pose,fixture,a.fixture,prior,out,target,counts) if a.fragment_window and len(ref["identity_protected_roots"])>=3 else ([],[]))
+    fragment_attempts,fragment_changed=(fragment_recovery(kernel,person,face,pose,fixture,a.fixture,prior,out,target,counts,scene) if a.fragment_window and len(ref["identity_protected_roots"])>=3 else ([],[]))
     changed=[i for i,(x,y) in enumerate(zip(prior,out)) if x!=y]
     if any((prior[i]["kind"]!=1 and i not in fragment_changed) or prior[i]["track"]!=out[i]["track"] or prior[i]["tracks"]!=out[i]["tracks"] for i in changed):
         raise RuntimeError("profile geometry changed a canonical identity")

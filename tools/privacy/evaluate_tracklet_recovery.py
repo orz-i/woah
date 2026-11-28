@@ -112,6 +112,10 @@ def main():
     ap.add_argument("--detail-cap",action="store_true",help="Two current body detail views after all scene cap attempts fail")
     a=ap.parse_args()
     if a.detail_cap and not a.ear_cap:ap.error("--detail-cap requires --ear-cap")
+    run(a)
+
+
+def run(a, scene=None, models=None, geometry=None):
     fixture=json.loads(a.fixture.read_text());base=json.loads(a.reference_replay.read_text());dense=json.loads(a.dense.read_text())
     if base["fixture_sha256"]!=sha(a.fixture) or dense["fixture_sha256"]!=sha(a.fixture) or dense["reference_replay_sha256"]!=sha(a.reference_replay):
         raise ValueError("mismatched input traces")
@@ -129,19 +133,27 @@ def main():
     if len(prior)!=len(frames) or len(prior)!=len(fixture["frames"]) or any(r["index"]!=i or r["time_us"]!=prior[i]["time_us"] or r["boxes"]!=prior[i]["raw_boxes"] for i,r in enumerate(frames)):
         raise ValueError("raw evidence mismatch")
     kernel=PoseKernel(a.library);selected=select(kernel,frames,set(base["identity_protected_roots"]),target,prior)
-    detector=model(PERSON_MODEL);face=model(FACE_MODEL);pose=model(a.model_dir/POSE_FILE)
+    detector,face,pose=models if models is not None else (model(PERSON_MODEL),model(FACE_MODEL),model(a.model_dir/POSE_FILE))
     head=kernel.lib.frame_kernel_research_tracklet_head;head.argtypes=[P,S,S,U,MaskSpec,P,P,P];head.restype=C.c_int32
     if a.ear_cap:
         ear=kernel.lib.frame_kernel_research_tracklet_ear_cap
         flip=kernel.lib.frame_kernel_research_tracklet_flip_ear_cap
         for fn in (ear,flip):fn.argtypes=head.argtypes;fn.restype=C.c_int32
-    output=copy.deepcopy(prior);attempts=[]
+    # Identity selection is always from the canonical trace. Current geometry
+    # (including a two-anchor fragment repair) has precedence over reentry.
+    initial=prior if geometry is None else geometry
+    if len(initial)!=len(prior) or any(x["track"]!=y["track"] or x["tracks"]!=y["tracks"] or x["raw_boxes"]!=y["raw_boxes"] for x,y in zip(prior,initial)):
+        raise ValueError("geometry changed canonical evidence")
+    output=copy.deepcopy(initial);attempts=[]
     for i,j in selected.items():
-        if prior[i]["render"] is not None or prior[i]["track"] is None or prior[i]["track"]["observed"]:
+        if output[i]["render"] is not None or prior[i]["track"] is None or prior[i]["track"]["observed"]:
             continue
         meta=fixture["frames"][i];f=a.fixture.parent/meta["asset"]
         if sha(f)!=meta["sha256"]:raise ValueError("source frame mismatch")
-        im=Image.open(f).convert("RGB");tr,ds,masks=detect_instances(kernel.lib,detector,im)
+        if scene is None:
+            im=Image.open(f).convert("RGB");tr,ds,masks=detect_instances(kernel.lib,detector,im)
+        else:
+            im,tr,ds,masks=scene(i)
         if [vals(d.box) for d in ds]!=frames[i]["boxes"]:raise ValueError("fresh raw evidence mismatch")
         kp=pose_points(pose,im,tr,ds[j],masks,j)
         points=np.ascontiguousarray(kp[[5,6]],np.float32)
@@ -185,7 +197,7 @@ def main():
         else:spans.append({"start":i,"end":i,"raw":[j]})
     if any(x["track"]!=y["track"] or x["tracks"]!=y["tracks"] for x,y in zip(prior,output)):
         raise RuntimeError("research pass changed canonical identity")
-    if any(x["render"] is not None and x!=y for x,y in zip(prior,output)):
+    if any(x["render"] is not None and x!=y for x,y in zip(initial,output)):
         raise RuntimeError("research pass changed existing coverage")
     out={"scope":__doc__,"fixture_sha256":sha(a.fixture),"target_id":target,
          "dense_sha256":sha(a.dense),"reference_replay_sha256":sha(a.reference_replay),
