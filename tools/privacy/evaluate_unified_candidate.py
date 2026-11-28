@@ -124,6 +124,7 @@ def main():
     ap.add_argument("--target-id", type=int, required=True)
     ap.add_argument("--without-memo", action="store_true", help="Exact inference-cache ablation")
     ap.add_argument("--head-instance-model", type=Path, required=True, help="Pinned nano head model; local research only")
+    ap.add_argument("--shared-head-stream", type=Path, help="Reuse same-video dual-view head detections; recompute ownership and links")
     ap.add_argument("--shared-dense", type=Path)
     ap.add_argument("--shared-reference", type=Path)
     a = ap.parse_args()
@@ -212,7 +213,7 @@ def main():
     write(head_reference_path,{**canonical,"candidate":{"frames":current}})
     args=dict(library=a.library,fixture=a.fixture,reference_replay=head_reference_path)
     stream=head_instances.produce(SimpleNamespace(**args,output=head_stream_path,
-        head_model=a.head_instance_model,threads=2),
+        head_model=a.head_instance_model,threads=2,shared_head_stream=a.shared_head_stream),
         scene=scene,person=person)
     result=head_instances.associate(SimpleNamespace(**args,stream=head_stream_path,
         output=head_result_path,
@@ -220,7 +221,7 @@ def main():
     current=result["candidate"]["frames"]
     head_stats={"head_model":stream["head_model"],"head_model_sha256":stream["head_model_sha256"],
         "head_calls":stream["head_calls"],"head_inference_s":stream["head_inference_s"],
-        "additional_person_calls":stream["person_calls"],"policy":"arbitrate","counts":result["counts"],
+        "additional_person_calls":stream["person_calls"],"shared_head_sha256":stream["shared_head_sha256"],"policy":"arbitrate","counts":result["counts"],
         "stream_sha256":sha(head_stream_path),"result_sha256":sha(head_result_path)}
     checkpoint("head_instance_geometry")
     prior = tracked["frames"]

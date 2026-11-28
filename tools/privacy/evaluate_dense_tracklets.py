@@ -21,12 +21,14 @@ def evidence(kernel, detector, face, pose, reid, im, raw=None):
     tr,ds,ms=raw if raw is not None else detect_instances(kernel.lib,detector,im)
     rgb=np.asarray(im).copy(); yy,xx=np.ogrid[:im.height,:im.width]
     faces=[]
+    rgba=im.convert("RGBA")
+    exclusive=(ms>=128).sum(axis=0)==1
     for j,d in enumerate(ds):
-        f=detect_face(kernel.lib,face,im,MaskSpec(tr.proto,tr.proto,tr,d.box),ms[j])
+        f=detect_face(kernel.lib,face,im,MaskSpec(tr.proto,tr.proto,tr,d.box),ms[j],rgba=rgba)
         faces.append(None if f is None else vals(f))
         if f is not None:
             rgb[(abs(xx-f.x)<=1.5*f.rx)&(abs(yy-f.y)<=1.5*f.ry)]=114
-    points=np.array([pose_points(pose,im,tr,d,ms,j) for j,d in enumerate(ds)],dtype=np.float32).reshape(-1,17,3)
+    points=np.array([pose_points(pose,im,tr,d,ms,j,exclusive=exclusive) for j,d in enumerate(ds)],dtype=np.float32).reshape(-1,17,3)
     vectors,patches,support=kernel.extract(Image.fromarray(rgb),tr,ds,ms,points)
     features={"hist":kernel.clothing(im,tr,ds,ms),
               "torso":np.zeros((len(ds),256),np.float32)}

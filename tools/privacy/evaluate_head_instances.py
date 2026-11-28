@@ -125,7 +125,22 @@ def produce(a,scene=None,person=None):
         raise ValueError("reference fixture or model mismatch")
     if len(rows)!=len(fixture["frames"]):raise ValueError("reference length mismatch")
     k=HeadKernel(load(a.library));person=person if person is not None else model(PERSON_MODEL)
-    detector=Detector(k,a.head_model,a.threads);frames=[];previous=None;person_calls=0
+    # The detector stream is source-specific, not target-specific. A reused
+    # stream must agree with the *current* decoded scene and FrameKernel owner
+    # /link calculations; do not trust cached ownership or a different model.
+    shared=getattr(a,"shared_head_stream",None)
+    cached=json.loads(shared.read_text()) if shared is not None else None
+    model_digest=sha(a.head_model)
+    if MODEL_SHA.get(a.head_model.name)!=model_digest:
+        raise ValueError("unrecognized head model bytes")
+    if cached is not None and (cached["fixture_sha256"]!=sha(a.fixture)
+        or cached["library_sha256"]!=sha(a.library)
+        or cached["person_model_sha256"]!=sha(PERSON_MODEL)
+        or cached["head_model"]!=a.head_model.name or cached["head_model_sha256"]!=model_digest
+        or not cached["dual_view"] or len(cached["frames"])!=len(rows)):
+        raise ValueError("shared head stream provenance mismatch")
+    detector=None if cached is not None else Detector(k,a.head_model,a.threads)
+    frames=[];previous=None;person_calls=0
     for i,meta in enumerate(fixture["frames"]):
         f=a.fixture.parent/meta["asset"]
         if sha(f)!=meta["sha256"]:raise ValueError("source frame mismatch")
@@ -134,8 +149,17 @@ def produce(a,scene=None,person=None):
         else:im,tr,ds,ms=scene(i)
         r=rows[i]
         if r["index"]!=i or [vals(d.box) for d in ds]!=r["raw_boxes"]:raise ValueError("raw scene evidence mismatch")
-        primary=detector.detect(im,False)
-        flipped=detector.detect(im,True)
+        if cached is None:
+            primary=detector.detect(im,False)
+            flipped=detector.detect(im,True)
+        else:
+            record=cached["frames"][i]
+            if (record["index"]!=i or record["time_us"]!=r["time_us"]
+                or record["asset_sha256"]!=meta["sha256"] or record["raw_boxes"]!=r["raw_boxes"]
+                or record["transform"]!=vals(tr)):
+                raise ValueError("shared head stream frame mismatch")
+            primary=[unpack_head(q) for q in record["primary"]]
+            flipped=[unpack_head(q) for q in record["flipped"]]
         heads=k.fuse(primary,flipped)
         owners=k.owners(heads,ds,ms,tr)
         rec={"index":i,"time_us":r["time_us"],"asset_sha256":meta["sha256"],"raw_boxes":r["raw_boxes"],
@@ -146,9 +170,13 @@ def produce(a,scene=None,person=None):
             last["links_next"]=k.links(old_heads,heads,delta) if 0<delta<=100_000 else [-1]*len(old_heads)
         previous=(rec,heads);frames.append(rec)
         if i%75==0:print("scene",i,"heads",len(heads),"elapsed",round(time.perf_counter()-start,2),flush=True)
+    if cached is not None and frames!=cached["frames"]:
+        raise ValueError("shared head stream disagrees with live ownership, fusion or links")
     result={"scope":__doc__,"fixture_sha256":sha(a.fixture),"library_sha256":sha(a.library),
-            "head_model":a.head_model.name,"head_model_sha256":sha(a.head_model),"person_model_sha256":sha(PERSON_MODEL),
-            "dual_view":True,"head_calls":detector.calls,"head_inference_s":detector.seconds,"person_calls":person_calls,
+            "head_model":a.head_model.name,"head_model_sha256":model_digest,"person_model_sha256":sha(PERSON_MODEL),
+            "dual_view":True,"head_calls":detector.calls if detector is not None else 0,
+            "head_inference_s":detector.seconds if detector is not None else 0.,"person_calls":person_calls,
+            "shared_head_sha256":sha(shared) if shared is not None else None,
             "elapsed_s":time.perf_counter()-start,"frames":frames}
     write(a.output,result);return result
 
@@ -342,6 +370,7 @@ def main():
         for arg in ("library","fixture","reference-replay","output"):p.add_argument("--"+arg,type=Path,required=True)
         if name=="produce":
             p.add_argument("--head-model",type=Path,required=True)
+            p.add_argument("--shared-head-stream",type=Path)
             p.add_argument("--threads",type=int,default=2)
         else:
             p.add_argument("--stream",type=Path,required=True)

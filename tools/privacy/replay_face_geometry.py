@@ -125,7 +125,7 @@ def detect_instances(lib, yolo, image):
     return transform, [detections[i] for i in range(count)], masks[:count].copy()
 
 
-def detect_face(lib, face, image, spec, mask, pair=None, explicit_plan=None):
+def detect_face(lib, face, image, spec, mask, pair=None, explicit_plan=None, rgba=None):
     person = spec.person
     w, h = image.size
     plan = np.empty(6, np.float32)
@@ -134,7 +134,8 @@ def detect_face(lib, face, image, spec, mask, pair=None, explicit_plan=None):
     else:
         plan=explicit_plan
     view = Rect(*plan[:4])
-    crop = np.asarray(image.convert("RGBA").transform((256,256), Image.Transform.EXTENT, tuple(plan[:4]), Image.Resampling.BILINEAR))
+    source = image.convert("RGBA") if rgba is None else rgba
+    crop = np.asarray(source.transform((256,256), Image.Transform.EXTENT, tuple(plan[:4]), Image.Resampling.BILINEAR))
     face_in = np.empty((1,192,192,3), np.float32)
     check(lib.grid_face_input(ptr(crop),crop.nbytes,256,256,1024,ptr(face_in),face_in.size))
     boxes, scores = infer(face, face_in)

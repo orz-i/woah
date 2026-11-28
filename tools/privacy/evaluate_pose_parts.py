@@ -26,7 +26,7 @@ POSE_FILE = "movenet-lightning-f16-4.tflite"
 POSE_SHA = "0fac2226112d0371903ca86e3853cec24ef603a0b2f96f589b180f0ebdd135ab"
 
 
-def pose_points(net, image, tr, det, masks, j, context=False, flip=False):
+def pose_points(net, image, tr, det, masks, j, context=False, flip=False, exclusive=None):
     """Isolate one raw instance before pose inference; letterbox the crop."""
     b=det.box
     w,h=image.size
@@ -43,7 +43,12 @@ def pose_points(net, image, tr, det, masks, j, context=False, flip=False):
     valid=(xs[None,:]>=0)&(xs[None,:]<w)&(ys[:,None]>=0)&(ys[:,None]<h)
     valid &= (u[None,:]>=0)&(u[None,:]<tr.proto)&(v[:,None]>=0)&(v[:,None]<tr.proto)
     u=u.clip(0,tr.proto-1);v=v.clip(0,tr.proto-1)
-    visible=(masks[j,v[:,None],u[None,:]]>=128)&((masks[:,v[:,None],u[None,:]]>=128).sum(0)==1)&valid
+    # The exclusive prototype grid is independent of the crop and target.
+    # Gather it after counting owners once, rather than materializing every
+    # instance's full 192x192 sampled mask for every pose input.
+    if exclusive is None:
+        exclusive=(masks>=128).sum(axis=0)==1
+    visible=(masks[j,v[:,None],u[None,:]]>=128)&exclusive[v[:,None],u[None,:]]&valid
     z=np.asarray(image.transform((192,192),Image.Transform.EXTENT,(left,top,left+side,top+side),
                      Image.Resampling.BILINEAR,fillcolor=(114,114,114))).copy()
     if not context:
