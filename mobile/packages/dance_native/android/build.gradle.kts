@@ -152,6 +152,8 @@ android {
             testApplicationId = "art.gaoge.dance.engine.cutoutqa.test"
         } else if (providers.gradleProperty("WOAH_MIRROR_QA").orNull == "true") {
             testApplicationId = "art.gaoge.dance.engine.mirrorqa.test"
+        } else if (providers.gradleProperty("WOAH_ISSUE43_QA").orNull == "true") {
+            testApplicationId = "art.gaoge.dance.engine.issue43qa.test"
         }
         consumerProguardFiles("consumer-rules.pro")
         buildConfigField("String", "GIT_COMMIT_SHA", "\"$diagnosticGitCommitSha\"")

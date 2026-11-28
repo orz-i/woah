@@ -522,6 +522,8 @@ final class IOSExportPipeline {
             protectUnassignedFaces: useCurrentObservations && (!faceOnlyIds.isEmpty || !fullBodyIds.isEmpty),
             unmaskedPersonId: unmaskedPersonId,
             coveredHeadFallbackIds: coveredHeadFallbackIds,
+            stickerSizeIds: (request.effects.faceStickerEnabled || request.effects.fillMode.lowercased() == "sticker")
+              ? renderFaceOnlyIds.subtracting(renderFullBodyIds) : [],
             timestampUs: timestampUs
           ) ?? [:]
           if useCurrentObservations && (!faceOnlyIds.isEmpty || !fullBodyIds.isEmpty) && facePrivacyResolver?.localizationFailed == true {

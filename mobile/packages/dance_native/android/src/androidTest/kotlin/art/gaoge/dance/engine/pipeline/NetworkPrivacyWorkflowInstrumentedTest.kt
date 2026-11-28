@@ -151,9 +151,15 @@ class NetworkPrivacyWorkflowInstrumentedTest {
             summary.put("detected_ids", JSONArray(ids))
             assertTrue(ids.isNotEmpty(), "Real-media fixture must contain detected people")
             val hero = args.getString("hero")?.toLong()
-            val selected = (if (args.getString("select", "all") == "first") ids.take(1) else ids)
+            val explicit = args.getString("selectedId")?.toLong()
+            if (explicit != null) require(explicit in ids) { "Unknown selected QA ID $explicit" }
+            val selected = (if (explicit != null) listOf(explicit)
+                else if (args.getString("select", "all") == "first") ids.take(1) else ids)
                 .filter { it != hero }
             summary.put("selected_ids", JSONArray(selected)).put("hero", hero)
+            summary.put("analysis_persons", JSONArray(analysis.persons.map { p ->
+                JSONObject().put("id",p.id).put("bbox_normalized",JSONArray(listOf(p.x1,p.y1,p.x2,p.y2)))
+            }))
             var terminal: JobStatusDto? = null
             ExportPipeline(context, segmenter).execute(
                 jobId = "network_qa_$name",

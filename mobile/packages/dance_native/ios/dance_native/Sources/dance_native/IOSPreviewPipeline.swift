@@ -108,6 +108,7 @@ final class IOSPreviewPipeline {
       try IOSSceneRegionContext.seed(asset: AVURLAsset(url: url),
         timestampUs: requestedTimestampMs * 1_000, runner: runner, resolver: privacyResolver)
     }
+    if requestedPrivacyIds.isEmpty { privacyResolver.clearStickerSizeHistory() }
     let faceRegions = try requestedPrivacyIds.isEmpty
       ? [:]
       : privacyResolver.resolve(
@@ -118,6 +119,8 @@ final class IOSPreviewPipeline {
         protectUnassignedFaces: scope != 0,
         unmaskedPersonId: renderPersons.contains(where: {$0.id == heroId}) ? heroId:nil,
         coveredHeadFallbackIds: coveredHeadIds,
+        stickerSizeIds: (request.effects.faceStickerEnabled || request.effects.fillMode.lowercased() == "sticker")
+          ? renderFaceIds.subtracting(renderBodyIds) : [],
         timestampUs: requestedTimestampMs * 1_000
       )
     let renderer = try renderer()

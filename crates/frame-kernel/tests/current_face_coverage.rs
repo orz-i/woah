@@ -176,3 +176,229 @@ fn standalone_face_keeps_detected_coverage_and_pads_without_an_owner() {
     assert_eq!(status, -1);
     assert!(contains(output, 56.0, 57.0));
 }
+
+// Actual row-wise head envelope, tested separately from sticker rectangle.
+#[test]
+fn topology_ellipse_covers_every_head_cell_and_direct_seed_without_shoulders() {
+    use frame_kernel::face_head_topology::ellipse_region;
+    let mut s = spec();
+    s.person = Rect {
+        left: 12.0,
+        top: 16.0,
+        right: 116.0,
+        bottom: 124.0,
+    };
+    let face = Ellipse {
+        center_x: 64.0,
+        center_y: 38.0,
+        radius_x: 12.0,
+        radius_y: 16.0,
+    };
+    let mut pixels = vec![0; 32 * 32];
+    for (y, l, r) in [
+        (6, 14, 18),
+        (7, 13, 19),
+        (8, 12, 20),
+        (9, 12, 20),
+        (10, 12, 20),
+        (11, 13, 19),
+    ] {
+        pixels[y * 32 + l..y * 32 + r].fill(255);
+    }
+    for y in 12..29 {
+        pixels[y * 32 + 5..27 + y * 32].fill(255);
+    }
+    let out = ellipse_region(&pixels, s, face, face, 0).unwrap();
+    for y in 6..12 {
+        for x in 0..32 {
+            if pixels[y * 32 + x] == 0 {
+                continue;
+            }
+            for dx in [0.0, 4.0] {
+                for dy in [0.0, 4.0] {
+                    assert!(contains(out, x as f32 * 4.0 + dx, y as f32 * 4.0 + dy));
+                }
+            }
+        }
+    }
+    for n in 0..360 {
+        let a = n as f32 * std::f32::consts::TAU / 360.0;
+        assert!(contains(
+            out,
+            face.center_x + face.radius_x * a.cos(),
+            face.center_y + face.radius_y * a.sin()
+        ));
+    }
+    assert!(!contains(out, 20.0, 52.0));
+    assert!(!contains(out, 108.0, 52.0));
+    let mut mirrored = pixels.clone();
+    for row in mirrored.chunks_exact_mut(32) {
+        row.reverse();
+    }
+    let other = ellipse_region(&mirrored, s, face, face, 0).unwrap();
+    assert!((other.radius_x - out.radius_x).abs() < 0.001);
+    assert!((other.radius_y - out.radius_y).abs() < 0.001);
+}
+
+#[test]
+fn topology_ellipse_preserves_weak_fallback_when_no_current_support() {
+    use frame_kernel::face_head_topology::ellipse_region;
+    let face = seed();
+    let stable = Ellipse {
+        center_y: face.center_y + 8.0,
+        ..face
+    };
+    for kind in [1, 2] {
+        assert_eq!(
+            ellipse_region(&[0; 1024], spec(), face, stable, kind),
+            Some(stable)
+        );
+    }
+    assert!(ellipse_region(&[0; 1023], spec(), face, stable, 0).is_none());
+}
+
+#[test]
+fn split_crown_is_only_accepted_when_next_row_reconnects() {
+    use frame_kernel::face_head_topology::{ellipse_region, prefer_local_face};
+    let mut s = spec();
+    s.person = Rect {
+        left: 8.0,
+        top: 12.0,
+        right: 120.0,
+        bottom: 124.0,
+    };
+    let local = Ellipse {
+        center_x: 64.0,
+        center_y: 34.0,
+        radius_x: 16.0,
+        radius_y: 16.0,
+    };
+    let torso = Ellipse {
+        center_y: 69.0,
+        ..local
+    };
+    let mut mask = vec![0; 1024];
+    // Two parts of a crown separated by one prototype cell, joined below.
+    mask[5 * 32 + 12..5 * 32 + 15].fill(255);
+    mask[5 * 32 + 16..5 * 32 + 20].fill(255);
+    for y in 6..12 {
+        mask[y * 32 + 12..y * 32 + 20].fill(255);
+    }
+    for y in 12..29 {
+        mask[y * 32 + 7..y * 32 + 25].fill(255);
+    }
+    assert_eq!(prefer_local_face(&mask, s, torso, local), Some(true));
+    let out = ellipse_region(&mask, s, local, local, 0).unwrap();
+    assert!(contains(out, 48.0, 20.0) && contains(out, 80.0, 24.0));
+    assert!(!contains(out, 28.0, 56.0));
+    assert_eq!(prefer_local_face(&mask, s, local, local), Some(false));
+    // The gap continues: no qualification as one crown and no override.
+    mask[6 * 32 + 15] = 0;
+    mask[7 * 32 + 15] = 0;
+    assert_eq!(prefer_local_face(&mask, s, torso, local), Some(false));
+}
+
+#[test]
+fn qualified_head_cap_can_override_torso_but_not_a_distant_or_unowned_hypothesis() {
+    use frame_kernel::face_head_topology::prefer_local_face;
+    let local = Ellipse {
+        center_x: 64.0,
+        center_y: 34.0,
+        radius_x: 16.0,
+        radius_y: 16.0,
+    };
+    let mut s = spec();
+    s.person = Rect {
+        left: 8.0,
+        top: 12.0,
+        right: 120.0,
+        bottom: 124.0,
+    };
+    let mut mask = vec![0; 1024];
+    mask[5 * 32 + 15..5 * 32 + 17].fill(255);
+    for y in 6..12 {
+        mask[y * 32 + 12..y * 32 + 20].fill(255);
+    }
+    for y in 12..29 {
+        mask[y * 32 + 7..y * 32 + 25].fill(255);
+    }
+    let torso = Ellipse {
+        center_y: 69.0,
+        ..local
+    };
+    assert_eq!(prefer_local_face(&mask, s, torso, local), Some(true));
+    assert_eq!(
+        prefer_local_face(
+            &mask,
+            s,
+            Ellipse {
+                center_x: 100.0,
+                ..torso
+            },
+            local
+        ),
+        Some(false)
+    );
+    assert_eq!(
+        prefer_local_face(&[255; 1024], s, torso, local),
+        Some(false)
+    );
+    assert_eq!(prefer_local_face(&mask[..1023], s, torso, local), None);
+}
+
+#[test]
+fn connected_head_does_not_include_confirmed_early_shoulder_junction() {
+    use frame_kernel::face_head_topology::ellipse_region;
+    let mut s = spec();
+    s.person = Rect {
+        left: 8.0,
+        top: 12.0,
+        right: 120.0,
+        bottom: 124.0,
+    };
+    let face = Ellipse {
+        center_x: 60.0,
+        center_y: 36.0,
+        radius_x: 12.0,
+        radius_y: 13.0,
+    };
+    let mut p = vec![0; 1024];
+    for (y, l, r) in [
+        (4, 14, 18),
+        (5, 13, 19),
+        (6, 12, 20),
+        (7, 12, 20),
+        (8, 12, 20),
+        (9, 12, 20),
+        (10, 12, 20),
+        (11, 11, 21),
+    ] {
+        p[y * 32 + l..y * 32 + r].fill(255);
+    }
+    for y in 12..29 {
+        p[y * 32 + 6..y * 32 + 26].fill(255);
+    }
+    // The head itself (including all cell corners) remains covered.
+    let out = ellipse_region(&p, s, face, face, 0).unwrap();
+    for y in 4..11 {
+        for x in 0..32 {
+            if p[y * 32 + x] == 0 {
+                continue;
+            }
+            for dx in [0.0, 4.0] {
+                for dy in [0.0, 4.0] {
+                    assert!(contains(out, x as f32 * 4.0 + dx, y as f32 * 4.0 + dy));
+                }
+            }
+        }
+    }
+    for k in 0..360 {
+        let a = k as f32 * std::f32::consts::TAU / 360.0;
+        assert!(contains(
+            out,
+            face.center_x + face.radius_x * a.cos(),
+            face.center_y + face.radius_y * a.sin()
+        ));
+    }
+    assert!(!contains(out, 24.0, 56.0));
+}

@@ -139,6 +139,26 @@ enum IOSFrameKernelFaceGeometry {
     guard status==0 else{return nil}
     return (values(output.region),output.current_mask_guided==1)
   }
+  static func preferLocalFace(_ person: IOSYoloDetection, primary: IOSFaceCandidate,
+      local: IOSFaceCandidate, preprocess: IOSYoloPreprocessResult) -> Bool {
+    guard person.mask.count == IOSYoloPostprocessor.protoSize*IOSYoloPostprocessor.protoSize,
+          let metadata = spec(person,preprocess), let a = detected(primary), let b = detected(local) else {return false}
+    var output: UInt32 = 0
+    let status = person.mask.withUnsafeBufferPointer { p in
+      frame_kernel_head_prefer_local(p.baseAddress,p.count,metadata,ellipse(a),ellipse(b),&output)
+    }
+    return status == 0 && output == 1
+  }
+  static func headEllipse(_ person: IOSYoloDetection, measured: SIMD4<Float>,
+      stabilized: SIMD4<Float>, kind: UInt32, preprocess: IOSYoloPreprocessResult) -> SIMD4<Float>? {
+    guard person.mask.count == IOSYoloPostprocessor.protoSize*IOSYoloPostprocessor.protoSize,
+          let metadata = spec(person,preprocess) else { return nil }
+    var output = FrameKernelEllipse()
+    let status = person.mask.withUnsafeBufferPointer { p in
+      frame_kernel_head_ellipse(p.baseAddress,p.count,metadata,ellipse(measured),ellipse(stabilized),kind,&output)
+    }
+    return status == 0 ? values(output) : nil
+  }
   static func coverCurrent(_ person:IOSYoloDetection,region:SIMD4<Float>,
       preprocess:IOSYoloPreprocessResult)->SIMD4<Float>? {
     guard let metadata=spec(person,preprocess),person.mask.isEmpty ||

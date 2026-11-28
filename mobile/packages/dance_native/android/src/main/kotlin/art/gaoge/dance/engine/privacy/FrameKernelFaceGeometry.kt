@@ -56,6 +56,24 @@ internal object FrameKernelFaceGeometry {
             person.values(),floatArrayOf(region.centerX,region.centerY,region.radiusX,region.radiusY)))
         return result.region(region.source)
     }
+    /** Current observed mask only; the caller retains the legacy path if
+     * this optional refinement is unavailable. No state/identity is changed. */
+    fun headEllipse(mask:NativeMask?,person:FloatRect,measured:FacePrivacyEllipse,
+                    stabilized:FacePrivacyEllipse):FacePrivacyEllipse? {
+        mask?:return null
+        val mapper=mask.mapper?:return null
+        if(mask.width !in 2..1024||mask.height !in 2..1024||measured.source!=stabilized.source)return null
+        val count=Math.multiplyExact(mask.width,mask.height)
+        if(mask.buffer.limit()<count)return null
+        val bytes=ByteArray(count)
+        mask.buffer.duplicate().apply{position(0);limit(count);get(bytes)}
+        val result=FrameKernel.headEllipseNative(bytes,mask.width,mask.height,
+            floatArrayOf(mapper.scale,mapper.padLeft,mapper.padTop,mapper.srcWidth.toFloat(),mapper.srcHeight.toFloat(),mapper.modelInputSize.toFloat(),mapper.protoSize.toFloat()),
+            person.values(),floatArrayOf(measured.centerX,measured.centerY,measured.radiusX,measured.radiusY),
+            floatArrayOf(stabilized.centerX,stabilized.centerY,stabilized.radiusX,stabilized.radiusY),
+            stabilized.source.ordinal)?:return null
+        return result.region(stabilized.source)
+    }
     fun estimate(mask:NativeMask?,person:FloatRect,cx:Float,cy:Float,rx:Float,ry:Float):FacePoint? {
         val value=head(mask,person,floatArrayOf(cx,cy,rx,ry))?:return null
         return FacePoint(value[0],value[1])

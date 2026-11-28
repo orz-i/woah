@@ -19,6 +19,31 @@ private final class IOSPhase5SequenceFaceLocator: IOSFaceLocating {
 
 enum IOSFacePrivacyPhase5Smoke {
   static func run() throws -> [String: Any] {
+    // Transport smoke: exercise the same post-coverage Rust size state
+    // through Swift as the Android JNI contract, including seek/reset.
+    let sizeState = IOSFrameKernel.FaceRenderSizeState()
+    let large = SIMD4<Float>(100, 80, 40, 50)
+    let small = SIMD4<Float>(123, 90, 20, 25)
+    let initialSize = try sizeState.step(required: large, timestampUs: 0, kind: 0)
+    let weakSize = try sizeState.step(required: small, timestampUs: 33_333, kind: 1)
+    let observedSize = try sizeState.step(required: small, timestampUs: 66_666, kind: 0)
+    let expiredSize = try sizeState.step(required: small, timestampUs: 250_001, kind: 2)
+    let grownSize = try sizeState.step(required: large, timestampUs: 283_334, kind: 0)
+    let seekSize = try sizeState.step(required: small, timestampUs: 10_000, kind: 1)
+    guard initialSize == large, weakSize == SIMD4<Float>(123, 90, 40, 50),
+          (25...50).contains(observedSize.w), expiredSize == small,
+          grownSize == large, seekSize == small else {
+      throw smokeFailure("Shared final sticker-size transport lost current coverage or lifecycle")
+    }
+    let axisState = IOSFrameKernel.FaceRenderSizeState()
+    let circle = SIMD4<Float>(100, 80, 50, 50)
+    let narrow = SIMD4<Float>(123, 90, 35, 50)
+    let axisInitial = try axisState.step(required: circle, timestampUs: 0, kind: 0, preserveAxes: true)
+    let axisWeak = try axisState.step(required: narrow, timestampUs: 33_333, kind: 1, preserveAxes: true)
+    let axisExpired = try axisState.step(required: narrow, timestampUs: 250_001, kind: 2, preserveAxes: true)
+    guard axisInitial == circle, axisWeak == SIMD4<Float>(123, 90, 50, 50), axisExpired == narrow else {
+      throw smokeFailure("Shared ellipse-axis continuity transport failed")
+    }
     let width = 64
     let height = 64
     let source = try makeSolidImage(width: width, height: height, rgba: (0, 0, 255, 255))
@@ -56,6 +81,7 @@ enum IOSFacePrivacyPhase5Smoke {
       persons: [person],
       faceOnlyIds: [0],
       preprocess: preprocess,
+      stickerSizeIds: [0],
       timestampUs: 0
     )
     guard let detectedRegion = detected[0], detectedRegion.source == .detectedFace else {
@@ -76,12 +102,13 @@ enum IOSFacePrivacyPhase5Smoke {
       persons: [person],
       faceOnlyIds: [0],
       preprocess: preprocess,
+      stickerSizeIds: [0],
       timestampUs: 33_333
     )
     guard let missedRegion = missed[0], missedRegion.source == .predictedFace else {
       throw smokeFailure("A short detector miss did not use the trusted FACE_ONLY prediction lease.")
     }
-    guard missedRegion.radiusX > 0, missedRegion.radiusY > 0 else {
+    guard missedRegion.radiusX > 0, missedRegion.radiusY >= detectedRegion.radiusY else {
       throw smokeFailure("Detector-miss prediction produced an empty privacy region.")
     }
 
@@ -94,6 +121,7 @@ enum IOSFacePrivacyPhase5Smoke {
       persons: [movedPerson],
       faceOnlyIds: [0],
       preprocess: preprocess,
+      stickerSizeIds: [0],
       timestampUs: 66_666
     )
     guard let translatedRegion = translatedPrediction[0], translatedRegion.source == .predictedFace else {

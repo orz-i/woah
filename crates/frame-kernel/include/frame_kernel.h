@@ -367,6 +367,74 @@ int32_t frame_kernel_detected_face_region(const float *row18,const FrameKernelRe
      the detected ellipse; it never removes detector coverage or grants identity.
      Positive len requires a valid mask/spec; invalid input leaves output intact. */
   int32_t frame_kernel_current_face_region(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,FrameKernelEllipse region,FrameKernelEllipse *output);
+/* Experimental head-cap sticker placement. Only current owned body masks,
+   kind=0 direct or 2 estimated. Direct measured and stabilized extents remain
+   required; a non-edge estimated raw seed is only a localization prior.
+   A qualified full cap may correct an overlapping weak center below the
+   cap, keeping its radii; direct and clipped-edge evidence remain required.
+   square is center + half sizes for a square, NOT a mask ellipse.
+   topology 1 means a coherent upper cap with sustained widening, 2 a partial
+   cap corroborated by direct detector; 0 uses legacy support/estimated seed. Invalid leaves output intact. */
+typedef struct FrameKernelHeadSticker {
+    FrameKernelRect bounds;
+    FrameKernelEllipse square;
+    uint32_t topology,rows;
+} FrameKernelHeadSticker;
+int32_t frame_kernel_head_sticker(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
+    FrameKernelEllipse measured,FrameKernelEllipse stabilized,uint32_t kind,FrameKernelHeadSticker *output);
+/* Current-mask ellipse from connected head rows (not the square API).
+   kind=0 direct, 1 projected, 2 estimated; only current owned masks.
+   Ambiguity retains conservative support; no identity or lease update. */
+int32_t frame_kernel_head_ellipse(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
+    FrameKernelEllipse measured,FrameKernelEllipse stabilized,uint32_t kind,FrameKernelEllipse *output);
+/* Both current observations already have the same unique owner. Prefer the
+   local face only with a qualified head cap and a primary center below it. */
+int32_t frame_kernel_head_prefer_local(const uint8_t *pixels,size_t len,FrameKernelHeadMaskSpec spec,
+    FrameKernelEllipse primary,FrameKernelEllipse local,uint32_t *output);
+/* Experimental bounded translation from a DIRECT face observation to current
+   source pixels (top-down gray). The immutable seed's lease is <=150ms.
+   Foreign current person boxes veto a peak, never grant ownership.
+   No identity, renderability, exemption, radius, or observation is established.
+   0 success, 1 no reliable evidence, -1 invalid. Failure does not write. */
+typedef struct FrameKernelGrayView {
+    uint32_t width,height,stride;
+    FrameKernelRect source;
+} FrameKernelGrayView;
+typedef struct FrameKernelPixelMotion {
+    float dx,dy,correlation,uniqueness;
+} FrameKernelPixelMotion;
+/* Both regions keep their prior radii; only motion translates them. Feed
+   measurement to RegionState; required to final render-size continuity. */
+typedef struct FrameKernelPixelBridge {
+    FrameKernelPixelMotion motion;
+    FrameKernelEllipse measurement, required;
+} FrameKernelPixelBridge;
+int32_t frame_kernel_face_pixel_bridge(const uint8_t *previous,size_t previous_len,FrameKernelGrayView previous_view,
+    const uint8_t *current,size_t current_len,FrameKernelGrayView current_view,
+    FrameKernelEllipse seed,FrameKernelEllipse covered,int64_t age_us,const FrameKernelRect *foreign_boxes,size_t foreign_len,FrameKernelPixelBridge *output);
+/* Optional final per-owner render-size continuity. All-zero initialize.
+   Feed only current, already-resolved coverage, after current-mask expansion.
+   kind=0 observed, 1 projected, 2 estimated. Only observed renews the 150ms
+   size lease. Clear on identity/exemption changes; time reversal or >150ms
+   gap resets size. Current center and coverage never shrink; no identity
+   or region is inferred.
+   0 success, -1 invalid (state/output unchanged). Buffers must not alias. */
+typedef struct FrameKernelFaceRenderSizeState {
+    int64_t timestamp_us, observed_us;
+    float major_radius, observed_major;
+    uint32_t initialized;
+} FrameKernelFaceRenderSizeState;
+int32_t frame_kernel_face_render_size_step(FrameKernelFaceRenderSizeState *state,
+    FrameKernelEllipse required,int64_t timestamp_us,uint32_t kind,FrameKernelEllipse *output);
+/* Optional ellipse-axis continuity. Contains the original major-size
+   output and tracks the actual rendered radius on each axis independently.
+   Same lifecycle, direct-observation lease, and atomic failure contract. */
+typedef struct FrameKernelFaceRenderAxesState {
+    FrameKernelFaceRenderSizeState major,horizontal,vertical;
+} FrameKernelFaceRenderAxesState;
+int32_t frame_kernel_face_render_axes_step(FrameKernelFaceRenderAxesState *state,
+    FrameKernelEllipse required,int64_t timestamp_us,uint32_t kind,FrameKernelEllipse *output);
+
 /* Current detected face with uncertain ownership. Apply render sampling margin
    without a body mask or identity. Invalid inputs leave output unchanged. */
 int32_t frame_kernel_standalone_face_region(FrameKernelEllipse region,FrameKernelTransform transform,FrameKernelEllipse *output);

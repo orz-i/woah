@@ -518,6 +518,8 @@ class FaceOnlyPrivacyFrameProcessor(
     }
 
     private val uniformRegionContinuation = FrameKernel.RegionContinuation()
+    private val stickerSizeStates = mutableMapOf<Int, FrameKernel.FaceRenderSizeState>()
+    private val headProbeSchedule = FaceHeadProbeSchedule()
 
     fun resolveFrame(
         frameTexture: Int,
@@ -532,8 +534,20 @@ class FaceOnlyPrivacyFrameProcessor(
         canonicalModelRgbaBottomUp: ByteBuffer? = null,
         ptsUs: Long,
         coveredHeadFallbackTrackIds: Set<Int> = emptySet(),
-        conservativeSceneCoverage: Boolean = false
+        conservativeSceneCoverage: Boolean = false,
+        stabilizeStickerSize: Boolean = false,
+        explicitStickerSelection: Boolean = false
     ): FaceOnlyPrivacyFrameResult {
+        val stickerSizeIds = if (stabilizeStickerSize) faceOnlyTrackIds - fullBodyTrackIds else emptySet()
+        // Same scoped opt-in as iOS, never anonymous scene or other-face mode.
+        val useConnectedEllipse = explicitStickerSelection && !conservativeSceneCoverage &&
+            stickerSizeIds.size == 1
+        stickerSizeStates.keys.retainAll(stickerSizeIds)
+        val scheduleOwner = stickerSizeIds.singleOrNull()?.takeIf { id ->
+            useConnectedEllipse && persons.any { it.id == id && it.observedThisFrame &&
+                it.state == TrackState.ACTIVE && it.mask != null }
+        }
+        headProbeSchedule.begin(scheduleOwner, ptsUs)
         if (!conservativeSceneCoverage) uniformRegionContinuation.reset()
         val faceTargetIds = FrameKernel.faceProtectionIds(bodySupplementTrackIds, faceOnlyTrackIds)
         val fallbackTargetIds = if (coveredHeadFallbackTrackIds.isEmpty()) faceTargetIds else
@@ -782,6 +796,7 @@ class FaceOnlyPrivacyFrameProcessor(
         cachedFaceByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
         lastDetectorAttemptPtsUsByTrackId.keys.retainAll(processingFaceOnlyTrackIds)
         temporalStabilizer.retainTracks(baseRenderableFaceOnlyTrackIds)
+        stickerSizeStates.keys.retainAll(baseRenderableFaceOnlyTrackIds)
         pixelMotionTracker.retainRoiTracks(activeFaceOnlyTrackIds)
         occlusionHoldByTrackId.keys.retainAll(activeFaceOnlyTrackIds)
 
@@ -1000,8 +1015,75 @@ class FaceOnlyPrivacyFrameProcessor(
             var detectorSeedPlan: FaceHeadRoiPlan? = null
             var pixelRejectReason: FacePixelMotionTracker.RoiRejectReason? = null
             var roiPixelSource = "NONE"
+            val eligibleHeadProbe = scheduleOwner == trackId &&
+                dueDetectorTrackIds.contains(trackId) && localDetectorTrackIds.contains(trackId) &&
+                renderMode == FaceOnlyRenderMode.DIRECT && !isDormantProbe &&
+                trackedPerson.observedThisFrame && person.observedThisFrame
+            val headPlan = if (eligibleHeadProbe) {
+                FaceHeadRoiPlanner.plan(person.bbox, mapper.srcWidth, mapper.srcHeight)
+                    ?.let { if (canonicalizeReferenceGeometry) FaceReferenceGeometryCanonicalizer.plan(it) else it }
+                    ?.takeIf { it.sourceRect != plan?.sourceRect }
+            } else null
+            var headAttempted = false
+            var headWon = false
+            data class HeadHit(val region: FacePrivacyEllipse, val rgba: ByteBuffer, val plan: FaceHeadRoiPlan)
+            fun probeHead(phase: String): HeadHit? {
+                val currentPlan = headPlan ?: return null
+                headAttempted = true
+                lastDetectorAttemptPtsUsByTrackId[trackId] = ptsUs
+                return try {
+                    val roiStart = System.nanoTime()
+                    roiReadCount++
+                    val headPixels = readRoiPixels(frameTexture, texMatrix, textureType, currentPlan,
+                        canonicalModelRgbaBottomUp, getPreparedCanonicalInput())
+                    roiReadbackMs += (System.nanoTime() - roiStart) / 1_000_000.0
+                    val started = System.nanoTime()
+                    val result = try {
+                        locator.detectRgbaTopDown(headPixels.rgba, FACE_ROI_SIZE, FACE_ROI_SIZE)
+                    } finally {
+                        detectorWallMs += (System.nanoTime() - started) / 1_000_000.0
+                    }
+                    detectorCallCount++
+                    detectorCalledTrackIds += trackId
+                    inferenceMs += result.inferenceMs
+                    detectorObservationCount += result.observations.size
+                    if (result.observations.isEmpty()) detectorZeroObservationCallCount++
+                    val rivals = persons.filter { it.id != trackId && it.observedThisFrame &&
+                        it.state != TrackState.REMOVED }.map { it.bbox to it.mask }
+                    val selected = FaceRoiCandidateSelector.selectCurrentHeadRetry(
+                        result.observations, currentPlan, person.bbox, person.mask, rivals)
+                    val measured = selected?.let {
+                        FacePrivacyRegionResolver.resolve(person.bbox, currentPlan, it)
+                    }
+                    capturedFrame?.detector(trackId, currentPlan, result.observations, selected?.face)
+                    emitRoiDiagnostic(phase, trackId, ptsUs, currentPlan, person.bbox,
+                        headPixels.rgba, result.observations.size, measured != null, pixelRejectReason,
+                        renderMode, headPixels.source)
+                    if (result.observations.isNotEmpty() && measured == null) {
+                        detectorRejectedCallCount++
+                        detectorRejectedTrackIds += trackId
+                    }
+                    measured?.let { HeadHit(it, headPixels.rgba, currentPlan) }
+                } catch (t: Throwable) {
+                    Log.w(TAG, "CURRENT_HEAD_PROBE_FAILED track=$trackId")
+                    null
+                }
+            }
+
+            // Detector ordering is independent of the local pixel template.
+            // On a fresh head hit no local match/readback is needed. A miss
+            // falls through to the unchanged narrow path in the same frame.
+            if (headPlan != null && headProbeSchedule.preferHead(trackId)) {
+                val hit = probeHead("CURRENT_HEAD_PRIMARY")
+                if (hit != null) {
+                    region = hit.region
+                    detectorSeedRgba = hit.rgba
+                    detectorSeedPlan = hit.plan
+                    headWon = true
+                }
+            }
             val hasRoiPixelState = pixelMotionTracker.hasUsableRoiState(trackId, ptsUs)
-            if (plan != null && (hasRoiPixelState || dueDetectorTrackIds.contains(trackId))) {
+            if (!headWon && plan != null && (hasRoiPixelState || dueDetectorTrackIds.contains(trackId))) {
                 val preloadedRoiPixels = preloadedRoiPixelsByTrackId[trackId]
                 val roiStartNs = if (preloadedRoiPixels == null) System.nanoTime() else 0L
                 if (preloadedRoiPixels == null) roiReadCount++
@@ -1063,7 +1145,7 @@ class FaceOnlyPrivacyFrameProcessor(
             val normalDetectorDue = dueDetectorTrackIds.contains(trackId)
             val shouldCallDetector = normalDetectorDue
 
-            if (shouldCallDetector && plan != null && roiRgba != null) {
+            if (!headWon && shouldCallDetector && plan != null && roiRgba != null) {
                 if (renderMode == FaceOnlyRenderMode.DORMANT) {
                     if (evidenceGapDetectorReacquire) {
                         evidenceGapReacquireDetectorTrackIds += trackId
@@ -1197,6 +1279,22 @@ class FaceOnlyPrivacyFrameProcessor(
                         Log.w(TAG, "FACE_ROI_FAILED track=$trackId")
                     }
                 }
+            }
+
+            // A failed narrow detector can still use one fresh head probe.
+            if (headPlan != null && !headAttempted && region?.source != FacePrivacyRegionSource.DETECTED_FACE) {
+                val hit = probeHead("CURRENT_HEAD_RETRY")
+                if (hit != null) {
+                    region = hit.region
+                    trustedCurrentPixelCenter = false
+                    detectorSeedRgba = hit.rgba
+                    detectorSeedPlan = hit.plan
+                    headWon = true
+                }
+            }
+            if (eligibleHeadProbe) {
+                headProbeSchedule.record(trackId, headWon,
+                    !headWon && region?.source == FacePrivacyRegionSource.DETECTED_FACE)
             }
 
             val needsExpandedOcclusionReacquire =
@@ -1353,6 +1451,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 if (canonicalizeReferenceGeometry) {
                     region = FaceReferenceGeometryCanonicalizer.ellipse(region)
                 }
+                val measuredRegion = region
                 val trustedDetectedRadiusX = if (region.source == FacePrivacyRegionSource.DETECTED_FACE) region.radiusX else null
                 val trustedDetectedRadiusY = if (region.source == FacePrivacyRegionSource.DETECTED_FACE) region.radiusY else null
                 val rawCenterX = region.centerX
@@ -1427,8 +1526,31 @@ class FaceOnlyPrivacyFrameProcessor(
                     region = region.copy(centerX = continued[0], centerY = continued[1],
                         radiusX = continued[2], radiusY = continued[3])
                 }
-                if (region.source == FacePrivacyRegionSource.DETECTED_FACE && person.observedThisFrame) {
+                // Refine only from the exact current observed instance, after
+                // the temporal/identity cache has been updated. Do not consume
+                // masks borrowed from unresolved protected motion evidence.
+                val connected = if (useConnectedEllipse && trackId in stickerSizeIds &&
+                    trackedPerson.observedThisFrame && person.observedThisFrame) {
+                    FrameKernelFaceGeometry.headEllipse(person.mask, person.bbox, measuredRegion, region)
+                } else null
+                if (connected != null) {
+                    region = connected
+                } else if (region.source == FacePrivacyRegionSource.DETECTED_FACE && person.observedThisFrame) {
                     region = FrameKernelFaceGeometry.coverCurrent(person.mask, person.bbox, region)
+                }
+                // The Android sticker shader is clipped by the resolved face
+                // mask. Stabilize that final required ellipse, never only the
+                // artwork rectangle, and do not feed the size back to identity.
+                if (trackId in stickerSizeIds) {
+                    val kind = when (region.source) {
+                        FacePrivacyRegionSource.DETECTED_FACE -> if (trackedPerson.observedThisFrame) 0 else 1
+                        FacePrivacyRegionSource.PREDICTED_FACE -> 1
+                        FacePrivacyRegionSource.YOLO_HEAD_FALLBACK -> 2
+                    }
+                    val sized = stickerSizeStates.getOrPut(trackId) { FrameKernel.FaceRenderSizeState() }
+                        .step(floatArrayOf(region.centerX, region.centerY, region.radiusX, region.radiusY), ptsUs, kind,
+                            preserveAxes = useConnectedEllipse)
+                    region = region.copy(centerX = sized[0], centerY = sized[1], radiusX = sized[2], radiusY = sized[3])
                 }
                 val maskStartNs = System.nanoTime()
                 val builtMask = FacePrivacyMaskBuilder.build(listOf(region), mapper)
@@ -1451,6 +1573,8 @@ class FaceOnlyPrivacyFrameProcessor(
             }
         }
 
+        // Missing masks or suppressed owners cannot carry a size lease forward.
+        stickerSizeStates.keys.retainAll(faceMasks.keys)
         val renderableFaceOnlyTrackIds = linkedSetOf<Int>().apply {
             addAll(baseRenderableFaceOnlyTrackIds)
             addAll(dormantReactivatedTrackIds)
@@ -1470,6 +1594,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 null -> "NO_PIXEL_STATE"
             }
         }
+        stickerSizeStates.keys.retainAll(renderableFaceOnlyTrackIds)
         dormantFaceOnlyTrackIds.retainAll(activeFaceOnlyTrackIds)
         dormantFaceOnlyTrackIds.removeAll(renderableFaceOnlyTrackIds)
         dormantFaceOnlyTrackIds.addAll(dormantSuppressedTrackIds)

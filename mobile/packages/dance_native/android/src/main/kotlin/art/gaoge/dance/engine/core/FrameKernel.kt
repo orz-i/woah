@@ -59,6 +59,8 @@ internal object FrameKernel {
     external fun headFallbackNative(person:FloatArray):FloatArray?
     external fun currentHeadRegionNative(pixels:ByteArray?,width:Int,height:Int,transform:FloatArray,person:FloatArray,seed:FloatArray?):FloatArray?
     external fun currentFaceRegionNative(pixels:ByteArray?,width:Int,height:Int,transform:FloatArray,person:FloatArray,region:FloatArray):FloatArray?
+    external fun headEllipseNative(pixels:ByteArray,width:Int,height:Int,transform:FloatArray,
+        person:FloatArray,measured:FloatArray,stabilized:FloatArray,kind:Int):FloatArray?
     external fun maskHeadNative(pixels:ByteArray,width:Int,height:Int,transform:FloatArray,person:FloatArray,seed:FloatArray,previous:FloatArray?,expansion:Float):FloatArray?
 
     external fun faceHeadPlanNative(person:FloatArray,width:Int,height:Int):FloatArray?
@@ -160,6 +162,30 @@ internal object FrameKernel {
         fun reset() { clock[0] = 0 }
         fun step(raw: FloatArray, anchor: FloatRect, pts: Long, kind: Int): FloatArray =
             continueRegionNative(values, clock, raw + anchor.values(), pts, kind)
+    }
+
+    private external fun faceRenderSizeStepNative(radii: FloatArray, clock: LongArray,
+        required: FloatArray, pts: Long, kind: Int): FloatArray
+
+    private external fun faceRenderAxesStepNative(radii: FloatArray, clock: LongArray,
+        required: FloatArray, pts: Long, kind: Int): FloatArray
+
+    /** Per-render-owner transport; geometry and lease semantics are implemented in Rust. */
+    class FaceRenderSizeState {
+        private val radii = FloatArray(2)
+        private val clock = LongArray(3)
+        private val axisRadii = FloatArray(6)
+        private val axisClock = LongArray(9)
+        private var axisMode: Boolean? = null
+        fun step(required: FloatArray, pts: Long, kind: Int, preserveAxes: Boolean = false): FloatArray {
+            if (axisMode != preserveAxes) {
+                radii.fill(0f); clock.fill(0L)
+                axisRadii.fill(0f); axisClock.fill(0L)
+                axisMode = preserveAxes
+            }
+            return if (preserveAxes) faceRenderAxesStepNative(axisRadii, axisClock, required, pts, kind)
+                else faceRenderSizeStepNative(radii, clock, required, pts, kind)
+        }
     }
 
     class RegionState {

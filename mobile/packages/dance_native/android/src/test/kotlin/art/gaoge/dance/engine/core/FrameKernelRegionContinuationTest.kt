@@ -6,6 +6,51 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertTrue
 
 class FrameKernelRegionContinuationTest {
+    @Test fun stickerSizeTransportRetainsCurrentCenterAndCoverage() {
+        val state = FrameKernel.FaceRenderSizeState()
+        val large = floatArrayOf(100f, 80f, 40f, 50f)
+        val small = floatArrayOf(123f, 90f, 20f, 25f)
+        assertContentEquals(large, state.step(large, 0, 0))
+        val weak = state.step(small, 33_333, 1)
+        assertContentEquals(floatArrayOf(123f, 90f, 40f, 50f), weak)
+        val observed = state.step(small, 66_666, 0)
+        assertTrue(observed[3] in 25f..50f)
+        assertContentEquals(small, state.step(small, 250_001, 2))
+        assertContentEquals(large, state.step(large, 283_334, 0))
+        assertContentEquals(small, state.step(small, 10_000, 1))
+        assertContentEquals(small, FrameKernel.FaceRenderSizeState().step(small, 33_333, 1))
+    }
+
+    @Test fun ellipseAxesTransportPreservesBothAxesAndResetsOnModeChanges() {
+        val state = FrameKernel.FaceRenderSizeState()
+        val circle = floatArrayOf(100f, 80f, 50f, 50f)
+        val narrow = floatArrayOf(123f, 90f, 35f, 50f)
+        assertContentEquals(circle, state.step(circle, 0, 0, preserveAxes = true))
+        assertContentEquals(floatArrayOf(123f, 90f, 50f, 50f),
+            state.step(narrow, 33_333, 1, preserveAxes = true))
+        val observed = state.step(narrow, 66_666, 0, preserveAxes = true)
+        assertTrue(observed[2] > narrow[2] && observed[2] < circle[2])
+        assertTrue(observed[3] >= narrow[3])
+        assertContentEquals(narrow, state.step(narrow, 250_001, 2, preserveAxes = true))
+        assertContentEquals(circle, state.step(circle, 283_334, 0, preserveAxes = true))
+        assertContentEquals(narrow, state.step(narrow, 10_000, 1, preserveAxes = true))
+        assertContentEquals(circle, state.step(circle, 43_333, 0, preserveAxes = true))
+        // Switching scope must not carry either mode's previous history.
+        assertContentEquals(narrow, state.step(narrow, 76_666, 1))
+        assertContentEquals(narrow, state.step(narrow, 110_000, 1, preserveAxes = true))
+    }
+
+    @Test fun invalidEllipseAxesInputDoesNotCorruptHistory() {
+        val state = FrameKernel.FaceRenderSizeState()
+        val circle = floatArrayOf(100f, 80f, 50f, 50f)
+        state.step(circle, 0, 0, preserveAxes = true)
+        kotlin.test.assertFailsWith<IllegalArgumentException> {
+            state.step(floatArrayOf(100f, 80f, Float.NaN, 50f), 33_333, 0, preserveAxes = true)
+        }
+        assertContentEquals(floatArrayOf(123f, 90f, 50f, 50f),
+            state.step(floatArrayOf(123f, 90f, 35f, 50f), 66_666, 1, preserveAxes = true))
+    }
+
     @Test fun sourceContextUsesTheSameBoundedTimestampPlan() {
         kotlin.test.assertNull(FrameKernel.regionContextProbeUs(0))
         kotlin.test.assertNull(FrameKernel.regionContextProbeUs(-1))

@@ -1,0 +1,61 @@
+{
+  "baseline_commit": "9482e363",
+  "scope": "Android JNI, Kotlin transport, mask raster, and instrumentation APK preparation only",
+  "previous_ci": {
+    "run": 46040594241,
+    "head": "9482e363",
+    "conclusion": "success"
+  },
+  "suites": [
+    {
+      "name": "art.gaoge.dance.engine.core.FrameKernelRegionContinuationTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "art.gaoge.dance.engine.privacy.CurrentFaceCoverageNativeTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "art.gaoge.dance.engine.privacy.FacePrivacyMaskBuilderTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "art.gaoge.dance.engine.privacy.FacePrivacyTemporalStabilizerTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "unit_tests": 33,
+  "failures": 0,
+  "abi": 1,
+  "apk": {
+    "sha256": "9faccbc7e3c177c7e89ae4ba58727658c9e202222b75130a3d7d554935179f0b",
+    "bytes": 142076831,
+    "package": "art.gaoge.dance.engine.test",
+    "runner": "androidx.test.runner.AndroidJUnitRunner",
+    "packaged_jni_sha256": {
+      "arm64-v8a": "f000f5e540e62af4d6544ed16f598175bac4c358992c2cb0d925831d5593b97b",
+      "armeabi-v7a": "5edd224baeff541696fe62a9b317fb5d089253a0515c848c6c41dba770b821f2",
+      "x86_64": "474e9cabf10535fc05218312a3ce59f27a61228a0ffde287ec8ec6a06c97d379"
+    },
+    "packaged_model_and_manifest_sha256": {
+      "assets/dynamic_manifest.json": "06a19e1e2b24832080d08468f26a88f3bcc67786a586c622cf111095ceb08442",
+      "assets/models/face/blaze_face_full_range.tflite": "3698b18f063835bc609069ef052228fbe86d9c9a6dc8dcb7c7c2d69aed2b181b",
+      "assets/models/litert/yolo11n-seg-fp16.tflite": "ea5d150036c7fe0a77231f3d8fea7b96fc7816cd93c8af0a9edfbbd80ad9a340"
+    },
+    "verified_affine_frames": 18
+  },
+  "device_acceptance": "NOT_RUN_NO_ADB_DEVICE",
+  "decision": "Retain draft; original instrumentation thresholds unchanged; no Android decoded pixel metrics available"
+}
