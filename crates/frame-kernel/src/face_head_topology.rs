@@ -314,6 +314,95 @@ pub struct HeadSticker {
     pub rows: u32,
 }
 
+/// Current visible head cap at a clipped top edge. Both raw masks must be
+/// supplied, in current detection order; no predicted mask is admissible.
+/// The body-box estimate only locates the search, never sizes the result.
+pub fn pair_edge_cap(masks: &[u8], index: usize, spec: HeadMaskSpec) -> Option<HeadSticker> {
+    let size = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if index >= 2 || size == 0 || size.checked_mul(2)? != masks.len() {
+        return None;
+    }
+    let own = &masks[index * size..(index + 1) * size];
+    let rival = &masks[(1 - index) * size..(2 - index) * size];
+    if !spec.valid(own)
+        || spec.width != spec.transform.proto_size
+        || spec.height != spec.transform.proto_size
+        || rival.iter().filter(|&&v| v >= 128).take(8).count() < 8
+    {
+        return None;
+    }
+    let tr = spec.transform;
+    let cell_x = tr.input_size as f32 / (spec.width as f32 * tr.scale);
+    let cell_y = tr.input_size as f32 / (spec.height as f32 * tr.scale);
+    if spec.person.top > cell_y
+        || spec.person.top < -cell_y
+        || !cell_x.is_finite()
+        || !cell_y.is_finite()
+    {
+        return None;
+    }
+    let seed = crate::face_geometry::current_head_region(Some(own), spec, None)?.region;
+    let (cap, path) = cap_trace(own, spec, seed, false, false, false)?;
+    let b = cap.bounds;
+    let edge_row = (tr.pad_top / tr.scale / cell_y).floor();
+    if !edge_row.is_finite()
+        || edge_row < 0.0
+        || edge_row >= spec.height as f32
+        || !path.iter().any(|(y, _)| *y == edge_row as usize)
+    {
+        return None;
+    }
+    if cap.partial
+        || b.top > cell_y
+        || cap.rows < 6
+        || seed.center_x < b.left
+        || seed.center_x > b.right
+        || seed.center_y < b.top
+        || seed.center_y > b.bottom
+        || b.bottom - b.top > (spec.person.bottom - spec.person.top) * 0.32
+    {
+        return None;
+    }
+    // A coherent edge cap may still include a different person when masks
+    // merge at the shoulder. Require strong target support and very little
+    // rival support over its actual connected rows, not a bounding box.
+    let mut cells = 0usize;
+    let mut strong = 0usize;
+    let mut contested = 0usize;
+    for (y, run) in path {
+        for x in run.left..run.right {
+            let k = y * spec.width as usize + x;
+            cells += 1;
+            strong += usize::from(own[k] >= 128);
+            contested += usize::from(rival[k] >= 128);
+        }
+    }
+    if cells == 0 || strong * 10 < cells * 9 || contested * 20 > cells {
+        return None;
+    }
+    // Keep one lateral cell and two lower cells of sampling margin. No
+    // off-image extension is required for visible square coverage.
+    let b = Rect {
+        left: (b.left - cell_x).max(0.0),
+        top: 0.0,
+        right: (b.right + cell_x).min(tr.source_width as f32),
+        bottom: (b.bottom + 2.0 * cell_y).min(tr.source_height as f32),
+    };
+    let half = ((b.right - b.left).max(b.bottom - b.top) * 0.5).next_up();
+    let square = Ellipse {
+        center_x: (b.left + b.right) * 0.5,
+        center_y: (b.top + b.bottom) * 0.5,
+        radius_x: half,
+        radius_y: half,
+    };
+    (b.valid() && valid_seed(square)).then_some(HeadSticker {
+        bounds: b,
+        square,
+        topology: 1,
+        rows: cap.rows,
+    })
+}
+
 pub fn sticker(
     pixels: &[u8],
     spec: HeadMaskSpec,
@@ -794,6 +883,101 @@ mod tests {
         for y in rows {
             m[y * 64 + left..y * 64 + right].fill(255);
         }
+    }
+    fn edge_pair() -> (HeadMaskSpec, Vec<u8>) {
+        let mut sp = spec();
+        sp.person = Rect {
+            left: 80.0,
+            top: 0.0,
+            right: 176.0,
+            bottom: 240.0,
+        };
+        let mut m = vec![0; 2 * 64 * 64];
+        paint(&mut m[..4096], 0..12, 26, 38);
+        paint(&mut m[..4096], 12..20, 20, 44);
+        paint(&mut m[..4096], 20..60, 23, 41);
+        paint(&mut m[4096..], 6..54, 48, 60);
+        (sp, m)
+    }
+    #[test]
+    fn visible_pair_cap_preserves_current_rows_without_offscreen_weak_prior() {
+        let (sp, m) = edge_pair();
+        let cap = pair_edge_cap(&m, 0, sp).expect("complete connected top-edge head");
+        assert_eq!(cap.bounds.top, 0.0);
+        assert!(cap.bounds.left <= 104.0 && cap.bounds.right >= 152.0 && cap.bounds.bottom >= 48.0);
+        assert!(
+            cap.square.center_x - cap.square.radius_x <= cap.bounds.left
+                && cap.square.center_x + cap.square.radius_x >= cap.bounds.right
+        );
+        assert!(
+            cap.square.center_y - cap.square.radius_y <= 0.0
+                && cap.square.center_y + cap.square.radius_y >= cap.bounds.bottom
+        );
+        assert!(cap.square.radius_x <= 40.0);
+        let swapped = [m[4096..].to_vec(), m[..4096].to_vec()].concat();
+        assert_eq!(pair_edge_cap(&swapped, 1, sp), Some(cap));
+    }
+    #[test]
+    fn edge_cap_abstains_on_competing_or_missing_masks_and_no_visible_edge() {
+        let (sp, m) = edge_pair();
+        let mut rival = m.clone();
+        paint(&mut rival[4096..], 0..12, 26, 38);
+        assert!(pair_edge_cap(&rival, 0, sp).is_none());
+        let mut missing = m.clone();
+        missing[4096..].fill(0);
+        assert!(pair_edge_cap(&missing, 0, sp).is_none());
+        assert!(pair_edge_cap(&m[..4096], 0, sp).is_none());
+        assert!(pair_edge_cap(&m, 2, sp).is_none());
+        let mut off = m.clone();
+        off[..128].fill(0);
+        assert!(pair_edge_cap(&off, 0, sp).is_none());
+        let mut not_edge = sp;
+        not_edge.person.top = 20.0;
+        assert!(pair_edge_cap(&m, 0, not_edge).is_none());
+    }
+    #[test]
+    fn edge_face_ownership_rejects_rival_or_torso_without_affecting_nonedge() {
+        let (sp, m) = edge_pair();
+        let view = Rect {
+            left: 0.0,
+            top: 0.0,
+            right: 256.0,
+            bottom: 256.0,
+        };
+        let face = crate::face_localization::Candidate {
+            bounds: Rect {
+                left: 112.0,
+                top: 12.0,
+                right: 144.0,
+                bottom: 40.0,
+            },
+            confidence: 0.9,
+            points: Vec::new(),
+        };
+        use crate::face_observations::pair_face_owned;
+        assert_eq!(pair_face_owned(&m, 0, sp, &face, view, 256.0), Some(true));
+        let mut rival = m.clone();
+        paint(&mut rival[4096..], 0..12, 26, 38);
+        assert_eq!(
+            pair_face_owned(&rival, 0, sp, &face, view, 256.0),
+            Some(false)
+        );
+        let torso = crate::face_localization::Candidate {
+            bounds: Rect {
+                left: 112.0,
+                top: 78.0,
+                right: 144.0,
+                bottom: 106.0,
+            },
+            ..face.clone()
+        };
+        assert_eq!(pair_face_owned(&m, 0, sp, &torso, view, 256.0), Some(false));
+        let mut nonedge = sp;
+        nonedge.person.top = 10.0;
+        assert_eq!(
+            pair_face_owned(&rival, 0, nonedge, &face, view, 256.0),
+            Some(true)
+        );
     }
     fn head_mask() -> Vec<u8> {
         let mut m = vec![0; 64 * 64];

@@ -43,6 +43,11 @@ ReappearanceDecision = struct("ReappearanceDecision", [("index",U),("similarity"
 
 
 def pixel_bind(lib):
+    if hasattr(lib,"frame_kernel_face_pair_edge_sticker"):
+        for name,args in [("pair_edge_sticker",[P,S,U,MaskSpec,P]),("pair_owned",[P,S,U,MaskSpec,P,Rect,F])]:
+            fn=getattr(lib,"frame_kernel_face_"+name)
+            fn.argtypes,fn.restype=args,C.c_int32
+            setattr(lib,name,fn)
     if hasattr(lib,"frame_kernel_face_garment"):
         fn=lib.frame_kernel_face_garment
         fn.argtypes=[P,S,P,S,S,S,MaskSpec,Ellipse,P]
@@ -395,7 +400,7 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False):
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False, pair_head=False):
     tracking = Tracking(lib,target,protected_roots,pair_continuity)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
@@ -435,7 +440,19 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
             mask = track["mask"] if track["observed"] else None
             spec = MaskSpec(160,160,track["transform"] or transform,track["bounds"])
             pixel_required = None
-            direct = detect_face(lib,face,image,spec,mask) if track["observed"] and mask is not None and index not in drops else None
+            # Research requires a complete pair of current raw masks and an
+            # exact canonical current observation (no warped or merged guess).
+            pair=None
+            edge=None
+            if pair_head and mask is not None and len(snapshot["tracks"])==2 and len(detections)==2 and len(protected_roots or ())==2:
+                matches=[j for j,d in enumerate(detections) if vals(d.box)==vals(spec.person) and np.array_equal(masks[j],mask)]
+                if len(matches)==1:
+                    pair=(masks,matches[0])
+                    edge=HeadSticker()
+                    status=lib.pair_edge_sticker(ptr(masks),masks.size,matches[0],spec,C.byref(edge))
+                    if status<0: raise RuntimeError("invalid edge head evidence")
+                    if status!=0: edge=None
+            direct = detect_face(lib,face,image,spec,mask,pair=pair) if track["observed"] and mask is not None and index not in drops else None
             if direct is not None:
                 raw, kind = direct, 0
                 trusted = (spec.person, raw, time)
@@ -529,6 +546,12 @@ def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_r
                 check(lib.render_size_step(C.byref(sticker_state),sticker_required,time,kind,C.byref(sticker)))
                 if kind==0:
                     sticker_seed=sticker
+            # Render-only visible cap for a weak observation. Do not feed
+            # the new shape back to temporal or identity/detector state.
+            if edge is not None and kind in (1,2):
+                sticker=edge.square
+                row["pair_edge_compact"]=True
+                row["pair_edge_bounds"]=vals(edge.bounds)
             if kind==0 and hasattr(lib,"pixel_motion"):
                 gray,view=gray_view(image)
                 pixel_seed=(gray,view,raw,render,time)
@@ -565,6 +588,8 @@ def main():
     parser.add_argument("--cover-fallback-experiment",action="store_true")
     parser.add_argument("--multiperson-recovery",action="store_true",help="Opt in to candidate-only local recovery experiments")
     parser.add_argument("--pair-continuity",action="store_true",help="Candidate-only experimental two-person raw-mask association")
+    parser.add_argument("--pair-head",action="store_true",help="Candidate-only current pair face ownership and edge cap experiment")
+    parser.add_argument("--same-base-policy",action="store_true",help="Apply enabled association and recovery flags to baseline too")
     parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args()
     base, candidate=load(args.baseline),load(args.candidate)
@@ -594,6 +619,7 @@ def main():
             "experimental_cover_fallback":args.cover_fallback_experiment,
             "multiperson_recovery":args.multiperson_recovery,
             "pair_continuity":args.pair_continuity,
+            "pair_head":args.pair_head, "same_base_policy":args.same_base_policy,
             "model_sha256": {name:hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
                              for name,path in [("person","models/litert/yolo11n-seg-fp16.tflite"),("face","testdata/models/face/blaze_face_full_range.tflite")]}}
     libs=[("baseline",base)]
@@ -601,10 +627,10 @@ def main():
         libs.append(("size_only",load(args.size_only)))
     libs.append(("candidate",candidate))
     for name,lib in libs:
-        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and name=="candidate",pair_continuity=args.pair_continuity and name=="candidate")
+        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and (name=="candidate" or args.same_base_policy),pair_continuity=args.pair_continuity and (name=="candidate" or args.same_base_policy),pair_head=args.pair_head and name=="candidate")
         print(name,json.dumps(report[name]["summary"]),flush=True)
     for name in [n for n,_ in libs if n!="baseline"]:
-        if args.pair_continuity and name=="candidate":
+        if args.pair_continuity and not args.same_base_policy and name=="candidate":
             continue  # explicitly testing a canonical association change
         for a,b in zip(report["baseline"]["frames"],report[name]["frames"],strict=True):
             if a["tracking_snapshot_sha256"]!=b["tracking_snapshot_sha256"] or any(a[k]!=b[k] for k in ("tracks","class_evidence","motion_evidence")):

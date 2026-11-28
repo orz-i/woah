@@ -112,6 +112,62 @@ pub fn current_face_owned(
     Some(pixels.is_none_or(|p| face_mask_owned(p, spec, &mapped, yaw)))
 }
 
+/// Fresh detector ownership for a complete current pair at the top edge.
+/// Non-edge owners keep the existing policy. A clipped owner must not attach
+/// to the rival mask; a qualified visible edge
+/// cap additionally rejects a face outside the actual connected head.
+pub fn pair_face_owned(
+    masks: &[u8],
+    index: usize,
+    spec: HeadMaskSpec,
+    face: &Candidate,
+    view: Rect,
+    size: f32,
+) -> Option<bool> {
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if index >= 2 || n == 0 || n.checked_mul(2)? != masks.len() {
+        return None;
+    }
+    let own = &masks[index * n..(index + 1) * n];
+    let rival = &masks[(1 - index) * n..(2 - index) * n];
+    if !current_face_owned(Some(own), spec, face, Some((view, size)), 0.0)? {
+        return Some(false);
+    }
+    // Only the top-clipped lane is enabled in M3. The independent rear
+    // dancer demonstrates that a leaking foreground instance mask is not
+    // a reliable universal veto on a non-edge owner's face.
+    let cell = spec.transform.input_size as f32 / (spec.height as f32 * spec.transform.scale);
+    if spec.person.top > cell || spec.person.top < -cell {
+        return Some(true);
+    }
+    if spec.width != spec.transform.proto_size || spec.height != spec.transform.proto_size {
+        return None;
+    }
+    if rival.iter().filter(|&&v| v >= 128).take(8).count() < 8 {
+        return Some(false);
+    }
+    let measured = Candidate {
+        bounds: face.bounds,
+        confidence: face.confidence,
+        points: Vec::new(),
+    };
+    let e = crate::face_geometry::detected(&measured, Some((view, size)), 0.0)?;
+    if mask_support(rival, spec, e)?.get(1).copied()? > 0 {
+        return Some(false);
+    }
+    if let Some(cap) = crate::face_head_topology::pair_edge_cap(masks, index, spec) {
+        let b = cap.bounds;
+        if e.center_x < b.left
+            || e.center_x > b.right
+            || e.center_y < b.top
+            || e.center_y > b.bottom
+        {
+            return Some(false);
+        }
+    }
+    Some(true)
+}
+
 pub fn association_score(face: &Candidate, person: Rect) -> Option<f32> {
     if !face.bounds.valid() || !person.valid() || !face.confidence.is_finite() {
         return None;

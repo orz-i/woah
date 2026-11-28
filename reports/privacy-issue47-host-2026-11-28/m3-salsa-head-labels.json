@@ -1,0 +1,370 @@
+{
+  "scope": "Approximate visible head rectangles, source-only review at eight sample times, not dense semantic labels. Foreground generally rear-facing, often top-clipped; no detector used to draw labels.",
+  "source_sha256": "fe6c5a29f935ebee051e0865665c7b478777776291749eb2fe36b875571fbc36",
+  "cases": {
+    "salsa_front": {
+      "manifest_sha256": "47d98760f606e288c8e46dedb8aa2a1102c0220e0c62928f84c912a8364d8aff",
+      "target_id": 1,
+      "labels": [
+        {
+          "index": 0,
+          "asset_sha256": "9e8b68dbe9bcab4b977f1c140e79f391737e918f9ec924c6b598b81cc566d5f1",
+          "head_rect": [
+            687,
+            0,
+            762,
+            77
+          ],
+          "neighbor_rects": [
+            [
+              588,
+              22,
+              657,
+              111
+            ]
+          ],
+          "torso_probe": [
+            751,
+            148
+          ]
+        },
+        {
+          "index": 10,
+          "asset_sha256": "5813017c53bb81f0b8091ac51db507728322ab91f320342ee9d0448a19f4d7a7",
+          "head_rect": [
+            656,
+            0,
+            724,
+            88
+          ],
+          "neighbor_rects": [
+            [
+              580,
+              39,
+              646,
+              120
+            ]
+          ],
+          "torso_probe": [
+            720,
+            148
+          ]
+        },
+        {
+          "index": 20,
+          "asset_sha256": "664385c9c71d44b7b991787bf06cfe6a0bcfe82bb16a72bd930b80794cc009a0",
+          "head_rect": [
+            632,
+            0,
+            704,
+            86
+          ],
+          "neighbor_rects": [
+            [
+              561,
+              45,
+              628,
+              132
+            ]
+          ],
+          "torso_probe": [
+            697,
+            148
+          ]
+        },
+        {
+          "index": 25,
+          "asset_sha256": "525a9e4f267b7e2d4f6506a7d069e7ec071c31ede1094576d246e052db980f65",
+          "head_rect": [
+            640,
+            0,
+            716,
+            88
+          ],
+          "neighbor_rects": [
+            [
+              552,
+              35,
+              623,
+              126
+            ]
+          ],
+          "torso_probe": [
+            716,
+            148
+          ]
+        },
+        {
+          "index": 40,
+          "asset_sha256": "13eb5137ecd7e13fcd4d672af5e1c7e2923abdb98baded9a3ee058e894e62498",
+          "head_rect": [
+            664,
+            0,
+            748,
+            83
+          ],
+          "neighbor_rects": [
+            [
+              584,
+              24,
+              651,
+              126
+            ]
+          ],
+          "torso_probe": [
+            750,
+            148
+          ]
+        },
+        {
+          "index": 50,
+          "asset_sha256": "eff8659edb25d917c009a6a68c66ff719af93b707dbd8f07e1b483272f7b01fe",
+          "head_rect": [
+            666,
+            0,
+            751,
+            82
+          ],
+          "neighbor_rects": [
+            [
+              573,
+              20,
+              640,
+              118
+            ]
+          ],
+          "torso_probe": [
+            748,
+            148
+          ]
+        },
+        {
+          "index": 65,
+          "asset_sha256": "eda5a56ef2fc2760f62cca35a22df6e50f29c76eaab2ba123a6edec96e773143",
+          "head_rect": [
+            630,
+            0,
+            709,
+            91
+          ],
+          "neighbor_rects": [
+            [
+              543,
+              41,
+              608,
+              143
+            ]
+          ],
+          "torso_probe": [
+            701,
+            148
+          ]
+        },
+        {
+          "index": 75,
+          "asset_sha256": "844be132c2bcf8474ff25a17bfa9cdc0daf5d59af820b0f365ce2d7b733fc550",
+          "head_rect": [
+            606,
+            0,
+            678,
+            91
+          ],
+          "neighbor_rects": [
+            [
+              510,
+              45,
+              579,
+              145
+            ]
+          ],
+          "torso_probe": [
+            676,
+            148
+          ]
+        }
+      ]
+    },
+    "salsa_rear": {
+      "manifest_sha256": "47d98760f606e288c8e46dedb8aa2a1102c0220e0c62928f84c912a8364d8aff",
+      "target_id": 0,
+      "labels": [
+        {
+          "index": 0,
+          "asset_sha256": "9e8b68dbe9bcab4b977f1c140e79f391737e918f9ec924c6b598b81cc566d5f1",
+          "head_rect": [
+            588,
+            22,
+            657,
+            111
+          ],
+          "neighbor_rects": [
+            [
+              687,
+              0,
+              762,
+              77
+            ]
+          ],
+          "torso_probe": [
+            602,
+            165
+          ]
+        },
+        {
+          "index": 10,
+          "asset_sha256": "5813017c53bb81f0b8091ac51db507728322ab91f320342ee9d0448a19f4d7a7",
+          "head_rect": [
+            580,
+            39,
+            646,
+            120
+          ],
+          "neighbor_rects": [
+            [
+              656,
+              0,
+              724,
+              88
+            ]
+          ],
+          "torso_probe": [
+            593,
+            165
+          ]
+        },
+        {
+          "index": 20,
+          "asset_sha256": "664385c9c71d44b7b991787bf06cfe6a0bcfe82bb16a72bd930b80794cc009a0",
+          "head_rect": [
+            561,
+            45,
+            628,
+            132
+          ],
+          "neighbor_rects": [
+            [
+              632,
+              0,
+              704,
+              86
+            ]
+          ],
+          "torso_probe": [
+            582,
+            165
+          ]
+        },
+        {
+          "index": 25,
+          "asset_sha256": "525a9e4f267b7e2d4f6506a7d069e7ec071c31ede1094576d246e052db980f65",
+          "head_rect": [
+            552,
+            35,
+            623,
+            126
+          ],
+          "neighbor_rects": [
+            [
+              640,
+              0,
+              716,
+              88
+            ]
+          ],
+          "torso_probe": [
+            578,
+            165
+          ]
+        },
+        {
+          "index": 40,
+          "asset_sha256": "13eb5137ecd7e13fcd4d672af5e1c7e2923abdb98baded9a3ee058e894e62498",
+          "head_rect": [
+            584,
+            24,
+            651,
+            126
+          ],
+          "neighbor_rects": [
+            [
+              664,
+              0,
+              748,
+              83
+            ]
+          ],
+          "torso_probe": [
+            603,
+            165
+          ]
+        },
+        {
+          "index": 50,
+          "asset_sha256": "eff8659edb25d917c009a6a68c66ff719af93b707dbd8f07e1b483272f7b01fe",
+          "head_rect": [
+            573,
+            20,
+            640,
+            118
+          ],
+          "neighbor_rects": [
+            [
+              666,
+              0,
+              751,
+              82
+            ]
+          ],
+          "torso_probe": [
+            598,
+            165
+          ]
+        },
+        {
+          "index": 65,
+          "asset_sha256": "eda5a56ef2fc2760f62cca35a22df6e50f29c76eaab2ba123a6edec96e773143",
+          "head_rect": [
+            543,
+            41,
+            608,
+            143
+          ],
+          "neighbor_rects": [
+            [
+              630,
+              0,
+              709,
+              91
+            ]
+          ],
+          "torso_probe": [
+            564,
+            165
+          ]
+        },
+        {
+          "index": 75,
+          "asset_sha256": "844be132c2bcf8474ff25a17bfa9cdc0daf5d59af820b0f365ce2d7b733fc550",
+          "head_rect": [
+            510,
+            45,
+            579,
+            145
+          ],
+          "neighbor_rects": [
+            [
+              606,
+              0,
+              678,
+              91
+            ]
+          ],
+          "torso_probe": [
+            537,
+            165
+          ]
+        }
+      ]
+    }
+  }
+}

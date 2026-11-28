@@ -9,6 +9,82 @@ pub const REGION_NONE: i32 = 1;
 pub const REGION_INVALID: i32 = -1;
 
 /// # Safety
+/// Readable packed current pair masks; disjoint writable output. Nonzero
+/// leaves output unchanged. Current geometry only, no observation lease.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_pair_edge_sticker(
+    masks: *const u8,
+    len: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    output: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if len > 2 * 1024 * 1024 || output.is_null() || index >= 2 {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies live readable masks.
+    let Some(masks) = (unsafe { crate::ffi_tracking::borrowed(masks, len) }) else {
+        return REGION_INVALID;
+    };
+    if (spec.width as usize)
+        .checked_mul(spec.height as usize)
+        .and_then(|v| v.checked_mul(2))
+        != Some(len)
+        || len == 0
+        || !(2..=1024).contains(&spec.width)
+        || !(2..=1024).contains(&spec.height)
+        || !spec.transform.valid()
+        || !spec.person.valid()
+        || spec.width != spec.transform.proto_size
+        || spec.height != spec.transform.proto_size
+    {
+        return REGION_INVALID;
+    }
+    let Some(result) = crate::face_head_topology::pair_edge_cap(masks, index as usize, spec) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller supplies disjoint writable output.
+    unsafe { output.write(result) };
+    REGION_OK
+}
+
+/// # Safety
+/// Both current masks and one 18-float detector record are readable. Returns
+/// 0 accepted, 1 rejected, -1 invalid. No memory is retained.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_face_pair_owned(
+    masks: *const u8,
+    len: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    row: *const f32,
+    view: Rect,
+    size: f32,
+) -> i32 {
+    if len > 2 * 1024 * 1024 || row.is_null() || index >= 2 {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies live readable masks and one detector record.
+    let (Some(masks), Some(row)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(row, 18),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(face) = crate::ffi_face::decode(row) else {
+        return REGION_INVALID;
+    };
+    match crate::face_observations::pair_face_owned(masks, index as usize, spec, &face, view, size)
+    {
+        Some(true) => REGION_OK,
+        Some(false) => REGION_NONE,
+        None => REGION_INVALID,
+    }
+}
+
+/// # Safety
 /// Current mask readable; output is disjoint writable aligned HeadSticker.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn frame_kernel_face_reappearance_sticker(
