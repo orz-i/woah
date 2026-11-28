@@ -1489,7 +1489,9 @@ class ExportPipeline(
                                     ptsUs = ptsUs,
                                     coveredHeadFallbackTrackIds = coveredHeadFallbackIds,
                                     conservativeSceneCoverage = uniformSceneCoverage,
-                                    stabilizeStickerSize = request.effects.faceStickerEnabled
+                                    stabilizeStickerSize = request.effects.faceStickerEnabled,
+                                    explicitStickerSelection = !allSceneCoverage && !currentOtherFaceCoverage &&
+                                        faceOnlyPersonIds.size == 1 && explicitFaceIds == faceOnlyPersonIds
                                 )
                             }
                         }

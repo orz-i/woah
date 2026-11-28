@@ -534,9 +534,13 @@ class FaceOnlyPrivacyFrameProcessor(
         ptsUs: Long,
         coveredHeadFallbackTrackIds: Set<Int> = emptySet(),
         conservativeSceneCoverage: Boolean = false,
-        stabilizeStickerSize: Boolean = false
+        stabilizeStickerSize: Boolean = false,
+        explicitStickerSelection: Boolean = false
     ): FaceOnlyPrivacyFrameResult {
         val stickerSizeIds = if (stabilizeStickerSize) faceOnlyTrackIds - fullBodyTrackIds else emptySet()
+        // Same scoped opt-in as iOS, never anonymous scene or other-face mode.
+        val useConnectedEllipse = explicitStickerSelection && !conservativeSceneCoverage &&
+            stickerSizeIds.size == 1
         stickerSizeStates.keys.retainAll(stickerSizeIds)
         if (!conservativeSceneCoverage) uniformRegionContinuation.reset()
         val faceTargetIds = FrameKernel.faceProtectionIds(bodySupplementTrackIds, faceOnlyTrackIds)
@@ -1358,6 +1362,7 @@ class FaceOnlyPrivacyFrameProcessor(
                 if (canonicalizeReferenceGeometry) {
                     region = FaceReferenceGeometryCanonicalizer.ellipse(region)
                 }
+                val measuredRegion = region
                 val trustedDetectedRadiusX = if (region.source == FacePrivacyRegionSource.DETECTED_FACE) region.radiusX else null
                 val trustedDetectedRadiusY = if (region.source == FacePrivacyRegionSource.DETECTED_FACE) region.radiusY else null
                 val rawCenterX = region.centerX
@@ -1432,7 +1437,16 @@ class FaceOnlyPrivacyFrameProcessor(
                     region = region.copy(centerX = continued[0], centerY = continued[1],
                         radiusX = continued[2], radiusY = continued[3])
                 }
-                if (region.source == FacePrivacyRegionSource.DETECTED_FACE && person.observedThisFrame) {
+                // Refine only from the exact current observed instance, after
+                // the temporal/identity cache has been updated. Do not consume
+                // masks borrowed from unresolved protected motion evidence.
+                val connected = if (useConnectedEllipse && trackId in stickerSizeIds &&
+                    trackedPerson.observedThisFrame && person.observedThisFrame) {
+                    FrameKernelFaceGeometry.headEllipse(person.mask, person.bbox, measuredRegion, region)
+                } else null
+                if (connected != null) {
+                    region = connected
+                } else if (region.source == FacePrivacyRegionSource.DETECTED_FACE && person.observedThisFrame) {
                     region = FrameKernelFaceGeometry.coverCurrent(person.mask, person.bbox, region)
                 }
                 // The Android sticker shader is clipped by the resolved face
@@ -1445,7 +1459,8 @@ class FaceOnlyPrivacyFrameProcessor(
                         FacePrivacyRegionSource.YOLO_HEAD_FALLBACK -> 2
                     }
                     val sized = stickerSizeStates.getOrPut(trackId) { FrameKernel.FaceRenderSizeState() }
-                        .step(floatArrayOf(region.centerX, region.centerY, region.radiusX, region.radiusY), ptsUs, kind)
+                        .step(floatArrayOf(region.centerX, region.centerY, region.radiusX, region.radiusY), ptsUs, kind,
+                            preserveAxes = useConnectedEllipse)
                     region = region.copy(centerX = sized[0], centerY = sized[1], radiusX = sized[2], radiusY = sized[3])
                 }
                 val maskStartNs = System.nanoTime()
