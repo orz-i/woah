@@ -17,6 +17,7 @@ import time
 from PIL import Image
 
 import evaluate_dense_tracklets as dense
+import evaluate_owned_heads as owned_heads
 import evaluate_profile_head_geometry as profile
 import evaluate_tracklet_recovery as recovery
 from evaluate_body_reid import PERSON_MODEL, FACE_MODEL, sha
@@ -122,11 +123,14 @@ def main():
     ap.add_argument("--target-id", type=int, required=True)
     ap.add_argument("--without-memo", action="store_true", help="Exact inference-cache ablation")
     ap.add_argument("--profile-experiment", action="store_true", help="Include the unapproved M5.1/M5.3 projected-head competition control")
+    ap.add_argument("--owned-head-experiment", action="store_true", help="Opt-in M5.5 anatomy-first ownership comparison")
     ap.add_argument("--shared-dense", type=Path)
     ap.add_argument("--shared-reference", type=Path)
     a = ap.parse_args()
     if (a.shared_dense is None) != (a.shared_reference is None):
         ap.error("shared dense evidence and its canonical reference must be supplied together")
+    if a.owned_head_experiment and a.profile_experiment:
+        ap.error("evaluate head experiments separately")
     start = time.perf_counter()
     if sha(a.model_dir / POSE_FILE) != POSE_SHA:
         raise ValueError("pose weight mismatch")
@@ -179,6 +183,15 @@ def main():
     geo = json.loads(profile_path.read_text())
     current = geo["candidate"]["frames"]
     checkpoint("current_geometry")
+    owned_path = a.output_dir / "owned_heads.json"
+    owned_changed = []
+    if a.owned_head_experiment:
+        owned_heads.run(SimpleNamespace(**common, output=owned_path),
+                        scene=scene, models=models, geometry=current)
+        owned = json.loads(owned_path.read_text())
+        current = owned["candidate"]["frames"]
+        owned_changed = owned["changed"]
+        checkpoint("owned_head_geometry")
     # The offline lane cannot repair a current observed body or an existing
     # placement. Avoid the expensive dense model pass if no eligible gap exists.
     needs_dense = any(r["render"] is None and r.get("track") is not None and not r["track"]["observed"] for r in current)
@@ -214,6 +227,8 @@ def main():
             lane, raw = "offline_tracklet", by_index[i]
         elif row.get("fragment_head_repair"):
             lane, raw = "fragment_window", row["fragment_head_repair"]["raw"]
+        elif row.get("owned_head_replacement"):
+            lane, raw = "anatomical_head", profile.canonical_raw(row)
         elif row.get("profile_head_repair"):
             lane, raw = "profile_competition", profile.canonical_raw(row)
         else:
@@ -227,7 +242,7 @@ def main():
            "canonical_sha256": sha(canonical_path), "geometry_sha256": sha(profile_path),
            "dense_sha256": sha(dense_path) if needs_dense else None,
            "recovery_sha256": sha(recovery_path) if needs_dense else None,
-           "profile_experiment": a.profile_experiment, "dense_scheduled": needs_dense, "dense_reused": needs_dense and a.shared_dense is not None, "baseline": tracked,
+           "profile_experiment": a.profile_experiment, "owned_head_experiment": a.owned_head_experiment, "owned_head_sha256": sha(owned_path) if a.owned_head_experiment else None, "owned_head_changed": owned_changed, "dense_scheduled": needs_dense, "dense_reused": needs_dense and a.shared_dense is not None, "baseline": tracked,
            "candidate": {"frames": current, "summary": coverage_stats(current)}, "final_placements": placements,
            "canonical_placement_stats": coverage_stats(prior), "offline_spans": spans,
            "offline_attempts": attempts, "profile_changed": sorted(set(geo["changed"]) - set(geo["fragment_changed"])), "fragment_changed": geo["fragment_changed"],

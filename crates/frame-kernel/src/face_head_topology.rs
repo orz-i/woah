@@ -1456,6 +1456,275 @@ pub(crate) fn profile_head_cap(
     finish_tracklet_bounds(masks, index, spec, union, ar.min(br), faces)
 }
 
+/// An upright, current anatomical head observation independent of face
+/// detections. Two mapped poses establish an ear-to-shoulder neck plane;
+/// the actual connected raw silhouette supplies the crown and side extent.
+/// No face, historical square, or competitor is allowed to seed this cap.
+pub(crate) fn anatomical_head_cap(
+    masks: &[u8],
+    index: usize,
+    count: usize,
+    spec: HeadMaskSpec,
+    poses: [[f32; 21]; 2],
+) -> Option<HeadSticker> {
+    let n = (spec.width as usize).checked_mul(spec.height as usize)?;
+    if !(3..=32).contains(&count) || index >= count || n.checked_mul(count)? != masks.len() {
+        return None;
+    }
+    let own = &masks[index * n..(index + 1) * n];
+    let tr = spec.transform;
+    if !spec.valid(own) || spec.width != tr.proto_size || spec.height != tr.proto_size {
+        return None;
+    }
+    let cell = tr.input_size as f32 / (tr.proto_size as f32 * tr.scale);
+    if !cell.is_finite() || cell <= 0.0 {
+        return None;
+    }
+    let bh = spec.person.bottom - spec.person.top;
+    let w = spec.width as usize;
+    let h = spec.height as usize;
+    let gx = |x: f32| (x * tr.scale + tr.pad_left) / tr.input_size as f32 * w as f32;
+    let gy = |y: f32| (y * tr.scale + tr.pad_top) / tr.input_size as f32 * h as f32;
+    let fx =
+        |x: usize| (x as f32 * cell - tr.pad_left / tr.scale).clamp(0., tr.source_width as f32);
+    let fy =
+        |y: usize| (y as f32 * cell - tr.pad_top / tr.scale).clamp(0., tr.source_height as f32);
+    let exclusive = |k: usize| {
+        own[k] >= 128
+            && masks
+                .chunks_exact(n)
+                .enumerate()
+                .all(|(j, m)| j == index || m[k] < 128)
+    };
+    let supported = |x: f32, y: f32| {
+        let (u, v) = (gx(x).floor() as i32, gy(y).floor() as i32);
+        (-1..=1)
+            .flat_map(|dy| (-1..=1).map(move |dx| (u + dx, v + dy)))
+            .filter(|&(a, b)| {
+                a >= 0
+                    && b >= 0
+                    && a < w as i32
+                    && b < h as i32
+                    && exclusive(b as usize * w + a as usize)
+            })
+            .count()
+            >= 2
+    };
+    let geom = |p: [f32; 21]| -> Option<([f32; 2], [f32; 2], f32)> {
+        if p.iter().any(|v| !v.is_finite())
+            || p.chunks_exact(3).any(|q| !(0.0..=1.0).contains(&q[2]))
+            || p[11].min(p[14]) < 0.30
+            || p[11].max(p[14]) < 0.45
+            || p[17].min(p[20]) < 0.40
+        {
+            return None;
+        }
+        for j in [3, 4, 5, 6] {
+            let (x, y) = (p[j * 3], p[j * 3 + 1]);
+            if x < spec.person.left - cell
+                || x > spec.person.right + cell
+                || y < spec.person.top - cell
+                || y > spec.person.bottom + cell
+                || !supported(x, y)
+            {
+                return None;
+            }
+        }
+        let e = [(p[9] + p[12]) * 0.5, (p[10] + p[13]) * 0.5];
+        let s = [(p[15] + p[18]) * 0.5, (p[16] + p[19]) * 0.5];
+        let d = (e[0] - s[0]).hypot(e[1] - s[1]);
+        if d < 3. * cell
+            || !(0.06..=0.22).contains(&(d / bh))
+            || s[1] - e[1] < 0.75 * d
+            || (p[9] - p[12]).hypot(p[10] - p[13]) > 1.4 * d
+            || (p[10] - p[13]).abs() > 0.35 * d
+        {
+            return None;
+        }
+        Some((e, s, d))
+    };
+    let a = geom(poses[0])?;
+    let b = geom(poses[1])?;
+    if !(0.75..=1.33).contains(&(a.2 / b.2))
+        || (a.0[0] - b.0[0]).hypot(a.0[1] - b.0[1]) > 0.25 * a.2
+        || (a.1[0] - b.1[0]).hypot(a.1[1] - b.1[1]) > 0.30 * a.2
+    {
+        return None;
+    }
+    let scan = |(e, s, d): ([f32; 2], [f32; 2], f32)| -> Option<(Rect, u32)> {
+        let left = gx(spec.person.left - cell).floor().clamp(0., w as f32) as usize;
+        let right = gx(spec.person.right + cell).ceil().clamp(0., w as f32) as usize;
+        let top = gy((e[1] - 1.5 * d).max(0.)).floor().clamp(0., h as f32) as usize;
+        let bottom = gy(e[1] + 0.80 * (s[1] - e[1])).ceil().clamp(0., h as f32) as usize;
+        let x = gx(e[0]);
+        let y = gy(e[1]).floor() as usize;
+        if left >= right || y < top + 2 || y + 2 >= bottom {
+            return None;
+        }
+        let seed = runs(own, w, y, left, right)
+            .into_iter()
+            .find(|r| r.left as f32 <= x && x < r.right as f32)?;
+        let width = seed.width() as f32 * cell;
+        if !(0.65..=2.5).contains(&(width / d)) || !(0.06..=0.28).contains(&(width / bh)) {
+            return None;
+        }
+        let linked = |yy, prev: Run| {
+            let mut rs = runs(own, w, yy, left, right)
+                .into_iter()
+                .filter(|r| r.overlap(prev) * 2 >= r.width().min(prev.width()));
+            let first = rs.next();
+            if rs.next().is_some() {
+                None
+            } else {
+                Some(first)
+            }
+        };
+        let mut path = vec![(y, seed)];
+        let mut prev = seed;
+        let mut crown = false;
+        for yy in (top..y).rev() {
+            let Some(r) = linked(yy, prev)? else {
+                crown = true;
+                break;
+            };
+            if r.width() as f32 > seed.width() as f32 * 1.4 + 1.
+                || (r.center() - x).abs() * cell > 0.7 * d
+            {
+                return None;
+            }
+            path.push((yy, r));
+            prev = r;
+        }
+        if !crown && fy(top) > cell {
+            return None;
+        }
+        if path.len() < 3 {
+            return None;
+        }
+        prev = seed;
+        for yy in y + 1..bottom {
+            let r = linked(yy, prev)??;
+            // An expanding shoulder is not part of the required head.
+            if r.width() as f32 > seed.width() as f32 * 1.35 + 1. {
+                break;
+            }
+            if (r.center() - x).abs() * cell > 0.85 * d {
+                return None;
+            }
+            path.push((yy, r));
+            prev = r;
+        }
+        let top_y = path.iter().map(|q| q.0).min()?;
+        let bottom_y = path.iter().map(|q| q.0).max()? + 1;
+        if path.len() < 6 || fy(bottom_y) < e[1] + 0.35 * (s[1] - e[1]) {
+            return None;
+        }
+        let mut total = 0;
+        let mut supported = 0;
+        for &(yy, r) in &path {
+            for xx in r.left..r.right {
+                total += 1;
+                supported += usize::from(exclusive(yy * w + xx));
+            }
+        }
+        if supported * 10 < total * 9 {
+            return None;
+        }
+        let bounds = Rect {
+            left: (fx(path.iter().map(|q| q.1.left).min()?) - cell).max(0.),
+            top: (fy(top_y) - cell).max(0.),
+            right: (fx(path.iter().map(|q| q.1.right).max()?) + cell).min(tr.source_width as f32),
+            bottom: (fy(bottom_y) + cell).min(tr.source_height as f32),
+        };
+        let bw = bounds.right - bounds.left;
+        let hh = bounds.bottom - bounds.top;
+        if !bounds.valid()
+            || !(0.06..=0.32).contains(&(bw / bh))
+            || !(0.06..=0.32).contains(&(hh / bh))
+            || !(0.65..=1.75).contains(&(hh / bw))
+        {
+            return None;
+        }
+        Some((bounds, path.len() as u32))
+    };
+    let (a, ar) = scan(a)?;
+    let (b, br) = scan(b)?;
+    if crate::geometry::overlap_iou(a, b) < 0.75 {
+        return None;
+    }
+    let bounds = Rect {
+        left: a.left.min(b.left),
+        top: a.top.min(b.top),
+        right: a.right.max(b.right),
+        bottom: a.bottom.max(b.bottom),
+    };
+    let (square, _, _, _) = minimize_head_square(bounds, &[])?;
+    Some(HeadSticker {
+        bounds,
+        square,
+        topology: 1,
+        rows: ar.min(br),
+    })
+}
+
+/// Resolve an existing direct or projected observation against independently
+/// certified head geometry, then minimize overlap with all measured rivals.
+/// Return no replacement when the old center agrees or competition persists.
+/// A discordant observation is never included in the required head extent.
+pub(crate) fn owned_head_replacement(
+    masks: &[u8],
+    index: usize,
+    spec: HeadMaskSpec,
+    cap: HeadSticker,
+    boxes: &[Rect],
+    faces: &[Ellipse],
+    observations: [Ellipse; 2],
+) -> Option<HeadSticker> {
+    let [previous, observed] = observations;
+    if !valid_seed(previous) || cap.topology != 1 || cap.rows < 6 || !cap.bounds.valid() {
+        return None;
+    }
+    let mut bounds = cap.bounds;
+    let cell = spec.transform.input_size as f32
+        / (spec.transform.proto_size as f32 * spec.transform.scale);
+    let contains = |x: f32, y: f32| {
+        x >= cap.bounds.left - cell
+            && x <= cap.bounds.right + cell
+            && y >= cap.bounds.top - cell
+            && y <= cap.bounds.bottom + cell
+    };
+    // Preserve a corroborated face extent, even when the prior sticker is
+    // shifted. Do not union a spatially contradictory detector observation.
+    if valid_seed(observed) && contains(observed.center_x, observed.center_y) {
+        bounds.left = bounds
+            .left
+            .min((observed.center_x - observed.radius_x).max(0.));
+        bounds.right = bounds
+            .right
+            .max((observed.center_x + observed.radius_x).min(spec.transform.source_width as f32));
+        bounds.top = bounds
+            .top
+            .min((observed.center_y - observed.radius_y).max(0.));
+        bounds.bottom = bounds
+            .bottom
+            .max((observed.center_y + observed.radius_y).min(spec.transform.source_height as f32));
+    }
+    // Only replace a clearly discordant center; no speculative global
+    // shrinking of correctly centered legacy regions.
+    if contains(previous.center_x, previous.center_y) {
+        return None;
+    }
+    let competition = current_head_competition(masks, index, spec, bounds, boxes, faces, &[])?;
+    if competition.status == 1 || competition.unknown_count > 0 {
+        return None;
+    }
+    Some(HeadSticker {
+        bounds,
+        square: competition.square,
+        ..cap
+    })
+}
+
 /// Only repair an oversized *projected* placement when a current rival
 /// face is actually endangered and both fresh pose-axis caps agree. No
 /// direct-face measurement, identity clock or historical geometry is changed.
@@ -2682,6 +2951,58 @@ mod tests {
             ],
         )
     }
+    #[test]
+    fn anatomical_head_requires_current_dual_pose_and_rejects_wrong_face_seed() {
+        let (sp, mut m, _) = ear_cap_fixture();
+        m.extend(vec![0; 4096]);
+        let p = [
+            128., 64., 0.9, 120., 58., 0.9, 135., 58., 0.9, 110., 64., 0.9, 146., 64., 0.9, 92.,
+            94., 0.9, 164., 94., 0.9,
+        ];
+        let cap = anatomical_head_cap(&m, 0, 3, sp, [p, p]).expect("current cap");
+        assert!(cap.bounds.top <= 40. && cap.bounds.bottom >= 80.);
+        assert!(cap.bounds.left <= 104. && cap.bounds.right >= 152.);
+        let mut bad = p;
+        bad[9] += 30.;
+        bad[12] += 30.;
+        assert!(anatomical_head_cap(&m, 0, 3, sp, [p, bad]).is_none());
+        let mut rival = m.clone();
+        paint(&mut rival[8192..], 13..20, 26, 38);
+        assert!(anatomical_head_cap(&rival, 0, 3, sp, [p, p]).is_none());
+        let boxes = [
+            sp.person,
+            Rect {
+                left: 192.,
+                top: 40.,
+                right: 240.,
+                bottom: 216.,
+            },
+            Rect {
+                left: 4.,
+                top: 100.,
+                right: 48.,
+                bottom: 200.,
+            },
+        ];
+        let foreign = Ellipse {
+            center_x: 128.,
+            center_y: 135.,
+            radius_x: 15.,
+            radius_y: 17.,
+        };
+        let faces = [foreign, Ellipse::default(), Ellipse::default()];
+        let out = owned_head_replacement(&m, 0, sp, cap, &boxes, &faces, [foreign, foreign])
+            .expect("discordant observation must not seed the new extent");
+        assert!(out.bounds.bottom < foreign.center_y - foreign.radius_y);
+        assert!(
+            owned_head_replacement(&m, 0, sp, cap, &boxes, &faces, [cap.square, foreign]).is_none()
+        );
+        let blocking = [foreign, cap.square, Ellipse::default()];
+        assert!(
+            owned_head_replacement(&m, 0, sp, cap, &boxes, &blocking, [foreign, foreign]).is_none()
+        );
+    }
+
     #[test]
     fn required_head_square_shifts_only_in_slack_and_reports_unavoidable_overlap() {
         let target = Rect {

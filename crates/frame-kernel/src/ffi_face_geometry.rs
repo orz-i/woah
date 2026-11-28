@@ -186,6 +186,103 @@ pub unsafe extern "C" fn frame_kernel_research_profile_head_cap(
     REGION_OK
 }
 
+/// Research-only current anatomical head and ownership decision.
+/// # Safety
+/// Packed masks, two mapped pose7 arrays, and one disjoint output are readable/writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_anatomical_head(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    poses: *const f32,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(3..=32).contains(&count) || len > 32 * 1024 * 1024 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable masks and exactly 42 pose floats.
+    let (Some(m), Some(p)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(poses, 42),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    let Some(v) = crate::face_head_topology::anatomical_head_cap(
+        m,
+        index as usize,
+        count,
+        spec,
+        [p[..21].try_into().unwrap(), p[21..].try_into().unwrap()],
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller provides one disjoint writable output.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
+/// # Safety
+/// Readable packed masks, two mapped pose7 arrays, count body boxes and
+/// faces, one disjoint output.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn frame_kernel_research_owned_head(
+    masks: *const u8,
+    len: usize,
+    count: usize,
+    index: u32,
+    spec: HeadMaskSpec,
+    poses: *const f32,
+    boxes: *const Rect,
+    faces: *const Ellipse,
+    previous: Ellipse,
+    observed: Ellipse,
+    out: *mut crate::face_head_topology::HeadSticker,
+) -> i32 {
+    if !(3..=32).contains(&count) || len > 32 * 1024 * 1024 || out.is_null() {
+        return REGION_INVALID;
+    }
+    // SAFETY: caller supplies bounded readable arrays of the stated lengths.
+    let (Some(m), Some(b), Some(f), Some(p)) = (unsafe {
+        (
+            crate::ffi_tracking::borrowed(masks, len),
+            crate::ffi_tracking::borrowed(boxes, count),
+            crate::ffi_tracking::borrowed(faces, count),
+            crate::ffi_tracking::borrowed(poses, 42),
+        )
+    }) else {
+        return REGION_INVALID;
+    };
+    // Recompute the certificate from the exact current evidence; a caller
+    // cannot supply an arbitrary head rectangle as a proof of ownership.
+    let Some(cap) = crate::face_head_topology::anatomical_head_cap(
+        m,
+        index as usize,
+        count,
+        spec,
+        [p[..21].try_into().unwrap(), p[21..].try_into().unwrap()],
+    ) else {
+        return REGION_NONE;
+    };
+    let Some(v) = crate::face_head_topology::owned_head_replacement(
+        m,
+        index as usize,
+        spec,
+        cap,
+        b,
+        f,
+        [previous, observed],
+    ) else {
+        return REGION_NONE;
+    };
+    // SAFETY: caller provides one disjoint writable output.
+    unsafe { out.write(v) };
+    REGION_OK
+}
+
 /// # Safety
 /// Readable packed current masks, count body boxes and faces; one disjoint
 /// diagnostic result. No output geometry is a tracker or native render update.

@@ -456,6 +456,8 @@ int32_t frame_kernel_research_tracklet_ear_cap(const uint8_t *masks,size_t len,s
 /* Current mapped mirrored pose corroboration; original and mapped pose12. */
 int32_t frame_kernel_research_tracklet_flip_ear_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses24,const FrameKernelEllipse *faces,FrameKernelHeadSticker *output);
 /* Current dual-pose profile-axis head geometry; poses42 = two nose/eyes/ears/shoulders x,y,confidence arrays. */
+int32_t frame_kernel_research_anatomical_head(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,FrameKernelHeadSticker *output);
+int32_t frame_kernel_research_owned_head(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,const FrameKernelRect *boxes,const FrameKernelEllipse *faces,FrameKernelEllipse previous,FrameKernelEllipse observed,FrameKernelHeadSticker *output);
 int32_t frame_kernel_research_profile_head_cap(const uint8_t *masks,size_t len,size_t count,uint32_t index,FrameKernelHeadMaskSpec spec,const float *poses42,const FrameKernelEllipse *faces,FrameKernelEllipse previous,uint32_t repair,FrameKernelHeadSticker *output);
 /* Research-only fixed extent and rival head competition diagnostic.
    Status 0 clear within supplied evidence, 1 residual conflict, 2 no rival face. */
