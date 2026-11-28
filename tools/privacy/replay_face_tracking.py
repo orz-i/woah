@@ -165,12 +165,16 @@ class Snapshot:
 
 
 class Tracking:
-    def __init__(self, lib, target, protected_roots=None):
+    def __init__(self, lib, target, protected_roots=None, pair_continuity=False):
         tracker_bind(lib)
         self.lib, self.target = lib, target
         self.handle = lib.tracking_create(lib.tracking_defaults())
         if not self.handle:
             raise RuntimeError("tracking_create")
+        if pair_continuity:
+            fn=lib.frame_kernel_tracking_pair_continuity
+            fn.argtypes=[U64,U];fn.restype=C.c_int32
+            check(fn(self.handle,1))
         ids = (I64 * 1)(target)
         roots = sorted(set(protected_roots or ()) | {target})
         protected = (I64 * len(roots))(*roots)
@@ -391,8 +395,8 @@ def summarize(rows):
                 sampled_widths=[round(r["width"],2) for r in sample])
 
 
-def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False):
-    tracking = Tracking(lib,target,protected_roots)
+def replay(lib, face, evidence, target, drops, cover_fallback=False, protected_roots=None, multiperson_recovery=False, pair_continuity=False):
+    tracking = Tracking(lib,target,protected_roots,pair_continuity)
     pixel_bind(lib)
     state, render_state, sticker_state, trusted, pixel_seed = State(), RenderState(), RenderState(), None, None
     sticker_seed = None
@@ -560,6 +564,7 @@ def main():
                         help="Protect first-frame analysis IDs with confidence >= .60 as in Android FACE_ONLY; does not add privacy targets")
     parser.add_argument("--cover-fallback-experiment",action="store_true")
     parser.add_argument("--multiperson-recovery",action="store_true",help="Opt in to candidate-only local recovery experiments")
+    parser.add_argument("--pair-continuity",action="store_true",help="Candidate-only experimental two-person raw-mask association")
     parser.add_argument("--output",type=Path,required=True)
     args=parser.parse_args()
     base, candidate=load(args.baseline),load(args.candidate)
@@ -588,6 +593,7 @@ def main():
             "target_id":args.target_id,"identity_protected_roots":roots,"injected_face_drops":sorted(drops),
             "experimental_cover_fallback":args.cover_fallback_experiment,
             "multiperson_recovery":args.multiperson_recovery,
+            "pair_continuity":args.pair_continuity,
             "model_sha256": {name:hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
                              for name,path in [("person","models/litert/yolo11n-seg-fp16.tflite"),("face","testdata/models/face/blaze_face_full_range.tflite")]}}
     libs=[("baseline",base)]
@@ -595,13 +601,15 @@ def main():
         libs.append(("size_only",load(args.size_only)))
     libs.append(("candidate",candidate))
     for name,lib in libs:
-        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and name=="candidate")
+        report[name]=replay(lib,face,evidence,args.target_id,drops,cover_fallback=args.cover_fallback_experiment and name=="candidate",protected_roots=roots,multiperson_recovery=args.multiperson_recovery and name=="candidate",pair_continuity=args.pair_continuity and name=="candidate")
         print(name,json.dumps(report[name]["summary"]),flush=True)
     for name in [n for n,_ in libs if n!="baseline"]:
+        if args.pair_continuity and name=="candidate":
+            continue  # explicitly testing a canonical association change
         for a,b in zip(report["baseline"]["frames"],report[name]["frames"],strict=True):
             if a["tracking_snapshot_sha256"]!=b["tracking_snapshot_sha256"] or any(a[k]!=b[k] for k in ("tracks","class_evidence","motion_evidence")):
                 raise AssertionError(f"Tracker state changed in {name} at frame {a['index']}")
-    report["tracking_snapshot_equal"]=True
+    report["tracking_snapshot_equal"]=all(a["tracking_snapshot_sha256"]==b["tracking_snapshot_sha256"] for a,b in zip(report["baseline"]["frames"],report["candidate"]["frames"],strict=True))
     args.output.write_text(json.dumps(report,indent=2)+"\n")
 
 

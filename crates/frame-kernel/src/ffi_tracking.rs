@@ -500,6 +500,17 @@ pub unsafe extern "C" fn frame_kernel_tracking_selection(
     s.tracker.offscreen_dormancy = dormancy != 0;
     0
 }
+/// Host research opt-in, only before a privacy tracking session initializes.
+#[unsafe(no_mangle)]
+pub extern "C" fn frame_kernel_tracking_pair_continuity(id: u64, enabled: u32) -> i32 {
+    let Some(owner) = session(id) else { return -1 };
+    let Ok(mut s) = owner.lock() else { return -1 };
+    if enabled > 1 || s.tracker.initialized || s.cutout.is_some() || s.dance.is_some() {
+        return -1;
+    }
+    s.tracker.privacy_pair_continuity = enabled == 1;
+    0
+}
 /// # Safety
 /// Observation, pixel pool and assigned ID buffers must be readable for the
 /// declared lengths. No pointer is retained after the call. Mask offsets are
@@ -546,6 +557,11 @@ pub unsafe extern "C" fn frame_kernel_tracking_step(
     };
     if result.is_err() {
         return -1;
+    }
+    if action == 0 && s.tracker.privacy_pair_continuity {
+        for track in &mut s.tracker.tracks {
+            track.observed_mask_at_us = track.observed_mask.as_ref().map(|_| at);
+        }
     }
     s.snapshot = encode(&s.tracker);
     0

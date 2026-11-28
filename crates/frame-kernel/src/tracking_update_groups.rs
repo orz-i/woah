@@ -4,8 +4,57 @@ use crate::{
     geometry::overlap_iou,
     tracking::*,
     tracking_evidence::{MaskCompetition, face_mask_conflict, identity_evidence, motion_evidence},
+    tracking_mask::raw_mask_iou,
 };
 use std::collections::BTreeSet;
+/// A two-sided fresh, unwarped silhouette match can disambiguate an overlap
+/// before predicted geometry moves an identity to its neighbor. All four
+/// masks must be current/last canonical and mutually comparable. This
+/// experimental path is restricted to a complete two-person face-only scene.
+fn direct_pair(tracks: [&Track; 2], detections: [&Detection; 2], at: i64) -> Option<[usize; 2]> {
+    let old = [
+        tracks[0].observed_mask.as_ref()?,
+        tracks[1].observed_mask.as_ref()?,
+    ];
+    let current = [detections[0].mask.as_ref()?, detections[1].mask.as_ref()?];
+    if tracks.iter().any(|t| {
+        !matches!(
+            t.state,
+            TrackState::Active | TrackState::Occluded | TrackState::Reacquiring
+        ) || t.offscreen_dormant
+            || !t
+                .observed_mask_at_us
+                .and_then(|v| at.checked_sub(v))
+                .is_some_and(|v| (1..=150_000).contains(&v))
+    }) || detections.iter().any(|d| d.confidence < 0.50)
+        || old.iter().chain(&current).any(|m| {
+            !m.valid()
+                || m.transform != old[0].transform
+                || m.width != old[0].width
+                || m.height != old[0].height
+        })
+        || raw_mask_iou(old[0], old[1]) > 0.10
+        || raw_mask_iou(current[0], current[1]) > 0.10
+    {
+        return None;
+    }
+    let raw: [[f32; 2]; 2] =
+        std::array::from_fn(|r| std::array::from_fn(|c| raw_mask_iou(old[r], current[c])));
+    let supports = |r: usize, c: usize| {
+        raw[r][c] >= 0.65
+            && raw[r][c] - raw[r][1 - c] >= 0.25
+            && raw[r][c] - raw[1 - r][c] >= 0.25
+            && overlap_iou(tracks[r].observed_bounds, detections[c].bounds) >= 0.60
+    };
+    let straight = supports(0, 0) && supports(1, 1);
+    let crossed = supports(0, 1) && supports(1, 0);
+    match (straight, crossed) {
+        (true, false) => Some([0, 1]),
+        (false, true) => Some([1, 0]),
+        _ => None,
+    }
+}
+
 impl Tracker {
     pub(super) fn associate_groups(
         &mut self,
@@ -62,6 +111,32 @@ impl Tracker {
                 .collect::<Vec<_>>();
             f.group_tracks.extend(rows.iter().copied());
             if cols.is_empty() {
+                continue;
+            }
+            if self.privacy_pair_continuity
+                && self.tracks.len() == 2
+                && d.len() == 2
+                && self.selected_ids.is_empty()
+                && self.face_selected_ids.len() == 1
+                && rows.len() == 2
+                && cols.len() == 2
+                && rows
+                    .iter()
+                    .all(|&i| self.protected_ids.contains(&self.tracks[i].id))
+                && let Some(pair) = direct_pair(
+                    [&self.tracks[rows[0]], &self.tracks[rows[1]]],
+                    [&d[cols[0]], &d[cols[1]]],
+                    at,
+                )
+            {
+                for (r, c) in pair.into_iter().enumerate() {
+                    let ti = rows[r];
+                    let di = cols[c];
+                    f.matched_tracks.insert(ti);
+                    f.matched_detections.insert(di);
+                    f.group_tracks.remove(&ti);
+                    commit(&mut self.tracks[ti], &d[di], at);
+                }
                 continue;
             }
             let matrix = scores(self, d, &rows, &cols, at, &mut f.cache)?;
@@ -266,5 +341,88 @@ fn reserve(f: &mut Frame, di: usize, owners: &[i64], direct: bool) {
     let groups = f.owner_groups.entry(di).or_default();
     if !groups.contains(&group) {
         groups.push(group)
+    }
+}
+
+#[cfg(test)]
+mod pair_tests {
+    use super::*;
+    use crate::geometry::{Rect, Transform};
+    fn observation(x: usize) -> Detection {
+        let mut pixels = vec![0; 64 * 64];
+        for y in 8..56 {
+            pixels[y * 64 + x..y * 64 + x + 12].fill(255);
+        }
+        Detection {
+            bounds: Rect {
+                left: x as f32 - 4.0,
+                top: 4.0,
+                right: x as f32 + 24.0,
+                bottom: 60.0,
+            },
+            confidence: 0.9,
+            foot_y: 60.0,
+            mask: Some(Mask {
+                width: 64,
+                height: 64,
+                pixels: pixels.into(),
+                transform: Transform {
+                    scale: 1.0,
+                    pad_left: 0.0,
+                    pad_top: 0.0,
+                    source_width: 64,
+                    source_height: 64,
+                    input_size: 64,
+                    proto_size: 64,
+                },
+            }),
+        }
+    }
+    fn tracked(id: i64, d: &Detection) -> Track {
+        let mut t = Track::observed(id, d.clone());
+        t.observed_mask_at_us = Some(40_000);
+        t
+    }
+    #[test]
+    fn reciprocal_current_masks_resolve_independently_of_predicted_boxes_and_order() {
+        let a = observation(10);
+        let b = observation(24);
+        let mut ta = tracked(0, &a);
+        let mut tb = tracked(1, &b);
+        ta.predicted_bounds = b.bounds;
+        tb.predicted_bounds = a.bounds;
+        assert_eq!(direct_pair([&ta, &tb], [&a, &b], 80_000), Some([0, 1]));
+        assert_eq!(direct_pair([&ta, &tb], [&b, &a], 80_000), Some([1, 0]));
+        // Normal 150ms lease remains a hard bound for BOTH old masks.
+        assert_eq!(direct_pair([&ta, &tb], [&a, &b], 190_000), Some([0, 1]));
+        assert_eq!(direct_pair([&ta, &tb], [&a, &b], 190_001), None);
+        assert_eq!(direct_pair([&ta, &tb], [&a, &b], 40_000), None);
+    }
+    #[test]
+    fn ambiguous_merged_missing_weak_and_noncomparable_masks_abstain() {
+        let a = observation(10);
+        let b = observation(24);
+        let ta = tracked(0, &a);
+        let mut tb = tracked(1, &b);
+        assert_eq!(direct_pair([&ta, &tb], [&a, &a], 80_000), None);
+        let merged = observation(16);
+        assert_eq!(direct_pair([&ta, &tb], [&a, &merged], 80_000), None);
+        let weak = Detection {
+            confidence: 0.49,
+            ..b.clone()
+        };
+        assert_eq!(direct_pair([&ta, &tb], [&a, &weak], 80_000), None);
+        let missing = Detection {
+            mask: None,
+            ..b.clone()
+        };
+        assert_eq!(direct_pair([&ta, &tb], [&a, &missing], 80_000), None);
+        let mut other_grid = b.clone();
+        other_grid.mask.as_mut().unwrap().transform.pad_left = 1.0;
+        assert_eq!(direct_pair([&ta, &tb], [&a, &other_grid], 80_000), None);
+        // A fresh bbox-only commit cannot refresh historical mask evidence.
+        commit(&mut tb, &missing, 70_000);
+        assert_eq!(tb.observed_mask_at_us, None);
+        assert_eq!(direct_pair([&ta, &tb], [&a, &b], 80_000), None);
     }
 }

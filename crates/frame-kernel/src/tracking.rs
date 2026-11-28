@@ -120,6 +120,8 @@ pub struct Track {
     pub age: u32,
     pub observed_this_frame: bool,
     pub observed_previous_frame: bool,
+    /// Timestamp of the actual canonical mask, never a prediction.
+    pub(crate) observed_mask_at_us: Option<i64>,
     pub fresh_motion: Option<[f32; 2]>,
     pub observed_foot_y: f32,
     pub current_foot_y: Option<f32>,
@@ -150,6 +152,7 @@ impl Track {
             age: 1,
             observed_this_frame: true,
             observed_previous_frame: false,
+            observed_mask_at_us: None,
             fresh_motion: None,
             observed_foot_y: d.foot_y,
             current_foot_y: Some(d.foot_y),
@@ -208,6 +211,7 @@ pub struct Tracker {
     pub next_id: i64,
     pub initialized: bool,
     pub offscreen_dormancy: bool,
+    pub(crate) privacy_pair_continuity: bool,
 }
 impl Tracker {
     pub fn new(config: TrackingConfig) -> Self {
@@ -227,6 +231,7 @@ impl Tracker {
             next_id: 0,
             initialized: false,
             offscreen_dormancy: false,
+            privacy_pair_continuity: false,
         }
     }
     pub fn selection_class(&self, id: i64) -> SelectionClass {

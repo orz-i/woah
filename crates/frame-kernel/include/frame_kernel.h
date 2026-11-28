@@ -257,6 +257,8 @@ int32_t frame_kernel_class_update(uint64_t id, const FrameKernelTrackingObservat
     const uint8_t *pixels, size_t pixels_len, const FrameKernelClassRoot *roots, size_t roots_len,
     FrameKernelClassDecision *output, size_t capacity, uint32_t *evaluations);
 uint64_t frame_kernel_tracking_create(FrameKernelTrackingOptions options);
+/* Experimental, default off. Must be called before initialization. */
+int32_t frame_kernel_tracking_pair_continuity(uint64_t id,uint32_t enabled);
 int32_t frame_kernel_tracking_destroy(uint64_t session);
 /* After initialization, reserve IDs below the analysis namespace floor. */
 int32_t frame_kernel_tracking_reserve_id_floor(uint64_t session, int64_t minimum_next_id);
